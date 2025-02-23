@@ -1,16 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createBrowserSupabaseClient } from '../../lib/supabase';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { createBrowserSupabaseClient } from '@/lib/supabase';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Edit2, Trash2, ChevronDown, ChevronUp, Check, Plus } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../components/ui/dialog"
-import { Input } from "../../components/ui/input"
-import { Label } from "../../components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select"
-import { Textarea } from "../../components/ui/textarea"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import EditBlueprintDialog from '@/components/EditBlueprintDialog';
 
 // Default how-to content
 const DEFAULT_HOW_TO_CONTENT = `# How to Use the Blueprint
@@ -64,7 +64,6 @@ interface NewSubsection {
 }
 
 export default function AdminDashboard() {
-  const router = useRouter();
   const [sections, setSections] = useState<Section[]>([]);
   const [subsections, setSubsections] = useState<Subsection[]>([]);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
@@ -208,10 +207,7 @@ export default function AdminDashboard() {
     };
   }, []);
 
-  const handleDragEnd = async (result: {
-    destination?: { droppableId: string; index: number };
-    source: { index: number };
-  }) => {
+  const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
 
     const sectionId = result.destination.droppableId;
@@ -640,6 +636,17 @@ export default function AdminDashboard() {
           </div>
         </DragDropContext>
       </div>
+
+      {/* Add EditBlueprintDialog component */}
+      {editingItem && (
+        <EditBlueprintDialog
+          isOpen={!!editingItem}
+          onClose={() => setEditingItem(null)}
+          itemId={editingItem}
+          itemType={sections.find(s => s.id === editingItem) ? 'section' : 'subsection'}
+          onSave={fetchBlueprintData}
+        />
+      )}
     </div>
   )
 } 

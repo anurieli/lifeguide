@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { createBrowserSupabaseClient } from '@/lib/supabase';
 import { Label, Textarea } from '@/components/ui/label';
@@ -40,22 +40,22 @@ export default function EditBlueprintDialog({
   const supabase = createBrowserSupabaseClient();
 
   useEffect(() => {
-    if (isOpen && itemId) {
-      fetchItemData();
-    }
-  }, [isOpen, itemId, fetchItemData]);
+    async function fetchItemData() {
+      if (!isOpen || !itemId) return;
+      
+      const { data } = await supabase
+        .from(itemType === 'section' ? 'guide_sections' : 'guide_subsections')
+        .select('*')
+        .eq('id', itemId)
+        .single();
 
-  const fetchItemData = async () => {
-    const { data } = await supabase
-      .from(itemType === 'section' ? 'guide_sections' : 'guide_subsections')
-      .select('*')
-      .eq('id', itemId)
-      .single();
-
-    if (data) {
-      setFormData(data);
+      if (data) {
+        setFormData(data);
+      }
     }
-  };
+
+    fetchItemData();
+  }, [isOpen, itemId, itemType, supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

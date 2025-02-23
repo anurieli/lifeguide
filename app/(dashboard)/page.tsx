@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase-server'
 import DashboardContent from '@/components/DashboardContent'
 
@@ -11,5 +12,9 @@ export default async function Dashboard() {
     return null // Handle this case in the middleware
   }
 
-  return <DashboardContent user={user} />
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DashboardContent user={user} />
+    </Suspense>
+  )
 } 

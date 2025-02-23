@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverActions: true,
+    serverActions: {
+      allowedOrigins: ['localhost:3000', process.env.NEXT_PUBLIC_SITE_URL || ''],
+    },
   },
   typescript: {
     ignoreBuildErrors: false,

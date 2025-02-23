@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 
 interface DashboardContentProps {
@@ -7,6 +8,11 @@ interface DashboardContentProps {
 }
 
 export default function DashboardContent({ user }: DashboardContentProps) {
+  useEffect(() => {
+    // Client-side initialization
+    console.log('DashboardContent mounted');
+  }, []);
+
   return (
     <div className="space-y-8">
       <div>

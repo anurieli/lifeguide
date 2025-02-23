@@ -34,5 +34,6 @@ export default function DashboardContent({ user }: DashboardContentProps) {
         </div>
       </div>
     </div>
+    
   );
 } 

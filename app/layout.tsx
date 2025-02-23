@@ -2,7 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { AuthProvider } from '@/contexts/AuthContext'
-import Navigation from '@/components/navbar'
+import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -21,7 +21,7 @@ export default function RootLayout({
     <html lang="en" className={inter.className}>
       <body className="min-h-screen bg-gray-900 flex flex-col">
         <AuthProvider>
-          <Navigation />
+          <Navbar />
           <main className="flex-1">
             {children}
           </main>

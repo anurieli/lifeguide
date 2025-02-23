@@ -172,12 +172,12 @@ export default function WelcomePage() {
             <div className="prose prose-invert max-w-none space-y-6">
               <p className="text-lg text-white">
                 LifeGuide was born from a simple observation: many people struggle to organize their lives
-                and maintain focus on their goals. We've combined battle-tested strategies from military,
+                and maintain focus on their goals. We&apos;ve combined battle-tested strategies from military,
                 business, and personal development to create a practical system that actually works.
               </p>
 
               <p className="text-lg text-white">
-                Our platform isn't just another productivity tool—it's a comprehensive system designed
+                Our platform isn&apos;t just another productivity tool—it&apos;s a comprehensive system designed
                 to help you understand yourself better, set meaningful goals, and stay accountable
                 to your vision.
               </p>
@@ -206,7 +206,7 @@ export default function WelcomePage() {
               className="text-center mb-12"
             >
               <h2 className={`text-4xl font-bold ${gradientText} mb-4`}>Get in Touch</h2>
-              <p className="text-white">Have questions or suggestions? We'd love to hear from you.</p>
+              <p className="text-white">Have questions or suggestions? We&apos;d love to hear from you.</p>
             </motion.div>
 
             <ContactForm />

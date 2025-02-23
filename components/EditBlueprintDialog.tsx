@@ -40,10 +40,10 @@ export default function EditBlueprintDialog({
   const supabase = createBrowserSupabaseClient();
 
   useEffect(() => {
-    if (itemId) {
+    if (isOpen && itemId) {
       fetchItemData();
     }
-  }, [itemId]);
+  }, [isOpen, itemId, fetchItemData]);
 
   const fetchItemData = async () => {
     const { data } = await supabase

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { createBrowserSupabaseClient } from '../../lib/supabase';
-import { motion } from 'framer-motion';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Edit2, Trash2, ChevronDown, ChevronUp, Check, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -209,7 +208,10 @@ export default function AdminDashboard() {
     };
   }, []);
 
-  const handleDragEnd = async (result: any) => {
+  const handleDragEnd = async (result: {
+    destination?: { droppableId: string; index: number };
+    source: { index: number };
+  }) => {
     if (!result.destination) return;
 
     const sectionId = result.destination.droppableId;
@@ -372,7 +374,7 @@ export default function AdminDashboard() {
                 <Label>Title</Label>
                 <Input
                   value={newSection.title}
-                  onChange={(e) => setNewSection({ ...newSection, title: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSection({ ...newSection, title: e.target.value })}
                   placeholder="Enter section title"
                   className="bg-gray-700"
                 />
@@ -381,7 +383,7 @@ export default function AdminDashboard() {
                 <Label>Description</Label>
                 <Textarea
                   value={newSection.description}
-                  onChange={(e) => setNewSection({ ...newSection, description: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewSection({ ...newSection, description: e.target.value })}
                   placeholder="Enter section description"
                   className="bg-gray-700"
                 />
@@ -478,7 +480,7 @@ export default function AdminDashboard() {
                                 <Label>Title</Label>
                                 <Input
                                   value={newSubsection.title}
-                                  onChange={(e) => setNewSubsection({ ...newSubsection, title: e.target.value })}
+                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSubsection({ ...newSubsection, title: e.target.value })}
                                   placeholder="Enter subsection title"
                                   className="bg-gray-700"
                                 />
@@ -487,7 +489,7 @@ export default function AdminDashboard() {
                                 <Label>Description</Label>
                                 <Textarea
                                   value={newSubsection.description}
-                                  onChange={(e) => setNewSubsection({ ...newSubsection, description: e.target.value })}
+                                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewSubsection({ ...newSubsection, description: e.target.value })}
                                   placeholder="Enter subsection description"
                                   className="bg-gray-700"
                                 />
@@ -496,7 +498,7 @@ export default function AdminDashboard() {
                                 <Label>Subdescription</Label>
                                 <Textarea
                                   value={newSubsection.subdescription}
-                                  onChange={(e) => setNewSubsection({ ...newSubsection, subdescription: e.target.value })}
+                                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewSubsection({ ...newSubsection, subdescription: e.target.value })}
                                   placeholder="Enter subdescription"
                                   className="bg-gray-700"
                                 />
@@ -521,7 +523,7 @@ export default function AdminDashboard() {
                                 <Label>Malleability Details</Label>
                                 <Textarea
                                   value={newSubsection.malleability_details}
-                                  onChange={(e) => setNewSubsection({ ...newSubsection, malleability_details: e.target.value })}
+                                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewSubsection({ ...newSubsection, malleability_details: e.target.value })}
                                   placeholder="Enter malleability details"
                                   className="bg-gray-700"
                                 />
@@ -530,7 +532,7 @@ export default function AdminDashboard() {
                                 <Label>Example</Label>
                                 <Textarea
                                   value={newSubsection.example}
-                                  onChange={(e) => setNewSubsection({ ...newSubsection, example: e.target.value })}
+                                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewSubsection({ ...newSubsection, example: e.target.value })}
                                   placeholder="Enter example"
                                   className="bg-gray-700"
                                 />

@@ -1,8 +1,32 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 export default async function Dashboard() {
-  const supabase = createServerComponentClient({ cookies })
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        async getAll() {
+          const cookieStore = await cookies()
+          return cookieStore.getAll()
+        },
+        async setAll(cookiesToSet) {
+          const cookieStore = await cookies()
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // The `setAll` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+      },
+    }
+  )
   
   const {
     data: { user },
@@ -16,13 +40,13 @@ export default async function Dashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Blueprint Panel Placeholder */}
+        {/* Blueprint Panel */}
         <div className="col-span-2 p-6 bg-card rounded-lg border">
           <h2 className="text-xl font-semibold mb-4">Your Blueprint</h2>
           <p className="text-muted-foreground">Your blueprint content will appear here.</p>
         </div>
 
-        {/* Customizable Cards Section */}
+        {/* Quick Insights */}
         <div className="p-6 bg-card rounded-lg border">
           <h2 className="text-xl font-semibold mb-4">Quick Insights</h2>
           <p className="text-muted-foreground">Your customizable cards will appear here.</p>

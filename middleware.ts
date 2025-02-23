@@ -3,11 +3,6 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
-  // Skip middleware for admin routes
-  if (req.nextUrl.pathname.startsWith('/admin')) {
-    return NextResponse.next()
-  }
-
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req, res })
 
@@ -25,6 +20,30 @@ export async function middleware(req: NextRequest) {
   // redirect the user to /dashboard
   if (session && req.nextUrl.pathname.startsWith('/auth')) {
     return NextResponse.redirect(new URL('/dashboard', req.url))
+  }
+
+  // For admin routes, check if the user is authenticated and is an admin
+  if (req.nextUrl.pathname.startsWith('/admin')) {
+    if (!session) {
+      return NextResponse.redirect(new URL('/', req.url))
+    }
+    
+    // Get user's email from session
+    const email = session.user?.email
+    if (!email) {
+      return NextResponse.redirect(new URL('/', req.url))
+    }
+
+    // Check if user is an admin (this will be enforced by RLS policies)
+    const { data: adminUser } = await supabase
+      .from('admin_users')
+      .select('*')
+      .eq('email', email)
+      .single()
+
+    if (!adminUser) {
+      return NextResponse.redirect(new URL('/', req.url))
+    }
   }
 
   return res

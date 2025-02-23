@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { createBrowserSupabaseClient } from '@/lib/supabase';
-import { Label, Textarea } from '@/components/ui/label';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 interface EditBlueprintDialogProps {
   isOpen: boolean;

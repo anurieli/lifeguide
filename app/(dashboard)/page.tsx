@@ -12,7 +12,7 @@ export default async function Dashboard() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold">Welcome back{user?.email ? `, ${user.email}` : ''}</h1>
-        <p className="text-muted-foreground">Here's your personal Life Blueprint dashboard.</p>
+        <p className="text-muted-foreground">Here&apos;s your personal Life Blueprint dashboard.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

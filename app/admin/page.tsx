@@ -101,8 +101,20 @@ export default function AdminDashboard() {
         return;
       }
 
+      // Check admin status
+      const { data: adminUser, error: adminError } = await supabase
+        .from('admin_users')
+        .select('*')
+        .eq('email', session.user.email)
+        .single();
+
+      if (adminError || !adminUser) {
+        console.error('Not an admin user');
+        return;
+      }
+
       // Test the connection first
-      const { data: testData, error: testError } = await supabase
+      const { error: testError } = await supabase
         .from('guide_sections')
         .select('count');
 
@@ -265,9 +277,11 @@ export default function AdminDashboard() {
       return;
     }
 
-    setIsAddingSectionOpen(false);
-    setNewSection({ title: '', description: '' });
-    await fetchBlueprintData();
+    if (data) {
+      setIsAddingSectionOpen(false);
+      setNewSection({ title: '', description: '' });
+      await fetchBlueprintData();
+    }
   };
 
   const handleAddSubsection = async () => {
@@ -294,17 +308,19 @@ export default function AdminDashboard() {
       return;
     }
 
-    setIsAddingSubsectionOpen(false);
-    setNewSubsection({
-      section_id: '',
-      title: '',
-      description: '',
-      subdescription: '',
-      malleability_level: 'green',
-      malleability_details: '',
-      example: ''
-    });
-    await fetchBlueprintData();
+    if (data) {
+      setIsAddingSubsectionOpen(false);
+      setNewSubsection({
+        section_id: '',
+        title: '',
+        description: '',
+        subdescription: '',
+        malleability_level: 'green',
+        malleability_details: '',
+        example: ''
+      });
+      await fetchBlueprintData();
+    }
   };
 
   return (

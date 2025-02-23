@@ -1,15 +1,15 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
 import { createBrowserSupabaseClient } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
+import type { User } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
-  devSignIn?: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -19,9 +19,18 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
   const supabase = createBrowserSupabaseClient();
 
   useEffect(() => {
@@ -32,81 +41,51 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     // Listen for changes on auth state (signed in, signed out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
+      router.refresh();
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [router]);
 
   const signIn = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error signing in:', error);
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    localStorage.removeItem('dev-user');
-  };
-
-  const devSignIn = async () => {
-    if (process.env.NODE_ENV === 'development') {
-      const mockUser = {
-        id: 'dev-user',
-        email: 'dev@example.com',
-        phone: '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        confirmed_at: new Date().toISOString(),
-        last_sign_in_at: new Date().toISOString(),
-        role: 'authenticated',
-        aud: 'authenticated',
-        app_metadata: { provider: 'email' },
-        user_metadata: { 
-          name: 'Dev User',
-          isAdmin: true
-        },
-        identities: [],
-        factors: []
-      } as User;
-
-      // Store mock user data in localStorage to persist across refreshes
-      localStorage.setItem('dev-user', JSON.stringify(mockUser));
-      setUser(mockUser);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      router.push('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
     }
   };
 
-  // Load mock user data from localStorage in development
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && !user) {
-      const storedUser = localStorage.getItem('dev-user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-    }
-  }, [user]);
-
-  const value = {
-    user,
-    loading,
-    signIn,
-    signOut,
-    ...(process.env.NODE_ENV === 'development' && { devSignIn }),
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return (
+    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }; 

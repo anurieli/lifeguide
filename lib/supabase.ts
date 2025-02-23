@@ -14,7 +14,7 @@ export function createBrowserSupabaseClient() {
     throw new Error('Missing Supabase environment variables')
   }
 
-  const supabase = createBrowserClient(
+  return createBrowserClient(
     supabaseUrl,
     supabaseAnonKey,
     {
@@ -33,6 +33,4 @@ export function createBrowserSupabaseClient() {
       }
     }
   )
-
-  return supabase
 } 

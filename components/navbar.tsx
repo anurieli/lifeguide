@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
 
 export default function Navbar() {
-  const { user, signIn, signOut } = useAuth();
+  const { user, isAdmin, signIn, signOut } = useAuth();
   const router = useRouter();
 
   return (
@@ -15,27 +16,38 @@ export default function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex">
             <Link href="/" className="flex items-center">
-              <span className="text-xl font-bold text-white hover:text-blue-400 transition-colors">LifeGuide</span>
+              <motion.span 
+                whileHover={{ scale: 1.05 }}
+                className="text-xl font-bold text-white hover:text-blue-400 transition-colors"
+              >
+                LifeGuide
+              </motion.span>
             </Link>
           </div>
 
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="ghost" 
-              className="text-gray-300 hover:text-white hover:bg-gray-800"
-              onClick={() => router.push('/admin')}
-            >
-              Admin
-            </Button>
             {user ? (
               <>
-                <Button 
-                  variant="ghost" 
-                  className="text-gray-300 hover:text-white hover:bg-gray-800"
-                  onClick={() => router.push('/dashboard')}
-                >
-                  Dashboard
-                </Button>
+                <Link href="/dashboard">
+                  <Button 
+                    variant="ghost" 
+                    className="text-gray-300 hover:text-white hover:bg-gray-800"
+                  >
+                    Dashboard
+                  </Button>
+                </Link>
+
+                {isAdmin && (
+                  <Link href="/admin">
+                    <Button 
+                      variant="ghost" 
+                      className="text-gray-300 hover:text-white hover:bg-gray-800"
+                    >
+                      Blueprint Editor
+                    </Button>
+                  </Link>
+                )}
+
                 <Button 
                   variant="outline" 
                   onClick={() => signOut()}
@@ -45,12 +57,22 @@ export default function Navbar() {
                 </Button>
               </>
             ) : (
-              <Button 
-                onClick={() => signIn()}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Sign In
-              </Button>
+              <>
+                <Link href="/guide">
+                  <Button 
+                    variant="ghost" 
+                    className="text-gray-300 hover:text-white hover:bg-gray-800"
+                  >
+                    The Guide
+                  </Button>
+                </Link>
+                <Button 
+                  onClick={() => signIn()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Sign In
+                </Button>
+              </>
             )}
           </div>
         </div>

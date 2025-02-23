@@ -31,29 +31,30 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Check if we're on an admin route
-  const isAdminRoute = request.nextUrl.pathname.startsWith('/admin')
-
-  // If there's no session, redirect to login except for public routes
-  if (!user) {
-    if (request.nextUrl.pathname !== '/' && 
-        !request.nextUrl.pathname.startsWith('/auth/')) {
-      return NextResponse.redirect(new URL('/', request.url))
+  // Check if accessing admin page
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    if (!user) {
+      const redirectUrl = new URL('/login', request.url)
+      return NextResponse.redirect(redirectUrl)
     }
-    return supabaseResponse
-  }
 
-  // For admin routes, check if user is an admin
-  if (isAdminRoute) {
-    const { data: adminUser } = await supabase
+    // Check if user is admin
+    const { data: adminData } = await supabase
       .from('admin_users')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('email', user.email)
       .single()
 
-    if (!adminUser) {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+    if (!adminData) {
+      const redirectUrl = new URL('/', request.url)
+      return NextResponse.redirect(redirectUrl)
     }
+  }
+
+  // Check if accessing dashboard
+  if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {
+    const redirectUrl = new URL('/login', request.url)
+    return NextResponse.redirect(redirectUrl)
   }
 
   return supabaseResponse
@@ -66,7 +67,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public (public files)
+     * Feel free to modify this pattern to include more paths.
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],

@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import EditBlueprintDialog from '@/components/EditBlueprintDialog';
-import { RealtimePostgresChangesPayload, RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 // Default how-to content
 const DEFAULT_HOW_TO_CONTENT = `# How to Use the Blueprint
@@ -70,14 +70,26 @@ interface PostgresChanges {
     title: string;
     description: string;
     order_position: number;
-    [key: string]: any;
+    section_id?: string;
+    subdescription?: string;
+    malleability_level?: 'green' | 'yellow' | 'red';
+    malleability_details?: string;
+    example?: string;
+    created_at?: string;
+    updated_at?: string;
   };
   old: {
     id: string;
     title: string;
     description: string;
     order_position: number;
-    [key: string]: any;
+    section_id?: string;
+    subdescription?: string;
+    malleability_level?: 'green' | 'yellow' | 'red';
+    malleability_details?: string;
+    example?: string;
+    created_at?: string;
+    updated_at?: string;
   };
   eventType: 'INSERT' | 'UPDATE' | 'DELETE';
 }

@@ -22,11 +22,15 @@ export async function GET(request: Request) {
       }
       
       if (user?.email) {
-        const { data: adminData } = await supabase
+        const { data: adminData, error: adminError } = await supabase
           .from('admin_users')
           .select('id')
           .eq('email', user.email)
           .single()
+
+        if (adminError) {
+          return NextResponse.redirect(new URL('/dashboard', requestUrl.origin))
+        }
 
         if (adminData) {
           return NextResponse.redirect(new URL('/admin', requestUrl.origin))

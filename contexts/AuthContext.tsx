@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import type { User, AuthChangeEvent } from '@supabase/supabase-js';
+import type { User, AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
@@ -49,33 +49,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .single();
 
       if (error) {
+        console.error('Error checking admin status:', error);
         return false;
       }
 
       return !!adminData;
     } catch (error) {
+      console.error('Error in checkAdminStatus:', error);
       return false;
     }
   };
 
-  const handleAuthChange = async (event: AuthChangeEvent, session: any) => {
-    if (event === 'SIGNED_OUT' || !session) {
-      setUser(null);
-      setIsAdmin(false);
-      setLoading(false);
-      return;
-    }
-
-    if (session?.user) {
-      setUser(session.user);
-      const adminStatus = await checkAdminStatus(session.user.email);
-      setIsAdmin(adminStatus);
-    } else {
-      setUser(null);
-      setIsAdmin(false);
-    }
+  const handleAuthChange = async (event: AuthChangeEvent, session: Session | null) => {
+    setLoading(true);
     
-    setLoading(false);
+    try {
+      if (event === 'SIGNED_OUT' || !session) {
+        setUser(null);
+        setIsAdmin(false);
+        return;
+      }
+
+      if (session?.user) {
+        setUser(session.user);
+        const adminStatus = await checkAdminStatus(session.user.email);
+        setIsAdmin(adminStatus);
+      } else {
+        setUser(null);
+        setIsAdmin(false);
+      }
+    } catch (error) {
+      console.error('Error in handleAuthChange:', error);
+      setUser(null);
+      setIsAdmin(false);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -83,11 +92,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const initialize = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Get the initial session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (error || !mounted) {
+        if (sessionError) {
+          console.error('Error getting initial session:', sessionError);
           return;
         }
+
+        if (!mounted) return;
 
         if (session?.user) {
           setUser(session.user);
@@ -97,7 +110,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         }
       } catch (error) {
-        // Handle error silently
+        console.error('Error initializing auth:', error);
       } finally {
         if (mounted) {
           setLoading(false);
@@ -107,7 +120,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     initialize();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
+    // Set up the auth state listener
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(handleAuthChange);
 
     return () => {
       mounted = false;
@@ -130,9 +146,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (error) {
+        console.error('Sign in error:', error);
         throw error;
       }
     } catch (error) {
+      console.error('Error in signIn:', error);
       setLoading(false);
     }
   };
@@ -142,6 +160,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) {
+        console.error('Sign out error:', error);
         throw error;
       }
       
@@ -149,7 +168,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsAdmin(false);
       router.push('/');
     } catch (error) {
-      // Handle error silently
+      console.error('Error in signOut:', error);
     } finally {
       setLoading(false);
     }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { createBrowserSupabaseClient } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -38,7 +38,7 @@ export default function EditBlueprintDialog({
     malleability_details: '',
     example: '',
   });
-  const supabase = createBrowserSupabaseClient();
+  const supabase = createClient();
 
   useEffect(() => {
     async function fetchItemData() {

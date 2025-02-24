@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createBrowserSupabaseClient } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Edit2, Trash2, ChevronDown, ChevronUp, Check, Plus } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -87,7 +87,7 @@ export default function AdminDashboard() {
   const fetchBlueprintData = async () => {
     try {
       console.log('Initializing data fetch...');
-      const supabase = createBrowserSupabaseClient();
+      const supabase = createClient();
 
       // Check authentication status
       const { data: { session }, error: authError } = await supabase.auth.getSession();
@@ -175,7 +175,7 @@ export default function AdminDashboard() {
     fetchBlueprintData();
 
     // Set up realtime subscription for changes
-    const supabase = createBrowserSupabaseClient();
+    const supabase = createClient();
     
     console.log('Setting up realtime subscriptions...');
 
@@ -183,12 +183,12 @@ export default function AdminDashboard() {
       .channel('guide_sections_changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'guide_sections' }, 
-        (payload) => {
+        (payload: { new: any; old: any; eventType: string }) => {
           console.log('Sections change received:', payload);
           fetchBlueprintData();
         }
       )
-      .subscribe((status) => {
+      .subscribe((status: string) => {
         console.log('Sections subscription status:', status);
       });
 
@@ -196,12 +196,12 @@ export default function AdminDashboard() {
       .channel('guide_subsections_changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'guide_subsections' }, 
-        (payload) => {
+        (payload: { new: any; old: any; eventType: string }) => {
           console.log('Subsections change received:', payload);
           fetchBlueprintData();
         }
       )
-      .subscribe((status) => {
+      .subscribe((status: string) => {
         console.log('Subsections subscription status:', status);
       });
     
@@ -245,7 +245,7 @@ export default function AdminDashboard() {
     setSubsections(newSubsections);
 
     // Initialize Supabase client and update in database
-    const supabase = createBrowserSupabaseClient();
+    const supabase = createClient();
     await supabase.from('guide_subsections').upsert(
       updatedItems.map(({ id, order_position }) => ({
         id,
@@ -261,7 +261,7 @@ export default function AdminDashboard() {
   };
 
   const handleAddSection = async () => {
-    const supabase = createBrowserSupabaseClient();
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('guide_sections')
       .insert({
@@ -285,7 +285,7 @@ export default function AdminDashboard() {
   };
 
   const handleAddSubsection = async () => {
-    const supabase = createBrowserSupabaseClient();
+    const supabase = createClient();
     const sectionSubsections = subsections.filter(sub => sub.section_id === newSubsection.section_id);
     
     const { data, error } = await supabase

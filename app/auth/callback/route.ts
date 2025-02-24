@@ -2,39 +2,43 @@ import { createClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
+  console.log('Auth callback initiated');
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
   const returnTo = requestUrl.searchParams.get('returnTo') || '/dashboard'
+  
+  console.log('Auth callback params:', { code: !!code, returnTo });
 
   if (!code) {
+    console.error('No code provided in callback');
     return NextResponse.redirect(new URL('/login?error=no_code', requestUrl.origin))
   }
 
   const supabase = await createClient()
   
   try {
-    // Exchange the code for a session
+    console.log('Exchanging code for session');
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
     if (exchangeError) {
       console.error('Auth callback error during exchange:', exchangeError)
       return NextResponse.redirect(new URL('/login?error=auth', requestUrl.origin))
     }
 
-    // Get the session to ensure it was properly set
+    console.log('Getting session after exchange');
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !session) {
       console.error('Error getting session:', sessionError)
       return NextResponse.redirect(new URL('/login?error=session', requestUrl.origin))
     }
 
-    // Get the user
+    console.log('Getting user after session');
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
       console.error('Error getting user:', userError)
       return NextResponse.redirect(new URL('/login?error=user', requestUrl.origin))
     }
 
-    // Check admin status
+    console.log('Checking admin status for:', user.email);
     if (user.email) {
       const { data: adminData, error: adminError } = await supabase
         .from('admin_users')
@@ -44,21 +48,21 @@ export async function GET(request: Request) {
 
       if (adminError) {
         console.error('Error checking admin status:', adminError)
-        // Non-critical error, continue to dashboard
+        console.log('Redirecting to:', returnTo);
         return NextResponse.redirect(new URL(returnTo, requestUrl.origin))
       }
 
       if (adminData) {
-        // If user is admin and trying to access admin page, let them through
         if (returnTo.startsWith('/admin')) {
+          console.log('Admin user accessing admin page, redirecting to:', returnTo);
           return NextResponse.redirect(new URL(returnTo, requestUrl.origin))
         }
-        // Otherwise redirect to admin dashboard
+        console.log('Admin user, redirecting to admin dashboard');
         return NextResponse.redirect(new URL('/admin', requestUrl.origin))
       }
     }
 
-    // Default to returnTo path for authenticated users
+    console.log('Regular user, redirecting to:', returnTo);
     return NextResponse.redirect(new URL(returnTo, requestUrl.origin))
   } catch (error) {
     console.error('Unexpected error in auth callback:', error)

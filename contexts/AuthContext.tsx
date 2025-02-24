@@ -33,9 +33,16 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(true);
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
+
+  useEffect(() => {
+    return () => {
+      setMounted(false);
+    };
+  }, []);
 
   const checkAdminStatus = async (email: string | undefined) => {
     if (!email) return false;
@@ -64,6 +71,11 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
   const handleAuthChange = async (event: AuthChangeEvent, session: Session | null) => {
     console.log('Auth state changed:', { event, session });
     try {
+      if (!mounted) {
+        console.log('Component not mounted, skipping auth change');
+        return;
+      }
+
       setLoading(true);
       
       if (event === 'SIGNED_OUT' || !session?.user) {
@@ -75,6 +87,7 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         console.log('Processing sign in or token refresh');
+        console.log('Session user:', session.user);
         setUser(session.user);
         const adminStatus = await checkAdminStatus(session.user.email);
         console.log('Setting admin status:', adminStatus);
@@ -84,8 +97,10 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
       console.error('Error in handleAuthChange:', error);
       // Don't reset user state on non-critical errors
     } finally {
-      console.log('Finishing auth change, setting loading to false');
-      setLoading(false);
+      if (mounted) {
+        console.log('Finishing auth change, setting loading to false');
+        setLoading(false);
+      }
     }
   };
 
@@ -95,6 +110,11 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
     const initialize = async () => {
       console.log('Initializing auth state');
       try {
+        if (!mounted) {
+          console.log('Component not mounted, skipping initialization');
+          return;
+        }
+
         setLoading(true);
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         console.log('Got initial session:', { session, error: sessionError });
@@ -140,11 +160,12 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
       }
     };
 
-    initialize();
-
+    console.log('Setting up auth subscriptions');
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(handleAuthChange);
+
+    initialize();
 
     return () => {
       console.log('Cleaning up auth subscriptions');
@@ -159,7 +180,7 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
       setLoading(true);
       const returnTo = searchParams?.get('returnTo');
       console.log('Return URL:', returnTo);
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback${returnTo ? `?returnTo=${returnTo}` : ''}`,
@@ -170,6 +191,7 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
         },
       });
 
+      console.log('Sign in response:', { data, error });
       if (error) throw error;
       
     } catch (error) {

@@ -64,26 +64,25 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
   const handleAuthChange = async (event: AuthChangeEvent, session: Session | null) => {
     console.log('Auth state changed:', { event, session });
     try {
-      if (event === 'SIGNED_OUT' || !session) {
+      setLoading(true);
+      
+      if (event === 'SIGNED_OUT' || !session?.user) {
         console.log('User signed out or no session');
         setUser(null);
         setIsAdmin(false);
-        setLoading(false);
         return;
       }
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         console.log('Processing sign in or token refresh');
-        if (session?.user) {
-          console.log('Setting user:', session.user);
-          setUser(session.user);
-          const adminStatus = await checkAdminStatus(session.user.email);
-          console.log('Setting admin status:', adminStatus);
-          setIsAdmin(adminStatus);
-        }
+        setUser(session.user);
+        const adminStatus = await checkAdminStatus(session.user.email);
+        console.log('Setting admin status:', adminStatus);
+        setIsAdmin(adminStatus);
       }
     } catch (error) {
       console.error('Error in handleAuthChange:', error);
+      // Don't reset user state on non-critical errors
     } finally {
       console.log('Finishing auth change, setting loading to false');
       setLoading(false);
@@ -105,27 +104,27 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
           if (mounted) {
             setUser(null);
             setIsAdmin(false);
-            setLoading(false);
           }
           return;
         }
 
-        if (!session) {
-          console.log('No initial session found');
+        if (!session?.user) {
+          console.log('No initial session or user found');
           if (mounted) {
             setUser(null);
             setIsAdmin(false);
-            setLoading(false);
           }
           return;
         }
 
-        if (session?.user && mounted) {
+        if (mounted) {
           console.log('Setting initial user:', session.user);
           setUser(session.user);
           const adminStatus = await checkAdminStatus(session.user.email);
           console.log('Setting initial admin status:', adminStatus);
-          if (mounted) setIsAdmin(adminStatus);
+          if (mounted) {
+            setIsAdmin(adminStatus);
+          }
         }
       } catch (error) {
         console.error('Error initializing auth:', error);

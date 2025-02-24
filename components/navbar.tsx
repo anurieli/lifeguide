@@ -4,9 +4,19 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
+import { useEffect } from 'react';
 
 export default function Navbar() {
-  const { user, isAdmin, signIn, signOut } = useAuth();
+  const { user, isAdmin, loading, signIn, signOut } = useAuth();
+
+  useEffect(() => {
+    console.log('Navbar auth state:', { 
+      userEmail: user?.email,
+      isAdmin,
+      loading,
+      hasUser: !!user
+    });
+  }, [user, isAdmin, loading]);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-gray-900/95 backdrop-blur-sm border-b border-gray-800">
@@ -24,7 +34,9 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center space-x-4">
-            {user ? (
+            {loading ? (
+              <span className="text-sm text-gray-400">Loading...</span>
+            ) : user ? (
               <>
                 <Link href="/dashboard">
                   <Button 
@@ -46,13 +58,18 @@ export default function Navbar() {
                   </Link>
                 )}
 
-                <Button 
-                  variant="outline" 
-                  onClick={() => signOut()}
-                  className="text-gray-300 hover:text-white border-gray-700 hover:border-gray-600 hover:bg-gray-800"
-                >
-                  Sign Out
-                </Button>
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-300">
+                    {user.email}
+                  </span>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => signOut()}
+                    className="text-gray-300 hover:text-white border-gray-700 hover:border-gray-600 hover:bg-gray-800"
+                  >
+                    Sign Out
+                  </Button>
+                </div>
               </>
             ) : (
               <>

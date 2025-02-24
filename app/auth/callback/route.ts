@@ -2,6 +2,14 @@ import { createClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
 import { debug } from '@/lib/debug'
 
+// Helper function to safely stringify errors
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
@@ -20,7 +28,7 @@ export async function GET(request: Request) {
       debug.auth('Exchanging code for session');
       const { error } = await supabase.auth.exchangeCodeForSession(code)
       if (error) {
-        debug.error('Auth callback error during exchange:', error)
+        debug.error('Auth callback error during exchange:', error.message)
         return NextResponse.redirect(new URL('/login?error=auth', requestUrl.origin))
       }
 
@@ -29,7 +37,7 @@ export async function GET(request: Request) {
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       
       if (userError) {
-        debug.error('Error getting user:', userError);
+        debug.error('Error getting user:', userError.message);
         return NextResponse.redirect(new URL('/login?error=auth', requestUrl.origin))
       }
 
@@ -44,7 +52,7 @@ export async function GET(request: Request) {
           .single()
 
         if (adminError) {
-          debug.error('Error checking admin status:', adminError);
+          debug.error('Error checking admin status:', adminError.message);
         } else {
           debug.auth('Admin check result:', { isAdmin: !!adminData });
         }
@@ -56,7 +64,7 @@ export async function GET(request: Request) {
         }
       }
     } catch (error) {
-      debug.error('Unexpected auth callback error:', error)
+      debug.error('Unexpected auth callback error:', getErrorMessage(error))
       return NextResponse.redirect(new URL('/login?error=auth', requestUrl.origin))
     }
   }

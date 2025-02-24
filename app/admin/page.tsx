@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import EditBlueprintDialog from '@/components/EditBlueprintDialog';
+import { RealtimePostgresChangesPayload, RealtimeChannel } from '@supabase/supabase-js';
 
 // Default how-to content
 const DEFAULT_HOW_TO_CONTENT = `# How to Use the Blueprint
@@ -61,6 +62,24 @@ interface NewSubsection {
   malleability_level: 'green' | 'yellow' | 'red';
   malleability_details: string;
   example: string;
+}
+
+interface PostgresChanges {
+  new: {
+    id: string;
+    title: string;
+    description: string;
+    order_position: number;
+    [key: string]: any;
+  };
+  old: {
+    id: string;
+    title: string;
+    description: string;
+    order_position: number;
+    [key: string]: any;
+  };
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
 }
 
 export default function AdminDashboard() {
@@ -183,12 +202,12 @@ export default function AdminDashboard() {
       .channel('guide_sections_changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'guide_sections' }, 
-        (payload: { new: any; old: any; eventType: string }) => {
+        (payload: RealtimePostgresChangesPayload<PostgresChanges>) => {
           console.log('Sections change received:', payload);
           fetchBlueprintData();
         }
       )
-      .subscribe((status: string) => {
+      .subscribe((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
         console.log('Sections subscription status:', status);
       });
 
@@ -196,12 +215,12 @@ export default function AdminDashboard() {
       .channel('guide_subsections_changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'guide_subsections' }, 
-        (payload: { new: any; old: any; eventType: string }) => {
+        (payload: RealtimePostgresChangesPayload<PostgresChanges>) => {
           console.log('Subsections change received:', payload);
           fetchBlueprintData();
         }
       )
-      .subscribe((status: string) => {
+      .subscribe((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
         console.log('Subsections subscription status:', status);
       });
     

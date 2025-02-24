@@ -60,20 +60,27 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
   };
 
   const handleAuthChange = async (event: AuthChangeEvent, session: Session | null) => {
-    if (event === 'SIGNED_OUT' || !session) {
-      setUser(null);
-      setIsAdmin(false);
-      setLoading(false);
-      return;
-    }
+    try {
+      if (event === 'SIGNED_OUT' || !session) {
+        setUser(null);
+        setIsAdmin(false);
+        setLoading(false);
+        return;
+      }
 
-    if (session?.user) {
-      setUser(session.user);
-      const adminStatus = await checkAdminStatus(session.user.email);
-      setIsAdmin(adminStatus);
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (session?.user) {
+          setUser(session.user);
+          const adminStatus = await checkAdminStatus(session.user.email);
+          setIsAdmin(adminStatus);
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleAuthChange:', error);
+      // Don't reset user state on error, just log it
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -81,11 +88,25 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
 
     const initialize = async () => {
       try {
+        setLoading(true);
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
           console.error('Error getting initial session:', sessionError);
-          if (mounted) setLoading(false);
+          if (mounted) {
+            setUser(null);
+            setIsAdmin(false);
+            setLoading(false);
+          }
+          return;
+        }
+
+        if (!session) {
+          if (mounted) {
+            setUser(null);
+            setIsAdmin(false);
+            setLoading(false);
+          }
           return;
         }
 
@@ -96,6 +117,10 @@ function AuthProviderContent({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
+        if (mounted) {
+          setUser(null);
+          setIsAdmin(false);
+        }
       } finally {
         if (mounted) setLoading(false);
       }

@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const returnTo = requestUrl.searchParams.get('returnTo') || '/dashboard'
 
   if (!code) {
     return NextResponse.redirect(new URL('/login?error=no_code', requestUrl.origin))
@@ -44,18 +45,23 @@ export async function GET(request: Request) {
       if (adminError) {
         console.error('Error checking admin status:', adminError)
         // Non-critical error, continue to dashboard
-        return NextResponse.redirect(new URL('/dashboard', requestUrl.origin))
+        return NextResponse.redirect(new URL(returnTo, requestUrl.origin))
       }
 
       if (adminData) {
+        // If user is admin and trying to access admin page, let them through
+        if (returnTo.startsWith('/admin')) {
+          return NextResponse.redirect(new URL(returnTo, requestUrl.origin))
+        }
+        // Otherwise redirect to admin dashboard
         return NextResponse.redirect(new URL('/admin', requestUrl.origin))
       }
     }
 
-    // Default to dashboard for authenticated users
-    return NextResponse.redirect(new URL('/dashboard', requestUrl.origin))
+    // Default to returnTo path for authenticated users
+    return NextResponse.redirect(new URL(returnTo, requestUrl.origin))
   } catch (error) {
-    console.error('Unexpected auth callback error:', error)
-    return NextResponse.redirect(new URL('/login?error=auth', requestUrl.origin))
+    console.error('Unexpected error in auth callback:', error)
+    return NextResponse.redirect(new URL('/login?error=unknown', requestUrl.origin))
   }
 } 

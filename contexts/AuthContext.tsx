@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { User, AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -34,12 +34,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const checkAdminStatus = async (email: string | undefined) => {
-    if (!email) {
-      return false;
-    }
+    if (!email) return false;
     
     try {
       const { data: adminData, error } = await supabase
@@ -61,30 +60,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const handleAuthChange = async (event: AuthChangeEvent, session: Session | null) => {
-    setLoading(true);
-    
-    try {
-      if (event === 'SIGNED_OUT' || !session) {
-        setUser(null);
-        setIsAdmin(false);
-        return;
-      }
-
-      if (session?.user) {
-        setUser(session.user);
-        const adminStatus = await checkAdminStatus(session.user.email);
-        setIsAdmin(adminStatus);
-      } else {
-        setUser(null);
-        setIsAdmin(false);
-      }
-    } catch (error) {
-      console.error('Error in handleAuthChange:', error);
+    if (event === 'SIGNED_OUT' || !session) {
       setUser(null);
       setIsAdmin(false);
-    } finally {
       setLoading(false);
+      return;
     }
+
+    if (session?.user) {
+      setUser(session.user);
+      const adminStatus = await checkAdminStatus(session.user.email);
+      setIsAdmin(adminStatus);
+    }
+    
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -92,35 +81,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const initialize = async () => {
       try {
-        // Get the initial session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
           console.error('Error getting initial session:', sessionError);
+          if (mounted) setLoading(false);
           return;
         }
 
-        if (!mounted) return;
-
-        if (session?.user) {
+        if (session?.user && mounted) {
           setUser(session.user);
           const adminStatus = await checkAdminStatus(session.user.email);
-          if (mounted) {
-            setIsAdmin(adminStatus);
-          }
+          if (mounted) setIsAdmin(adminStatus);
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
       } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     };
 
     initialize();
 
-    // Set up the auth state listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(handleAuthChange);
@@ -145,10 +127,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         },
       });
 
-      if (error) {
-        console.error('Sign in error:', error);
-        throw error;
-      }
+      if (error) throw error;
+      
     } catch (error) {
       console.error('Error in signIn:', error);
       setLoading(false);
@@ -159,10 +139,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       setLoading(true);
       const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Sign out error:', error);
-        throw error;
-      }
+      if (error) throw error;
       
       setUser(null);
       setIsAdmin(false);

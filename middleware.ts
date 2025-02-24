@@ -1,80 +1,32 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+// Mock user for development - matching the one in AuthContext
+const MOCK_USER = {
+  id: 'b4b92493-74d6-4a14-a73b-7107eb0eab84',
+  email: 'anurieli365@gmail.com',
+  role: 'admin'
+};
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
+  // Get the pathname
+  const path = request.nextUrl.pathname;
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
+  // Create a response with the mock user session
+  const response = NextResponse.next();
+  
+  // Add mock session data to the response
+  response.cookies.set('mock_user', JSON.stringify(MOCK_USER));
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  // Check if accessing admin page
-  if (request.nextUrl.pathname.startsWith('/admin')) {
-    if (!user) {
-      const redirectUrl = new URL('/login', request.url)
-      redirectUrl.searchParams.set('returnTo', request.nextUrl.pathname)
-      return NextResponse.redirect(redirectUrl)
-    }
-
-    // Check if user is admin
-    const { data: adminData } = await supabase
-      .from('admin_users')
-      .select('*')
-      .eq('email', user.email)
-      .single()
-
-    if (!adminData) {
-      const redirectUrl = new URL('/', request.url)
-      return NextResponse.redirect(redirectUrl)
-    }
-  }
-
-  // Check if accessing dashboard
-  if (
-    request.nextUrl.pathname.startsWith('/dashboard') && 
-    !user && 
-    !request.nextUrl.pathname.startsWith('/dashboard/public')
-  ) {
-    const redirectUrl = new URL('/login', request.url)
-    redirectUrl.searchParams.set('returnTo', request.nextUrl.pathname)
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  return supabaseResponse
+  // Always allow access since we're using a mock user
+  return response;
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
-} 
+    '/dashboard/:path*',
+    '/admin/:path*',
+    '/guide/:path*',
+    '/auth/:path*'
+  ]
+}; 

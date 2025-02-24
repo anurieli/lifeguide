@@ -5,13 +5,11 @@ import { createClient } from '@/lib/supabase/client';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Edit2, Trash2, ChevronDown, ChevronUp, Check, Plus } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import EditBlueprintDialog from '@/components/EditBlueprintDialog';
-import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 // Default how-to content
 const DEFAULT_HOW_TO_CONTENT = `# How to Use the Blueprint
@@ -49,206 +47,46 @@ interface Subsection {
   order_position: number;
 }
 
-interface NewSection {
-  title: string;
-  description: string;
-}
-
-interface NewSubsection {
-  section_id: string;
-  title: string;
-  description: string;
-  subdescription: string;
-  malleability_level: 'green' | 'yellow' | 'red';
-  malleability_details: string;
-  example: string;
-}
-
-interface PostgresChanges {
-  new: {
-    id: string;
-    title: string;
-    description: string;
-    order_position: number;
-    section_id?: string;
-    subdescription?: string;
-    malleability_level?: 'green' | 'yellow' | 'red';
-    malleability_details?: string;
-    example?: string;
-    created_at?: string;
-    updated_at?: string;
-  };
-  old: {
-    id: string;
-    title: string;
-    description: string;
-    order_position: number;
-    section_id?: string;
-    subdescription?: string;
-    malleability_level?: 'green' | 'yellow' | 'red';
-    malleability_details?: string;
-    example?: string;
-    created_at?: string;
-    updated_at?: string;
-  };
-  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
-}
-
 export default function AdminDashboard() {
   const [sections, setSections] = useState<Section[]>([]);
   const [subsections, setSubsections] = useState<Subsection[]>([]);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [expandedSubsection, setExpandedSubsection] = useState<string | null>(null);
-  const [editingItem, setEditingItem] = useState<string | null>(null);
   const [howToContent, setHowToContent] = useState(DEFAULT_HOW_TO_CONTENT);
   const [isEditingHowTo, setIsEditingHowTo] = useState(false);
   const [isAddingSectionOpen, setIsAddingSectionOpen] = useState(false);
   const [isAddingSubsectionOpen, setIsAddingSubsectionOpen] = useState(false);
-  const [newSection, setNewSection] = useState<NewSection>({ title: '', description: '' });
-  const [newSubsection, setNewSubsection] = useState<NewSubsection>({
+  const [newSection, setNewSection] = useState({ title: '', description: '' });
+  const [newSubsection, setNewSubsection] = useState({
     section_id: '',
     title: '',
     description: '',
     subdescription: '',
-    malleability_level: 'green',
+    malleability_level: 'green' as 'green' | 'yellow' | 'red',
     malleability_details: '',
     example: ''
   });
 
-  const fetchBlueprintData = async () => {
-    try {
-      console.log('Initializing data fetch...');
-      const supabase = createClient();
-
-      // Check authentication status
-      const { data: { session }, error: authError } = await supabase.auth.getSession();
-      if (authError) {
-        console.error('Auth error:', authError);
-        return;
-      }
-      console.log('Auth status:', session ? 'Authenticated' : 'Not authenticated');
-      if (!session) {
-        console.error('No active session - user not authenticated');
-        return;
-      }
-
-      // Check admin status
-      const { data: adminUser, error: adminError } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('email', session.user.email)
-        .single();
-
-      if (adminError || !adminUser) {
-        console.error('Not an admin user');
-        return;
-      }
-
-      // Test the connection first
-      const { error: testError } = await supabase
-        .from('guide_sections')
-        .select('count');
-
-      if (testError) {
-        console.error('Connection test failed:', testError);
-        return;
-      }
-
-      console.log('Connection test successful');
-
-      // Fetch sections
-      const { data: sectionsData, error: sectionsError } = await supabase
-        .from('guide_sections')
-        .select('*')
-        .order('order_position');
-
-      if (sectionsError) {
-        console.error('Error fetching sections:', sectionsError);
-        return;
-      }
-
-      console.log('Fetched sections:', sectionsData);
-
-      // Fetch subsections
-      const { data: subsectionsData, error: subsectionsError } = await supabase
-        .from('guide_subsections')
-        .select(`
-          id,
-          section_id,
-          title,
-          description,
-          subdescription,
-          malleability_level,
-          malleability_details,
-          example,
-          order_position
-        `)
-        .order('order_position');
-
-      if (subsectionsError) {
-        console.error('Error fetching subsections:', subsectionsError);
-        return;
-      }
-
-      console.log('Fetched subsections:', subsectionsData);
-
-      if (sectionsData) setSections(sectionsData);
-      if (subsectionsData) {
-        setSubsections(subsectionsData);
-      }
-
-    } catch (error) {
-      console.error('Unexpected error in fetchBlueprintData:', error);
-    }
-  };
-
   useEffect(() => {
     fetchBlueprintData();
+  }, []);
 
-    // Set up realtime subscription for changes
+  const fetchBlueprintData = async () => {
     const supabase = createClient();
     
-    console.log('Setting up realtime subscriptions...');
+    const { data: sectionsData } = await supabase
+      .from('guide_sections')
+      .select('*')
+      .order('order_position');
 
-    const sectionsSubscription = supabase
-      .channel('guide_sections_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'guide_sections' }, 
-        (payload: RealtimePostgresChangesPayload<PostgresChanges>) => {
-          console.log('Sections change received:', payload);
-          fetchBlueprintData();
-        }
-      )
-      .subscribe((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
-        console.log('Sections subscription status:', status);
-      });
+    const { data: subsectionsData } = await supabase
+      .from('guide_subsections')
+      .select('*')
+      .order('order_position');
 
-    const subsectionsSubscription = supabase
-      .channel('guide_subsections_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'guide_subsections' }, 
-        (payload: RealtimePostgresChangesPayload<PostgresChanges>) => {
-          console.log('Subsections change received:', payload);
-          fetchBlueprintData();
-        }
-      )
-      .subscribe((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
-        console.log('Subsections subscription status:', status);
-      });
-    
-    // Load how-to content from localStorage if it exists
-    const savedHowTo = localStorage.getItem('blueprint_how_to');
-    if (savedHowTo) {
-      setHowToContent(savedHowTo);
-    }
-
-    // Cleanup subscriptions
-    return () => {
-      console.log('Cleaning up subscriptions...');
-      sectionsSubscription.unsubscribe();
-      subsectionsSubscription.unsubscribe();
-    };
-  }, []);
+    if (sectionsData) setSections(sectionsData);
+    if (subsectionsData) setSubsections(subsectionsData);
+  };
 
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
@@ -259,13 +97,11 @@ export default function AdminDashboard() {
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
 
-    // Update order_position for affected items
     const updatedItems = items.map((item, index) => ({
       ...item,
       order_position: index,
     }));
 
-    // Update local state
     const newSubsections = subsections.map(sub => {
       if (sub.section_id === sectionId) {
         const updatedItem = updatedItems.find(item => item.id === sub.id);
@@ -275,7 +111,6 @@ export default function AdminDashboard() {
     });
     setSubsections(newSubsections);
 
-    // Initialize Supabase client and update in database
     const supabase = createClient();
     await supabase.from('guide_subsections').upsert(
       updatedItems.map(({ id, order_position }) => ({
@@ -285,204 +120,166 @@ export default function AdminDashboard() {
     );
   };
 
-  const handleHowToSave = () => {
-    // Save to localStorage
-    localStorage.setItem('blueprint_how_to', howToContent);
-    setIsEditingHowTo(false);
-  };
-
   const handleAddSection = async () => {
     const supabase = createClient();
-    const { data, error } = await supabase
+    await supabase
       .from('guide_sections')
       .insert({
         title: newSection.title,
         description: newSection.description,
         order_position: sections.length
-      })
-      .select()
-      .single();
+      });
 
-    if (error) {
-      console.error('Error adding section:', error);
-      return;
-    }
-
-    if (data) {
-      setIsAddingSectionOpen(false);
-      setNewSection({ title: '', description: '' });
-      await fetchBlueprintData();
-    }
+    setIsAddingSectionOpen(false);
+    setNewSection({ title: '', description: '' });
+    await fetchBlueprintData();
   };
 
   const handleAddSubsection = async () => {
     const supabase = createClient();
     const sectionSubsections = subsections.filter(sub => sub.section_id === newSubsection.section_id);
     
-    const { data, error } = await supabase
+    await supabase
       .from('guide_subsections')
       .insert({
-        section_id: newSubsection.section_id,
-        title: newSubsection.title,
-        description: newSubsection.description,
-        subdescription: newSubsection.subdescription,
-        malleability_level: newSubsection.malleability_level,
-        malleability_details: newSubsection.malleability_details,
-        example: newSubsection.example,
+        ...newSubsection,
         order_position: sectionSubsections.length
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error adding subsection:', error);
-      return;
-    }
-
-    if (data) {
-      setIsAddingSubsectionOpen(false);
-      setNewSubsection({
-        section_id: '',
-        title: '',
-        description: '',
-        subdescription: '',
-        malleability_level: 'green',
-        malleability_details: '',
-        example: ''
       });
-      await fetchBlueprintData();
-    }
+
+    setIsAddingSubsectionOpen(false);
+    setNewSubsection({
+      section_id: '',
+      title: '',
+      description: '',
+      subdescription: '',
+      malleability_level: 'green',
+      malleability_details: '',
+      example: ''
+    });
+    await fetchBlueprintData();
+  };
+
+  const handleDeleteSection = async (sectionId: string) => {
+    const supabase = createClient();
+    await supabase.from('guide_sections').delete().eq('id', sectionId);
+    await fetchBlueprintData();
+  };
+
+  const handleDeleteSubsection = async (subsectionId: string) => {
+    const supabase = createClient();
+    await supabase.from('guide_subsections').delete().eq('id', subsectionId);
+    await fetchBlueprintData();
   };
 
   return (
-    <div className="min-h-screen pt-24 px-8 space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-white">Blueprint Management</h1>
-      </div>
+    <div className="min-h-screen pt-24 px-4 md:px-8 pb-16">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-4xl font-bold mb-8 bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
+          Blueprint Management
+        </h1>
 
-      {/* How-To Guide Editor */}
-      <div className="bg-white/10 rounded-xl p-6 backdrop-blur-sm">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-semibold text-white">How-To Guide</h2>
-          {isEditingHowTo ? (
+        {/* How-To Guide Editor */}
+        <div className="bg-white/5 rounded-xl p-6 backdrop-blur-sm border border-white/10 mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold text-white">How-To Guide</h2>
             <button
-              onClick={handleHowToSave}
-              className="p-2 bg-green-600 rounded-full hover:bg-green-700 transition-colors"
-            >
-              <Check size={20} className="text-white" />
-            </button>
-          ) : (
-            <button
-              onClick={() => setIsEditingHowTo(true)}
+              onClick={() => setIsEditingHowTo(!isEditingHowTo)}
               className="p-2 bg-gray-700 rounded-full hover:bg-gray-600 transition-colors"
             >
-              <Edit2 size={20} className="text-white" />
+              {isEditingHowTo ? (
+                <Check className="h-5 w-5 text-white" />
+              ) : (
+                <Edit2 className="h-5 w-5 text-white" />
+              )}
             </button>
+          </div>
+          {isEditingHowTo ? (
+            <Textarea
+              value={howToContent}
+              onChange={(e) => setHowToContent(e.target.value)}
+              className="w-full h-64 bg-gray-800 text-white rounded-lg p-4"
+              placeholder="Enter markdown content..."
+            />
+          ) : (
+            <div className="prose prose-invert max-w-none">
+              <ReactMarkdown>{howToContent}</ReactMarkdown>
+            </div>
           )}
         </div>
-        {isEditingHowTo ? (
-          <textarea
-            value={howToContent}
-            onChange={(e) => setHowToContent(e.target.value)}
-            className="w-full h-64 bg-gray-800 text-white rounded-lg p-4 focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter markdown content..."
-          />
-        ) : (
-          <div className="prose prose-invert max-w-none text-white">
-            <ReactMarkdown>{howToContent}</ReactMarkdown>
-          </div>
-        )}
-      </div>
 
-      {/* Add Section/Subsection Buttons */}
-      <div className="flex gap-4">
-        <Dialog open={isAddingSectionOpen} onOpenChange={(open) => {
-          setIsAddingSectionOpen(open);
-          if (!open) {
-            setNewSection({ title: '', description: '' });
-          }
-        }}>
-          <DialogTrigger asChild>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
-              <Plus size={20} />
-              Add Section
-            </button>
-          </DialogTrigger>
-          <DialogContent className="bg-gray-800 text-white">
-            <DialogHeader>
-              <DialogTitle>Add New Section</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label>Title</Label>
-                <Input
-                  value={newSection.title}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSection({ ...newSection, title: e.target.value })}
-                  placeholder="Enter section title"
-                  className="bg-gray-700"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea
-                  value={newSection.description}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewSection({ ...newSection, description: e.target.value })}
-                  placeholder="Enter section description"
-                  className="bg-gray-700"
-                />
-              </div>
-              <button
-                onClick={handleAddSection}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
+        {/* Add Section Button */}
+        <div className="mb-8">
+          <Dialog open={isAddingSectionOpen} onOpenChange={setIsAddingSectionOpen}>
+            <DialogTrigger asChild>
+              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                <Plus className="h-5 w-5" />
                 Add Section
               </button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+            </DialogTrigger>
+            <DialogContent className="bg-gray-800 text-white">
+              <DialogHeader>
+                <DialogTitle>Add New Section</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label>Title</Label>
+                  <Input
+                    value={newSection.title}
+                    onChange={(e) => setNewSection({ ...newSection, title: e.target.value })}
+                    placeholder="Enter section title"
+                    className="bg-gray-700"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Textarea
+                    value={newSection.description}
+                    onChange={(e) => setNewSection({ ...newSection, description: e.target.value })}
+                    placeholder="Enter section description"
+                    className="bg-gray-700"
+                  />
+                </div>
+                <button
+                  onClick={handleAddSection}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Add Section
+                </button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
 
-      {/* Blueprint Editor */}
-      <div className="space-y-4">
-        <h2 className="text-2xl font-semibold text-white">Blueprint Sections</h2>
-
+        {/* Blueprint Sections */}
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="space-y-6">
             {sections.map((section) => (
               <div
                 key={section.id}
-                className="bg-white/10 rounded-xl overflow-hidden backdrop-blur-sm"
+                className="bg-white/5 rounded-xl overflow-hidden backdrop-blur-sm border border-white/10"
               >
                 <div className="p-6">
-                  <div className="flex justify-between items-center">
-                    <div className="flex-1">
+                  <div className="flex justify-between items-start">
+                    <div>
                       <h3 className="text-xl font-semibold text-white">{section.title}</h3>
-                      <p className="text-gray-400">{section.description}</p>
+                      <p className="text-gray-400 mt-1">{section.description}</p>
                     </div>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => setExpandedSection(
-                          expandedSection === section.id ? null : section.id
-                        )}
+                        onClick={() => setExpandedSection(expandedSection === section.id ? null : section.id)}
                         className="p-2 bg-gray-700 rounded-full hover:bg-gray-600 transition-colors"
                       >
                         {expandedSection === section.id ? (
-                          <ChevronUp size={20} className="text-white" />
+                          <ChevronUp className="h-5 w-5 text-white" />
                         ) : (
-                          <ChevronDown size={20} className="text-white" />
+                          <ChevronDown className="h-5 w-5 text-white" />
                         )}
                       </button>
                       <button
-                        onClick={() => setEditingItem(section.id)}
-                        className="p-2 bg-gray-700 rounded-full hover:bg-gray-600 transition-colors"
+                        onClick={() => handleDeleteSection(section.id)}
+                        className="p-2 bg-red-500/20 rounded-full hover:bg-red-500/40 transition-colors"
                       >
-                        <Edit2 size={20} className="text-white" />
-                      </button>
-                      <button
-                        onClick={() => {/* TODO: Delete section */}}
-                        className="p-2 bg-red-600/20 rounded-full hover:bg-red-600/40 transition-colors"
-                      >
-                        <Trash2 size={20} className="text-red-500" />
+                        <Trash2 className="h-5 w-5 text-red-500" />
                       </button>
                     </div>
                   </div>
@@ -490,27 +287,13 @@ export default function AdminDashboard() {
                   {expandedSection === section.id && (
                     <>
                       <div className="mt-4 flex justify-end">
-                        <Dialog open={isAddingSubsectionOpen} onOpenChange={(open) => {
-                          setIsAddingSubsectionOpen(open);
-                          if (open) {
-                            setNewSubsection(prev => ({ ...prev, section_id: section.id }));
-                          } else {
-                            setNewSubsection({
-                              section_id: '',
-                              title: '',
-                              description: '',
-                              subdescription: '',
-                              malleability_level: 'green',
-                              malleability_details: '',
-                              example: ''
-                            });
-                          }
-                        }}>
+                        <Dialog open={isAddingSubsectionOpen} onOpenChange={setIsAddingSubsectionOpen}>
                           <DialogTrigger asChild>
                             <button
+                              onClick={() => setNewSubsection(prev => ({ ...prev, section_id: section.id }))}
                               className="px-3 py-1.5 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/40 transition-colors flex items-center gap-1.5 text-sm"
                             >
-                              <Plus size={16} />
+                              <Plus className="h-4 w-4" />
                               Add Subsection
                             </button>
                           </DialogTrigger>
@@ -523,7 +306,7 @@ export default function AdminDashboard() {
                                 <Label>Title</Label>
                                 <Input
                                   value={newSubsection.title}
-                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSubsection({ ...newSubsection, title: e.target.value })}
+                                  onChange={(e) => setNewSubsection({ ...newSubsection, title: e.target.value })}
                                   placeholder="Enter subsection title"
                                   className="bg-gray-700"
                                 />
@@ -532,7 +315,7 @@ export default function AdminDashboard() {
                                 <Label>Description</Label>
                                 <Textarea
                                   value={newSubsection.description}
-                                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewSubsection({ ...newSubsection, description: e.target.value })}
+                                  onChange={(e) => setNewSubsection({ ...newSubsection, description: e.target.value })}
                                   placeholder="Enter subsection description"
                                   className="bg-gray-700"
                                 />
@@ -541,7 +324,7 @@ export default function AdminDashboard() {
                                 <Label>Subdescription</Label>
                                 <Textarea
                                   value={newSubsection.subdescription}
-                                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewSubsection({ ...newSubsection, subdescription: e.target.value })}
+                                  onChange={(e) => setNewSubsection({ ...newSubsection, subdescription: e.target.value })}
                                   placeholder="Enter subdescription"
                                   className="bg-gray-700"
                                 />
@@ -550,7 +333,9 @@ export default function AdminDashboard() {
                                 <Label>Malleability Level</Label>
                                 <Select
                                   value={newSubsection.malleability_level}
-                                  onValueChange={(value: 'green' | 'yellow' | 'red') => setNewSubsection({ ...newSubsection, malleability_level: value })}
+                                  onValueChange={(value: 'green' | 'yellow' | 'red') => 
+                                    setNewSubsection({ ...newSubsection, malleability_level: value })
+                                  }
                                 >
                                   <SelectTrigger className="bg-gray-700">
                                     <SelectValue />
@@ -566,7 +351,7 @@ export default function AdminDashboard() {
                                 <Label>Malleability Details</Label>
                                 <Textarea
                                   value={newSubsection.malleability_details}
-                                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewSubsection({ ...newSubsection, malleability_details: e.target.value })}
+                                  onChange={(e) => setNewSubsection({ ...newSubsection, malleability_details: e.target.value })}
                                   placeholder="Enter malleability details"
                                   className="bg-gray-700"
                                 />
@@ -575,7 +360,7 @@ export default function AdminDashboard() {
                                 <Label>Example</Label>
                                 <Textarea
                                   value={newSubsection.example}
-                                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewSubsection({ ...newSubsection, example: e.target.value })}
+                                  onChange={(e) => setNewSubsection({ ...newSubsection, example: e.target.value })}
                                   placeholder="Enter example"
                                   className="bg-gray-700"
                                 />
@@ -590,6 +375,7 @@ export default function AdminDashboard() {
                           </DialogContent>
                         </Dialog>
                       </div>
+
                       <Droppable droppableId={section.id}>
                         {(provided) => (
                           <div
@@ -605,66 +391,64 @@ export default function AdminDashboard() {
                                   draggableId={subsection.id}
                                   index={index}
                                 >
-                                  {(provided, snapshot) => (
+                                  {(provided) => (
                                     <div
                                       ref={provided.innerRef}
                                       {...provided.draggableProps}
                                       {...provided.dragHandleProps}
-                                      className={`bg-gray-800/50 rounded-lg p-4 ${
-                                        snapshot.isDragging ? 'opacity-100' : ''
-                                      }`}
-                                      style={{
-                                        ...provided.draggableProps.style,
-                                      }}
+                                      className="bg-gray-800/50 rounded-lg p-4"
                                     >
-                                      <div className="flex justify-between items-center">
-                                        <h4 className="text-white font-medium">
-                                          {subsection.title}
-                                        </h4>
+                                      <div className="flex justify-between items-start">
+                                        <div>
+                                          <h4 className="text-white font-medium">{subsection.title}</h4>
+                                          <p className="text-gray-400 mt-1">{subsection.description}</p>
+                                        </div>
                                         <div className="flex gap-2">
                                           <button
                                             onClick={() => setExpandedSubsection(
                                               expandedSubsection === subsection.id ? null : subsection.id
                                             )}
-                                            className="p-1 hover:bg-gray-700 rounded-full transition-colors"
+                                            className="p-1.5 bg-gray-700 rounded-full hover:bg-gray-600 transition-colors"
                                           >
                                             {expandedSubsection === subsection.id ? (
-                                              <ChevronUp size={16} className="text-white" />
+                                              <ChevronUp className="h-4 w-4 text-white" />
                                             ) : (
-                                              <ChevronDown size={16} className="text-white" />
+                                              <ChevronDown className="h-4 w-4 text-white" />
                                             )}
                                           </button>
                                           <button
-                                            onClick={() => setEditingItem(subsection.id)}
-                                            className="p-1 hover:bg-gray-700 rounded-full transition-colors"
+                                            onClick={() => handleDeleteSubsection(subsection.id)}
+                                            className="p-1.5 bg-red-500/20 rounded-full hover:bg-red-500/40 transition-colors"
                                           >
-                                            <Edit2 size={16} className="text-white" />
-                                          </button>
-                                          <button
-                                            onClick={() => {/* TODO: Delete subsection */}}
-                                            className="p-1 hover:bg-red-600/20 rounded-full transition-colors"
-                                          >
-                                            <Trash2 size={16} className="text-red-500" />
+                                            <Trash2 className="h-4 w-4 text-red-500" />
                                           </button>
                                         </div>
                                       </div>
 
                                       {expandedSubsection === subsection.id && (
-                                        <div className="mt-4 space-y-2 text-sm text-gray-300">
-                                          <p><span className="font-medium">Description:</span> {subsection.description}</p>
-                                          <p><span className="font-medium">Subdescription:</span> {subsection.subdescription}</p>
-                                          <p>
-                                            <span className="font-medium">Malleability:</span>
-                                            <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                                        <div className="mt-4 space-y-3 text-sm">
+                                          <div>
+                                            <span className="text-gray-300 font-medium">Subdescription:</span>
+                                            <p className="text-gray-400 mt-1">{subsection.subdescription}</p>
+                                          </div>
+                                          <div>
+                                            <span className="text-gray-300 font-medium">Malleability Level:</span>
+                                            <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
                                               subsection.malleability_level === 'green' ? 'bg-green-500/20 text-green-400' :
                                               subsection.malleability_level === 'yellow' ? 'bg-yellow-500/20 text-yellow-400' :
                                               'bg-red-500/20 text-red-400'
                                             }`}>
                                               {subsection.malleability_level}
                                             </span>
-                                          </p>
-                                          <p><span className="font-medium">Malleability Details:</span> {subsection.malleability_details}</p>
-                                          <p><span className="font-medium">Example:</span> {subsection.example}</p>
+                                          </div>
+                                          <div>
+                                            <span className="text-gray-300 font-medium">Malleability Details:</span>
+                                            <p className="text-gray-400 mt-1">{subsection.malleability_details}</p>
+                                          </div>
+                                          <div>
+                                            <span className="text-gray-300 font-medium">Example:</span>
+                                            <p className="text-gray-400 mt-1">{subsection.example}</p>
+                                          </div>
                                         </div>
                                       )}
                                     </div>
@@ -683,17 +467,6 @@ export default function AdminDashboard() {
           </div>
         </DragDropContext>
       </div>
-
-      {/* Add EditBlueprintDialog component */}
-      {editingItem && (
-        <EditBlueprintDialog
-          isOpen={!!editingItem}
-          onClose={() => setEditingItem(null)}
-          itemId={editingItem}
-          itemType={sections.find(s => s.id === editingItem) ? 'section' : 'subsection'}
-          onSave={fetchBlueprintData}
-        />
-      )}
     </div>
-  )
+  );
 } 

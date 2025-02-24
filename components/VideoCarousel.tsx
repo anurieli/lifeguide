@@ -8,29 +8,28 @@ const videos = [
     id: 1, 
     title: 'Goal Setting Mastery', 
     description: 'Learn proven techniques for setting and achieving meaningful goals',
-    // Replace with your Cloudinary/Mux video URL
-    videoUrl: '/videos/placeholder-1.mp4',
+    videoUrl: 'https://static.videezy.com/system/resources/previews/000/005/529/original/Reaviling_Sjusj%C3%B8en_Ski_Senter.mp4',
     thumbnail: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4'
   },
   { 
     id: 2, 
     title: 'Building Resilience', 
     description: 'Develop mental toughness and bounce back from setbacks',
-    videoUrl: '/videos/placeholder-2.mp4',
+    videoUrl: 'https://static.videezy.com/system/resources/previews/000/039/504/original/SDOF_20.mp4',
     thumbnail: 'https://images.unsplash.com/photo-1519834785169-98be25ec3f84'
   },
   { 
     id: 3, 
     title: 'Daily Habits', 
     description: 'Create powerful routines that drive consistent progress',
-    videoUrl: '/videos/placeholder-3.mp4',
+    videoUrl: 'https://static.videezy.com/system/resources/previews/000/004/381/original/Yoga_Girl.mp4',
     thumbnail: 'https://images.unsplash.com/photo-1506485338023-6ce5f36692df'
   },
   { 
     id: 4, 
     title: 'Mindset Transformation', 
     description: 'Reshape your thinking for greater success',
-    videoUrl: '/videos/placeholder-4.mp4',
+    videoUrl: 'https://static.videezy.com/system/resources/previews/000/044/479/original/200519_05_Journal_Writing_4k_012.mp4',
     thumbnail: 'https://images.unsplash.com/photo-1489533119213-66a5cd877091'
   },
 ];

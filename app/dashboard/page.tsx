@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Settings, CheckSquare, X, Edit, HelpCircle, ChevronRight, Bookmark, ChevronDown, ChevronUp, Info, Lock, Check, Trash2, AlertTriangle, Lightbulb } from 'lucide-react';
+import { Home, Settings, CheckSquare, X, Edit, HelpCircle, ChevronRight, Bookmark, ChevronDown, ChevronUp, Info, Lock, Check, Trash2, AlertTriangle, Lightbulb, ChevronLeft } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { createClient } from '@/lib/supabase/client';
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { HowToGuide } from '@/components/HowToGuide';
 
 interface Section {
   id: string;
@@ -115,75 +116,103 @@ export default function DashboardPage() {
   const [mode, setMode] = useState<DashboardMode>({ type: 'view' });
   const [isNewUserDialogOpen, setIsNewUserDialogOpen] = useState(false);
   const [selectedPage, setSelectedPage] = useState<'home' | 'actionables' | 'settings'>('home');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   return (
     <div className="flex min-h-screen">
       {/* Left Panel */}
-      <div className={`w-64 bg-gray-900/50 backdrop-blur-sm border-r border-white/10 p-4 flex flex-col gap-6 transition-all ${mode.type === 'edit' ? 'hidden' : ''}`}>
-        {/* Top Controls */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsNewUserDialogOpen(true)}
-            className="px-3 py-1.5 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/40 transition-colors text-sm flex items-center gap-1.5"
-          >
-            <HelpCircle className="h-4 w-4" />
-            New User?
-          </button>
-          <button
-            onClick={() => setMode({ type: 'edit' })}
-            className="px-3 py-1.5 bg-purple-600/20 text-purple-400 rounded-lg hover:bg-purple-600/40 transition-colors text-sm flex items-center gap-1.5"
-          >
-            <Edit className="h-4 w-4" />
-            Editor
-          </button>
-        </div>
+      <div 
+        className={cn(
+          "bg-gray-900/50 backdrop-blur-sm border-r border-white/10 transition-all duration-300",
+          mode.type === 'edit' ? 'hidden' : '',
+          isSidebarCollapsed ? 'w-16' : 'w-64'
+        )}
+      >
+        <div className="flex flex-col h-full">
+          <div className="p-4 flex items-center justify-between">
+            {!isSidebarCollapsed && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsNewUserDialogOpen(true)}
+                  className="px-3 py-1.5 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/40 transition-colors text-sm flex items-center gap-1.5"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                  New User?
+                </button>
+                <button
+                  onClick={() => setMode({ type: 'edit' })}
+                  className="px-3 py-1.5 bg-purple-600/20 text-purple-400 rounded-lg hover:bg-purple-600/40 transition-colors text-sm flex items-center gap-1.5"
+                >
+                  <Edit className="h-4 w-4" />
+                  Editor
+                </button>
+              </div>
+            )}
+            <button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition-colors"
+            >
+              {isSidebarCollapsed ? (
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+              ) : (
+                <ChevronLeft className="h-4 w-4 text-gray-400" />
+              )}
+            </button>
+          </div>
 
-        {/* Navigation */}
-        <nav className="space-y-2">
-          <button
-            onClick={() => setSelectedPage('home')}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-              selectedPage === 'home'
-                ? 'bg-white/10 text-white'
-                : 'text-gray-400 hover:bg-white/5'
-            }`}
-          >
-            <Home className="h-5 w-5" />
-            Home
-          </button>
-          <button
-            onClick={() => setSelectedPage('actionables')}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-              selectedPage === 'actionables'
-                ? 'bg-white/10 text-white'
-                : 'text-gray-400 hover:bg-white/5'
-            }`}
-          >
-            <CheckSquare className="h-5 w-5" />
-            Actionables
-          </button>
-          <button
-            onClick={() => setSelectedPage('settings')}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-              selectedPage === 'settings'
-                ? 'bg-white/10 text-white'
-                : 'text-gray-400 hover:bg-white/5'
-            }`}
-          >
-            <Settings className="h-5 w-5" />
-            Settings
-          </button>
-        </nav>
+          {/* Navigation */}
+          <nav className="space-y-2 p-4">
+            <button
+              onClick={() => setSelectedPage('home')}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors w-full",
+                selectedPage === 'home'
+                  ? 'bg-white/10 text-white'
+                  : 'text-gray-400 hover:bg-white/5'
+              )}
+            >
+              <Home className="h-5 w-5" />
+              {!isSidebarCollapsed && "Home"}
+            </button>
+            <button
+              onClick={() => setSelectedPage('actionables')}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors w-full",
+                selectedPage === 'actionables'
+                  ? 'bg-white/10 text-white'
+                  : 'text-gray-400 hover:bg-white/5'
+              )}
+            >
+              <CheckSquare className="h-5 w-5" />
+              {!isSidebarCollapsed && "Actionables"}
+            </button>
+            <button
+              onClick={() => setSelectedPage('settings')}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors w-full",
+                selectedPage === 'settings'
+                  ? 'bg-white/10 text-white'
+                  : 'text-gray-400 hover:bg-white/5'
+              )}
+            >
+              <Settings className="h-5 w-5" />
+              {!isSidebarCollapsed && "Settings"}
+            </button>
+          </nav>
+        </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 overflow-auto">
         {mode.type === 'view' ? (
           <ViewerMode />
         ) : (
           <EditorMode onClose={() => setMode({ type: 'view' })} />
         )}
       </div>
+
+      {/* How To Guide */}
+      <HowToGuide />
 
       {/* New User Dialog */}
       <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
@@ -236,6 +265,7 @@ const ViewerMode = () => {
   const [committedResponses, setCommittedResponses] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchViewerData = async () => {
@@ -322,18 +352,53 @@ const ViewerMode = () => {
       ) : (
         <div className="space-y-6">
           {completedSections.map(section => (
-            <div key={section.id} className="bg-white/5 rounded-xl backdrop-blur-sm border border-white/10 p-6">
-              <h2 className="text-xl font-semibold text-white mb-4">{section.title}</h2>
-              <div className="space-y-4">
-                {subsections
-                  .filter(sub => sub.section_id === section.id)
-                  .map(subsection => (
-                    <div key={subsection.id} className="bg-gray-800/50 rounded-lg p-4">
-                      <h3 className="text-white font-medium mb-2">{subsection.title}</h3>
-                      <p className="text-gray-400">{userResponses[subsection.id]}</p>
-                    </div>
-                  ))}
+            <div 
+              key={section.id} 
+              className="bg-white/5 rounded-xl backdrop-blur-sm border border-white/10 p-6 hover:bg-white/10 transition-colors cursor-pointer"
+              onClick={() => setExpandedSection(expandedSection === section.id ? null : section.id)}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-white mb-2">{section.title}</h2>
+                  <p className="text-gray-400 mb-4">{section.description}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm">
+                    Completed
+                  </span>
+                </div>
               </div>
+              
+              {expandedSection === section.id && (
+                <div className="mt-6 space-y-4 border-t border-white/10 pt-4">
+                  {subsections
+                    .filter(sub => sub.section_id === section.id)
+                    .map(subsection => (
+                      <div key={subsection.id} className="bg-gray-800/50 rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <h3 className="text-white font-medium">{subsection.title}</h3>
+                          <div className={`px-2 py-1 rounded text-xs ${
+                            subsection.malleability_level === 'green' ? 'bg-green-500/20 text-green-400' :
+                            subsection.malleability_level === 'yellow' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-red-500/20 text-red-400'
+                          }`}>
+                            {subsection.malleability_level.charAt(0).toUpperCase() + subsection.malleability_level.slice(1)} Malleability
+                          </div>
+                        </div>
+                        <p className="text-gray-400 mb-2">{subsection.description}</p>
+                        <div className="bg-gray-900/50 rounded p-3 mb-2">
+                          <p className="text-white whitespace-pre-wrap">{userResponses[subsection.id]}</p>
+                        </div>
+                        {subsection.example && (
+                          <div className="mt-3 border-t border-white/10 pt-3">
+                            <p className="text-sm text-gray-400 font-medium mb-1">Example:</p>
+                            <p className="text-gray-400 text-sm">{subsection.example}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -345,7 +410,7 @@ const ViewerMode = () => {
             <div className="p-3 bg-blue-500/20 rounded-full">
               <ChevronRight className="h-6 w-6 text-blue-400" />
             </div>
-      <div>
+            <div>
               <h3 className="text-lg font-medium text-blue-400 mb-2">Continue Your Journey</h3>
               <p className="text-gray-400 mb-4">
                 Your next section is "{nextSection.title}". Keep building your blueprint to unlock more insights.
@@ -381,30 +446,52 @@ function EditorMode({ onClose }: { onClose: () => void }) {
   const [commitSectionId, setCommitSectionId] = useState<string | null>(null);
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
   const [hasUncommittedChanges, setHasUncommittedChanges] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     fetchBlueprintData();
   }, []);
 
+  useEffect(() => {
+    // Auto-open the current section that needs to be completed
+    if (sections.length > 0) {
+      const currentSection = sections.find(section => !isSectionComplete(section.id));
+      if (currentSection) {
+        setExpandedSection(currentSection.id);
+      }
+    }
+  }, [sections]);
+
   const fetchBlueprintData = async () => {
     setLoading(true);
     setError(null);
     
-    const user = getMockUser();
-    if (!user) {
-      setError('User session not found');
-      setLoading(false);
-      return;
-    }
-
     try {
       const supabase = createClient();
+
+      // Get session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        setError('Authentication error');
+        setLoading(false);
+        return;
+      }
+      if (!session) {
+        console.error('No active session found');
+        setError('No active session');
+        setLoading(false);
+        return;
+      }
+
+      const userId = session.user.id;
+      console.log('Fetching data for user:', userId);
 
       const [sectionsResponse, subsectionsResponse, userResponsesResponse, userProgressResponse] = await Promise.all([
         supabase.from('guide_sections').select('*').order('order_position'),
         supabase.from('guide_subsections').select('*').order('order_position'),
-        supabase.from('user_responses').select('*').eq('user_id', user.id),
-        supabase.from('user_progress').select('*').eq('user_id', user.id)
+        supabase.from('user_responses').select('*').eq('user_id', userId),
+        supabase.from('user_progress').select('*').eq('user_id', userId)
       ]);
 
       if (sectionsResponse.error) throw sectionsResponse.error;
@@ -418,7 +505,7 @@ function EditorMode({ onClose }: { onClose: () => void }) {
       // Set user responses
       const responses: Record<string, string> = {};
       userResponsesResponse.data.forEach((response: UserResponse) => {
-        responses[response.subsection_id] = response.content;  // Changed from response to content
+        responses[response.subsection_id] = response.content;
       });
       setUserResponses(responses);
 
@@ -454,41 +541,75 @@ function EditorMode({ onClose }: { onClose: () => void }) {
       return;
     }
 
+    console.log('Attempting to save response for user:', user.id);
+    
     try {
       const supabase = createClient();
       
-      // First, check if a response exists - fixed the Accept header issue
+      // First verify we have an active session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        return;
+      }
+      if (!session) {
+        console.error('No active session found');
+        return;
+      }
+      
+      // Important: Use the session user ID instead of mock user
+      const userId = session.user.id;
+      console.log('Active session found for user:', userId);
+      
+      // First, check if a response exists
+      console.log('Checking for existing response...');
       const { data: existingResponses, error: fetchError } = await supabase
         .from('user_responses')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('subsection_id', subsectionId);
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('Error fetching existing response:', fetchError);
+        throw fetchError;
+      }
 
       const existingResponse = existingResponses?.[0];
+      console.log('Existing response:', existingResponse);
 
       if (existingResponse) {
-        // Update existing response
-        await supabase
+        console.log('Updating existing response...');
+        const { error: updateError } = await supabase
           .from('user_responses')
           .update({
-            content: content,  // Changed from response to content
+            content: content,
             updated_at: new Date().toISOString()
           })
           .eq('id', existingResponse.id);
+          
+        if (updateError) {
+          console.error('Error updating response:', updateError);
+          throw updateError;
+        }
       } else {
-        // Insert new response
-        await supabase
+        console.log('Creating new response...');
+        const { error: insertError } = await supabase
           .from('user_responses')
           .insert({
-            user_id: user.id,
+            user_id: userId,
             subsection_id: subsectionId,
-            content: content,  // Changed from response to content
+            content: content,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
+          
+        if (insertError) {
+          console.error('Error inserting response:', insertError);
+          throw insertError;
+        }
       }
+      
+      console.log('Successfully saved response');
     } catch (error) {
       console.error('Error saving response:', error);
     }
@@ -496,22 +617,69 @@ function EditorMode({ onClose }: { onClose: () => void }) {
 
   // Update saveUserProgress function
   const saveUserProgress = async (subsectionId: string, completed: boolean) => {
-    const user = getMockUser();
-    if (!user) {
-      console.error('User session not found');
-      return;
-    }
-
     try {
       const supabase = createClient();
-      await supabase
+      
+      // First verify we have an active session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        return;
+      }
+      if (!session) {
+        console.error('No active session found');
+        return;
+      }
+      
+      const userId = session.user.id;
+      console.log('Saving progress for user:', userId);
+
+      // First check if a record exists
+      const { data: existingProgress, error: fetchError } = await supabase
         .from('user_progress')
-        .upsert({
-          user_id: user.id,
-          subsection_id: subsectionId,
-          completed: completed,
-          updated_at: new Date().toISOString()
-        });
+        .select('*')
+        .eq('user_id', userId)
+        .eq('subsection_id', subsectionId)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found" error
+        console.error('Error checking existing progress:', fetchError);
+        return;
+      }
+
+      if (existingProgress) {
+        // Update existing record
+        const { error: updateError } = await supabase
+          .from('user_progress')
+          .update({
+            completed: completed,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', userId)
+          .eq('subsection_id', subsectionId);
+
+        if (updateError) {
+          console.error('Error updating progress:', updateError);
+          return;
+        }
+      } else {
+        // Insert new record
+        const { error: insertError } = await supabase
+          .from('user_progress')
+          .insert({
+            user_id: userId,
+            subsection_id: subsectionId,
+            completed: completed,
+            updated_at: new Date().toISOString()
+          });
+
+        if (insertError) {
+          console.error('Error inserting progress:', insertError);
+          return;
+        }
+      }
+
+      console.log('Successfully saved progress');
     } catch (error) {
       console.error('Error saving progress:', error);
     }
@@ -533,20 +701,28 @@ function EditorMode({ onClose }: { onClose: () => void }) {
     await saveUserProgress(subsectionId, isSubsectionCommitted(subsectionId));
   };
 
-  // Update clearBookmarks function
+  // Update clearBookmarks function to use session user
   const clearBookmarks = async () => {
-    const user = getMockUser();
-    if (!user) {
-      console.error('User session not found');
-      return;
-    }
-
     try {
       const supabase = createClient();
-      await supabase
+      
+      // Get session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        console.error('Session error:', sessionError);
+        return;
+      }
+
+      const { error: updateError } = await supabase
         .from('user_progress')
         .update({ flagged: false })
-        .eq('user_id', user.id);
+        .eq('user_id', session.user.id);
+
+      if (updateError) {
+        console.error('Error clearing bookmarks:', updateError);
+        return;
+      }
+
       setBookmarkedSubsections(new Set());
     } catch (error) {
       console.error('Error clearing bookmarks:', error);
@@ -746,6 +922,16 @@ function EditorMode({ onClose }: { onClose: () => void }) {
               >
                 <Lightbulb className="h-4 w-4" />
                 Pro Tips
+              </button>
+              <button
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className="p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition-colors"
+              >
+                {isSidebarCollapsed ? (
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                ) : (
+                  <ChevronLeft className="h-4 w-4 text-gray-400" />
+                )}
               </button>
               <button
                 onClick={handleClose}
@@ -960,7 +1146,7 @@ function EditorMode({ onClose }: { onClose: () => void }) {
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
-      </div>
+                              </div>
 
                               <div>
                                 <button
@@ -985,6 +1171,9 @@ function EditorMode({ onClose }: { onClose: () => void }) {
                                       ...prev,
                                       [subsection.id]: newValue
                                     }));
+                                    // Auto-resize the textarea
+                                    e.target.style.height = 'auto';
+                                    e.target.style.height = e.target.scrollHeight + 'px';
                                     // Debounce the save to avoid too many requests
                                     const timeoutId = setTimeout(() => {
                                       saveUserResponse(subsection.id, newValue);
@@ -1004,6 +1193,7 @@ function EditorMode({ onClose }: { onClose: () => void }) {
                                     "min-h-[100px] resize-none overflow-hidden",
                                     "transition-all duration-200 ease-in-out",
                                     "prose prose-invert max-w-none",
+                                    "markdown-editor", // Add this class for markdown styling
                                     !canEditSection(section.id) || isSubsectionCommitted(subsection.id)
                                       ? 'bg-gray-900/80 text-gray-500'
                                       : 'bg-gray-900/50'
@@ -1011,11 +1201,6 @@ function EditorMode({ onClose }: { onClose: () => void }) {
                                   style={{
                                     height: 'auto',
                                     minHeight: '100px'
-                                  }}
-                                  onInput={(e) => {
-                                    const target = e.target as HTMLTextAreaElement;
-                                    target.style.height = 'auto';
-                                    target.style.height = target.scrollHeight + 'px';
                                   }}
                                 />
                               </div>
@@ -1031,65 +1216,72 @@ function EditorMode({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Right Progress Panel */}
-        <div className="w-64 bg-gray-900/50 backdrop-blur-sm border-l border-white/10 p-4">
+        <div className={cn(
+          "bg-gray-900/50 backdrop-blur-sm border-l border-white/10 transition-all duration-300 p-4",
+          isSidebarCollapsed ? "w-16" : "w-64"
+        )}>
           <div className="space-y-6">
-            <div>
-              <h3 className="text-sm font-medium text-gray-400 mb-3">Progress</h3>
-              <div className="space-y-4">
-                {sections.map((section) => {
-                  const sectionSubsections = subsections.filter(sub => sub.section_id === section.id);
-                  const completedSubsections = sectionSubsections.filter(sub => isSubsectionCommitted(sub.id));
-                  const progress = sectionSubsections.length ? 
-                    (completedSubsections.length / sectionSubsections.length) * 100 : 0;
-                  
-                  return (
-                    <div key={section.id} className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-400 truncate">{section.title}</span>
-                        <span className="text-xs text-gray-400">{Math.round(progress)}%</span>
-                      </div>
-                      <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-        </div>
+            {!isSidebarCollapsed && (
+              <>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-400 mb-3">Progress</h3>
+                  <div className="space-y-4">
+                    {sections.map((section) => {
+                      const sectionSubsections = subsections.filter(sub => sub.section_id === section.id);
+                      const completedSubsections = sectionSubsections.filter(sub => isSubsectionCommitted(sub.id));
+                      const progress = sectionSubsections.length ? 
+                        (completedSubsections.length / sectionSubsections.length) * 100 : 0;
+                      
+                      return (
+                        <div key={section.id} className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-400 truncate">{section.title}</span>
+                            <span className="text-xs text-gray-400">{Math.round(progress)}%</span>
+                          </div>
+                          <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-400">Bookmarks</h3>
-                {bookmarkedSubsections.size > 0 && (
-                  <button
-                    onClick={clearBookmarks}
-                    className="p-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              <div className="space-y-2">
-                {Array.from(bookmarkedSubsections).map(subsectionId => {
-                  const subsection = subsections.find(sub => sub.id === subsectionId);
-                  if (!subsection) return null;
-                  
-                  return (
-                    <button
-                      key={subsectionId}
-                      onClick={() => scrollToSubsection(subsectionId)}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-sm"
-                    >
-                      <Bookmark className="h-4 w-4 text-blue-400" />
-                      <span className="text-gray-300 truncate">{subsection.title}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-gray-400">Bookmarks</h3>
+                    {bookmarkedSubsections.size > 0 && (
+                      <button
+                        onClick={clearBookmarks}
+                        className="p-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {Array.from(bookmarkedSubsections).map(subsectionId => {
+                      const subsection = subsections.find(sub => sub.id === subsectionId);
+                      if (!subsection) return null;
+                      
+                      return (
+                        <button
+                          key={subsectionId}
+                          onClick={() => scrollToSubsection(subsectionId)}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-sm"
+                        >
+                          <Bookmark className="h-4 w-4 text-blue-400" />
+                          <span className="text-gray-300 truncate">{subsection.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

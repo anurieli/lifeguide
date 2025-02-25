@@ -76,10 +76,16 @@ export function HowToGuide({ isOpen: externalIsOpen, onOpenChange, showButton = 
     if (user) {
       await supabase
         .from('user_preferences')
-        .upsert({
-          user_id: user.id,
-          has_seen_guide: true
-        });
+        .upsert(
+          {
+            user_id: user.id,
+            has_seen_guide: true
+          },
+          {
+            onConflict: 'user_id',
+            ignoreDuplicates: false
+          }
+        );
     }
 
     setHasSeenGuide(true);

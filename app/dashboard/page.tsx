@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Settings, CheckSquare, X, Edit, HelpCircle, ChevronRight, Bookmark, ChevronDown, ChevronUp, Info, Lock, Check, Trash2, AlertTriangle, Lightbulb, ChevronLeft } from 'lucide-react';
+import { Home, Settings, CheckSquare, X, Edit, HelpCircle, ChevronRight, Bookmark, ChevronDown, ChevronUp, Info, Lock, Check, Trash2, AlertTriangle, Lightbulb, ChevronLeft, RotateCcw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { createClient } from '@/lib/supabase/client';
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { HowToGuide } from '@/components/HowToGuide';
+import RichTextInput from "@/components/RichTextInput";
 
 interface Section {
   id: string;
@@ -118,6 +119,25 @@ export default function DashboardPage() {
   const [selectedPage, setSelectedPage] = useState<'home' | 'actionables' | 'settings'>('home');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
+  // Add this useEffect to handle automatic sidebar collapse
+  useEffect(() => {
+    const handleResize = () => {
+      // Calculate 40% of viewport width
+      const fortyPercentWidth = window.innerWidth * 0.4;
+      const shouldCollapse = window.innerWidth <= fortyPercentWidth;
+      setIsSidebarCollapsed(shouldCollapse);
+    };
+
+    // Initial check
+    handleResize();
+
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div className="flex min-h-screen">
       {/* Left Panel */}
@@ -129,7 +149,18 @@ export default function DashboardPage() {
         )}
       >
         <div className="flex flex-col h-full">
-          <div className="p-4 flex items-center justify-between">
+          <div className="p-4 flex flex-col gap-4">
+            <button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/80 rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              <span className="text-gray-400 text-sm">{isSidebarCollapsed ? 'Expand' : 'Collapse'} Sidebar</span>
+              {isSidebarCollapsed ? (
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+              ) : (
+                <ChevronLeft className="h-4 w-4 text-gray-400" />
+              )}
+            </button>
             {!isSidebarCollapsed && (
               <div className="flex items-center gap-2">
                 <button
@@ -148,16 +179,6 @@ export default function DashboardPage() {
                 </button>
               </div>
             )}
-            <button
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition-colors"
-            >
-              {isSidebarCollapsed ? (
-                <ChevronRight className="h-4 w-4 text-gray-400" />
-              ) : (
-                <ChevronLeft className="h-4 w-4 text-gray-400" />
-              )}
-            </button>
           </div>
 
           {/* Navigation */}
@@ -205,7 +226,7 @@ export default function DashboardPage() {
       {/* Main Content */}
       <div className="flex-1 p-6 overflow-auto">
         {mode.type === 'view' ? (
-          <ViewerMode />
+          <ViewerMode onSwitchToEdit={() => setMode({ type: 'edit' })} />
         ) : (
           <EditorMode onClose={() => setMode({ type: 'view' })} />
         )}
@@ -258,7 +279,7 @@ export default function DashboardPage() {
   );
 }
 
-const ViewerMode = () => {
+const ViewerMode = ({ onSwitchToEdit }: { onSwitchToEdit: () => void }) => {
   const [sections, setSections] = useState<Section[]>([]);
   const [subsections, setSubsections] = useState<Subsection[]>([]);
   const [userResponses, setUserResponses] = useState<Record<string, string>>({});
@@ -272,20 +293,19 @@ const ViewerMode = () => {
       setLoading(true);
       setError(null);
 
-      const user = getMockUser();
-      if (!user) {
-        setError('User session not found');
-        setLoading(false);
-        return;
-      }
-
       try {
         const supabase = createClient();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!session) throw new Error('No active session');
+
+        const userId = session.user.id;
+        
         const [sectionsResponse, subsectionsResponse, userResponsesResponse, userProgressResponse] = await Promise.all([
           supabase.from('guide_sections').select('*').order('order_position'),
           supabase.from('guide_subsections').select('*').order('order_position'),
-          supabase.from('user_responses').select('*').eq('user_id', user.id),
-          supabase.from('user_progress').select('*').eq('user_id', user.id)
+          supabase.from('user_responses').select('*').eq('user_id', userId),
+          supabase.from('user_progress').select('*').eq('user_id', userId).eq('completed', true)
         ]);
 
         if (sectionsResponse.error) throw sectionsResponse.error;
@@ -299,16 +319,14 @@ const ViewerMode = () => {
         // Process user responses
         const responses: Record<string, string> = {};
         userResponsesResponse.data.forEach((response: UserResponse) => {
-          responses[response.subsection_id] = response.content;  // Changed from response to content
+          responses[response.subsection_id] = response.content;
         });
         setUserResponses(responses);
 
         // Process committed responses
         const committed = new Set<string>();
         userProgressResponse.data.forEach((progress: UserProgress) => {
-          if (progress.completed) {
-            committed.add(progress.subsection_id);
-          }
+          committed.add(progress.subsection_id);
         });
         setCommittedResponses(committed);
       } catch (error) {
@@ -322,20 +340,16 @@ const ViewerMode = () => {
     fetchViewerData();
   }, []);
 
-  if (loading) return <div className="p-4">Loading...</div>;
-  if (error) return <div className="p-4 text-red-500">{error}</div>;
-
   const isSectionComplete = (sectionId: string) => {
     const sectionSubsections = subsections.filter(sub => sub.section_id === sectionId);
     return sectionSubsections.every(sub => committedResponses.has(sub.id));
   };
 
-  const getNextIncompleteSection = () => {
-    return sections.find(section => !isSectionComplete(section.id));
-  };
-
   const completedSections = sections.filter(section => isSectionComplete(section.id));
-  const nextSection = getNextIncompleteSection();
+  const nextSection = sections.find(section => !isSectionComplete(section.id));
+
+  if (loading) return <div className="p-4 text-gray-400">Loading...</div>;
+  if (error) return <div className="p-4 text-red-400">{error}</div>;
 
   return (
     <div className="space-y-8">
@@ -354,57 +368,33 @@ const ViewerMode = () => {
           {completedSections.map(section => (
             <div 
               key={section.id} 
-              className="bg-white/5 rounded-xl backdrop-blur-sm border border-white/10 p-6 hover:bg-white/10 transition-colors cursor-pointer"
-              onClick={() => setExpandedSection(expandedSection === section.id ? null : section.id)}
+              className="bg-white/5 rounded-xl backdrop-blur-sm border border-white/10 p-6"
             >
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-white mb-2">{section.title}</h2>
-                  <p className="text-gray-400 mb-4">{section.description}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm">
-                    Completed
-                  </span>
+                  <h2 className="text-xl font-semibold text-white">{section.title}</h2>
+                  <p className="text-gray-400">{section.description}</p>
                 </div>
               </div>
               
-              {expandedSection === section.id && (
-                <div className="mt-6 space-y-4 border-t border-white/10 pt-4">
-                  {subsections
-                    .filter(sub => sub.section_id === section.id)
-                    .map(subsection => (
-                      <div key={subsection.id} className="bg-gray-800/50 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <h3 className="text-white font-medium">{subsection.title}</h3>
-                          <div className={`px-2 py-1 rounded text-xs ${
-                            subsection.malleability_level === 'green' ? 'bg-green-500/20 text-green-400' :
-                            subsection.malleability_level === 'yellow' ? 'bg-yellow-500/20 text-yellow-400' :
-                            'bg-red-500/20 text-red-400'
-                          }`}>
-                            {subsection.malleability_level.charAt(0).toUpperCase() + subsection.malleability_level.slice(1)} Malleability
-                          </div>
-                        </div>
-                        <p className="text-gray-400 mb-2">{subsection.description}</p>
-                        <div className="bg-gray-900/50 rounded p-3 mb-2">
-                          <p className="text-white whitespace-pre-wrap">{userResponses[subsection.id]}</p>
-                        </div>
-                        {subsection.example && (
-                          <div className="mt-3 border-t border-white/10 pt-3">
-                            <p className="text-sm text-gray-400 font-medium mb-1">Example:</p>
-                            <p className="text-gray-400 text-sm">{subsection.example}</p>
-                          </div>
-                        )}
+              <div className="space-y-4">
+                {subsections
+                  .filter(sub => sub.section_id === section.id && committedResponses.has(sub.id))
+                  .map(subsection => (
+                    <div key={subsection.id} className="bg-gray-800/50 rounded-lg p-4">
+                      <h3 className="text-white font-medium mb-2">{subsection.title}</h3>
+                      <div className="bg-gray-900/50 rounded p-3">
+                        <p className="text-white whitespace-pre-wrap">{userResponses[subsection.id]}</p>
                       </div>
-                    ))}
-                </div>
-              )}
+                    </div>
+                  ))}
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {nextSection && (
+      {nextSection ? (
         <div className="bg-blue-500/10 rounded-xl backdrop-blur-sm border border-blue-500/20 p-6">
           <div className="flex items-start gap-4">
             <div className="p-3 bg-blue-500/20 rounded-full">
@@ -416,7 +406,7 @@ const ViewerMode = () => {
                 Your next section is "{nextSection.title}". Keep building your blueprint to unlock more insights.
               </p>
               <button
-                onClick={() => window.location.href = `/dashboard?section=${nextSection.id}&mode=edit`}
+                onClick={onSwitchToEdit}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Continue Building
@@ -424,7 +414,21 @@ const ViewerMode = () => {
             </div>
           </div>
         </div>
-      )}
+      ) : completedSections.length === sections.length && sections.length > 0 ? (
+        <div className="bg-green-500/10 rounded-xl backdrop-blur-sm border border-green-500/20 p-6">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-green-500/20 rounded-full">
+              <Check className="h-6 w-6 text-green-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-medium text-green-400 mb-2">All Sections Completed!</h3>
+              <p className="text-gray-400">
+                Congratulations! You've completed all sections of your blueprint... for now!
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };
@@ -447,6 +451,7 @@ function EditorMode({ onClose }: { onClose: () => void }) {
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
   const [hasUncommittedChanges, setHasUncommittedChanges] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   useEffect(() => {
     fetchBlueprintData();
@@ -640,9 +645,9 @@ function EditorMode({ onClose }: { onClose: () => void }) {
         .select('*')
         .eq('user_id', userId)
         .eq('subsection_id', subsectionId)
-        .single();
+        .maybeSingle();  // Use maybeSingle instead of single to avoid 406
 
-      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found" error
+      if (fetchError) {
         console.error('Error checking existing progress:', fetchError);
         return;
       }
@@ -655,8 +660,8 @@ function EditorMode({ onClose }: { onClose: () => void }) {
             completed: completed,
             updated_at: new Date().toISOString()
           })
-          .eq('user_id', userId)
-          .eq('subsection_id', subsectionId);
+          .eq('id', existingProgress.id)
+          .select();  // Add select() to ensure proper response format
 
         if (updateError) {
           console.error('Error updating progress:', updateError);
@@ -671,7 +676,8 @@ function EditorMode({ onClose }: { onClose: () => void }) {
             subsection_id: subsectionId,
             completed: completed,
             updated_at: new Date().toISOString()
-          });
+          })
+          .select();  // Add select() to ensure proper response format
 
         if (insertError) {
           console.error('Error inserting progress:', insertError);
@@ -837,11 +843,37 @@ function EditorMode({ onClose }: { onClose: () => void }) {
     setClearingSectionId(null);
   };
 
-  const restartBlueprint = () => {
-    setUserResponses({});
-    setCommittedResponses([]);
-    setBookmarkedSubsections(new Set());
-    setIsRestartDialogOpen(false);
+  const restartBlueprint = async () => {
+    try {
+      const supabase = createClient();
+      
+      // Get session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('No active session found');
+        return;
+      }
+
+      const userId = session.user.id;
+
+      // Delete all user responses
+      await supabase
+        .from('user_responses')
+        .delete()
+        .eq('user_id', userId);
+
+      // Reset all user progress
+      await supabase
+        .from('user_progress')
+        .delete()
+        .eq('user_id', userId);
+
+      // Close dialog and refetch data
+      setIsRestartDialogOpen(false);
+      await fetchBlueprintData();
+    } catch (error) {
+      console.error('Error restarting blueprint:', error);
+    }
   };
 
   const getSectionStatus = (sectionId: string) => {
@@ -908,36 +940,50 @@ function EditorMode({ onClose }: { onClose: () => void }) {
                 Blueprint Editor
               </h1>
               <button
-                onClick={() => setIsRestartDialogOpen(true)}
-                className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors text-sm flex items-center gap-1.5"
+                onClick={() => setIsHelpOpen(true)}
+                className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors text-sm flex items-center gap-1.5 w-auto max-[800px]:w-9 max-[800px]:px-0 max-[800px]:justify-center"
               >
-                <AlertTriangle className="h-4 w-4" />
-                Restart Blueprint
+                <HelpCircle className="h-4 w-4" />
+                <span className="max-[800px]:hidden">Help?</span>
               </button>
-            </div>
-            <div className="flex items-center gap-4">
               <button
                 onClick={() => setExpandedProTips(!expandedProTips)}
-                className="px-3 py-1.5 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors text-sm flex items-center gap-1.5"
+                className="px-3 py-1.5 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors text-sm flex items-center gap-1.5 w-auto max-[800px]:w-9 max-[800px]:px-0 max-[800px]:justify-center"
               >
                 <Lightbulb className="h-4 w-4" />
-                Pro Tips
+                <span className="max-[800px]:hidden">Tips</span>
               </button>
-              <button
-                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                className="p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition-colors"
+              
+            </div>
+            <div className="flex items-center gap-4">
+            <button
+                onClick={() => setIsRestartDialogOpen(true)}
+                className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors text-sm flex items-center gap-1.5 w-auto max-[800px]:w-9 max-[800px]:px-0 max-[800px]:justify-center"
               >
-                {isSidebarCollapsed ? (
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
-                ) : (
-                  <ChevronLeft className="h-4 w-4 text-gray-400" />
-                )}
+                <RotateCcw className="h-4 w-4" />
+                <span className="max-[800px]:hidden">Restart</span>
               </button>
               <button
                 onClick={handleClose}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Done
+              </button>
+              <button
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className="p-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+              >
+                {isSidebarCollapsed ? (
+                  <>
+                    <ChevronLeft className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-400 text-sm">Show Progress</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-400 text-sm">Hide Progress</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -1163,18 +1209,14 @@ function EditorMode({ onClose }: { onClose: () => void }) {
                               </div>
 
                               <div>
-                                <textarea
+                                <RichTextInput
                                   value={userResponses[subsection.id] || ''}
-                                  onChange={(e) => {
-                                    const newValue = e.target.value;
+                                  onChange={(newValue) => {
                                     setUserResponses(prev => ({
                                       ...prev,
                                       [subsection.id]: newValue
                                     }));
-                                    // Auto-resize the textarea
-                                    e.target.style.height = 'auto';
-                                    e.target.style.height = e.target.scrollHeight + 'px';
-                                    // Debounce the save to avoid too many requests
+                                    // Debounce the save
                                     const timeoutId = setTimeout(() => {
                                       saveUserResponse(subsection.id, newValue);
                                     }, 500);
@@ -1186,22 +1228,8 @@ function EditorMode({ onClose }: { onClose: () => void }) {
                                       ? "Complete previous sections first"
                                       : isSubsectionCommitted(subsection.id)
                                       ? "Response committed. Click edit to modify."
-                                      : "Enter your response..."
+                                      : "Enter your response... (Formatting supported)"
                                   }
-                                  className={cn(
-                                    "mt-2 w-full border-white/10 focus:border-blue-500/50 text-white",
-                                    "min-h-[100px] resize-none overflow-hidden",
-                                    "transition-all duration-200 ease-in-out",
-                                    "prose prose-invert max-w-none",
-                                    "markdown-editor", // Add this class for markdown styling
-                                    !canEditSection(section.id) || isSubsectionCommitted(subsection.id)
-                                      ? 'bg-gray-900/80 text-gray-500'
-                                      : 'bg-gray-900/50'
-                                  )}
-                                  style={{
-                                    height: 'auto',
-                                    minHeight: '100px'
-                                  }}
                                 />
                               </div>
                             </div>
@@ -1218,7 +1246,8 @@ function EditorMode({ onClose }: { onClose: () => void }) {
         {/* Right Progress Panel */}
         <div className={cn(
           "bg-gray-900/50 backdrop-blur-sm border-l border-white/10 transition-all duration-300 p-4",
-          isSidebarCollapsed ? "w-16" : "w-64"
+          isSidebarCollapsed ? "w-16" : "w-64",
+          "max-[800px]:hidden" // Hide completely on small screens
         )}>
           <div className="space-y-6">
             {!isSidebarCollapsed && (
@@ -1392,6 +1421,9 @@ function EditorMode({ onClose }: { onClose: () => void }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Add HowToGuide Dialog */}
+      <HowToGuide isOpen={isHelpOpen} onOpenChange={setIsHelpOpen} showButton={false} />
     </div>
   );
 } 

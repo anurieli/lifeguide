@@ -31,4 +31,4 @@ CREATE POLICY "Users can insert their own preferences"
 CREATE TRIGGER set_updated_at
   BEFORE UPDATE ON user_preferences
   FOR EACH ROW
-  EXECUTE FUNCTION public.set_updated_at(); 
+  EXECUTE FUNCTION public.update_updated_at_column(); 

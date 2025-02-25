@@ -179,7 +179,10 @@ export default function WelcomePage() {
               <p className="text-lg text-white">
                 Our platform isn&apos;t just another productivity tool—it&apos;s a comprehensive system designed
                 to help you understand yourself better, set meaningful goals, and stay accountable
-                to your vision.
+                to your vision. How? By focusing on no-tech first principles, where the human needs to sit down 
+                with themselves and just think about who they are and where they want to go. It's hard work.
+                Todays platforms try to use tech to make it easy for you... but there is no easy way out. You are 
+                here because after all your attemts you realized you have to do the inner work.
               </p>
 
               <h3 className={`text-2xl font-bold ${gradientText}`}>Our Vision</h3>

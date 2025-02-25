@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 
 // Mock user for development
 const MOCK_USER = {
-  id: 'b4b92493-74d6-4a14-a73b-7107eb0eab84',
+  id: '553c0461-0bc6-4d18-9142-b0e63edc0d2c',
   email: 'anurieli365@gmail.com',
   role: 'admin'
 };

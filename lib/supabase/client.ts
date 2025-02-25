@@ -1,28 +1,42 @@
 import { createBrowserClient } from '@supabase/ssr'
+import type { Session, User } from '@supabase/supabase-js'
 
-let client: ReturnType<typeof createBrowserClient> | null = null
+const isDev = process.env.NODE_ENV === 'development'
+
+// Development credentials
+const DEV_EMAIL = 'anurieli365@gmail.com'
+const DEV_USER_ID = '553c0461-0bc6-4d18-9142-b0e63edc0d2c'
 
 export function createClient() {
-  if (!client) {
-    client = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true
-        },
-        realtime: {
-          params: {
-            eventsPerSecond: 10
+  const client = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  // In development, ensure we're signed in as the dev user
+  if (isDev) {
+    client.auth.getSession().then(async ({ data: { session } }) => {
+      // If we're not signed in or signed in as a different user, sign in as dev user
+      if (!session?.user || session.user.id !== DEV_USER_ID) {
+        try {
+          const { error } = await client.auth.signInWithPassword({
+            email: DEV_EMAIL,
+            password: process.env.NEXT_PUBLIC_DEV_PASSWORD!
+          })
+          
+          if (error) {
+            console.error('Development auth error:', error.message)
+            console.log('Please ensure:')
+            console.log('1. The user exists in Supabase Auth')
+            console.log('2. The password matches NEXT_PUBLIC_DEV_PASSWORD')
+            console.log('3. The user ID matches the authenticated user')
           }
-        },
-        db: {
-          schema: 'public'
+        } catch (error) {
+          console.error('Development auth error:', error)
         }
       }
-    )
+    })
   }
+
   return client
 } 

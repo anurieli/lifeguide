@@ -110,9 +110,13 @@ ALTER TABLE user_responses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_progress ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for admin_users
-CREATE POLICY "Admin users are viewable by authenticated users"
+CREATE POLICY "Admin users are viewable by everyone"
     ON admin_users FOR SELECT
-    USING (auth.role() = 'authenticated');
+    USING (true);
+
+CREATE POLICY "Admin users can only be modified by service role"
+    ON admin_users FOR ALL
+    USING (false);
 
 -- Create policies for guide_sections
 CREATE POLICY "Guide sections are viewable by everyone"
@@ -121,7 +125,12 @@ CREATE POLICY "Guide sections are viewable by everyone"
 
 CREATE POLICY "Guide sections are editable by admins"
     ON guide_sections FOR ALL
-    USING (auth.jwt() ->> 'email' IN (SELECT email FROM admin_users));
+    USING (
+        EXISTS (
+            SELECT 1 FROM admin_users 
+            WHERE email = auth.jwt() ->> 'email'
+        )
+    );
 
 -- Create policies for guide_subsections
 CREATE POLICY "Guide subsections are viewable by everyone"
@@ -130,7 +139,12 @@ CREATE POLICY "Guide subsections are viewable by everyone"
 
 CREATE POLICY "Guide subsections are editable by admins"
     ON guide_subsections FOR ALL
-    USING (auth.jwt() ->> 'email' IN (SELECT email FROM admin_users));
+    USING (
+        EXISTS (
+            SELECT 1 FROM admin_users 
+            WHERE email = auth.jwt() ->> 'email'
+        )
+    );
 
 -- Create policies for user_responses
 CREATE POLICY "Users can view their own responses"

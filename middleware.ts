@@ -1,25 +1,65 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-
-// Mock user for development - matching the one in AuthContext
-const MOCK_USER = {
-  id: 'b4b92493-74d6-4a14-a73b-7107eb0eab84',
-  email: 'anurieli365@gmail.com',
-  role: 'admin'
-};
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // Get the pathname
-  const path = request.nextUrl.pathname;
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
 
-  // Create a response with the mock user session
-  const response = NextResponse.next();
-  
-  // Add mock session data to the response
-  response.cookies.set('mock_user', JSON.stringify(MOCK_USER));
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value)
+          })
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
 
-  // Always allow access since we're using a mock user
-  return response;
+  const {
+    data: { user },
+    error
+  } = await supabase.auth.getUser()
+
+  // Log auth status in development
+  if (process.env.NODE_ENV === 'development') {
+    if (error) {
+      console.log('Auth error:', error.message)
+    } else {
+      console.log('Auth status:', user ? `Authenticated as ${user.email}` : 'Not authenticated')
+    }
+  }
+
+  // Require authentication for protected routes
+  if (
+    !user &&
+    !request.nextUrl.pathname.startsWith('/login') &&
+    !request.nextUrl.pathname.startsWith('/auth') &&
+    !request.nextUrl.pathname.startsWith('/')
+  ) {
+    // For development, redirect to home page instead of login
+    const redirectUrl = new URL('/', request.url)
+    return NextResponse.redirect(redirectUrl)
+  }
+
+  return response
 }
 
 export const config = {
@@ -29,4 +69,4 @@ export const config = {
     '/guide/:path*',
     '/auth/:path*'
   ]
-}; 
+} 

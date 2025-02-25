@@ -8,8 +8,8 @@ import Footer from '@/components/footer'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'LifeGuide - Personal Development Tool',
-  description: 'Your personal development tool for organizing life, defining identity, and building resilience.',
+  title: 'LifeGuide - The Blueprint for your life',
+  description: 'A back-to-basics, interactive experience geared to help you get your life on track.',
 }
 
 export default function RootLayout({

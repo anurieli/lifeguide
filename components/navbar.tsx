@@ -2,21 +2,53 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-
-// Mock user for development
-const MOCK_USER = {
-  id: '553c0461-0bc6-4d18-9142-b0e63edc0d2c',
-  email: 'anurieli365@gmail.com',
-  role: 'admin'
-};
+import { createClient } from '@/lib/supabase/client';
+import { useEffect, useState } from 'react';
+import { AuthButton } from '@/components/AuthButton';
+import type { User } from '@supabase/supabase-js';
 
 export default function Navbar() {
   const pathname = usePathname();
-  // Always use the mock user instead of real auth
-  const user = MOCK_USER;
-  const loading = false;
+  const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    const checkAdminStatus = async (email: string | undefined) => {
+      if (!email) {
+        setIsAdmin(false);
+        return;
+      }
+
+      const { data } = await supabase
+        .from('admin_users')
+        .select('id')
+        .eq('email', email)
+        .single();
+      
+      setIsAdmin(!!data);
+    };
+
+    // Check current auth state
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+      await checkAdminStatus(session?.user?.email);
+    };
+
+    initializeAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setUser(session?.user ?? null);
+      await checkAdminStatus(session?.user?.email);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-lg border-b border-white/10">
@@ -41,8 +73,8 @@ export default function Navbar() {
               The Guide
             </Link>
             
-            {/* Other nav items only show up for the mock user */}
-            <>
+            {/* Dashboard is only visible when logged in */}
+            {user && (
               <Link
                 href="/dashboard"
                 className={`text-sm ${
@@ -53,6 +85,10 @@ export default function Navbar() {
               >
                 Dashboard
               </Link>
+            )}
+
+            {/* Admin is only visible for admin users */}
+            {isAdmin && user && (
               <Link
                 href="/admin"
                 className={`text-sm ${
@@ -63,7 +99,10 @@ export default function Navbar() {
               >
                 Admin
               </Link>
-            </>
+            )}
+
+            {/* Auth button on the far right */}
+            <AuthButton />
           </div>
         </div>
       </div>

@@ -232,9 +232,6 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* How To Guide */}
-      <HowToGuide />
-
       {/* New User Dialog */}
       <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
         <DialogContent className="bg-gray-900/95 backdrop-blur-sm border border-white/10 text-white max-w-3xl">

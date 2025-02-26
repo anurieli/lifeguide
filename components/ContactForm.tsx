@@ -30,7 +30,7 @@ export default function ContactForm() {
   return (
     <form onSubmit={handleSubmit} className="max-w-lg mx-auto space-y-6">
       <div>
-        <label htmlFor="email" className="block text-sm font-medium mb-2">
+        <label htmlFor="email" className="block text-sm font-medium mb-2 text-white">
           Email
         </label>
         <input
@@ -38,20 +38,20 @@ export default function ContactForm() {
           id="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-white"
           required
         />
       </div>
 
       <div>
-        <label htmlFor="type" className="block text-sm font-medium mb-2">
+        <label htmlFor="type" className="block text-sm font-medium mb-2 text-white">
           Contact Type
         </label>
         <select
           id="type"
           value={type}
           onChange={(e) => setType(e.target.value as ContactType)}
-          className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-white"
         >
           <option value="feature">Feature Request</option>
           <option value="bug">Bug Report</option>
@@ -61,7 +61,7 @@ export default function ContactForm() {
       </div>
 
       <div>
-        <label htmlFor="message" className="block text-sm font-medium mb-2">
+        <label htmlFor="message" className="block text-sm font-medium mb-2 text-white">
           Message
         </label>
         <textarea
@@ -69,7 +69,7 @@ export default function ContactForm() {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           rows={4}
-          className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-white"
           required
         />
       </div>

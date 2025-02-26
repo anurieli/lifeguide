@@ -18,55 +18,45 @@ export async function middleware(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value)
+            response.cookies.set({
+              name,
+              value,
+              ...options,
+            })
           })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          )
         },
       },
     }
   )
 
-  const {
-    data: { user },
-    error
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  // Log auth status in development
-  if (process.env.NODE_ENV === 'development') {
-    if (error) {
-      console.log('Auth error:', error.message)
-    } else {
-      console.log('Auth status:', user ? `Authenticated as ${user.email}` : 'Not authenticated')
-    }
+  // Only protect dashboard and admin routes
+  const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard') || 
+                          request.nextUrl.pathname.startsWith('/admin')
+
+  // If user is not signed in and trying to access a protected route,
+  // redirect the user to /login
+  if (!user && isProtectedRoute) {
+    const redirectUrl = new URL('/login', request.url)
+    redirectUrl.searchParams.set('returnTo', request.nextUrl.pathname)
+    return NextResponse.redirect(redirectUrl)
   }
 
-  // Require authentication for protected routes
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/auth') &&
-    !request.nextUrl.pathname.startsWith('/')
-  ) {
-    // For development, redirect to home page instead of login
-    const redirectUrl = new URL('/', request.url)
-    return NextResponse.redirect(redirectUrl)
+  // If user is signed in and the current path is /login,
+  // redirect the user to /dashboard
+  if (user && request.nextUrl.pathname === '/login') {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   return response
 }
 
+// Specify which routes should be handled by the middleware
 export const config = {
   matcher: [
     '/dashboard/:path*',
     '/admin/:path*',
-    '/guide/:path*',
-    '/auth/:path*'
-  ]
+    '/login',
+  ],
 } 

@@ -27,9 +27,9 @@ const markdownComponents: Components = {
   h2: ({ children }) => <h2 className="text-xl font-bold text-white mb-3">{children}</h2>,
   h3: ({ children }) => <h3 className="text-lg font-bold text-white mb-2">{children}</h3>,
   p: ({ children }) => <p className="text-white mb-4">{children}</p>,
-  ul: ({ children }) => <ul className="list-disc list-inside text-white mb-4">{children}</ul>,
-  ol: ({ children }) => <ol className="list-decimal list-inside text-white mb-4">{children}</ol>,
-  li: ({ children }) => <li className="text-white mb-1">{children}</li>,
+  ul: ({ children }) => <ul className="list-disc pl-6 text-white mb-4">{children}</ul>,
+  ol: ({ children }) => <ol className="list-decimal pl-6 text-white mb-4">{children}</ol>,
+  li: ({ children }) => <li className="text-white mb-1 pl-1">{children}</li>,
   strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
   em: ({ children }) => <em className="italic text-white">{children}</em>,
 } as Components;

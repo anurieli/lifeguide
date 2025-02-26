@@ -2,11 +2,23 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  // List of public routes that don't require authentication
+  const publicRoutes = ['/', '/login', '/auth', '/about', '/guide']
+  const isPublicRoute = publicRoutes.some(route => 
+    request.nextUrl.pathname === route || 
+    request.nextUrl.pathname.startsWith('/auth/') ||
+    request.nextUrl.pathname.startsWith('/guide/')
+  )
+
+  // Create a response early with default headers
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   })
+
+  // Set cache control headers
+  response.headers.set('Cache-Control', 'no-store, max-age=0')
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,45 +30,73 @@ export async function middleware(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            })
+            request.cookies.set(name, value)
+            response.cookies.set(name, value, options)
           })
         },
       },
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  // Only protect dashboard and admin routes
-  const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard') || 
-                          request.nextUrl.pathname.startsWith('/admin')
+    // Allow access to public routes regardless of auth status
+    if (isPublicRoute) {
+      return response
+    }
 
-  // If user is not signed in and trying to access a protected route,
-  // redirect the user to /login
-  if (!user && isProtectedRoute) {
-    const redirectUrl = new URL('/login', request.url)
-    redirectUrl.searchParams.set('returnTo', request.nextUrl.pathname)
-    return NextResponse.redirect(redirectUrl)
+    // If user is not signed in and trying to access protected route,
+    // redirect to login
+    if (!user && !isPublicRoute) {
+      const redirectUrl = new URL('/login', request.url)
+      redirectUrl.searchParams.set('returnTo', request.nextUrl.pathname)
+      return NextResponse.redirect(redirectUrl)
+    }
+
+    // If user is signed in and trying to access login page,
+    // redirect to dashboard
+    if (user && request.nextUrl.pathname === '/login') {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
+    // Check for admin routes
+    if (request.nextUrl.pathname.startsWith('/admin')) {
+      const isAdmin = user?.email === 'anurieli365@gmail.com' || user?.role === 'admin'
+      if (!isAdmin) {
+        return NextResponse.redirect(new URL('/dashboard', request.url))
+      }
+    }
+
+    return response
+  } catch (error) {
+    console.error('Middleware error:', error)
+    
+    // If there's an error checking auth status and we're not on a public route,
+    // clear auth cookies and redirect to home
+    if (!isPublicRoute) {
+      const response = NextResponse.redirect(new URL('/', request.url))
+      response.cookies.delete('sb-access-token')
+      response.cookies.delete('sb-refresh-token')
+      return response
+    }
+    
+    return response
   }
-
-  // If user is signed in and the current path is /login,
-  // redirect the user to /dashboard
-  if (user && request.nextUrl.pathname === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
-  return response
 }
 
-// Specify which routes should be handled by the middleware
+// Specify which routes should be protected by the middleware
 export const config = {
   matcher: [
-    '/dashboard/:path*',
-    '/admin/:path*',
-    '/login',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 } 

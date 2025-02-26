@@ -55,7 +55,11 @@ export default function AdminDashboard() {
   const [expandedSubsection, setExpandedSubsection] = useState<string | null>(null);
   const [isAddingSectionOpen, setIsAddingSectionOpen] = useState(false);
   const [isAddingSubsectionOpen, setIsAddingSubsectionOpen] = useState(false);
+  const [isEditingSectionOpen, setIsEditingSectionOpen] = useState(false);
+  const [isEditingSubsectionOpen, setIsEditingSubsectionOpen] = useState(false);
   const [newSection, setNewSection] = useState({ title: '', description: '' });
+  const [editingSection, setEditingSection] = useState<Section | null>(null);
+  const [editingSubsection, setEditingSubsection] = useState<Subsection | null>(null);
   const [newSubsection, setNewSubsection] = useState({
     section_id: '',
     title: '',
@@ -170,6 +174,44 @@ export default function AdminDashboard() {
     await fetchBlueprintData();
   };
 
+  const handleEditSection = async () => {
+    if (!editingSection) return;
+    
+    const supabase = createClient();
+    await supabase
+      .from('guide_sections')
+      .update({
+        title: editingSection.title,
+        description: editingSection.description
+      })
+      .eq('id', editingSection.id);
+
+    setIsEditingSectionOpen(false);
+    setEditingSection(null);
+    await fetchBlueprintData();
+  };
+
+  const handleEditSubsection = async () => {
+    if (!editingSubsection) return;
+    
+    const supabase = createClient();
+    await supabase
+      .from('guide_subsections')
+      .update({
+        title: editingSubsection.title,
+        description: editingSubsection.description,
+        subdescription: editingSubsection.subdescription,
+        malleability_level: editingSubsection.malleability_level,
+        malleability_details: editingSubsection.malleability_details,
+        example: editingSubsection.example
+      })
+      .eq('id', editingSubsection.id);
+
+    setIsEditingSubsectionOpen(false);
+    setEditingSubsection(null);
+    await fetchBlueprintData();
+  };
+
   return (
     <div className="min-h-screen pt-24 px-4 md:px-8 pb-16">
       <div className="max-w-6xl mx-auto">
@@ -252,6 +294,15 @@ export default function AdminDashboard() {
                         ) : (
                           <ChevronDown className="h-5 w-5 text-white" />
                         )}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingSection(section);
+                          setIsEditingSectionOpen(true);
+                        }}
+                        className="p-2 bg-blue-500/20 rounded-full hover:bg-blue-500/40 transition-colors"
+                      >
+                        <Edit2 className="h-5 w-5 text-blue-500" />
                       </button>
                       <button
                         onClick={() => handleDeleteSection(section.id)}
@@ -395,6 +446,15 @@ export default function AdminDashboard() {
                                             )}
                                           </button>
                                           <button
+                                            onClick={() => {
+                                              setEditingSubsection(subsection);
+                                              setIsEditingSubsectionOpen(true);
+                                            }}
+                                            className="p-1.5 bg-blue-500/20 rounded-full hover:bg-blue-500/40 transition-colors"
+                                          >
+                                            <Edit2 className="h-4 w-4 text-blue-500" />
+                                          </button>
+                                          <button
                                             onClick={() => handleDeleteSubsection(subsection.id)}
                                             className="p-1.5 bg-red-500/20 rounded-full hover:bg-red-500/40 transition-colors"
                                           >
@@ -444,6 +504,121 @@ export default function AdminDashboard() {
             ))}
           </div>
         </DragDropContext>
+
+        {/* Add Edit Section Dialog */}
+        <Dialog open={isEditingSectionOpen} onOpenChange={setIsEditingSectionOpen}>
+          <DialogContent className="bg-gray-800 text-white">
+            <DialogHeader>
+              <DialogTitle>Edit Section</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label>Title</Label>
+                <Input
+                  value={editingSection?.title ?? ''}
+                  onChange={(e) => setEditingSection(prev => prev ? { ...prev, title: e.target.value } : null)}
+                  placeholder="Enter section title"
+                  className="bg-gray-700"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={editingSection?.description ?? ''}
+                  onChange={(e) => setEditingSection(prev => prev ? { ...prev, description: e.target.value } : null)}
+                  placeholder="Enter section description"
+                  className="bg-gray-700"
+                />
+              </div>
+              <button
+                onClick={handleEditSection}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Save Changes
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Edit Subsection Dialog */}
+        <Dialog open={isEditingSubsectionOpen} onOpenChange={setIsEditingSubsectionOpen}>
+          <DialogContent className="bg-gray-800 text-white">
+            <DialogHeader>
+              <DialogTitle>Edit Subsection</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label>Title</Label>
+                <Input
+                  value={editingSubsection?.title ?? ''}
+                  onChange={(e) => setEditingSubsection(prev => prev ? { ...prev, title: e.target.value } : null)}
+                  placeholder="Enter subsection title"
+                  className="bg-gray-700"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={editingSubsection?.description ?? ''}
+                  onChange={(e) => setEditingSubsection(prev => prev ? { ...prev, description: e.target.value } : null)}
+                  placeholder="Enter subsection description"
+                  className="bg-gray-700"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Subdescription</Label>
+                <Textarea
+                  value={editingSubsection?.subdescription ?? ''}
+                  onChange={(e) => setEditingSubsection(prev => prev ? { ...prev, subdescription: e.target.value } : null)}
+                  placeholder="Enter subdescription"
+                  className="bg-gray-700"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Malleability Level</Label>
+                <Select
+                  value={editingSubsection?.malleability_level ?? 'green'}
+                  onValueChange={(value: 'green' | 'yellow' | 'red') => 
+                    setEditingSubsection(prev => prev ? { ...prev, malleability_level: value } : null)
+                  }
+                >
+                  <SelectTrigger className="bg-gray-700">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-700">
+                    <SelectItem value="green">Green</SelectItem>
+                    <SelectItem value="yellow">Yellow</SelectItem>
+                    <SelectItem value="red">Red</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Malleability Details</Label>
+                <Textarea
+                  value={editingSubsection?.malleability_details ?? ''}
+                  onChange={(e) => setEditingSubsection(prev => prev ? { ...prev, malleability_details: e.target.value } : null)}
+                  placeholder="Enter malleability details"
+                  className="bg-gray-700"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Example</Label>
+                <Textarea
+                  value={editingSubsection?.example ?? ''}
+                  onChange={(e) => setEditingSubsection(prev => prev ? { ...prev, example: e.target.value } : null)}
+                  placeholder="Enter example"
+                  className="bg-gray-700"
+                />
+              </div>
+              <button
+                onClick={handleEditSubsection}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Save Changes
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

@@ -3,6 +3,15 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { motion } from 'framer-motion';
+import { HowToGuide } from '@/components/HowToGuide';
+import { Info } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import ReactMarkdown from 'react-markdown';
 
 interface Section {
   id: string;
@@ -25,12 +34,17 @@ interface Subsection {
 
 const gradientText = "bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text";
 
+const TOOLTIP_CLASSES = {
+  content: "bg-gray-900/95 backdrop-blur-sm border border-gray-800 text-white p-3 rounded-lg shadow-xl max-w-xs",
+};
+
 export default function GuidePage() {
   const [sections, setSections] = useState<Section[]>([]);
   const [subsections, setSubsections] = useState<Subsection[]>([]);
   const [expandedSubsection, setExpandedSubsection] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   useEffect(() => {
     const fetchBlueprintData = async () => {
@@ -126,15 +140,24 @@ export default function GuidePage() {
     <div className="min-h-screen pt-24 px-4 md:px-8 pb-16">
       {/* Header with explanation */}
       <div className="max-w-4xl mx-auto mb-12 text-center">
-        <h1 className={`text-4xl font-bold mb-6 ${gradientText}`}>The Life Blueprint Guide</h1>
+        <div className="flex items-center justify-center gap-4 mb-6">
+          <h1 className={`text-4xl font-bold ${gradientText}`}>The Life Blueprint Guide</h1>
+          <button
+            onClick={() => setIsHelpOpen(true)}
+            className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors text-sm"
+          >
+            How to Use
+          </button>
+        </div>
         <p className="text-gray-300 text-lg mb-8">
           This is the foundation of our platform - a comprehensive guide designed to help you understand and map out your life&apos;s journey. 
           Each section represents a crucial area of life, with specific prompts and examples to guide your self-reflection.
         </p>
         <div className="bg-white/5 rounded-xl p-6 backdrop-blur-sm border border-white/10">
           <p className="text-gray-400">
-            As you explore this guide, remember that these are example responses meant to inspire your own journey. 
-            The platform helps you create your personalized version, tailored to your unique life experiences and aspirations.
+            This is a reference guide that forms the basis of our platform. While you can use this as inspiration for your own paper-based reflection,
+            our platform provides an interactive and guided experience to help you create your personalized life blueprint.
+            The examples shown here are meant to inspire and demonstrate the kind of insights you might discover in your own journey.
           </p>
         </div>
       </div>
@@ -163,39 +186,91 @@ export default function GuidePage() {
                       onHoverEnd={() => setExpandedSubsection(null)}
                     >
                       <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="text-white font-medium mb-2">{subsection.title}</h3>
-                          <p className="text-gray-400">{subsection.description}</p>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-white font-medium">{subsection.title}</h3>
+                          {subsection.subdescription && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Info className="h-4 w-4 text-gray-400" />
+                                </TooltipTrigger>
+                                <TooltipContent className={TOOLTIP_CLASSES.content}>
+                                  <p>{subsection.subdescription}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                         </div>
-                        <div className={`px-2 py-1 rounded-full text-xs ${
-                          subsection.malleability_level === 'green' ? 'bg-green-500/20 text-green-400' :
-                          subsection.malleability_level === 'yellow' ? 'bg-yellow-500/20 text-yellow-400' :
-                          'bg-red-500/20 text-red-400'
-                        }`}>
-                          {subsection.malleability_level}
+                        <div>
+                          {subsection.malleability_details ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <div className={`px-2 py-1 rounded-full text-xs ${
+                                    subsection.malleability_level === 'green' ? 'bg-green-500/20 text-green-400' :
+                                    subsection.malleability_level === 'yellow' ? 'bg-yellow-500/20 text-yellow-400' :
+                                    'bg-red-500/20 text-red-400'
+                                  }`}>
+                                    {subsection.malleability_level}
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent className={TOOLTIP_CLASSES.content}>
+                                  <p>{subsection.malleability_details}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            <div className={`px-2 py-1 rounded-full text-xs ${
+                              subsection.malleability_level === 'green' ? 'bg-green-500/20 text-green-400' :
+                              subsection.malleability_level === 'yellow' ? 'bg-yellow-500/20 text-yellow-400' :
+                              'bg-red-500/20 text-red-400'
+                            }`}>
+                              {subsection.malleability_level}
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      {expandedSubsection === subsection.id && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          className="mt-4 pt-4 border-t border-white/10 space-y-3"
-                        >
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-300 mb-1">Subdescription</h4>
-                            <p className="text-sm text-gray-400">{subsection.subdescription}</p>
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-300 mb-1">Malleability Details</h4>
-                            <p className="text-sm text-gray-400">{subsection.malleability_details}</p>
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-300 mb-1">Example</h4>
-                            <p className="text-sm text-gray-400">{subsection.example}</p>
-                          </div>
-                        </motion.div>
-                      )}
+                      <div className="mt-4 space-y-4">
+                        <div className="prose prose-invert max-w-none">
+                          <ReactMarkdown
+                            components={{
+                              p: ({ children }) => <p className="text-gray-400">{children}</p>,
+                              strong: ({ children }) => <strong className="text-white">{children}</strong>,
+                              em: ({ children }) => <em className="text-gray-300">{children}</em>,
+                              ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
+                              ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
+                              li: ({ children }) => <li className="text-gray-400">{children}</li>
+                            }}
+                          >
+                            {subsection.description}
+                          </ReactMarkdown>
+                        </div>
+
+                        {expandedSubsection === subsection.id && subsection.example && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            className="pt-4 border-t border-white/10"
+                          >
+                            <h4 className="text-sm font-medium text-gray-300 mb-2">Example</h4>
+                            <div className="prose prose-invert max-w-none">
+                              <ReactMarkdown
+                                components={{
+                                  p: ({ children }) => <p className="text-gray-400">{children}</p>,
+                                  strong: ({ children }) => <strong className="text-white">{children}</strong>,
+                                  em: ({ children }) => <em className="text-gray-300">{children}</em>,
+                                  ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
+                                  ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
+                                  li: ({ children }) => <li className="text-gray-400">{children}</li>
+                                }}
+                              >
+                                {subsection.example}
+                              </ReactMarkdown>
+                            </div>
+                          </motion.div>
+                        )}
+                      </div>
                     </motion.div>
                   ))}
               </div>
@@ -203,6 +278,14 @@ export default function GuidePage() {
           </motion.div>
         ))}
       </div>
+
+      {/* How To Guide Dialog */}
+      <HowToGuide 
+        isOpen={isHelpOpen} 
+        onOpenChange={setIsHelpOpen} 
+        showButton={false} 
+        displayMode="dialog"
+      />
     </div>
   );
 } 

@@ -154,7 +154,7 @@ export default function DashboardPage() {
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
               className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/80 rounded-lg hover:bg-gray-700 transition-colors"
             >
-              <span className="text-gray-400 text-sm">{isSidebarCollapsed ? 'Expand' : 'Collapse'} Sidebar</span>
+              <span className="text-gray-400 text-sm">{isSidebarCollapsed ? '' : ''} </span>
               {isSidebarCollapsed ? (
                 <ChevronRight className="h-4 w-4 text-gray-400" />
               ) : (
@@ -452,6 +452,14 @@ function EditorMode({ onClose }: { onClose: () => void }) {
   const [hasUncommittedChanges, setHasUncommittedChanges] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+
+  useEffect(() => {
+    const hasSeenEditor = localStorage.getItem('hasSeenEditor');
+    if (!hasSeenEditor) {
+      setIsHelpOpen(true);
+      localStorage.setItem('hasSeenEditor', 'true');
+    }
+  }, []);
 
   useEffect(() => {
     fetchBlueprintData();
@@ -1423,7 +1431,12 @@ function EditorMode({ onClose }: { onClose: () => void }) {
       </Dialog>
 
       {/* Add HowToGuide Dialog */}
-      <HowToGuide isOpen={isHelpOpen} onOpenChange={setIsHelpOpen} showButton={false} />
+      <HowToGuide
+        isOpen={isHelpOpen}
+        onOpenChange={setIsHelpOpen}
+        showButton={false}
+        displayMode="dialog"
+      />
     </div>
   );
 } 

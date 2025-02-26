@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { HowToGuide } from '@/components/HowToGuide';
 
 // Default how-to content
 const DEFAULT_HOW_TO_CONTENT = `# How to Use the Blueprint
@@ -52,8 +53,6 @@ export default function AdminDashboard() {
   const [subsections, setSubsections] = useState<Subsection[]>([]);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [expandedSubsection, setExpandedSubsection] = useState<string | null>(null);
-  const [howToContent, setHowToContent] = useState(DEFAULT_HOW_TO_CONTENT);
-  const [isEditingHowTo, setIsEditingHowTo] = useState(false);
   const [isAddingSectionOpen, setIsAddingSectionOpen] = useState(false);
   const [isAddingSubsectionOpen, setIsAddingSubsectionOpen] = useState(false);
   const [newSection, setNewSection] = useState({ title: '', description: '' });
@@ -182,29 +181,8 @@ export default function AdminDashboard() {
         <div className="bg-white/5 rounded-xl p-6 backdrop-blur-sm border border-white/10 mb-8">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-semibold text-white">How-To Guide</h2>
-            <button
-              onClick={() => setIsEditingHowTo(!isEditingHowTo)}
-              className="p-2 bg-gray-700 rounded-full hover:bg-gray-600 transition-colors"
-            >
-              {isEditingHowTo ? (
-                <Check className="h-5 w-5 text-white" />
-              ) : (
-                <Edit2 className="h-5 w-5 text-white" />
-              )}
-            </button>
           </div>
-          {isEditingHowTo ? (
-            <Textarea
-              value={howToContent}
-              onChange={(e) => setHowToContent(e.target.value)}
-              className="w-full h-64 bg-gray-800 text-white rounded-lg p-4"
-              placeholder="Enter markdown content..."
-            />
-          ) : (
-            <div className="prose prose-invert max-w-none">
-              <ReactMarkdown>{howToContent}</ReactMarkdown>
-            </div>
-          )}
+          <HowToGuide isEditable={true} showButton={false} displayMode="inline" />
         </div>
 
         {/* Add Section Button */}

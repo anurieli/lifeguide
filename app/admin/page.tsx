@@ -236,8 +236,8 @@ export default function AdminDashboard() {
                 Add Section
               </button>
             </DialogTrigger>
-            <DialogContent className="bg-gray-800 text-white">
-              <DialogHeader>
+            <DialogContent className="bg-gray-800 text-white max-h-[90vh] overflow-y-auto">
+              <DialogHeader className="sticky top-0 bg-gray-800 z-10 py-4 border-b border-gray-700">
                 <DialogTitle>Add New Section</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-4">
@@ -259,12 +259,14 @@ export default function AdminDashboard() {
                     className="bg-gray-700"
                   />
                 </div>
-                <button
-                  onClick={handleAddSection}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Add Section
-                </button>
+                <div className="sticky bottom-0 bg-gray-800 py-4 border-t border-gray-700">
+                  <button
+                    onClick={handleAddSection}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Add Section
+                  </button>
+                </div>
               </div>
             </DialogContent>
           </Dialog>
@@ -326,8 +328,8 @@ export default function AdminDashboard() {
                               Add Subsection
                             </button>
                           </DialogTrigger>
-                          <DialogContent className="bg-gray-800 text-white">
-                            <DialogHeader>
+                          <DialogContent className="bg-gray-800 text-white max-h-[90vh] overflow-y-auto">
+                            <DialogHeader className="sticky top-0 bg-gray-800 z-10 py-4 border-b border-gray-700">
                               <DialogTitle>Add New Subsection</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4 pt-4">
@@ -394,12 +396,14 @@ export default function AdminDashboard() {
                                   className="bg-gray-700"
                                 />
                               </div>
-                              <button
-                                onClick={handleAddSubsection}
-                                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                              >
-                                Add Subsection
-                              </button>
+                              <div className="sticky bottom-0 bg-gray-800 py-4 border-t border-gray-700">
+                                <button
+                                  onClick={handleAddSubsection}
+                                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                  Add Subsection
+                                </button>
+                              </div>
                             </div>
                           </DialogContent>
                         </Dialog>
@@ -507,8 +511,8 @@ export default function AdminDashboard() {
 
         {/* Add Edit Section Dialog */}
         <Dialog open={isEditingSectionOpen} onOpenChange={setIsEditingSectionOpen}>
-          <DialogContent className="bg-gray-800 text-white">
-            <DialogHeader>
+          <DialogContent className="bg-gray-800 text-white max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="sticky top-0 bg-gray-800 z-10 py-4 border-b border-gray-700">
               <DialogTitle>Edit Section</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-4">
@@ -530,20 +534,22 @@ export default function AdminDashboard() {
                   className="bg-gray-700"
                 />
               </div>
-              <button
-                onClick={handleEditSection}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Save Changes
-              </button>
+              <div className="sticky bottom-0 bg-gray-800 py-4 border-t border-gray-700">
+                <button
+                  onClick={handleEditSection}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Save Changes
+                </button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
 
         {/* Add Edit Subsection Dialog */}
         <Dialog open={isEditingSubsectionOpen} onOpenChange={setIsEditingSubsectionOpen}>
-          <DialogContent className="bg-gray-800 text-white">
-            <DialogHeader>
+          <DialogContent className="bg-gray-800 text-white max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="sticky top-0 bg-gray-800 z-10 py-4 border-b border-gray-700">
               <DialogTitle>Edit Subsection</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-4">
@@ -610,12 +616,14 @@ export default function AdminDashboard() {
                   className="bg-gray-700"
                 />
               </div>
-              <button
-                onClick={handleEditSubsection}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Save Changes
-              </button>
+              <div className="sticky bottom-0 bg-gray-800 py-4 border-t border-gray-700">
+                <button
+                  onClick={handleEditSubsection}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Save Changes
+                </button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>

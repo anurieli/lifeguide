@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useEffect, useState } from 'react';
-import { AuthButton } from '@/components/AuthButton';
-import type { User } from '@supabase/supabase-js';
+import AuthButton from '@/components/AuthButton';
+import type { User, Session } from '@supabase/supabase-js';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -40,7 +40,7 @@ export default function Navbar() {
     initializeAuth();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string, session: Session | null) => {
       setUser(session?.user ?? null);
       await checkAdminStatus(session?.user?.email);
     });

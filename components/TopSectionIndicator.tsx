@@ -32,7 +32,7 @@ export default function TopSectionIndicator() {
         });
       },
       {
-        rootMargin: '-150% 0px -150% 0px' // Adjusted rootMargin to change the width at which the icons appear
+        rootMargin: '-50% 0px -50% 0px'
       }
     );
 

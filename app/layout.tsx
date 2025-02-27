@@ -1,15 +1,20 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { AuthProvider } from '@/contexts/AuthContext'
+import { AuthProvider } from '@/context/AuthProvider'
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
+import { Toaster } from '@/components/ui/sonner'
+import { DebugLayout } from './debug-layout'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'LifeGuide - The Blueprint for your life',
-  description: 'A back-to-basics, interactive experience geared to help you get your life on track.',
+  title: 'LifeGuide',
+  description: 'Your personal guide to life on-the-go',
+  icons: {
+    icon: '/logo.svg',
+  },
 }
 
 export default function RootLayout({
@@ -21,11 +26,14 @@ export default function RootLayout({
     <html lang="en" className={inter.className}>
       <body className="min-h-screen bg-gray-900 flex flex-col">
         <AuthProvider>
-          <Navbar />
-          <main className="flex-1">
-            {children}
-          </main>
-          <Footer />
+          <DebugLayout>
+            <Navbar />
+            <main className="flex-1">
+              {children}
+            </main>
+            <Footer />
+            <Toaster />
+          </DebugLayout>
         </AuthProvider>
       </body>
     </html>

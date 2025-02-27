@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { Edit2, Trash2, ChevronDown, ChevronUp, Check, Plus } from 'lucide-react';
+import { Edit2, Trash2, ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -11,23 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { HowToGuide } from '@/components/HowToGuide';
-
-// Default how-to content
-const DEFAULT_HOW_TO_CONTENT = `# How to Use the Blueprint
-
-The Blueprint is a guide that helps you understand and navigate through different aspects of your life. Here's how to use it:
-
-1. **Browse Sections**: Each section represents a major life area
-2. **Explore Subsections**: Within each section, you'll find specific topics
-3. **Understand Malleability**: The color indicators show how changeable each aspect is:
-   - 🟢 Green: Highly malleable
-   - 🟡 Yellow: Moderately malleable
-   - 🔴 Red: Less malleable
-
-4. **Read Examples**: Each subsection includes practical examples
-5. **Take Action**: Use the insights to make informed decisions
-
-Remember, this is a guide, not a strict rulebook. Adapt it to your unique situation.`;
+import { FeatureManager } from '@/components/FeatureManager';
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Section {
   id: string;
@@ -219,12 +205,20 @@ export default function AdminDashboard() {
           Blueprint Management
         </h1>
 
-        {/* How-To Guide Editor */}
-        <div className="bg-white/5 rounded-xl p-6 backdrop-blur-sm border border-white/10 mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-semibold text-white">How-To Guide</h2>
+        {/* Admin Tools Section */}
+        <div className="flex flex-col md:flex-row gap-8 mb-8">
+          {/* How-To Guide Editor */}
+          <div className="bg-white/5 rounded-xl p-6 backdrop-blur-sm border border-white/10 w-full md:w-1/2">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-semibold text-white">How-To Guide</h2>
+            </div>
+            <HowToGuide isEditable={true} showButton={false} displayMode="inline" />
           </div>
-          <HowToGuide isEditable={true} showButton={false} displayMode="inline" />
+
+          {/* Feature Manager */}
+          <div className="w-full md:w-1/2">
+            <FeatureManager />
+          </div>
         </div>
 
         {/* Add Section Button */}
@@ -284,7 +278,20 @@ export default function AdminDashboard() {
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="text-xl font-semibold text-white">{section.title}</h3>
-                      <p className="text-gray-400 mt-1">{section.description}</p>
+                      <div className="prose prose-invert max-w-none">
+                        <ReactMarkdown
+                          components={{
+                            p: ({ children }) => <p className="text-gray-400 mt-1">{children}</p>,
+                            strong: ({ children }) => <strong className="text-white">{children}</strong>,
+                            em: ({ children }) => <em className="text-gray-300">{children}</em>,
+                            ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
+                            li: ({ children }) => <li className="text-gray-400">{children}</li>
+                          }}
+                        >
+                          {section.description}
+                        </ReactMarkdown>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -434,7 +441,20 @@ export default function AdminDashboard() {
                                       <div className="flex justify-between items-start">
                                         <div>
                                           <h4 className="text-white font-medium">{subsection.title}</h4>
-                                          <p className="text-gray-400 mt-1">{subsection.description}</p>
+                                          <div className="prose prose-invert max-w-none">
+                                            <ReactMarkdown
+                                              components={{
+                                                p: ({ children }) => <p className="text-gray-400 mt-1">{children}</p>,
+                                                strong: ({ children }) => <strong className="text-white">{children}</strong>,
+                                                em: ({ children }) => <em className="text-gray-300">{children}</em>,
+                                                ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
+                                                ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
+                                                li: ({ children }) => <li className="text-gray-400">{children}</li>
+                                              }}
+                                            >
+                                              {subsection.description}
+                                            </ReactMarkdown>
+                                          </div>
                                         </div>
                                         <div className="flex gap-2">
                                           <button
@@ -471,7 +491,20 @@ export default function AdminDashboard() {
                                         <div className="mt-4 space-y-3 text-sm">
                                           <div>
                                             <span className="text-gray-300 font-medium">Subdescription:</span>
-                                            <p className="text-gray-400 mt-1">{subsection.subdescription}</p>
+                                            <div className="prose prose-invert max-w-none">
+                                              <ReactMarkdown
+                                                components={{
+                                                  p: ({ children }) => <p className="text-gray-400 mt-1">{children}</p>,
+                                                  strong: ({ children }) => <strong className="text-white">{children}</strong>,
+                                                  em: ({ children }) => <em className="text-gray-300">{children}</em>,
+                                                  ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
+                                                  ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
+                                                  li: ({ children }) => <li className="text-gray-400">{children}</li>
+                                                }}
+                                              >
+                                                {subsection.subdescription}
+                                              </ReactMarkdown>
+                                            </div>
                                           </div>
                                           <div>
                                             <span className="text-gray-300 font-medium">Malleability Level:</span>
@@ -485,11 +518,37 @@ export default function AdminDashboard() {
                                           </div>
                                           <div>
                                             <span className="text-gray-300 font-medium">Malleability Details:</span>
-                                            <p className="text-gray-400 mt-1">{subsection.malleability_details}</p>
+                                            <div className="prose prose-invert max-w-none">
+                                              <ReactMarkdown
+                                                components={{
+                                                  p: ({ children }) => <p className="text-gray-400 mt-1">{children}</p>,
+                                                  strong: ({ children }) => <strong className="text-white">{children}</strong>,
+                                                  em: ({ children }) => <em className="text-gray-300">{children}</em>,
+                                                  ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
+                                                  ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
+                                                  li: ({ children }) => <li className="text-gray-400">{children}</li>
+                                                }}
+                                              >
+                                                {subsection.malleability_details}
+                                              </ReactMarkdown>
+                                            </div>
                                           </div>
                                           <div>
                                             <span className="text-gray-300 font-medium">Example:</span>
-                                            <p className="text-gray-400 mt-1">{subsection.example}</p>
+                                            <div className="prose prose-invert max-w-none">
+                                              <ReactMarkdown
+                                                components={{
+                                                  p: ({ children }) => <p className="text-gray-400 mt-1">{children}</p>,
+                                                  strong: ({ children }) => <strong className="text-white">{children}</strong>,
+                                                  em: ({ children }) => <em className="text-gray-300">{children}</em>,
+                                                  ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
+                                                  ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
+                                                  li: ({ children }) => <li className="text-gray-400">{children}</li>
+                                                }}
+                                              >
+                                                {subsection.example}
+                                              </ReactMarkdown>
+                                            </div>
                                           </div>
                                         </div>
                                       )}

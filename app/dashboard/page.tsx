@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Settings, CheckSquare, X, Edit, HelpCircle, ChevronRight, Bookmark, ChevronDown, ChevronUp, Info, Lock, Check, Trash2, AlertTriangle, Lightbulb, ChevronLeft, RotateCcw } from 'lucide-react';
+import { Home, Settings, CheckSquare, Edit, HelpCircle, ChevronRight, Bookmark, ChevronDown, ChevronUp, Info, Lock, Check, Trash2, Lightbulb, ChevronLeft, RotateCcw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { createClient } from '@/lib/supabase/client';
-import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
   TooltipContent,
@@ -15,6 +14,9 @@ import {
 import { cn } from "@/lib/utils";
 import { HowToGuide } from '@/components/HowToGuide';
 import RichTextInput from "@/components/RichTextInput";
+import { Button } from "@/components/ui/button";
+import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
 
 interface Section {
   id: string;
@@ -195,8 +197,8 @@ export default function DashboardPage() {
               <Home className="h-5 w-5" />
               {!isSidebarCollapsed && "Home"}
             </button>
-            <button
-              onClick={() => setSelectedPage('actionables')}
+            <Link
+              href="/dashboard/actionables"
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors w-full",
                 selectedPage === 'actionables'
@@ -206,9 +208,9 @@ export default function DashboardPage() {
             >
               <CheckSquare className="h-5 w-5" />
               {!isSidebarCollapsed && "Actionables"}
-            </button>
-            <button
-              onClick={() => setSelectedPage('settings')}
+            </Link>
+            <Link
+              href="/dashboard/settings"
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors w-full",
                 selectedPage === 'settings'
@@ -218,7 +220,7 @@ export default function DashboardPage() {
             >
               <Settings className="h-5 w-5" />
               {!isSidebarCollapsed && "Settings"}
-            </button>
+            </Link>
           </nav>
         </div>
       </div>
@@ -242,7 +244,7 @@ export default function DashboardPage() {
               </h2>
               <div className="space-y-4 text-gray-300">
                 <p>
-                  This is your personal space to create and manage your life blueprint. Here's how it works:
+                  This is your personal space to create and manage your life blueprint. Here&apos;s how it works:
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-white/5 rounded-lg p-4">
@@ -259,7 +261,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <p className="text-sm">
-                  Start by clicking the "Editor" button to begin creating your blueprint. You can switch between viewer and editor modes at any time.
+                  Start by clicking the &quot;Editor&quot; button to begin creating your blueprint. You can switch between viewer and editor modes at any time.
                 </p>
               </div>
             </div>
@@ -351,7 +353,7 @@ const ViewerMode = ({ onSwitchToEdit }: { onSwitchToEdit: () => void }) => {
       {completedSections.length === 0 ? (
         <div className="bg-white/5 rounded-xl backdrop-blur-sm border border-white/10 p-6">
           <p className="text-gray-400">
-            You haven't completed any sections yet. Start building your blueprint by clicking the "Editor" button.
+            You haven&apos;t completed any sections yet. Start building your blueprint by clicking the &quot;Editor&quot; button.
           </p>
         </div>
       ) : (
@@ -394,7 +396,7 @@ const ViewerMode = ({ onSwitchToEdit }: { onSwitchToEdit: () => void }) => {
             <div>
               <h3 className="text-lg font-medium text-blue-400 mb-2">Continue Your Journey</h3>
               <p className="text-gray-400 mb-4">
-                Your next section is "{nextSection.title}". Keep building your blueprint to unlock more insights.
+                Your next section is &quot;{nextSection.title}&quot;. Keep building your blueprint to unlock more insights.
               </p>
               <button
                 onClick={onSwitchToEdit}
@@ -414,7 +416,7 @@ const ViewerMode = ({ onSwitchToEdit }: { onSwitchToEdit: () => void }) => {
             <div>
               <h3 className="text-lg font-medium text-green-400 mb-2">All Sections Completed!</h3>
               <p className="text-gray-400">
-                Congratulations! You've completed all sections of your blueprint... for now!
+                Congratulations! You&apos;ve completed all sections of your blueprint... for now!
               </p>
             </div>
           </div>
@@ -892,6 +894,8 @@ function EditorMode({ onClose }: { onClose: () => void }) {
   };
 
   const commitSection = (sectionId: string) => {
+    if (!canCommitSection(sectionId)) return;
+    
     const sectionSubsections = subsections.filter(sub => sub.section_id === sectionId);
     sectionSubsections.forEach(sub => {
       if (canCommitSubsection(sub.id)) {
@@ -1120,7 +1124,20 @@ function EditorMode({ onClose }: { onClose: () => void }) {
                                       <Info className="h-4 w-4 text-gray-400" />
                                     </TooltipTrigger>
                                     <TooltipContent className={TOOLTIP_CLASSES.content}>
-                                      <p className="max-w-xs">{subsection.subdescription}</p>
+                                      <div className="prose prose-invert max-w-xs">
+                                        <ReactMarkdown
+                                          components={{
+                                            p: ({ children }) => <p className="text-gray-400 mt-1">{children}</p>,
+                                            strong: ({ children }) => <strong className="text-white">{children}</strong>,
+                                            em: ({ children }) => <em className="text-gray-300">{children}</em>,
+                                            ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
+                                            ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
+                                            li: ({ children }) => <li className="text-gray-400">{children}</li>
+                                          }}
+                                        >
+                                          {subsection.subdescription}
+                                        </ReactMarkdown>
+                                      </div>
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
@@ -1171,8 +1188,21 @@ function EditorMode({ onClose }: { onClose: () => void }) {
                             </div>
 
                             <div className="space-y-3 text-sm">
-                              <div className="flex items-center gap-2">
-                                <p className="text-gray-400 mt-1">{subsection.description}</p>
+                              <div className="flex items-start gap-2">
+                                <div className="flex-1 prose prose-invert max-w-none">
+                                  <ReactMarkdown
+                                    components={{
+                                      p: ({ children }) => <p className="text-gray-400 mt-1">{children}</p>,
+                                      strong: ({ children }) => <strong className="text-white">{children}</strong>,
+                                      em: ({ children }) => <em className="text-gray-300">{children}</em>,
+                                      ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
+                                      ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
+                                      li: ({ children }) => <li className="text-gray-400">{children}</li>
+                                    }}
+                                  >
+                                    {subsection.description}
+                                  </ReactMarkdown>
+                                </div>
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger>
@@ -1187,7 +1217,11 @@ function EditorMode({ onClose }: { onClose: () => void }) {
                                       </span>
                                     </TooltipTrigger>
                                     <TooltipContent className={TOOLTIP_CLASSES.content}>
-                                      <p className="max-w-xs">{subsection.malleability_details}</p>
+                                      <div className="prose prose-invert max-w-xs">
+                                        <ReactMarkdown>
+                                          {subsection.malleability_details}
+                                        </ReactMarkdown>
+                                      </div>
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
@@ -1202,7 +1236,20 @@ function EditorMode({ onClose }: { onClose: () => void }) {
                                 </button>
                                 {expandedExamples.has(subsection.id) && (
                                   <div className="mt-2 p-3 bg-gray-900/80 rounded-lg border border-gray-800">
-                                    <p className="text-gray-400">{subsection.example}</p>
+                                    <div className="prose prose-invert max-w-none">
+                                      <ReactMarkdown
+                                        components={{
+                                          p: ({ children }) => <p className="text-gray-400">{children}</p>,
+                                          strong: ({ children }) => <strong className="text-white">{children}</strong>,
+                                          em: ({ children }) => <em className="text-gray-300">{children}</em>,
+                                          ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
+                                          ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
+                                          li: ({ children }) => <li className="text-gray-400">{children}</li>
+                                        }}
+                                      >
+                                        {subsection.example}
+                                      </ReactMarkdown>
+                                    </div>
                                   </div>
                                 )}
                               </div>

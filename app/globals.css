@@ -330,3 +330,14 @@
   background-color: rgba(31, 41, 55, 0.5);
   font-weight: 600;
 }
+
+/* Add these animation keyframes to your existing globals.css */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease forwards;
+}

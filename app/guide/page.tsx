@@ -1,17 +1,9 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { motion } from 'framer-motion';
-import { HowToGuide } from '@/components/HowToGuide';
-import { Info } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { createClient } from '@/utils/supabase/server'
 import ReactMarkdown from 'react-markdown';
+import { HowToGuide } from '@/components/HowToGuide';
+import { Info, HelpCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import ExpandableExample from '@/components/ExpandableExample';
 
 interface Section {
   id: string;
@@ -32,260 +24,242 @@ interface Subsection {
   order_position: number;
 }
 
-const gradientText = "bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text";
-
-const TOOLTIP_CLASSES = {
-  content: "bg-gray-900/95 backdrop-blur-sm border border-gray-800 text-white p-3 rounded-lg shadow-xl max-w-xs",
+// Helper function to get color based on malleability level
+const getMalleabilityColor = (level: 'green' | 'yellow' | 'red') => {
+  switch (level) {
+    case 'green':
+      return {
+        bg: 'bg-green-500/10',
+        border: 'border-green-500/30',
+        text: 'text-green-400',
+        label: 'Highly Malleable'
+      };
+    case 'yellow':
+      return {
+        bg: 'bg-yellow-500/10',
+        border: 'border-yellow-500/30',
+        text: 'text-yellow-400',
+        label: 'Moderately Malleable'
+      };
+    case 'red':
+      return {
+        bg: 'bg-red-500/10',
+        border: 'border-red-500/30',
+        text: 'text-red-400',
+        label: 'Minimally Malleable'
+      };
+    default:
+      return {
+        bg: 'bg-gray-500/10',
+        border: 'border-gray-500/30',
+        text: 'text-gray-400',
+        label: 'Unknown'
+      };
+  }
 };
 
-export default function GuidePage() {
-  const [sections, setSections] = useState<Section[]>([]);
-  const [subsections, setSubsections] = useState<Subsection[]>([]);
-  const [expandedSubsection, setExpandedSubsection] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
-
-  useEffect(() => {
-    const fetchBlueprintData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const supabase = createClient();
-
-        const [sectionsResponse, subsectionsResponse] = await Promise.all([
-          supabase.from('guide_sections').select('*').order('order_position'),
-          supabase.from('guide_subsections').select('*').order('order_position')
-        ]);
-
-        if (sectionsResponse.error) throw sectionsResponse.error;
-        if (subsectionsResponse.error) throw subsectionsResponse.error;
-
-        if (sectionsResponse.data) {
-          setSections(sectionsResponse.data.map((section: { 
-            id: string;
-            title: string;
-            description: string;
-            order_position: number;
-          }) => ({
-            id: section.id,
-            title: section.title,
-            description: section.description,
-            order_position: section.order_position
-          })));
-        }
-
-        if (subsectionsResponse.data) {
-          setSubsections(subsectionsResponse.data.map((subsection: {
-            id: string;
-            section_id: string;
-            title: string;
-            description: string;
-            subdescription: string;
-            malleability_level: 'green' | 'yellow' | 'red';
-            malleability_details: string;
-            example: string;
-            order_position: number;
-          }) => ({
-            id: subsection.id,
-            section_id: subsection.section_id,
-            title: subsection.title,
-            description: subsection.description,
-            subdescription: subsection.subdescription,
-            malleability_level: subsection.malleability_level,
-            malleability_details: subsection.malleability_details,
-            example: subsection.example,
-            order_position: subsection.order_position
-          })));
-        }
-      } catch (err) {
-        console.error('Error fetching blueprint data:', err);
-        setError('Failed to load guide data. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBlueprintData();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen pt-24 px-4 md:px-8 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading guide...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen pt-24 px-4 md:px-8 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-400 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen pt-24 px-4 md:px-8 pb-16">
-      {/* Header with explanation */}
-      <div className="max-w-4xl mx-auto mb-12 text-center">
-        <div className="flex items-center justify-center gap-4 mb-6">
-          <h1 className={`text-4xl font-bold ${gradientText}`}>The Life Blueprint Guide</h1>
-          <button
-            onClick={() => setIsHelpOpen(true)}
-            className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors text-sm"
-          >
-            How to Use
-          </button>
-        </div>
-        <p className="text-gray-300 text-lg mb-8">
-          This is the foundation of our platform - a comprehensive guide designed to help you understand and map out your life&apos;s journey. 
-          Each section represents a crucial area of life, with specific prompts and examples to guide your self-reflection.
-        </p>
-        <div className="bg-white/5 rounded-xl p-6 backdrop-blur-sm border border-white/10">
-          <p className="text-gray-400">
-            This is a reference guide that forms the basis of our platform. While you can use this as inspiration for your own paper-based reflection,
-            our platform provides an interactive and guided experience to help you create your personalized life blueprint.
-            The examples shown here are meant to inspire and demonstrate the kind of insights you might discover in your own journey.
-          </p>
-        </div>
-      </div>
-
-      {/* Blueprint Sections */}
-      <div className="max-w-4xl mx-auto space-y-12">
-        {sections.map((section) => (
-          <motion.div
-            key={section.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white/5 rounded-xl overflow-hidden backdrop-blur-sm border border-white/10"
-          >
-            <div className="p-6">
-              <h2 className="text-2xl font-semibold text-white mb-3">{section.title}</h2>
-              <p className="text-gray-400 mb-6">{section.description}</p>
-
-              <div className="space-y-4">
-                {subsections
-                  .filter((sub) => sub.section_id === section.id)
-                  .map((subsection) => (
-                    <motion.div
-                      key={subsection.id}
-                      className="group relative bg-gray-800/50 rounded-lg p-4 border border-white/10 transition-all duration-300 hover:bg-gray-800/70"
-                      onHoverStart={() => setExpandedSubsection(subsection.id)}
-                      onHoverEnd={() => setExpandedSubsection(null)}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-white font-medium">{subsection.title}</h3>
-                          {subsection.subdescription && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <Info className="h-4 w-4 text-gray-400" />
-                                </TooltipTrigger>
-                                <TooltipContent className={TOOLTIP_CLASSES.content}>
-                                  <p>{subsection.subdescription}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </div>
-                        <div>
-                          {subsection.malleability_details ? (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <div className={`px-2 py-1 rounded-full text-xs ${
-                                    subsection.malleability_level === 'green' ? 'bg-green-500/20 text-green-400' :
-                                    subsection.malleability_level === 'yellow' ? 'bg-yellow-500/20 text-yellow-400' :
-                                    'bg-red-500/20 text-red-400'
-                                  }`}>
-                                    {subsection.malleability_level}
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent className={TOOLTIP_CLASSES.content}>
-                                  <p>{subsection.malleability_details}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          ) : (
-                            <div className={`px-2 py-1 rounded-full text-xs ${
-                              subsection.malleability_level === 'green' ? 'bg-green-500/20 text-green-400' :
-                              subsection.malleability_level === 'yellow' ? 'bg-yellow-500/20 text-yellow-400' :
-                              'bg-red-500/20 text-red-400'
-                            }`}>
-                              {subsection.malleability_level}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="mt-4 space-y-4">
-                        <div className="prose prose-invert max-w-none">
-                          <ReactMarkdown
-                            components={{
-                              p: ({ children }) => <p className="text-gray-400">{children}</p>,
-                              strong: ({ children }) => <strong className="text-white">{children}</strong>,
-                              em: ({ children }) => <em className="text-gray-300">{children}</em>,
-                              ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
-                              ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
-                              li: ({ children }) => <li className="text-gray-400">{children}</li>
-                            }}
-                          >
-                            {subsection.description}
-                          </ReactMarkdown>
-                        </div>
-
-                        {expandedSubsection === subsection.id && subsection.example && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            className="pt-4 border-t border-white/10"
-                          >
-                            <h4 className="text-sm font-medium text-gray-300 mb-2">Example</h4>
-                            <div className="prose prose-invert max-w-none">
-                              <ReactMarkdown
-                                components={{
-                                  p: ({ children }) => <p className="text-gray-400">{children}</p>,
-                                  strong: ({ children }) => <strong className="text-white">{children}</strong>,
-                                  em: ({ children }) => <em className="text-gray-300">{children}</em>,
-                                  ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
-                                  ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
-                                  li: ({ children }) => <li className="text-gray-400">{children}</li>
-                                }}
-                              >
-                                {subsection.example}
-                              </ReactMarkdown>
-                            </div>
-                          </motion.div>
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* How To Guide Dialog */}
-      <HowToGuide 
-        isOpen={isHelpOpen} 
-        onOpenChange={setIsHelpOpen} 
-        showButton={false} 
-        displayMode="dialog"
-      />
-    </div>
+export default async function GuidePage() {
+  // Fetch data from Supabase
+  const supabase = await createClient();
+  
+  // Set 10 second timeout for each fetch
+  const timeout = new Promise<never>((_, reject) => 
+    setTimeout(() => reject(new Error('Guide data fetch timeout')), 10000)
   );
+  
+  try {
+    console.log('Fetching guide data');
+    
+    // Create promises for fetching sections and subsections
+    const sectionsPromise = supabase
+      .from('guide_sections')
+      .select('*')
+      .order('order_position');
+      
+    const subsectionsPromise = supabase
+      .from('guide_subsections')
+      .select('*')
+      .order('order_position');
+    
+    // Use Promise.race with timeout to fetch both datasets
+    const [sectionsResponse, subsectionsResponse] = await Promise.all([
+      Promise.race([sectionsPromise, timeout]),
+      Promise.race([subsectionsPromise, timeout])
+    ]);
+    
+    if (sectionsResponse.error) {
+      throw new Error(`Error fetching sections: ${sectionsResponse.error.message}`);
+    }
+    
+    if (subsectionsResponse.error) {
+      throw new Error(`Error fetching subsections: ${subsectionsResponse.error.message}`);
+    }
+    
+    const sections: Section[] = sectionsResponse.data || [];
+    const subsections: Subsection[] = subsectionsResponse.data || [];
+    
+    console.log(`Guide data fetched successfully: ${sections.length} sections, ${subsections.length} subsections`);
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white pt-16 px-4 sm:px-6 lg:px-8">
+        {/* Top-Level Container */}
+        <div className="max-w-4xl mx-auto">
+          {/* Header Section */}
+          <div className="text-center mb-10">
+            <div className="flex justify-center items-center gap-4 mb-6">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
+                The Life Blueprint Guide
+              </h1>
+              <HowToGuide displayMode="dialog" showButton={true} buttonPosition="inline" />
+            </div>
+            
+            {/* Intro Paragraph */}
+            <p className="text-gray-300 max-w-3xl mx-auto mb-8">
+              This guide outlines the key areas of your life blueprint. Each section represents a fundamental aspect of your life that contributes to your overall well-being and success.
+            </p>
+            
+            {/* Context Box */}
+            <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 mb-10">
+              <p className="text-gray-300 text-sm">
+                This guide serves as a reference. The interactive version of this blueprint is available when you sign in, allowing you to create your personalized life plan based on these principles.
+              </p>
+            </div>
+          </div>
+          
+          {/* Loading State - would be managed by client component */}
+          {sections.length === 0 ? (
+            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-8 text-center">
+              <div className="animate-spin h-8 w-8 border-t-2 border-blue-500 border-r-2 rounded-full mx-auto mb-4"></div>
+              <p className="text-xl text-blue-300">Loading guide...</p>
+            </div>
+          ) : (
+            /* Main Content (Sections Loop) */
+            <div className="space-y-12">
+              {sections.map((section, sectionIndex) => (
+                <div 
+                  key={section.id} 
+                  className="bg-gray-800/30 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden shadow-xl animate-fadeIn"
+                  style={{ 
+                    animationDelay: `${sectionIndex * 150}ms`,
+                    opacity: 0,
+                  }}
+                >
+                  {/* Section Header */}
+                  <div className="bg-gradient-to-r from-blue-900/80 to-purple-900/80 px-6 py-5 border-b border-gray-700/50">
+                    <h2 className="text-2xl font-bold text-white">{section.title}</h2>
+                    <div className="text-gray-300 mt-2 prose prose-invert prose-sm max-w-none">
+                      <ReactMarkdown>{section.description}</ReactMarkdown>
+                    </div>
+                  </div>
+                  
+                  {/* Subsections Loop */}
+                  <div className="p-6">
+                    <div className="space-y-6">
+                      {subsections
+                        .filter(sub => sub.section_id === section.id)
+                        .map((subsection, subIndex) => {
+                          const malleabilityStyle = getMalleabilityColor(subsection.malleability_level);
+                          
+                          return (
+                            <div 
+                              key={subsection.id} 
+                              className="bg-gray-800/50 border border-gray-700/50 rounded-lg overflow-hidden shadow-md hover:shadow-blue-900/10 transition-all animate-fadeIn"
+                              style={{ 
+                                animationDelay: `${(sectionIndex * 150) + (subIndex * 100)}ms`,
+                                opacity: 0,
+                              }}
+                            >
+                              <div className="p-5">
+                                <div className="flex justify-between items-start mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="text-xl font-semibold text-white">{subsection.title}</h3>
+                                    {subsection.subdescription && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Info className="h-4 w-4 text-gray-400 hover:text-gray-300 cursor-help" />
+                                          </TooltipTrigger>
+                                          <TooltipContent className="bg-gray-800 border border-gray-700 text-white max-w-md">
+                                            <div className="prose prose-invert prose-sm max-w-none">
+                                              <ReactMarkdown>{subsection.subdescription}</ReactMarkdown>
+                                            </div>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Malleability Badge with Tooltip */}
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div 
+                                          className={`px-2 py-1 rounded-full text-xs ${malleabilityStyle.bg} ${malleabilityStyle.border} ${malleabilityStyle.text} cursor-help flex items-center gap-1`}
+                                        >
+                                          {malleabilityStyle.label}
+                                          <HelpCircle className="h-3 w-3" />
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="bg-gray-800 border border-gray-700 text-white max-w-md">
+                                        <div className="prose prose-invert prose-sm max-w-none">
+                                          <ReactMarkdown>{subsection.malleability_details}</ReactMarkdown>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </div>
+                                
+                                {/* Description - render markdown */}
+                                <div className="text-gray-300 mb-4 prose prose-invert prose-sm max-w-none">
+                                  <ReactMarkdown>{subsection.description}</ReactMarkdown>
+                                </div>
+                                
+                                {/* Example (Expandable on Click with Client Component) */}
+                                {subsection.example && (
+                                  <ExpandableExample example={subsection.example} />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      }
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          <div className="mt-12 text-center">
+            <p className="text-gray-400 text-sm">
+              Sign in to create your personal life blueprint based on this guide.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  } catch (error) {
+    console.error('Error fetching guide data:', error);
+    
+    // Return an error state
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white pt-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text mb-8 text-center">
+            Life Blueprint Guide
+          </h1>
+          <div className="bg-red-900/30 border border-red-800/50 rounded-xl p-8 text-center">
+            <p className="text-xl text-red-300 mb-2">Error Loading Guide</p>
+            <p className="text-gray-300">We're having trouble loading the guide content. Please try again later.</p>
+            <button 
+              className="mt-4 px-4 py-2 bg-red-800/50 hover:bg-red-800/70 rounded-md transition-colors"
+              onClick={() => window.location.reload()}
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 } 

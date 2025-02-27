@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const returnTo = requestUrl.searchParams.get('returnTo') || '/dashboard'
 
   if (code) {
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const response = NextResponse.redirect(new URL(returnTo, requestUrl.origin))
 
     const supabase = createServerClient(
@@ -20,13 +20,9 @@ export async function GET(request: Request) {
             return cookieStore.getAll()
           },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              response.cookies.set({
-                name,
-                value,
-                ...options,
-              })
-            })
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options)
+            )
           }
         },
       }

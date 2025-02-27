@@ -1,24 +1,37 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// Helper to log middleware activities
+function logMiddleware(message: string) {
+  console.log(`[Middleware] ${message}`);
+  
+  // Also store in localStorage for the debug panel
+  if (typeof window !== 'undefined') {
+    try {
+      const existingLogs = JSON.parse(localStorage.getItem('middleware_logs') || '[]');
+      existingLogs.push(`${new Date().toISOString()} - ${message}`);
+      localStorage.setItem('middleware_logs', JSON.stringify(existingLogs.slice(-100)));
+    } catch (e) {
+      // Ignore errors in middleware logs
+    }
+  }
+}
+
 export async function middleware(request: NextRequest) {
   // List of public routes that don't require authentication
-  const publicRoutes = ['/', '/login', '/auth', '/about', '/guide']
+  const publicRoutes = ['/', '/login', '/auth', '/about', '/guide', '/coming-soon']
   const isPublicRoute = publicRoutes.some(route => 
     request.nextUrl.pathname === route || 
     request.nextUrl.pathname.startsWith('/auth/') ||
     request.nextUrl.pathname.startsWith('/guide/')
   )
 
-  // Create a response early with default headers
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+  logMiddleware(`Processing request: ${request.nextUrl.pathname} (isPublic: ${isPublicRoute})`);
 
-  // Set cache control headers
-  response.headers.set('Cache-Control', 'no-store, max-age=0')
+  // Initial empty response - we'll use this as a basis for our actual response
+  let response = NextResponse.next({
+    request,
+  })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,64 +39,106 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll()
+          const cookies = request.cookies.getAll();
+          logMiddleware(`getAll cookies: ${cookies.length}`);
+          return cookies;
         },
         setAll(cookiesToSet) {
+          logMiddleware(`setAll cookies: ${cookiesToSet.length}`);
+          
+          // First set cookies on the request
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+          });
+          
+          // Then create a new response with those cookies
+          response = NextResponse.next({
+            request,
+          });
+          
+          // Finally set cookies on the response with full options
           cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value)
-            response.cookies.set(name, value, options)
-          })
+            logMiddleware(`Setting cookie: ${name}`);
+            response.cookies.set(name, value, options);
+          });
         },
       },
     }
   )
 
   try {
+    // IMPORTANT! THIS MUST BE THE FIRST CALL AFTER CLIENT CREATION
+    // DO NOT MOVE OR CHANGE THIS
     const {
       data: { user },
-    } = await supabase.auth.getUser()
+    } = await supabase.auth.getUser();
+    
+    logMiddleware(`Auth state: ${user ? 'Authenticated' : 'Unauthenticated'}`);
 
-    // Allow access to public routes regardless of auth status
+    // Cache control
+    response.headers.set('Cache-Control', 'no-store, max-age=0');
+
+    // For public routes, just return the response with the refreshed session
     if (isPublicRoute) {
-      return response
+      logMiddleware('Allowing access to public route');
+      return response;
     }
 
-    // If user is not signed in and trying to access protected route,
-    // redirect to login
-    if (!user && !isPublicRoute) {
-      const redirectUrl = new URL('/login', request.url)
-      redirectUrl.searchParams.set('returnTo', request.nextUrl.pathname)
-      return NextResponse.redirect(redirectUrl)
+    // For protected routes, check auth
+    if (!user) {
+      logMiddleware('No user found, redirecting to login');
+      const redirectUrl = new URL('/login', request.url);
+      redirectUrl.searchParams.set('returnTo', request.nextUrl.pathname);
+      return NextResponse.redirect(redirectUrl);
     }
 
-    // If user is signed in and trying to access login page,
-    // redirect to dashboard
-    if (user && request.nextUrl.pathname === '/login') {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-
-    // Check for admin routes
+    // For admin routes, check if user is admin
     if (request.nextUrl.pathname.startsWith('/admin')) {
-      const isAdmin = user?.email === 'anurieli365@gmail.com' || user?.role === 'admin'
+      const isAdmin = user?.email === 'anurieli365@gmail.com' || user?.role === 'admin';
+      
       if (!isAdmin) {
-        return NextResponse.redirect(new URL('/dashboard', request.url))
+        logMiddleware('Non-admin user attempted to access admin route');
+        return NextResponse.redirect(new URL('/dashboard', request.url));
       }
+      
+      logMiddleware('Admin access granted');
     }
 
-    return response
+    // If user is trying to access login page but is already logged in
+    if (request.nextUrl.pathname === '/login' && user) {
+      logMiddleware('User already logged in, redirecting from login');
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    logMiddleware('Request processed successfully');
+    return response;
   } catch (error) {
-    console.error('Middleware error:', error)
+    console.error('Middleware error:', error);
+    logMiddleware(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     
-    // If there's an error checking auth status and we're not on a public route,
-    // clear auth cookies and redirect to home
-    if (!isPublicRoute) {
-      const response = NextResponse.redirect(new URL('/', request.url))
-      response.cookies.delete('sb-access-token')
-      response.cookies.delete('sb-refresh-token')
-      return response
+    // For public routes or errors in middleware, just proceed
+    if (isPublicRoute) {
+      return response;
     }
     
-    return response
+    // For protected routes, redirect to login
+    const redirectResponse = NextResponse.redirect(new URL('/login', request.url));
+    
+    // Clear auth cookies
+    const cookiesToClear = [
+      'sb-access-token', 
+      'sb-refresh-token',
+      'sb-provider-token',
+      'sb-auth-token',
+      'sb-auth-token-csrf',
+      'sb-auth-event'
+    ];
+    
+    cookiesToClear.forEach(name => {
+      redirectResponse.cookies.delete(name);
+    });
+    
+    return redirectResponse;
   }
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { Bold, Italic, Underline, List, ListOrdered } from 'lucide-react';
+import { List, ListOrdered } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 
 interface RichTextInputProps {
@@ -20,7 +20,7 @@ export default function RichTextInput({ value, onChange, disabled, placeholder }
     if (value !== text) {
       setText(value);
     }
-  }, [value]);
+  }, [value, text]);
 
   // Auto-resize textarea
   useEffect(() => {

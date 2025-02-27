@@ -1,221 +1,289 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { AlertCircle } from 'lucide-react';
-import type { User } from '@supabase/supabase-js';
+import { AlertCircle, Mail, Lock } from 'lucide-react';
+import type { User, Session } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthProvider';
 
-export function AuthButton() {
+export default function AuthButton() {
   const [isOpen, setIsOpen] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const router = useRouter();
+  const { user: authUser, signOut } = useAuth();
+  const supabase = createClient();
+
+  const resetState = () => {
+    setLoading(false);
+    setSigningIn(false);
+    setSigningOut(false);
+    setError(null);
+  };
 
   useEffect(() => {
-    const supabase = createClient();
+    console.log('AuthButton mounted, user:', authUser ? 'Logged in' : 'Not logged in');
+  }, [authUser]);
 
+  useEffect(() => {
     // Check current auth state
     const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
+      try {
+        console.log('AuthButton: Checking session...');
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('AuthButton: Session retrieved', !!session);
+        setUser(session?.user ?? null);
+      } catch (err) {
+        console.error('AuthButton: Error checking session', err);
+      }
     };
 
     initializeAuth();
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null);
+    // Listen for auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change:', event, session ? 'User session exists' : 'No user session');
+      
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        console.log('User signed in or token refreshed, refreshing router');
+        router.refresh();
+      } else if (event === 'SIGNED_OUT') {
+        console.log('User signed out, refreshing router');
+        router.refresh();
+      }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [router, supabase.auth]);
 
   const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    try {
+      setSigningOut(true);
+      setError(null);
+      console.log('Starting sign out process');
+      
+      await signOut();
+      
+      console.log('Sign out completed, refreshing router');
+      router.refresh();
+    } catch (error) {
+      console.error('Error signing out:', error);
+      setError('Error signing out. Please try again.');
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   const handleGoogleSignIn = async () => {
-    const supabase = createClient();
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      setSigningIn(true);
+      setError(null);
+      console.log('Starting Google sign in');
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Google sign in error:', error.message);
+        setError(error.message);
+      } else {
+        console.log('Google sign in initiated');
+      }
     } catch (error) {
-      console.error('Error signing in with Google:', error);
-      setError('Failed to sign in with Google');
+      console.error('Unexpected error during Google sign in:', error);
+      setError('Error signing in with Google. Please try again.');
+    } finally {
+      setSigningIn(false);
     }
   };
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
-
+    
+    if (!email || !password) {
+      setError('Email and password are required');
+      return;
+    }
+    
     try {
-      const supabase = createClient();
-      
-      if (isSignUp) {
+      setLoading(true);
+      setError(null);
+      console.log('Starting email sign in for:', email);
+
+      // Try sign in first
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      // If error indicates user doesn't exist, try sign up
+      if (signInError && (signInError.message.includes('Invalid login credentials') || signInError.message.includes('user not found'))) {
+        console.log('User does not exist, attempting sign up');
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: {
-              first_name: firstName
-            }
-          }
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
         });
-        if (error) throw error;
-        setIsOpen(false);
+
+        if (error) {
+          console.error('Sign up error:', error.message);
+          setError(error.message);
+        } else {
+          console.log('Sign up successful');
+          setEmail('');
+          setPassword('');
+          setIsOpen(false);
+          router.refresh();
+        }
+      } else if (signInError) {
+        // Other sign in error
+        console.error('Sign in error:', signInError.message);
+        setError(signInError.message);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        if (error) throw error;
+        // Sign in successful
+        console.log('Sign in successful');
+        setEmail('');
+        setPassword('');
         setIsOpen(false);
+        router.refresh();
       }
-    } catch (error: any) {
-      console.error('Error:', error);
-      setError(error.message || 'An error occurred');
+    } catch (error) {
+      console.error('Unexpected error during email auth:', error);
+      setError('Error signing in with email. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (user) {
+  if (authUser) {
     return (
-      <Button
-        onClick={handleSignOut}
-        variant="outline"
-        className="bg-white/5 hover:bg-white/10 text-white"
-      >
-        Sign Out
-      </Button>
+      <div className="flex items-center gap-4">
+        <p className="text-sm text-white font-medium">
+          Welcome, <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">{authUser.email?.split('@')[0] || 'User'}</span>
+        </p>
+        <Button 
+          onClick={handleSignOut} 
+          disabled={signingOut}
+          variant="outline"
+          className="text-white border-white/20 hover:bg-white/10 hover:text-white hover:border-white/40 transition-all"
+        >
+          {signingOut ? 'Signing out...' : 'Sign out'}
+        </Button>
+      </div>
     );
   }
 
   return (
     <>
-      <Button
+      <Button 
         onClick={() => setIsOpen(true)}
-        variant="outline"
-        className="bg-white/5 hover:bg-white/10 text-white"
+        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none"
       >
-        Sign In
+        Sign in
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="bg-gray-900/95 backdrop-blur-sm border border-white/10 text-white sm:max-w-[425px]">
+        <DialogContent className="bg-gray-900 border border-gray-800 text-white sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{isSignUp ? 'Create Account' : 'Sign In'}</DialogTitle>
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
+              Welcome to LifeGuide
+            </DialogTitle>
             <DialogDescription className="text-gray-400">
-              {isSignUp 
-                ? 'Create a new account to get started'
-                : 'Sign in to your account to continue'
-              }
+              Sign in to access your personal life blueprint
             </DialogDescription>
           </DialogHeader>
-
+          
           <div className="space-y-4 py-4">
-            <Button
-              onClick={handleGoogleSignIn}
-              variant="outline"
-              className="w-full bg-white/5 hover:bg-white/10 text-white"
+            <Button 
+              onClick={handleGoogleSignIn} 
+              disabled={signingIn}
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none h-12"
             >
-              Continue with Google
+              {signingIn ? 'Processing...' : 'Sign in with Google'}
             </Button>
-
+            
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-white/10" />
+                <span className="w-full border-t border-gray-700"></span>
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-gray-900 px-2 text-gray-400">Or continue with</span>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-gray-900 px-2 text-gray-400">Or continue with email</span>
               </div>
             </div>
-
+            
             <form onSubmit={handleEmailSignIn} className="space-y-4">
-              {isSignUp && (
-                <div className="space-y-2">
-                  <Label htmlFor="firstName" className="text-white">First Name</Label>
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-gray-300">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
                   <Input
-                    id="firstName"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="bg-gray-800 border-gray-700 text-white"
-                    required={isSignUp}
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10 bg-gray-800 border-gray-700 text-white"
+                    required
                   />
                 </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-white">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white"
-                  required
-                />
               </div>
-
+              
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-white">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white"
-                  required
-                />
+                <Label htmlFor="password" className="text-gray-300">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 bg-gray-800 border-gray-700 text-white"
+                    required
+                  />
+                </div>
               </div>
-
+              
               {error && (
-                <div className="flex items-center gap-2 text-red-400 text-sm">
-                  <AlertCircle className="h-4 w-4" />
-                  <p>{error}</p>
+                <div className="bg-red-900/30 border border-red-800 p-3 rounded-md flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-red-400">{error}</p>
                 </div>
               )}
-
-              <div className="space-y-4">
-                <Button
-                  type="submit"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                  disabled={loading}
-                >
-                  {loading ? 'Loading...' : (isSignUp ? 'Create Account' : 'Sign In')}
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full text-gray-400 hover:text-white"
-                  onClick={() => setIsSignUp(!isSignUp)}
-                >
-                  {isSignUp 
-                    ? 'Already have an account? Sign in' 
-                    : "Don't have an account? Sign up"}
-                </Button>
-              </div>
+              
+              <Button 
+                type="submit" 
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none h-12"
+              >
+                {loading ? 'Processing...' : 'Sign in / Sign up'}
+              </Button>
             </form>
           </div>
+          
+          <p className="text-center text-xs text-gray-500 mt-4">
+            By signing in, you agree to our Terms of Service and Privacy Policy.
+          </p>
         </DialogContent>
       </Dialog>
     </>

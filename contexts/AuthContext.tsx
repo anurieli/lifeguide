@@ -1,8 +1,9 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
-import type { User } from '@supabase/supabase-js';
+import { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
+import type { User, Session } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 
 // Mock user for development
 const MOCK_USER: User = {
@@ -21,6 +22,8 @@ interface AuthContextType {
   isAdmin: boolean;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
+  refreshSession: () => Promise<void>;
+  connectionState: 'connected' | 'error' | 'reconnecting';
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -29,6 +32,8 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   signIn: async () => {},
   signOut: async () => {},
+  refreshSession: async () => {},
+  connectionState: 'connected',
 });
 
 export const useAuth = () => {
@@ -42,28 +47,112 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [connectionState, setConnectionState] = useState<'connected' | 'error' | 'reconnecting'>('connected');
+  const router = useRouter();
   const supabase = createClient();
+  const initMounted = useRef(false);
 
+  // Function to refresh the session
+  const refreshSession = useCallback(async () => {
+    console.log('Refreshing session...');
+    try {
+      setConnectionState('reconnecting');
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Error refreshing session:', error);
+        setConnectionState('error');
+      } else {
+        setConnectionState('connected');
+        setUser(session?.user ?? null);
+        console.log('Session refreshed successfully', !!session?.user);
+      }
+    } catch (error) {
+      console.error('Exception refreshing session:', error);
+      setConnectionState('error');
+    }
+  }, [supabase]);
+
+  // Initialize auth state
   useEffect(() => {
-    // Check active session
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      setLoading(false);
+    if (initMounted.current) return;
+    initMounted.current = true;
+    
+    const initializeAuth = async () => {
+      try {
+        console.log('Initializing auth...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error initializing session:', error);
+          setConnectionState('error');
+        } else {
+          setUser(session?.user ?? null);
+          setConnectionState('connected');
+          console.log('Auth initialized with user:', !!session?.user);
+        }
+      } catch (error) {
+        console.error('Exception initializing auth:', error);
+        setConnectionState('error');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    initializeAuth();
+  }, [supabase]);
+
+  // Set up auth state listener
+  useEffect(() => {
+    console.log('Setting up auth state listener...');
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: Session | null) => {
+      console.log('Auth state changed:', event, !!session?.user);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      if (session) {
+        setConnectionState('connected');
+      }
+      
+      // Redirect based on auth state if needed
+      if (event === 'SIGNED_IN') {
+        router.refresh();
+      } else if (event === 'SIGNED_OUT') {
+        router.refresh();
+      }
     });
-
-    checkSession();
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase, router]);
+
+  // Refresh session periodically
+  useEffect(() => {
+    // Set up periodic session refresh to avoid auth issues
+    const refreshInterval = setInterval(() => {
+      refreshSession();
+    }, 4 * 60 * 1000); // Refresh every 4 minutes
+
+    return () => {
+      clearInterval(refreshInterval);
+    };
+  }, [refreshSession]);
+
+  // Handle network reconnection
+  useEffect(() => {
+    const handleOnline = () => {
+      if (connectionState === 'error') {
+        refreshSession();
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [connectionState, refreshSession]);
 
   const signIn = async () => {
     await supabase.auth.signInWithOAuth({
@@ -76,27 +165,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
-      // First clear the auth state locally
-      setUser(null);
-      setLoading(false);
-
-      // Then sign out from Supabase
+      setLoading(true);
+      
+      // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
 
-      // Clear any cached data or state
-      if (typeof window !== 'undefined') {
-        // Clear any local storage items
-        localStorage.clear();
-        sessionStorage.clear();
-        
-        // Force a hard refresh and redirect to home
-        window.location.replace('/');
-      }
+      // Clear local state
+      setUser(null);
+      
+      // Force a hard refresh to clear any cached data
+      window.location.href = '/';
     } catch (error) {
       console.error('Error signing out:', error);
-      // Force reload even if there's an error
-      window.location.replace('/');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -109,9 +192,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         loading,
         isAdmin,
         signIn,
-        signOut
+        signOut,
+        refreshSession,
+        connectionState
       }}
     >
+      {connectionState === 'error' && !loading && (
+        <div className="fixed top-0 left-0 right-0 bg-red-600 text-white p-2 text-center z-50">
+          Connection issues detected. <button onClick={refreshSession} className="underline">Try reconnecting</button>
+        </div>
+      )}
       {children}
     </AuthContext.Provider>
   );

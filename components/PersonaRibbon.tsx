@@ -48,25 +48,34 @@ export default function PersonaRibbon() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentColor, setCurrentColor] = useState(colors[0]);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
+    if (isPaused) return;
+
     const interval = setInterval(() => {
       setCurrentIndex((prevIndex) => (prevIndex + 1) % personas.length);
       setCurrentColor(colors[Math.floor(Math.random() * colors.length)]);
     }, 8000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isPaused]);
 
   const currentPersona = personas[currentIndex];
 
   return (
-    <div className="relative w-full flex justify-center my-8">
+    <div className="relative w-full flex justify-center my=0">
       <div className="relative w-full max-w-[800px] text-center text-3xl font-bold py-6 px-4 whitespace-nowrap overflow-visible">
         <span 
           className="font-['Fredoka_One'] tracking-wider text-[clamp(1rem,4vw,2rem)] relative cursor-pointer inline-block text-white"
-          onMouseEnter={() => setShowTooltip(true)}
-          onMouseLeave={() => setShowTooltip(false)}
+          onMouseEnter={() => {
+            setShowTooltip(true);
+            setIsPaused(true);
+          }}
+          onMouseLeave={() => {
+            setShowTooltip(false);
+            setIsPaused(false);
+          }}
         >
           for the {' '}
           <span 
@@ -82,7 +91,6 @@ export default function PersonaRibbon() {
           {showTooltip && (
             <div className="absolute left-1/2 transform -translate-x-1/2 bottom-full mb-3 w-64 p-3 bg-gray-800/95 rounded-md shadow-lg z-50 backdrop-blur-sm">
               <div className="text-xs text-white whitespace-normal">
-                <div className="font-medium mb-1.5 text-gray-100">{currentPersona.title}</div>
                 <div className="text-gray-300 leading-relaxed">{currentPersona.description}</div>
               </div>
               {/* Arrow */}

@@ -1,22 +1,27 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Home, Video, Info, Mail, CircleHelp } from 'lucide-react';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface Section {
   id: string;
   label: string;
+  icon: React.ReactElement;
 }
 
 const sections: Section[] = [
-  { id: 'hero', label: 'Home' },
-  { id: 'overview', label: 'Overview' },
-  { id: 'videos', label: 'Videos' },
-  { id: 'about', label: 'About' },
-  { id: 'contact', label: 'Contact' }
+  { id: 'hero', label: 'Home', icon: <Home className="w-4 h-4" /> },
+  { id: 'overview', label: 'Overview', icon: <CircleHelp className="w-4 h-4" /> },
+  { id: 'videos', label: 'Videos', icon: <Video className="w-4 h-4" /> },
+  { id: 'about', label: 'About', icon: <Info className="w-4 h-4" /> },
+  { id: 'contact', label: 'Contact', icon: <Mail className="w-4 h-4" /> }
 ];
 
 export default function SectionIndicator() {
   const [activeSection, setActiveSection] = useState('hero');
+  const isLargeScreen = useMediaQuery('(min-width: 1280px)');
+  const isNarrowScreen = useMediaQuery('(max-width: 80vw)'); // Changed to 68% width
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -47,10 +52,12 @@ export default function SectionIndicator() {
     }
   };
 
+  if (isNarrowScreen) return null;
+
   return (
-    <div className="fixed right-8 top-1/2 transform -translate-y-1/2 z-50">
+    <div className="fixed right-4 md:right-8 top-1/2 transform -translate-y-1/2 z-30">
       <div className="flex flex-col gap-4">
-        {sections.map(({ id, label }) => (
+        {sections.map(({ id, label, icon }) => (
           <button
             key={id}
             onClick={() => scrollToSection(id)}
@@ -58,10 +65,21 @@ export default function SectionIndicator() {
               activeSection === id ? 'text-blue-500' : 'text-gray-400'
             }`}
           >
-            <div className="w-2 h-2 rounded-full bg-current transition-all duration-200 group-hover:scale-150" />
-            <span className="absolute right-full mr-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap text-sm">
-              {label}
-            </span>
+            {isLargeScreen ? (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5">
+                {icon}
+                <span className="text-sm whitespace-nowrap">{label}</span>
+              </div>
+            ) : (
+              <div className="relative">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/5">
+                  {icon}
+                </div>
+                <span className="absolute right-full mr-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap text-sm">
+                  {label}
+                </span>
+              </div>
+            )}
           </button>
         ))}
       </div>

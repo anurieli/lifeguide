@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 type ContactType = 'feature' | 'bug' | 'partnership' | 'other';
 
 export default function ContactForm() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [type, setType] = useState<ContactType>('feature');
   const [message, setMessage] = useState('');
@@ -16,19 +17,53 @@ export default function ContactForm() {
     setStatus('submitting');
 
     try {
-      // TODO: Implement email sending functionality
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulated delay
-      setStatus('success');
-      setEmail('');
-      setType('feature');
-      setMessage('');
-    } catch {
+      const response = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          access_key: "Y3c95f3cd-5bfe-429e-b32a-54ac4e510253",
+          name,
+          email,
+          subject: `${type.charAt(0).toUpperCase() + type.slice(1)} Request`,
+          message,
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setStatus('success');
+        setName('');
+        setEmail('');
+        setType('feature');
+        setMessage('');
+      } else {
+        throw new Error('Failed to send message');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
       setStatus('error');
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="max-w-lg mx-auto space-y-6">
+      <div>
+        <label htmlFor="name" className="block text-sm font-medium mb-2 text-white">
+          Name
+        </label>
+        <input
+          type="text"
+          id="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-white"
+          required
+        />
+      </div>
+
       <div>
         <label htmlFor="email" className="block text-sm font-medium mb-2 text-white">
           Email

@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 const videos = [
   { 
@@ -37,6 +39,7 @@ const videos = [
 export default function VideoCarousel() {
   const [currentIndex, setCurrentIndex] = useState(1);
   const [isPlaying, setIsPlaying] = useState<number | null>(null);
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
 
   const handlePrevious = () => {
     setIsPlaying(null);
@@ -48,9 +51,35 @@ export default function VideoCarousel() {
     setCurrentIndex((prev) => (prev === videos.length - 1 ? 0 : prev + 1));
   };
 
+  const NavigationButtons = () => (
+    <>
+      <button
+        onClick={handlePrevious}
+        className={`p-3 md:p-4 rounded-full bg-black/50 hover:bg-black/70 transition-colors backdrop-blur-sm group ${
+          isDesktop 
+            ? 'absolute left-[10%] md:left-[15%] top-1/2 -translate-y-1/2 z-20' 
+            : 'flex items-center justify-center'
+        }`}
+      >
+        <ChevronLeft className="w-6 h-6 md:w-8 md:h-8 text-white opacity-75 group-hover:opacity-100 transition-opacity" />
+      </button>
+
+      <button
+        onClick={handleNext}
+        className={`p-3 md:p-4 rounded-full bg-black/50 hover:bg-black/70 transition-colors backdrop-blur-sm group ${
+          isDesktop 
+            ? 'absolute right-[10%] md:right-[15%] top-1/2 -translate-y-1/2 z-20'
+            : 'flex items-center justify-center'
+        }`}
+      >
+        <ChevronRight className="w-6 h-6 md:w-8 md:h-8 text-white opacity-75 group-hover:opacity-100 transition-opacity" />
+      </button>
+    </>
+  );
+
   return (
-    <div className="relative w-full py-12">
-      <div className="relative h-[70vh] flex items-center justify-center">
+    <div className="relative w-full py-1">
+      <div className="relative h-[50vh] md:h-[70vh] flex items-center justify-center">
         <AnimatePresence mode="popLayout">
           {videos.map((video, index) => {
             const position = (index - currentIndex + videos.length) % videos.length;
@@ -60,19 +89,23 @@ export default function VideoCarousel() {
             
             if (!isCenter && !isLeft && !isRight) return null;
 
+            const xOffset = isDesktop 
+              ? (isLeft ? '-65%' : isRight ? '65%' : '5%')
+              : (isLeft ? '-55%' : isRight ? '55%' : '5%');
+
             return (
               <motion.div
                 key={video.id}
                 initial={false}
                 animate={{
-                  scale: isCenter ? 1 : 0.8,
-                  x: isLeft ? '-60%' : isRight ? '60%' : 0,
+                  scale: isCenter ? 1 : 0.7,
+                  x: xOffset,
                   zIndex: isCenter ? 10 : 0,
-                  opacity: isCenter ? 1 : 0.6,
-                  rotateY: isLeft ? 15 : isRight ? -15 : 0,
+                  opacity: isCenter ? 1 : 0.4,
+                  rotateY: isLeft ? 25 : isRight ? -25 : 0,
                 }}
                 transition={{ duration: 0.4 }}
-                className="absolute w-[300px] rounded-xl overflow-hidden shadow-2xl bg-gray-800/80"
+                className="absolute w-[250px] md:w-[300px] rounded-xl overflow-hidden shadow-2xl bg-gray-800/80"
                 style={{ aspectRatio: '9/16' }}
               >
                 {/* Video Container */}
@@ -125,26 +158,19 @@ export default function VideoCarousel() {
             );
           })}
         </AnimatePresence>
+
+        {/* Navigation Buttons */}
+        {isDesktop ? (
+          <NavigationButtons />
+        ) : null}
       </div>
 
-      {/* Navigation Buttons */}
-      <button
-        onClick={handlePrevious}
-        className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-gray-800/50 hover:bg-gray-800/70 transition-colors"
-      >
-        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-      </button>
-
-      <button
-        onClick={handleNext}
-        className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-gray-800/50 hover:bg-gray-800/70 transition-colors"
-      >
-        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
+      {/* Mobile Navigation */}
+      {!isDesktop && (
+        <div className="flex justify-center gap-4 mt-4">
+          <NavigationButtons />
+        </div>
+      )}
     </div>
   );
 } 

@@ -101,6 +101,18 @@ export default function Navbar() {
               </Link>
             )}
 
+            {/* Coming Soon link */}
+            <Link
+              href="/coming-soon"
+              className={`text-sm ${
+                pathname === '/coming-soon'
+                  ? 'text-white font-medium'
+                  : 'text-gray-300 hover:text-white'
+              }`}
+            >
+              Coming Soon
+            </Link>
+
             {/* Auth button on the far right */}
             <AuthButton />
           </div>

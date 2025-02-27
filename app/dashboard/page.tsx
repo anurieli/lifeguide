@@ -75,7 +75,7 @@ const PRO_TIPS: ProTip[] = [
   {
     id: '1',
     title: 'Take Your Time',
-    description: 'This is a journey of self-discovery. Don\'t rush through the sections.'
+    description: 'This is a journey of self-discovery. Don\'t rush through the sections. You owe yourself a few good hours to hit reset.'
   },
   {
     id: '2',
@@ -236,12 +236,6 @@ export default function DashboardPage() {
       <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
         <DialogContent className="bg-gray-900/95 backdrop-blur-sm border border-white/10 text-white max-w-3xl">
           <div className="relative">
-            <button
-              onClick={() => setIsNewUserDialogOpen(false)}
-              className="absolute -top-2 -right-2 p-2 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
             <div className="space-y-4">
               <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
                 Welcome to Your Dashboard!
@@ -936,9 +930,9 @@ function EditorMode({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 bg-gray-900 z-50">
-      <div className="h-full flex">
+      <div className="h-full flex justify-center">
         {/* Main Editor Area */}
-        <div className="flex-1 p-6 overflow-auto">
+        <div className="flex-1 p-6 overflow-auto max-w-5xl">
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-4">
               <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
@@ -1248,9 +1242,9 @@ function EditorMode({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {/* Right Progress Panel */}
+        {/* Progress Sidebar */}
         <div className={cn(
-          "bg-gray-900/50 backdrop-blur-sm border-l border-white/10 transition-all duration-300 p-4",
+          "h-full border-l border-white/10 bg-gray-900 transition-all duration-300 overflow-y-auto p-4",
           isSidebarCollapsed ? "w-16" : "w-64",
           "max-[800px]:hidden" // Hide completely on small screens
         )}>

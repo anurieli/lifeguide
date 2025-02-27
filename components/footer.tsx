@@ -26,6 +26,11 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/coming-soon" className="hover:text-white transition-colors">
+                  Coming Soon
+                </Link>
+              </li>
+              <li>
                 <Link href="/privacy" className="hover:text-white transition-colors">
                   Privacy Policy
                 </Link>
@@ -42,7 +47,11 @@ export default function Footer() {
           <div>
             <h3 className="text-white font-semibold mb-4">Contact</h3>
             <ul className="space-y-2 text-sm">
-              <li>Email: support@lifeguide.com</li>
+              <li>
+                <Link href="/contact" className="hover:text-white transition-colors">
+                  Contact Us
+                </Link>
+              </li>
             </ul>
           </div>
 

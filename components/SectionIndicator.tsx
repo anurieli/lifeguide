@@ -11,11 +11,11 @@ interface Section {
 }
 
 const sections: Section[] = [
-  { id: 'hero', label: 'Home', icon: <Home className="w-4 h-4" /> },
-  { id: 'overview', label: 'Overview', icon: <CircleHelp className="w-4 h-4" /> },
-  { id: 'videos', label: 'Videos', icon: <Video className="w-4 h-4" /> },
-  { id: 'about', label: 'About', icon: <Info className="w-4 h-4" /> },
-  { id: 'contact', label: 'Contact', icon: <Mail className="w-4 h-4" /> }
+  { id: 'hero', label: '', icon: <Home className="w-4 h-4" /> },
+  { id: 'overview', label: '', icon: <CircleHelp className="w-4 h-4" /> },
+  { id: 'videos', label: '', icon: <Video className="w-4 h-4" /> },
+  { id: 'about', label: '', icon: <Info className="w-4 h-4" /> },
+  { id: 'contact', label: '', icon: <Mail className="w-4 h-4" /> }
 ];
 
 export default function SectionIndicator() {

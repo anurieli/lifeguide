@@ -27,7 +27,7 @@ export default async function ComingSoonPage() {
     const featureCardsPromise = supabase
       .from('coming_soon')
       .select('*')
-      .order('likes', { ascending: false });
+      .order('upvotes', { ascending: false });
     
     // Use Promise.race with timeout
     const featureCardsResponse = await Promise.race([
@@ -75,9 +75,10 @@ export default async function ComingSoonPage() {
             </p>
             <ul className="list-disc list-inside text-gray-300 mb-4 space-y-1">
               <li><span className="text-pink-400 font-medium">Liking</span> features you find interesting</li>
+              <li><span className="text-blue-400 font-medium">Upvoting</span> the ONE feature you want to see developed next</li>
             </ul>
             <p className="text-gray-400 text-sm italic">
-              Your feedback helps us prioritize new feature development!
+              Note: You can only cast one upvote across all features, so choose wisely!
             </p>
           </div>
           

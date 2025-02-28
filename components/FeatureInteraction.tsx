@@ -6,7 +6,7 @@ import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
 
 interface FeatureInteractionProps {
-  featureId: string; // This remains a string in props, but we'll handle as UUID in database calls
+  featureId: string;
   initialLikes: number;
   initialUpvotes: number;
 }
@@ -21,158 +21,96 @@ export default function FeatureInteraction({
   const [isLoading, setIsLoading] = useState(true);
   
   const supabase = createClient();
-  
-  // Check auth state and previous interactions on mount
+
+  // Load liked state from localStorage only
   useEffect(() => {
-    async function checkAuthAndInteractions() {
+    function checkLocalLikedState() {
       try {
-        // Check authentication status
-        const { data: { session } } = await supabase.auth.getSession();
-        const isLoggedIn = !!session;
-        
-        // Check if user has liked this feature
-        if (isLoggedIn) {
-          const userId = session.user.id;
-          
-          // Get user's interaction record
-          const { data: interactionData, error: interactionError } = await supabase
-            .from('user_feature_interactions')
-            .select('liked')
-            .eq('user_id', userId)
-            .eq('feature_id', featureId)
-            .single();
-          
-          if (interactionError && interactionError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-            console.error('Error fetching user interaction:', interactionError);
-          }
-          
-          // Set liked state
-          if (interactionData) {
-            setHasLiked(interactionData.liked || false);
-          }
-        } else {
-          // Check localStorage for anonymous likes
-          const anonymousLikes = localStorage.getItem('anonymousLikes');
-          if (anonymousLikes) {
-            const likedFeatures = JSON.parse(anonymousLikes);
-            setHasLiked(likedFeatures.includes(featureId));
-          }
+        // Check localStorage for likes
+        const anonymousLikes = localStorage.getItem('anonymousLikes');
+        if (anonymousLikes) {
+          const likedFeatures = JSON.parse(anonymousLikes);
+          setHasLiked(likedFeatures.includes(featureId));
         }
       } catch (error) {
-        console.error('Error checking auth state:', error);
+        console.error('Error checking like state:', error);
       } finally {
         setIsLoading(false);
       }
     }
     
-    checkAuthAndInteractions();
-  }, [featureId, supabase]);
+    checkLocalLikedState();
+  }, [featureId]);
   
   const handleLike = async () => {
     try {
-      // Check if authenticated
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        // Handle authenticated user like
-        const userId = session.user.id;
+      // Get current likes from the database to ensure accuracy
+      const { data: currentData, error: fetchError } = await supabase
+        .from('coming_soon')
+        .select('likes')
+        .eq('id', featureId)
+        .single();
         
-        if (hasLiked) {
-          // Unlike
-          const newLikes = likes - 1;
-          setLikes(newLikes);
+      if (fetchError) {
+        throw fetchError;
+      }
+      
+      // Use database value as source of truth
+      const currentLikes = currentData?.likes || initialLikes;
+      
+      if (hasLiked) {
+        // Unlike - decrement the likes
+        const newLikes = Math.max(0, currentLikes - 1); // Prevent negative likes
+        
+        // Update database
+        const { error } = await supabase
+          .from('coming_soon')
+          .update({ likes: newLikes })
+          .eq('id', featureId);
           
-          // Call RPC to decrement likes
-          const { error } = await supabase.rpc('decrement_feature_likes', {
-            feature_id: featureId
-          });
-          
-          if (error) throw error;
-          
-          // Update user interaction record
-          await supabase
-            .from('user_feature_interactions')
-            .upsert({
-              user_id: userId,
-              feature_id: featureId,
-              liked: false,
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id,feature_id' });
-          
-          setHasLiked(false);
-        } else {
-          // Like
-          const newLikes = likes + 1;
-          setLikes(newLikes);
-          
-          // Call RPC to increment likes
-          const { error } = await supabase.rpc('increment_feature_likes', {
-            feature_id: featureId
-          });
-          
-          if (error) throw error;
-          
-          // Update user interaction record
-          await supabase
-            .from('user_feature_interactions')
-            .upsert({
-              user_id: userId,
-              feature_id: featureId,
-              liked: true,
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id,feature_id' });
-          
-          setHasLiked(true);
+        if (error) throw error;
+        
+        // Update UI state
+        setLikes(newLikes);
+        setHasLiked(false);
+        
+        // Update localStorage
+        const anonymousLikes = localStorage.getItem('anonymousLikes');
+        if (anonymousLikes) {
+          const likedFeatures = JSON.parse(anonymousLikes);
+          localStorage.setItem('anonymousLikes', JSON.stringify(
+            likedFeatures.filter((id: string) => id !== featureId)
+          ));
         }
+        
+        toast.success('Like removed!');
       } else {
-        // Handle anonymous user like
-        if (hasLiked) {
-          // Unlike
-          const newLikes = likes - 1;
-          setLikes(newLikes);
+        // Like - increment the likes
+        const newLikes = currentLikes + 1;
+        
+        // Update database
+        const { error } = await supabase
+          .from('coming_soon')
+          .update({ likes: newLikes })
+          .eq('id', featureId);
           
-          // Call RPC to decrement likes
-          const { error } = await supabase.rpc('decrement_feature_likes', {
-            feature_id: featureId
-          });
-          
-          if (error) throw error;
-          
-          // Update localStorage
-          const anonymousLikes = localStorage.getItem('anonymousLikes');
-          if (anonymousLikes) {
-            const likedFeatures = JSON.parse(anonymousLikes);
-            localStorage.setItem('anonymousLikes', JSON.stringify(
-              likedFeatures.filter((id: string) => id !== featureId)
-            ));
-          }
-          
-          setHasLiked(false);
-        } else {
-          // Like
-          const newLikes = likes + 1;
-          setLikes(newLikes);
-          
-          // Call RPC to increment likes
-          const { error } = await supabase.rpc('increment_feature_likes', {
-            feature_id: featureId
-          });
-          
-          if (error) throw error;
-          
-          // Update localStorage
-          const anonymousLikes = localStorage.getItem('anonymousLikes');
-          const likedFeatures = anonymousLikes ? JSON.parse(anonymousLikes) : [];
-          likedFeatures.push(featureId);
-          localStorage.setItem('anonymousLikes', JSON.stringify(likedFeatures));
-          
-          setHasLiked(true);
-        }
+        if (error) throw error;
+        
+        // Update UI state
+        setLikes(newLikes);
+        setHasLiked(true);
+        
+        // Update localStorage
+        const anonymousLikes = localStorage.getItem('anonymousLikes');
+        const likedFeatures = anonymousLikes ? JSON.parse(anonymousLikes) : [];
+        likedFeatures.push(featureId);
+        localStorage.setItem('anonymousLikes', JSON.stringify(likedFeatures));
+        
+        toast.success('Feature liked!');
       }
     } catch (error) {
       console.error('Error updating like:', error);
       // Revert UI state on error
-      setLikes(initialLikes);
       setHasLiked(!hasLiked);
       
       // Provide more descriptive error message

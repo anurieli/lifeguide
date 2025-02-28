@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'LifeGuide',
-  description: 'Your personal guide to life on-the-go',
+  description: 'Your Personal Guide to Life – Made by You',
   icons: {
     icon: '/logo.svg',
   },

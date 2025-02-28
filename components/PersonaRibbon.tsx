@@ -56,7 +56,7 @@ export default function PersonaRibbon() {
     const interval = setInterval(() => {
       setCurrentIndex((prevIndex) => (prevIndex + 1) % personas.length);
       setCurrentColor(colors[Math.floor(Math.random() * colors.length)]);
-    }, 8000);
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [isPaused]);
@@ -98,6 +98,12 @@ export default function PersonaRibbon() {
             </div>
           )}
         </span>
+      </div>
+      
+      {/* Added hover instruction subtext */}
+      <div className="absolute -bottom-1 text-center text-xs text-gray-500 flex items-center justify-center gap-1 opacity-70">
+        <span>Hover Here!</span>
+        <span className="inline-block transform rotate-180">↓</span>
       </div>
     </div>
   );

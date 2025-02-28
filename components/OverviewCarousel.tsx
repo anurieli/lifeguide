@@ -24,8 +24,8 @@ const steps: Step[] = [
     ),
   },
   {
-    title: 'Build Your Blueprint',
-    description:'Sit down, deatch for second, go deep, and create your lifes guide.',
+    title: 'Set Time Aside - Lock In',
+    description:'Sit down, deatch for second, prepare to go deep.',
     subdescription: 'This is the hard part, but it just fucking works. You\'re worth a try.',
     icon: (
       <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -34,22 +34,22 @@ const steps: Step[] = [
     ),
   },
   {
-    title: 'Reflect &  Repeat',
-    description: 'Come back and read over your guide as often as possible.',
-    subdescription: 'And don\'t forget that your blueprint evolves as much as you do, so refine it whenever you feel the need.',
+    title: 'Build Your Blueprint',
+    description:'Take your time building the blueprint that is your Lifeguide, rewiring your subconscious in the process.',
+    subdescription: 'My first run at this took 5 hours. Surrender to the process just this once. ',
     icon: (
       <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
       </svg>
     ),
   },
   {
-    title: 'Coming Soon: ',
-    description: 'Stay on course with AI-driven insights and progress tracking.',
-    subdescription: 'This is a sub description that provides additional context.',
+    title: 'Reflect &  Repeat',
+    description: 'Come back and read over your Lifeguide as often as possible.',
+    subdescription: 'Don\'t forget that as you evolve, your Lifeguide should too.',
     icon: (
       <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
       </svg>
     ),
   },

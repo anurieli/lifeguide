@@ -54,10 +54,11 @@ export default function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-lg border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
+          <div className="flex flex-col items-start">
             <Link href="/" className="text-white font-bold text-xl">
               LifeGuide
             </Link>
+            <p className="text-gray-400 text-xs italic">Know who you are & where you're going</p>
           </div>
 
           <div className="flex items-center space-x-4">

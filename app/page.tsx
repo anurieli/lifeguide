@@ -12,6 +12,7 @@ import PersonaRibbon from '@/components/PersonaRibbon';
 import WelcomePopup from '@/components/WelcomePopup';
 import VideoCarousel from '@/components/VideoCarousel';
 import AuthButton from '@/components/AuthButton';
+import ReactMarkdown from 'react-markdown';
 
 
 const gradientText = "bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text";
@@ -55,14 +56,23 @@ export default function WelcomePage() {
 
           <PersonaRibbon />
 
-          <div className="aspect-video w-full max-w-3xl rounded-lg overflow-hidden shadow-2xl mb-8 mt-12">
-            <iframe
-              src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-              title="LifeGuide Introduction"
-              className="w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
+          <div className="relative max-w-3xl mx-auto mt-12 mb-8">
+          <div className="absolute inset-0 -m-8 border-4 border-dashed border-amber-400/70 rounded-xl" style={{ 
+              filter: 'drop-shadow(0 0 2px rgba(251, 191, 36, 0.4))',
+              transform: 'rotate(-0.5deg)'
+            }}></div>
+            <div className="aspect-video w-full max-w-2xl mx-auto rounded-lg overflow-hidden shadow-2xl relative">
+              <iframe
+                src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+                title="LifeGuide Introduction"
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <p className="text-xs text-amber-400/80 italic absolute bottom-[-19px] left-2" style={{ fontFamily: 'Comic Sans MS, cursive, sans-serif' }}>
+              *you thought you got rickrolled, but this is just a placeholder till my demo video is ready!
+            </p>
           </div>
 
           <motion.button
@@ -71,7 +81,7 @@ export default function WelcomePage() {
             }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="text-lg font-medium px-8 py-3 bg-blue-600 rounded-full hover:bg-blue-700 transition-colors"
+            className="text-lg font-medium px-8 py-3 bg-blue-600 mt-6 rounded-full hover:bg-blue-700 transition-colors"
           >
             So How Does This Work 😩
           </motion.button>
@@ -107,7 +117,7 @@ export default function WelcomePage() {
                 transition={{ duration: 0.6 }}
               >
                 <h2 className={`text-3xl md:text-4xl font-bold ${gradientText} mb-4`}>How It Works</h2>
-                <p className="text-white">Your journey to a more organized and purposeful life</p>
+                <p className="text-white">Your journey to being one with yourself.</p>
               </motion.div>
 
               <div className="max-w-full overflow-hidden">
@@ -115,14 +125,12 @@ export default function WelcomePage() {
               </div>
 
               <div className="mt-8 md:mt-12 flex flex-wrap justify-center gap-4">
-                <motion.button
-                  onClick={signIn}
+                <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-5 sm:px-6 py-2.5 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   <AuthButton />
-                </motion.button>
+                </motion.div>
                 
                 <Link href="/guide">
                   <motion.button
@@ -181,25 +189,36 @@ export default function WelcomePage() {
 
               <div className="prose prose-invert max-w-none space-y-4 md:space-y-6">
                 <p className="text-base md:text-lg text-white break-words">
-                  LifeGuide was born from a simple observation: many people struggle to organize their lives
-                  and maintain focus on their goals. We&apos;ve combined battle-tested strategies from military,
-                  business, and personal development to create a practical system that actually works.
-                </p>
+                 <ReactMarkdown>
+                  LifeGuide came from a raw truth: you can’t chase goals that matter until you 
+                  know who’s staring back in the mirror. Life moves fast—too fast. We’re all scrambling, 
+                  chasing dreams we can’t even explain, never pausing to ask: What the hell do I actually
+                   want? That question isn’t fluff—it’s your lifeline. When everything falls apart, a clear 
+                   vision of who you are and why you’re fighting is what keeps you standing.
+                  </ReactMarkdown>
+               
+               </p>
 
                 <p className="text-base md:text-lg text-white break-words">
-                  Our platform isn&apos;t just another productivity tool—it&apos;s a comprehensive system designed
-                  to help you understand yourself better, set meaningful goals, and stay accountable
-                  to your vision. How? By focusing on no-tech first principles, where the human needs to sit down 
-                  with themselves and just think about who they are and where they want to go. It&apos;s hard work.
-                  Todays platforms try to use tech to make it easy for you... but there is no easy way out. You are 
-                  here because after all your attemts you realized you have to do the inner work.
+                  <ReactMarkdown>
+                  This isn’t another productivity app. Lifeguide is a system, stripped down and real, built to 
+                  make you face yourself first. No shortcuts, no tech crutches—just you, sitting with your thoughts, digging
+                   into who you are and where you’re headed. It’s tough, unglamorous work. Other platforms peddle quick fixes, 
+                   promising change in five minutes. They’re wrong. You’re here because you’ve tried them all and learned the hard 
+                   way: real change demands inner work, and there’s no dodging it.
+                   To reach your goals, you need to know your core—your strengths, your flaws, where you stand in this
+                    messy life, the tools you’ve got, the habits you carry. Without that, you’re swinging blind. If you don’t
+                     stop to find the cracks, how will you mend them? And when your head’s a storm of noise, how do you even see 
+                     what’s broken beneath it all? Lifeguide cuts through that chaos, forcing you to name your truth so you can reshape it.
+                  </ReactMarkdown>
                 </p>
 
-                <h3 className={`text-xl md:text-2xl font-bold ${gradientText}`}>Our Vision</h3>
+                <h3 className={`text-xl md:text-2xl font-bold ${gradientText}`}>The Vision</h3>
                 <p className="text-base md:text-lg text-white break-words">
-                  We envision a world where everyone has access to the tools and guidance they need
-                  to live a more intentional, fulfilled life. LifeGuide is our contribution to making
-                  that vision a reality.
+                Our vision is a world where everyone can live with purpose, not just drift through the noise. Lifeguide is our 
+                stand—a tool to guide you toward a life that’s intentional, honest, and yours. We believe in the power of that pause,
+                 that unflinching look inside. Because once you know who you are, you can become who you’re meant to be.
+
                 </p>
               </div>
             </div>

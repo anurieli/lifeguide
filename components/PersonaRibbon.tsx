@@ -67,7 +67,7 @@ export default function PersonaRibbon() {
     <div className="relative w-full flex justify-center my=0">
       <div className="relative w-full max-w-[800px] text-center text-3xl font-bold py-6 px-4 whitespace-nowrap overflow-visible">
         <span 
-          className="font-['Fredoka_One'] tracking-wider text-[clamp(1rem,4vw,2rem)] relative cursor-pointer inline-block text-white"
+          className="font-['Comic Sans MS, cursive, sans-serif'] tracking-wider text-[clamp(1rem,4vw,2rem)] relative cursor-pointer inline-block text-white"
           onMouseEnter={() => {
             setShowTooltip(true);
             setIsPaused(true);

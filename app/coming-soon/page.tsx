@@ -1,5 +1,4 @@
 import { createClient } from '@/utils/supabase/server'
-import { Heart } from 'lucide-react';
 import EmailSubscriptionForm from '../../components/EmailSubscriptionForm';
 import FeatureCardDialog from '../../components/FeatureCardDialog';
 import FeatureInteraction from '@/components/FeatureInteraction';
@@ -28,7 +27,7 @@ export default async function ComingSoonPage() {
     const featureCardsPromise = supabase
       .from('coming_soon')
       .select('*')
-      .order('upvotes', { ascending: false });
+      .order('likes', { ascending: false });
     
     // Use Promise.race with timeout
     const featureCardsResponse = await Promise.race([
@@ -76,10 +75,9 @@ export default async function ComingSoonPage() {
             </p>
             <ul className="list-disc list-inside text-gray-300 mb-4 space-y-1">
               <li><span className="text-pink-400 font-medium">Liking</span> features you find interesting</li>
-              <li><span className="text-blue-400 font-medium">Upvoting</span> the ONE feature you want to see developed next</li>
             </ul>
             <p className="text-gray-400 text-sm italic">
-              Note: You can only cast one upvote across all features, so choose wisely!
+              Your feedback helps us prioritize new feature development!
             </p>
           </div>
           
@@ -169,7 +167,7 @@ export default async function ComingSoonPage() {
           </h1>
           <div className="bg-red-900/30 border border-red-800/50 rounded-xl p-8 text-center">
             <p className="text-xl text-red-300 mb-2">Error Loading Features</p>
-            <p className="text-gray-300">We're having trouble loading the upcoming features. Please try again later.</p>
+            <p className="text-gray-300">We&apos;re having trouble loading the upcoming features. Please try again later.</p>
             <button 
               className="mt-4 px-4 py-2 bg-red-800/50 hover:bg-red-800/70 rounded-md transition-colors"
               onClick={() => window.location.reload()}

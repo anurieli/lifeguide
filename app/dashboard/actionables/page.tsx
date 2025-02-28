@@ -33,7 +33,7 @@ export default function ActionablesPage() {
           </h2>
           
           <p className="text-gray-300 mb-8 max-w-md mx-auto">
-            We're developing a powerful task management system to help you turn your blueprint into concrete actions.
+            We&apos;re developing a powerful task management system to help you turn your blueprint into concrete actions.
             Track your progress, set deadlines, and achieve your goals step by step.
           </p>
           

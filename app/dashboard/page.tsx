@@ -14,7 +14,6 @@ import {
 import { cn } from "@/lib/utils";
 import { HowToGuide } from '@/components/HowToGuide';
 import RichTextInput from "@/components/RichTextInput";
-import { Button } from "@/components/ui/button";
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 
@@ -109,11 +108,6 @@ const getMockUser = () => {
   }
 };
 
-const MOCK_USER = {
-  id: '553c0461-0bc6-4d18-9142-b0e63edc0d2c',
-  email: 'anurieli365@gmail.com',
-  role: 'admin'
-};
 
 export default function DashboardPage() {
   const [mode, setMode] = useState<DashboardMode>({ type: 'view' });
@@ -279,7 +273,7 @@ const ViewerMode = ({ onSwitchToEdit }: { onSwitchToEdit: () => void }) => {
   const [committedResponses, setCommittedResponses] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [isSectionComplete, setIsSectionComplete] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const fetchViewerData = async () => {
@@ -322,6 +316,14 @@ const ViewerMode = ({ onSwitchToEdit }: { onSwitchToEdit: () => void }) => {
           committed.add(progress.subsection_id);
         });
         setCommittedResponses(committed);
+
+        // Set isSectionComplete
+        const sectionComplete: Record<string, boolean> = {};
+        sectionsResponse.data.forEach((section: Section) => {
+          const sectionSubsections = subsectionsResponse.data.filter((sub: Subsection) => sub.section_id === section.id);
+          sectionComplete[section.id] = sectionSubsections.every((sub: Subsection) => committed.has(sub.id));
+        });
+        setIsSectionComplete(sectionComplete);
       } catch (error) {
         console.error('Error fetching viewer data:', error);
         setError('Failed to load blueprint data');
@@ -331,15 +333,10 @@ const ViewerMode = ({ onSwitchToEdit }: { onSwitchToEdit: () => void }) => {
     };
 
     fetchViewerData();
-  }, []);
+  }, [isSectionComplete]);
 
-  const isSectionComplete = (sectionId: string) => {
-    const sectionSubsections = subsections.filter(sub => sub.section_id === sectionId);
-    return sectionSubsections.every(sub => committedResponses.has(sub.id));
-  };
-
-  const completedSections = sections.filter(section => isSectionComplete(section.id));
-  const nextSection = sections.find(section => !isSectionComplete(section.id));
+  const completedSections = sections.filter(section => isSectionComplete[section.id]);
+  const nextSection = sections.find(section => !isSectionComplete[section.id]);
 
   if (loading) return <div className="p-4 text-gray-400">Loading...</div>;
   if (error) return <div className="p-4 text-red-400">{error}</div>;
@@ -372,7 +369,7 @@ const ViewerMode = ({ onSwitchToEdit }: { onSwitchToEdit: () => void }) => {
               
               <div className="space-y-4">
                 {subsections
-                  .filter(sub => sub.section_id === section.id && committedResponses.has(sub.id))
+                  .filter(sub => sub.section_id === section.id && isSectionComplete[section.id])
                   .map(subsection => (
                     <div key={subsection.id} className="bg-gray-800/50 rounded-lg p-4">
                       <h3 className="text-white font-medium mb-2">{subsection.title}</h3>

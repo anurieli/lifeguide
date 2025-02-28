@@ -4,15 +4,28 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthProvider'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/utils/supabase/client'
-import type { Session } from '@supabase/supabase-js'
+
+// Define types for debugging
+interface SessionInfo {
+  data: {
+    session: any | null
+  };
+  error?: any;
+}
+
+interface ApiTestResult {
+  success: boolean;
+  data?: any;
+  error?: any;
+  timeMs?: string;
+  timestamp: string;
+}
 
 export default function AuthDebug() {
-  // @ts-expect-error - Using any type for flexibility in debugging
-  const [sessionInfo, setSessionInfo] = useState<any>(null)
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null)
   const [cookieInfo, setCookieInfo] = useState<string[]>([])
   const [localStorageItems, setLocalStorageItems] = useState<Record<string, string>>({})
-  // @ts-expect-error - Using any type for flexibility in debugging
-  const [apiTestResult, setApiTestResult] = useState<any>(null)
+  const [apiTestResult, setApiTestResult] = useState<ApiTestResult | null>(null)
   const [apiTesting, setApiTesting] = useState(false)
   const [showMiddlewareLogs, setShowMiddlewareLogs] = useState(false)
   const [middlewareLogs, setMiddlewareLogs] = useState<string[]>([])
@@ -106,7 +119,7 @@ export default function AuthDebug() {
     const interval = setInterval(fetchData, 5000)
     
     return () => clearInterval(interval)
-  }, [])
+  }, [supabase.auth])
 
   return (
     <div className="bg-gray-100 p-4 rounded-lg text-sm">

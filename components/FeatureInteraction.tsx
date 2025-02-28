@@ -18,7 +18,6 @@ export default function FeatureInteraction({
 }: FeatureInteractionProps) {
   const [likes, setLikes] = useState(initialLikes);
   const [hasLiked, setHasLiked] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
   const supabase = createClient();
@@ -30,7 +29,6 @@ export default function FeatureInteraction({
         // Check authentication status
         const { data: { session } } = await supabase.auth.getSession();
         const isLoggedIn = !!session;
-        setIsAuthenticated(isLoggedIn);
         
         // Check if user has liked this feature
         if (isLoggedIn) {
@@ -39,7 +37,7 @@ export default function FeatureInteraction({
           // Get user's interaction record
           const { data: interactionData, error: interactionError } = await supabase
             .from('user_feature_interactions')
-            .select('has_liked')
+            .select('liked')
             .eq('user_id', userId)
             .eq('feature_id', featureId)
             .single();
@@ -50,7 +48,7 @@ export default function FeatureInteraction({
           
           // Set liked state
           if (interactionData) {
-            setHasLiked(interactionData.has_liked || false);
+            setHasLiked(interactionData.liked || false);
           }
         } else {
           // Check localStorage for anonymous likes
@@ -97,7 +95,7 @@ export default function FeatureInteraction({
             .upsert({
               user_id: userId,
               feature_id: featureId,
-              has_liked: false,
+              liked: false,
               updated_at: new Date().toISOString()
             }, { onConflict: 'user_id,feature_id' });
           
@@ -120,7 +118,7 @@ export default function FeatureInteraction({
             .upsert({
               user_id: userId,
               feature_id: featureId,
-              has_liked: true,
+              liked: true,
               updated_at: new Date().toISOString()
             }, { onConflict: 'user_id,feature_id' });
           
@@ -164,7 +162,7 @@ export default function FeatureInteraction({
           
           // Update localStorage
           const anonymousLikes = localStorage.getItem('anonymousLikes');
-          let likedFeatures = anonymousLikes ? JSON.parse(anonymousLikes) : [];
+          const likedFeatures = anonymousLikes ? JSON.parse(anonymousLikes) : [];
           likedFeatures.push(featureId);
           localStorage.setItem('anonymousLikes', JSON.stringify(likedFeatures));
           

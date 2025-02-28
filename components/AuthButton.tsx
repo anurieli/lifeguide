@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, Mail, Lock } from 'lucide-react';
-import type { User, Session } from '@supabase/supabase-js';
+import { AlertCircle, Mail, Lock, User as UserIcon } from 'lucide-react';
+import type { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthProvider';
 
@@ -15,21 +15,17 @@ export default function AuthButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
   const [signingIn, setSigningIn] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const router = useRouter();
   const { user: authUser, signOut } = useAuth();
   const supabase = createClient();
 
-  const resetState = () => {
-    setLoading(false);
-    setSigningIn(false);
-    setSigningOut(false);
-    setError(null);
-  };
+
 
   useEffect(() => {
     console.log('AuthButton mounted, user:', authUser ? 'Logged in' : 'Not logged in');
@@ -42,7 +38,6 @@ export default function AuthButton() {
         console.log('AuthButton: Checking session...');
         const { data: { session } } = await supabase.auth.getSession();
         console.log('AuthButton: Session retrieved', !!session);
-        setUser(session?.user ?? null);
       } catch (err) {
         console.error('AuthButton: Error checking session', err);
       }
@@ -94,7 +89,7 @@ export default function AuthButton() {
       setError(null);
       console.log('Starting Google sign in');
       
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const {data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
@@ -123,24 +118,50 @@ export default function AuthButton() {
       return;
     }
     
+    if (isSignUp && !name) {
+      setError('Please enter your name');
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
       console.log('Starting email sign in for:', email);
 
       // Try sign in first
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      if (!isSignUp) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-      // If error indicates user doesn't exist, try sign up
-      if (signInError && (signInError.message.includes('Invalid login credentials') || signInError.message.includes('user not found'))) {
-        console.log('User does not exist, attempting sign up');
+        // If error indicates user doesn't exist, switch to sign up mode
+        if (signInError && (signInError.message.includes('Invalid login credentials') || signInError.message.includes('user not found'))) {
+          setIsSignUp(true);
+          setError('Account not found. Please sign up with your name.');
+        } else if (signInError) {
+          // Other sign in error
+          console.error('Sign in error:', signInError.message);
+          setError(signInError.message);
+        } else {
+          // Sign in successful
+          console.log('Sign in successful');
+          setEmail('');
+          setPassword('');
+          setName('');
+          setIsOpen(false);
+          router.refresh();
+        }
+      } else {
+        // Sign up with name in user metadata
+        console.log('Attempting sign up with name:', name);
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
+            data: {
+              display_name: name
+            },
             emailRedirectTo: `${window.location.origin}/auth/callback`,
           },
         });
@@ -149,23 +170,14 @@ export default function AuthButton() {
           console.error('Sign up error:', error.message);
           setError(error.message);
         } else {
-          console.log('Sign up successful');
+          console.log('Sign up successful with name:', name);
           setEmail('');
           setPassword('');
+          setName('');
+          setIsSignUp(false);
           setIsOpen(false);
           router.refresh();
         }
-      } else if (signInError) {
-        // Other sign in error
-        console.error('Sign in error:', signInError.message);
-        setError(signInError.message);
-      } else {
-        // Sign in successful
-        console.log('Sign in successful');
-        setEmail('');
-        setPassword('');
-        setIsOpen(false);
-        router.refresh();
       }
     } catch (error) {
       console.error('Unexpected error during email auth:', error);
@@ -175,11 +187,16 @@ export default function AuthButton() {
     }
   };
 
+  const toggleMode = () => {
+    setIsSignUp(!isSignUp);
+    setError(null);
+  };
+
   if (authUser) {
     return (
       <div className="flex items-center gap-4">
         <p className="text-sm text-white font-medium">
-          Welcome, <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">{authUser.email?.split('@')[0] || 'User'}</span>
+          Welcome, <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">{authUser.user_metadata?.display_name || authUser.email?.split('@')[0] || 'User'}</span>
         </p>
         <Button 
           onClick={handleSignOut} 
@@ -206,10 +223,10 @@ export default function AuthButton() {
         <DialogContent className="bg-gray-900 border border-gray-800 text-white sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
-              Welcome to LifeGuide
+              {isSignUp ? 'Create an Account' : 'Welcome Back'}
             </DialogTitle>
             <DialogDescription className="text-gray-400">
-              Sign in to access your personal life blueprint
+              {isSignUp ? 'Sign up to create your personal life blueprint' : 'Sign in to access your personal life blueprint'}
             </DialogDescription>
           </DialogHeader>
           
@@ -219,7 +236,7 @@ export default function AuthButton() {
               disabled={signingIn}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none h-12"
             >
-              {signingIn ? 'Processing...' : 'Sign in with Google'}
+              {signingIn ? 'Processing...' : `Sign ${isSignUp ? 'up' : 'in'} with Google`}
             </Button>
             
             <div className="relative">
@@ -232,6 +249,24 @@ export default function AuthButton() {
             </div>
             
             <form onSubmit={handleEmailSignIn} className="space-y-4">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-gray-300">Name</Label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="Your name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="pl-10 bg-gray-800 border-gray-700 text-white"
+                      required={isSignUp}
+                    />
+                  </div>
+                </div>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-gray-300">Email</Label>
                 <div className="relative">
@@ -276,8 +311,18 @@ export default function AuthButton() {
                 disabled={loading}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none h-12"
               >
-                {loading ? 'Processing...' : 'Sign in / Sign up'}
+                {loading ? 'Processing...' : isSignUp ? 'Sign up' : 'Sign in'}
               </Button>
+              
+              <div className="text-center text-sm">
+                <button
+                  type="button"
+                  onClick={toggleMode}
+                  className="text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
+                </button>
+              </div>
             </form>
           </div>
           

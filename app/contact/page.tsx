@@ -26,7 +26,7 @@ export default function ContactPage() {
         
         <div className="mt-12 text-center">
           <p className="text-gray-400 text-sm">
-            Your privacy is important to us. We'll never share your information with third parties.
+            Your privacy is important to us. We&apos;ll never share your information with third parties.
           </p>
         </div>
 

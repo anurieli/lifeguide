@@ -33,7 +33,7 @@ export default function SettingsPage() {
           </h2>
           
           <p className="text-gray-300 mb-8 max-w-md mx-auto">
-            We're working on advanced settings to help you customize your LifeGuide experience. 
+            We&apos;re working on advanced settings to help you customize your LifeGuide experience. 
             This section will include profile customization, notification preferences, and more.
           </p>
           

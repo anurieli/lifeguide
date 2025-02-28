@@ -100,6 +100,10 @@ export default async function GuidePage() {
     
     console.log(`Guide data fetched successfully: ${sections.length} sections, ${subsections.length} subsections`);
     
+    const disclaimerTextMarkdown = `**This guide is for public reference**. The interactive version of this guide is available when you sign in, allowing you to create your personalized life plan based on these principles. \nTry it out, *it&apos;ll only hurt a little*.
+    
+    `;
+
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white pt-16 px-4 sm:px-6 lg:px-8">
         {/* Top-Level Container */}
@@ -108,20 +112,16 @@ export default async function GuidePage() {
           <div className="text-center mb-10">
             <div className="flex justify-center items-center gap-4 mb-6">
               <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
-                The Life Blueprint Guide
+                The Life Guide
               </h1>
               <HowToGuide displayMode="dialog" showButton={true} buttonPosition="inline" />
             </div>
             
-            {/* Intro Paragraph */}
-            <p className="text-gray-300 max-w-3xl mx-auto mb-8">
-              This guide outlines the key areas of your life blueprint. Each section represents a fundamental aspect of your life that contributes to your overall well-being and success.
-            </p>
             
             {/* Context Box */}
             <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 mb-10">
               <p className="text-gray-300 text-sm">
-                This guide serves as a reference. The interactive version of this blueprint is available when you sign in, allowing you to create your personalized life plan based on these principles.
+                <ReactMarkdown>{disclaimerTextMarkdown}</ReactMarkdown>
               </p>
             </div>
           </div>
@@ -246,11 +246,11 @@ export default async function GuidePage() {
       <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white pt-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text mb-8 text-center">
-            Life Blueprint Guide
+            Life Guide
           </h1>
           <div className="bg-red-900/30 border border-red-800/50 rounded-xl p-8 text-center">
             <p className="text-xl text-red-300 mb-2">Error Loading Guide</p>
-            <p className="text-gray-300">We're having trouble loading the guide content. Please try again later.</p>
+            <p className="text-gray-300">We&apos;re having trouble loading the guide content. Please try again later.</p>
             <button 
               className="mt-4 px-4 py-2 bg-red-800/50 hover:bg-red-800/70 rounded-md transition-colors"
               onClick={() => window.location.reload()}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { X, Heart } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -17,17 +17,15 @@ interface FeatureDetails {
 // This dialog will be shown when a feature card is clicked
 export default function FeatureCardDialog() {
   const [isOpen, setIsOpen] = useState(false);
-  const [featureId, setFeatureId] = useState<string | null>(null);
   const [featureData, setFeatureData] = useState<FeatureDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   
   const supabase = createClient();
   
   // Listen for a custom event emitted when a feature card is clicked
-  const handleOpenDialog = async (event: CustomEvent<{ featureId: string }>) => {
+  const handleOpenDialog = useCallback(async (event: CustomEvent<{ featureId: string }>) => {
     const { featureId } = event.detail;
     
-    setFeatureId(featureId);
     setIsOpen(true);
     
     try {
@@ -54,7 +52,7 @@ export default function FeatureCardDialog() {
       console.error('Error in dialog:', err);
       setError('An unexpected error occurred. Please try again later.');
     }
-  };
+  }, [supabase]);
   
   // Close the dialog
   const closeDialog = () => {
@@ -62,7 +60,6 @@ export default function FeatureCardDialog() {
     
     // Add a small delay before resetting the data to allow for close animation
     setTimeout(() => {
-      setFeatureId(null);
       setFeatureData(null);
       setError(null);
     }, 300);
@@ -80,7 +77,7 @@ export default function FeatureCardDialog() {
     return () => {
       window.removeEventListener('openFeatureDialog', handleCustomEvent);
     };
-  }, []);
+  }, [handleOpenDialog]);
   
   if (!isOpen) {
     return null;

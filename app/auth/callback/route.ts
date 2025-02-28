@@ -1,5 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createRouteHandlerClient } from '@/utils/supabase/route'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -8,25 +7,8 @@ export async function GET(request: Request) {
   const returnTo = requestUrl.searchParams.get('returnTo') || '/dashboard'
 
   if (code) {
-    const cookieStore = await cookies()
     const response = NextResponse.redirect(new URL(returnTo, requestUrl.origin))
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(name, value, options)
-            )
-          }
-        },
-      }
-    )
+    const supabase = await createRouteHandlerClient(response)
 
     await supabase.auth.exchangeCodeForSession(code)
     return response

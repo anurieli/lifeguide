@@ -4,14 +4,14 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, Settings, CheckSquare, Edit, HelpCircle, ChevronRight, Bookmark, ChevronDown, ChevronUp, Info, Lock, Check, Trash2, Lightbulb, ChevronLeft, RotateCcw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/utils";
 import { HowToGuide } from '@/components/HowToGuide';
 import RichTextInput from "@/components/RichTextInput";
 import Link from 'next/link';
@@ -22,6 +22,7 @@ interface Section {
   title: string;
   description: string;
   order_position: number;
+  subdescription?: string;
 }
 
 interface Subsection {
@@ -271,6 +272,7 @@ const ViewerMode = ({ onSwitchToEdit }: { onSwitchToEdit: () => void }) => {
   const [subsections, setSubsections] = useState<Subsection[]>([]);
   const [userResponses, setUserResponses] = useState<Record<string, string>>({});
   const [committedResponses, setCommittedResponses] = useState<Set<string>>(new Set());
+  const [expandedSectionDetails, setExpandedSectionDetails] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSectionComplete, setIsSectionComplete] = useState<Record<string, boolean>>({});
@@ -335,6 +337,19 @@ const ViewerMode = ({ onSwitchToEdit }: { onSwitchToEdit: () => void }) => {
     fetchViewerData();
   }, [isSectionComplete]);
 
+  // Add this function to toggle section details
+  const toggleSectionDetails = (sectionId: string) => {
+    setExpandedSectionDetails(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(sectionId)) {
+        newExpanded.delete(sectionId);
+      } else {
+        newExpanded.add(sectionId);
+      }
+      return newExpanded;
+    });
+  };
+
   const completedSections = sections.filter(section => isSectionComplete[section.id]);
   const nextSection = sections.find(section => !isSectionComplete[section.id]);
 
@@ -364,6 +379,27 @@ const ViewerMode = ({ onSwitchToEdit }: { onSwitchToEdit: () => void }) => {
                 <div>
                   <h2 className="text-xl font-semibold text-white">{section.title}</h2>
                   <p className="text-gray-400">{section.description}</p>
+                  
+                  {/* Add More Detail button */}
+                  {section.subdescription && (
+                    <div className="mt-3">
+                      <button
+                        onClick={() => toggleSectionDetails(section.id)}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30 rounded-lg text-amber-300 hover:from-amber-500/30 hover:to-yellow-500/30 transition-all shadow-sm hover:shadow-amber-500/20"
+                      >
+                        {expandedSectionDetails.has(section.id) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        <span className="text-sm font-medium">More Detail</span>
+                      </button>
+                      
+                      {expandedSectionDetails.has(section.id) && (
+                        <div className="mt-3 p-4 bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 rounded-lg animate-fadeIn shadow-inner">
+                          <div className="prose prose-invert prose-sm max-w-none">
+                            <ReactMarkdown>{section.subdescription}</ReactMarkdown>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -430,6 +466,7 @@ function EditorMode({ onClose }: { onClose: () => void }) {
   const [committedResponses, setCommittedResponses] = useState<CommittedResponse[]>([]);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [expandedExamples, setExpandedExamples] = useState<Set<string>>(new Set());
+  const [expandedSectionDetails, setExpandedSectionDetails] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bookmarkedSubsections, setBookmarkedSubsections] = useState<Set<string>>(new Set());
@@ -902,6 +939,19 @@ function EditorMode({ onClose }: { onClose: () => void }) {
     setCommitSectionId(null);
   };
 
+  // Add this function to toggle section details
+  const toggleSectionDetails = (sectionId: string) => {
+    setExpandedSectionDetails(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(sectionId)) {
+        newExpanded.delete(sectionId);
+      } else {
+        newExpanded.add(sectionId);
+      }
+      return newExpanded;
+    });
+  };
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-gray-900 z-50 flex items-center justify-center">
@@ -1035,6 +1085,27 @@ function EditorMode({ onClose }: { onClose: () => void }) {
                       <div>
                         <h2 className="text-xl font-semibold text-white">{section.title}</h2>
                         <p className="text-gray-400 mt-1">{section.description}</p>
+                        
+                        {/* Add More Detail button */}
+                        {section.subdescription && (
+                          <div className="mt-3">
+                            <button
+                              onClick={() => toggleSectionDetails(section.id)}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30 rounded-lg text-amber-300 hover:from-amber-500/30 hover:to-yellow-500/30 transition-all shadow-sm hover:shadow-amber-500/20"
+                            >
+                              {expandedSectionDetails.has(section.id) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              <span className="text-sm font-medium">More Detail</span>
+                            </button>
+                            
+                            {expandedSectionDetails.has(section.id) && (
+                              <div className="mt-3 p-4 bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 rounded-lg animate-fadeIn shadow-inner">
+                                <div className="prose prose-invert prose-sm max-w-none">
+                                  <ReactMarkdown>{section.subdescription}</ReactMarkdown>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       {!canEditSection(section.id) && (
                         <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 rounded-lg">

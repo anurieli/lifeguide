@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 
 // Mock user for development

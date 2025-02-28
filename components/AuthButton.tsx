@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, Mail, Lock, User as UserIcon } from 'lucide-react';
-import type { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthProvider';
 

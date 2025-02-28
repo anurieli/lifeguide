@@ -11,6 +11,8 @@ import ContactForm from '@/components/ContactForm';
 import PersonaRibbon from '@/components/PersonaRibbon';
 import WelcomePopup from '@/components/WelcomePopup';
 import VideoCarousel from '@/components/VideoCarousel';
+import AuthButton from '@/components/AuthButton';
+
 
 const gradientText = "bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text";
 
@@ -44,7 +46,7 @@ export default function WelcomePage() {
             Welcome to LifeGuide
           </h1>
           
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-300 mb-0 max-w-2xl mx-auto">
           A No-Bullshit, practical, interactive guide designed to help you organize your life, 
           sharpen your mindset, and achieve your goals. Built on battle-tested strategies from 
   the military, business, and personal development, Lifegaid combines structure with 
@@ -71,7 +73,7 @@ export default function WelcomePage() {
             whileTap={{ scale: 0.95 }}
             className="text-lg font-medium px-8 py-3 bg-blue-600 rounded-full hover:bg-blue-700 transition-colors"
           >
-            So How Does This Work?
+            So How Does This Work 😩
           </motion.button>
         </motion.div>
 
@@ -119,7 +121,7 @@ export default function WelcomePage() {
                   whileTap={{ scale: 0.95 }}
                   className="px-5 sm:px-6 py-2.5 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Sign in with Google
+                  <AuthButton />
                 </motion.button>
                 
                 <Link href="/guide">
@@ -138,7 +140,7 @@ export default function WelcomePage() {
       </section>
 
       {/* Video Series Section */}
-      <section id="videos" className="py-16 md:py-20 mt-8 md:mt-12">
+      {/* <section id="videos" className="py-16 md:py-20 mt-8 md:mt-12">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
           <div className="bg-white/5 rounded-3xl shadow-2xl backdrop-blur-sm overflow-hidden">
             <div className="p-6 md:p-12">
@@ -159,7 +161,7 @@ export default function WelcomePage() {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* About Section */}
       <section id="about" className="py-16 md:py-20 mt-8 md:mt-12">

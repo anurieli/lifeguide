@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 import { useEffect, useState } from 'react';
 import AuthButton from '@/components/AuthButton';
 import type { User, Session } from '@supabase/supabase-js';

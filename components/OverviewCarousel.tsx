@@ -15,8 +15,8 @@ interface Step {
 const steps: Step[] = [
   {
     title: 'Sign Up',
-    description: 'Either with Google or the old-fashioned way. \n No, I don\'t care about selling your data, I just need to save your progress.',
-    subdescription: 'This is a sub description that provides additional context.',
+    description: 'Either with Google or the old-fashioned way.',
+    subdescription: 'No, I don\'t care about selling your data, I just need to save your progress.',
     icon: (
       <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
@@ -26,7 +26,7 @@ const steps: Step[] = [
   {
     title: 'Build Your Blueprint',
     description:'Sit down, deatch for second, go deep, and create your lifes guide.',
-    subdescription: 'This is a sub description that provides additional context.',
+    subdescription: 'This is the hard part, but it just fucking works. You\'re worth a try.',
     icon: (
       <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -77,7 +77,7 @@ export default function OverviewCarousel() {
             key={index}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: index * 0.1 }}
+            transition={{ duration: 1, delay: index * 0.5 }}
             className="flex flex-col items-center text-center p-2 md:p-3 bg-gray-800/50 rounded-xl h-full"
           >
             <div className="text-blue-500 mb-2 shrink-0">
@@ -109,7 +109,7 @@ export default function OverviewCarousel() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 1 }}
             className="flex flex-col items-center text-center"
           >
             <div className="text-blue-500 mb-2 shrink-0">

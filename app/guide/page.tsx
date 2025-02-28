@@ -1,15 +1,17 @@
 import { createClient } from '@/utils/supabase/server'
 import ReactMarkdown from 'react-markdown';
 import { HowToGuide } from '@/components/HowToGuide';
-import { Info, HelpCircle } from 'lucide-react';
+import { Info, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ExpandableExample from '@/components/ExpandableExample';
+import MoreDetailButton from '@/components/MoreDetailButton';
 
 interface Section {
   id: string;
   title: string;
   description: string;
   order_position: number;
+  subdescription?: string;
 }
 
 interface Subsection {
@@ -150,6 +152,9 @@ export default async function GuidePage() {
                     <div className="text-gray-300 mt-2 prose prose-invert prose-sm max-w-none">
                       <ReactMarkdown>{section.description}</ReactMarkdown>
                     </div>
+                    
+                    {/* Add More Detail button */}
+                    <MoreDetailButton subdescription={section.subdescription} />
                   </div>
                   
                   {/* Subsections Loop */}

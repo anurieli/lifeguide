@@ -31,6 +31,7 @@ export interface Database {
           id: string
           title: string
           description: string
+          subdescription: string | null
           order_position: number
           created_at: string
           updated_at: string
@@ -40,6 +41,7 @@ export interface Database {
           id?: string
           title: string
           description: string
+          subdescription?: string | null
           order_position: number
           created_at?: string
           updated_at?: string
@@ -49,6 +51,7 @@ export interface Database {
           id?: string
           title?: string
           description?: string
+          subdescription?: string | null
           order_position?: number
           created_at?: string
           updated_at?: string

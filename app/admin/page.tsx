@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Edit2, Trash2, ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';

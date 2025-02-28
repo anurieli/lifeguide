@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@/utils/supabase/middleware'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Helper to log middleware activities
@@ -28,43 +28,8 @@ export async function middleware(request: NextRequest) {
 
   logMiddleware(`Processing request: ${request.nextUrl.pathname} (isPublic: ${isPublicRoute})`);
 
-  // Initial empty response - we'll use this as a basis for our actual response
-  let response = NextResponse.next({
-    request,
-  })
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          const cookies = request.cookies.getAll();
-          logMiddleware(`getAll cookies: ${cookies.length}`);
-          return cookies;
-        },
-        setAll(cookiesToSet) {
-          logMiddleware(`setAll cookies: ${cookiesToSet.length}`);
-          
-          // First set cookies on the request
-          cookiesToSet.forEach(({ name, value }) => {
-            request.cookies.set(name, value);
-          });
-          
-          // Then create a new response with those cookies
-          response = NextResponse.next({
-            request,
-          });
-          
-          // Finally set cookies on the response with full options
-          cookiesToSet.forEach(({ name, value, options }) => {
-            logMiddleware(`Setting cookie: ${name}`);
-            response.cookies.set(name, value, options);
-          });
-        },
-      },
-    }
-  )
+  // Create Supabase client for middleware
+  const { supabase, response } = createClient(request);
 
   try {
     // IMPORTANT! THIS MUST BE THE FIRST CALL AFTER CLIENT CREATION

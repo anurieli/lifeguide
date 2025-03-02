@@ -192,19 +192,28 @@ export default function WelcomePage() {
                   p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
                 }}>
                   LifeGuide came from a raw truth: you can't chase goals that matter until you 
-                  know who's staring back in the mirror. Life moves fast—too fast. We're all scrambling, 
+                  know who's staring back in the mirror. In todays world, life moves fast—too fast. We're all scrambling, 
                   chasing dreams we can't even explain, never pausing to ask: What the hell do I actually
                    want? That question isn't fluff—it's your lifeline. When everything falls apart, a clear 
-                   vision of who you are and why you're fighting is what keeps you standing.
+                   vision of who you are and why you're fighting is what keeps you standing with a smile on your face amidst all the chaos. 
+                   
+                   
+                  Lifeguide started out as a way for me to get my life back on track after coming back from a year long war (not a figurative one). 
+                  Restless from jetlag and thoughts of "what now?", 1 AM i picked up a pen and paper and started writing. 
+                  by 5 AM I had a new "bible" that I would read morning an night. Fow weeks I would read it first thing in the morning, and right before bed, 
+                  and editiing it whenever I felt the need. After months of leaning on this document, and seeing the insane positive benefit it has created in my life, 
+                   I realized it has been the only thing that has been able to have such a profound efffect for such a long period of time. No longer am I running away from my flaws,
+                   no longer am I anxious about my future. I am no longer afraid of myself, and therefore I am in full control of my life. SO I decided to pay it forwward, and share
+                   the tool with the world. Free of charge ofcourse. 
                 </ReactMarkdown>
 
                 <ReactMarkdown components={{
                   p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
                 }}>
-                  **This isn't another productivity app**. Lifeguide is a system, stripped down and real, built to 
-                  make you face yourself first. No shortcuts, no tech crutches—just you, sitting with your thoughts, digging
+                  **This isn't another productivity app**. Lifeguide is a *back-to-basics* system that promotes the philosophy of chanigng your 
+                  life by first and formost facing yourself. No shortcuts, no tech crutches—just you, sitting with your thoughts, digging
                    into who you are and where you're headed. It's tough, unglamorous work. Other platforms peddle quick fixes, 
-                   promising change in five minutes. They're wrong. You're here because you've tried them all and learned the hard 
+                   promising change in five minutes.  You're here because you've tried them all and learned the hard 
                    way: real change demands inner work, and there's no dodging it.
                    To reach your goals, you need to know your core—your strengths, your flaws, where you stand in this
                     messy life, the tools you've got, the habits you carry. Without that, you're swinging blind. If you don't
@@ -215,8 +224,8 @@ export default function WelcomePage() {
                 <h3 className={`text-xl md:text-2xl font-bold ${gradientText}`}>The Vision</h3>
                 
                 <p className="text-base md:text-lg text-gray-300 break-words">
-                Our vision is a world where everyone can live with purpose, not just drift through the noise. Lifeguide is our 
-                stand—a tool to guide you toward a life that's intentional, honest, and yours. We believe in the power of that pause,
+                My vision is a world where everyone can live with purpose, not just drift through the noise. Lifeguide is our 
+                stand—a truly simple tool to guide you toward a life that's intentional, honest, and yours. We believe in the power of that pause,
                  that unflinching look inside. Because once you know who you are, you can become who you're meant to be.
                 </p>
               </div>

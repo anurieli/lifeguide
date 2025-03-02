@@ -10,10 +10,10 @@ import { DebugLayout } from './debug-layout'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'LifeGuide',
+  title: 'Lifeguide',
   description: 'Your Personal Guide to Life – Made by You',
   icons: {
-    icon: '/logo.svg',
+    icon: 'favicon.ico',
   },
 }
 

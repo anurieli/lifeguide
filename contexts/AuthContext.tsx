@@ -138,7 +138,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         hasUser: !!session?.user,
         userId: session?.user?.id || 'none',
         email: session?.user?.email || 'none',
-        provider: session?.provider || 'none',
+        provider: session?.user?.app_metadata?.provider || 'none',
         expiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'none'
       });
       

@@ -65,7 +65,7 @@ export async function GET(request: Request) {
           user: data.session.user.id,
           email: data.session.user.email,
           expiry: data.session.expires_at ? new Date(data.session.expires_at * 1000).toISOString() : 'unknown',
-          provider: data.session.provider,
+          providerInfo: data.session.user.app_metadata?.provider || 'unknown',
           tokenRefreshed: Boolean(data.session.refresh_token),
           accessTokenLength: data.session.access_token?.length || 0
         });

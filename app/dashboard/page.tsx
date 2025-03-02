@@ -485,7 +485,11 @@ const ViewerMode = ({ onSwitchToEdit }: { onSwitchToEdit: () => void }) => {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h2 className="text-xl font-semibold text-white">{section.title}</h2>
-                  <p className="text-gray-400">{section.description}</p>
+                  <ReactMarkdown components={{
+                    p: ({node, ...props}) => <p className="text-gray-400" {...props} />
+                  }}>
+                    {section.description}
+                  </ReactMarkdown>
                   
                   {/* Add More Detail button */}
                   {section.subdescription && (
@@ -1330,7 +1334,11 @@ function EditorMode({ onClose }: { onClose: () => void }) {
                     <div className="flex items-center gap-3">
                       <div>
                         <h2 className="text-xl font-semibold text-white">{section.title}</h2>
-                        <p className="text-gray-400 mt-1">{section.description}</p>
+                        <ReactMarkdown components={{
+                          p: ({node, ...props}) => <p className="text-gray-400 mt-1" {...props} />
+                        }}>
+                          {section.description}
+                        </ReactMarkdown>
                         
                         {/* Add More Detail button */}
                         {section.subdescription && (

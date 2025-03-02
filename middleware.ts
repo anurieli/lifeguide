@@ -90,7 +90,7 @@ export async function middleware(request: NextRequest) {
       if (session) {
         console.log(`[Middleware ${timestamp}] Session details:`, {
           expiry: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'unknown',
-          provider: session.provider,
+          provider: session.user?.app_metadata?.provider || 'unknown',
           refreshToken: session.refresh_token ? 'present' : 'missing'
         });
       } else {

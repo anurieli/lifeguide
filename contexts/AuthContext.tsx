@@ -175,7 +175,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       // If connection was in error state, update it
       if (connectionState === 'error') {
-        setConnectionState(session ? 'connected' : 'disconnected');
+        setConnectionState(session ? 'connected' : 'reconnecting');
       }
     });
 

@@ -5,17 +5,6 @@ import type { User, Session } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 
-// Mock user for development
-const MOCK_USER: User = {
-  id: '553c0461-0bc6-4d18-9142-b0e63edc0d2c',
-  email: 'anurieli365@gmail.com',
-  role: 'admin',
-  app_metadata: {},
-  user_metadata: {},
-  aud: 'authenticated',
-  created_at: new Date().toISOString()
-};
-
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -51,24 +40,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
   const supabase = createClient();
   const initMounted = useRef(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoaded, setAuthLoaded] = useState(false);
 
   // Function to refresh the session
   const refreshSession = useCallback(async () => {
-    console.log('Refreshing session...');
+    const timestamp = new Date().toISOString();
+    console.log(`[AUTH ${timestamp}] Refreshing session...`);
     try {
       setConnectionState('reconnecting');
       const { data: { session }, error } = await supabase.auth.getSession();
       
       if (error) {
-        console.error('Error refreshing session:', error);
+        console.error(`[AUTH ${timestamp}] Error refreshing session:`, error);
+        console.error(`[AUTH ${timestamp}] Error details:`, {
+          message: error.message,
+          status: error.status,
+          stack: error.stack
+        });
         setConnectionState('error');
       } else {
         setConnectionState('connected');
         setUser(session?.user ?? null);
-        console.log('Session refreshed successfully', !!session?.user);
+        setSession(session);
+        console.log(`[AUTH ${timestamp}] Session refreshed successfully:`, {
+          hasUser: !!session?.user,
+          userId: session?.user?.id || 'none',
+          aud: session?.user?.aud || 'none',
+          expiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'none'
+        });
       }
     } catch (error) {
-      console.error('Exception refreshing session:', error);
+      console.error(`[AUTH ${timestamp}] Exception refreshing session:`, error);
       setConnectionState('error');
     }
   }, [supabase]);
@@ -79,23 +82,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     initMounted.current = true;
     
     const initializeAuth = async () => {
+      const timestamp = new Date().toISOString();
+      console.log(`[AUTH ${timestamp}] Initializing auth...`);
       try {
-        console.log('Initializing auth...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('Error initializing session:', error);
+          console.error(`[AUTH ${timestamp}] Error initializing session:`, error);
+          console.error(`[AUTH ${timestamp}] Error details:`, {
+            message: error.message,
+            status: error.status,
+            stack: error.stack
+          });
           setConnectionState('error');
         } else {
           setUser(session?.user ?? null);
+          setSession(session);
           setConnectionState('connected');
-          console.log('Auth initialized with user:', !!session?.user);
+          console.log(`[AUTH ${timestamp}] Auth initialized:`, {
+            hasUser: !!session?.user,
+            userId: session?.user?.id || 'none',
+            email: session?.user?.email || 'none',
+            expiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'none',
+            cookiesEnabled: navigator.cookieEnabled,
+            localStorage: typeof localStorage !== 'undefined',
+            sessionStorage: typeof sessionStorage !== 'undefined'
+          });
+          
+          // Debug: Check what cookies exist
+          if (typeof document !== 'undefined') {
+            console.log(`[AUTH ${timestamp}] Auth cookies:`, document.cookie.split('; ').map(c => c.split('=')[0]));
+          }
         }
       } catch (error) {
-        console.error('Exception initializing auth:', error);
+        console.error(`[AUTH ${timestamp}] Exception initializing auth:`, error);
         setConnectionState('error');
       } finally {
         setLoading(false);
+        setAuthLoaded(true);
       }
     };
 
@@ -104,28 +128,62 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Set up auth state listener
   useEffect(() => {
-    console.log('Setting up auth state listener...');
+    const timestamp = new Date().toISOString();
+    console.log(`[AUTH ${timestamp}] Setting up auth state listener...`);
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: Session | null) => {
-      console.log('Auth state changed:', event, !!session?.user);
-      setUser(session?.user ?? null);
-      setLoading(false);
+      const changeTimestamp = new Date().toISOString();
+      console.log(`[AUTH ${changeTimestamp}] Auth state changed:`, {
+        event,
+        hasUser: !!session?.user,
+        userId: session?.user?.id || 'none',
+        email: session?.user?.email || 'none',
+        provider: session?.provider || 'none',
+        expiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'none'
+      });
       
-      if (session) {
-        setConnectionState('connected');
+      // Special logging for SIGNED_OUT event
+      if (event === 'SIGNED_OUT') {
+        console.log(`[AUTH ${changeTimestamp}] User signed out, checking cookies...`);
+        if (typeof document !== 'undefined') {
+          const hasSBCookies = document.cookie.includes('sb-');
+          console.log(`[AUTH ${changeTimestamp}] Auth cookies still present after signout: ${hasSBCookies}`);
+          
+          if (hasSBCookies) {
+            console.log(`[AUTH ${changeTimestamp}] Warning: Auth cookies still present after signout`);
+          }
+        }
       }
       
-      // Redirect based on auth state if needed
+      // Special logging for SIGNED_IN event
       if (event === 'SIGNED_IN') {
-        router.refresh();
-      } else if (event === 'SIGNED_OUT') {
-        router.refresh();
+        console.log(`[AUTH ${changeTimestamp}] User signed in, checking session...`);
+        if (session) {
+          console.log(`[AUTH ${changeTimestamp}] Session details:`, {
+            providerToken: !!session.provider_token,
+            accessToken: !!session.access_token,
+            refreshToken: !!session.refresh_token,
+            tokenType: session.token_type
+          });
+        }
+      }
+      
+      setUser(session?.user ?? null);
+      setSession(session);
+      setLoading(false);
+      setAuthLoaded(true);
+      
+      // If connection was in error state, update it
+      if (connectionState === 'error') {
+        setConnectionState(session ? 'connected' : 'disconnected');
       }
     });
 
     return () => {
+      console.log(`[AUTH ${new Date().toISOString()}] Unsubscribing from auth state changes`);
       subscription.unsubscribe();
     };
-  }, [supabase, router]);
+  }, [supabase, connectionState]);
 
   // Refresh session periodically
   useEffect(() => {
@@ -154,32 +212,190 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, [connectionState, refreshSession]);
 
-  const signIn = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`
+  // Add dedicated session refresh effect
+  useEffect(() => {
+    const timestamp = new Date().toISOString();
+    console.log(`[AUTH ${timestamp}] Session monitor setup (authLoaded: ${authLoaded}, hasUser: ${!!user})`);
+    
+    // Only run this after auth is loaded and if there's no user
+    if (!authLoaded || user) return;
+    
+    // Check if we have auth cookies but no session
+    const checkForCookiesWithoutSession = async () => {
+      const timestamp = new Date().toISOString();
+      try {
+        if (typeof document === 'undefined') return;
+        
+        const hasSBCookies = document.cookie.includes('sb-');
+        console.log(`[AUTH ${timestamp}] Auth cookies present without session: ${hasSBCookies}`);
+        
+        if (hasSBCookies) {
+          console.log(`[AUTH ${timestamp}] Found cookies but no session, attempting refresh`);
+          // Try to refresh the session
+          await refreshSession();
+          
+          // Check if refresh worked
+          const { data: { session }, error } = await supabase.auth.getSession();
+          if (session) {
+            console.log(`[AUTH ${timestamp}] Session recovered after refresh`);
+            setUser(session.user);
+            setSession(session);
+          } else {
+            console.log(`[AUTH ${timestamp}] Failed to recover session after refresh:`, error);
+            // Clear cookies as they might be invalid
+            await supabase.auth.signOut({ scope: 'local' });
+          }
+        }
+      } catch (error) {
+        console.error(`[AUTH ${timestamp}] Error checking/refreshing session:`, error);
       }
-    });
+    };
+    
+    // Run the check
+    checkForCookiesWithoutSession();
+  }, [authLoaded, user, supabase]);
+  
+  // Add session expiry monitor
+  useEffect(() => {
+    if (!session) return;
+    
+    const timestamp = new Date().toISOString();
+    const expiresAt = session.expires_at ? new Date(session.expires_at * 1000) : null;
+    
+    if (!expiresAt) {
+      console.log(`[AUTH ${timestamp}] Session has no expiry time`);
+      return;
+    }
+    
+    const now = new Date();
+    const timeUntilExpiry = expiresAt.getTime() - now.getTime();
+    
+    // Refresh session 2 minutes before expiry
+    const refreshTime = Math.max(timeUntilExpiry - (2 * 60 * 1000), 0);
+    
+    console.log(`[AUTH ${timestamp}] Session expires at: ${expiresAt.toISOString()}`);
+    console.log(`[AUTH ${timestamp}] Will refresh in: ${Math.round(refreshTime / 1000 / 60)} minutes`);
+    
+    if (refreshTime < 5 * 60 * 1000) { // If less than 5 minutes left
+      console.log(`[AUTH ${timestamp}] Session expiring soon, refreshing now`);
+      refreshSession();
+      return;
+    }
+    
+    // Set up timer for later refresh
+    const refreshTimer = setTimeout(() => {
+      const newTimestamp = new Date().toISOString();
+      console.log(`[AUTH ${newTimestamp}] Session refresh timer triggered`);
+      refreshSession();
+    }, refreshTime);
+    
+    return () => clearTimeout(refreshTimer);
+  }, [session]);
+
+  const signIn = async () => {
+    const timestamp = new Date().toISOString();
+    console.log(`[AUTH ${timestamp}] Initiating Google Sign In...`);
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      
+      if (error) {
+        console.error(`[AUTH ${timestamp}] Error initiating OAuth:`, error);
+      } else {
+        console.log(`[AUTH ${timestamp}] OAuth initiated, redirecting to provider:`, {
+          provider: 'google',
+          url: data?.url || 'unknown',
+          returnToURL: `${window.location.origin}/auth/callback`
+        });
+      }
+    } catch (error) {
+      console.error(`[AUTH ${timestamp}] Exception during sign in:`, error);
+    }
   };
 
   const signOut = async () => {
+    const timestamp = new Date().toISOString();
+    console.log(`[AUTH ${timestamp}] Sign out initiated`);
+    
+    if (typeof document !== 'undefined') {
+      console.log(`[AUTH ${timestamp}] Cookies before sign out:`, document.cookie);
+    }
+    
     try {
-      setLoading(true);
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
       
-      // Sign out from Supabase
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-
+      if (error) {
+        console.error(`[AUTH ${timestamp}] Error signing out:`, error);
+        console.error(`[AUTH ${timestamp}] Error details:`, {
+          message: error.message,
+          status: error.status
+        });
+        throw error;
+      }
+      
       // Clear local state
       setUser(null);
+      setSession(null);
       
-      // Force a hard refresh to clear any cached data
-      window.location.href = '/';
+      // Debug: Check cookies after signout
+      if (typeof document !== 'undefined') {
+        console.log(`[AUTH ${timestamp}] Cookies after sign out:`, document.cookie);
+        
+        // Manual cookie clearing fallback - sometimes Supabase doesn't clear all cookies
+        const cookiesToClear = [
+          'sb-access-token', 
+          'sb-refresh-token',
+          'sb-provider-token',
+          'sb-auth-event',
+          'sb-auth-token',
+          'mock_user', // Add mock_user to cookies to clear
+          'sb-localhost-auth-token', // Also clear local dev tokens
+          'sb-localhost-auth-token-code-verifier'
+        ];
+        
+        console.log(`[AUTH ${timestamp}] Manually clearing cookies:`, cookiesToClear);
+        
+        // Clear each cookie with various paths to ensure complete removal
+        cookiesToClear.forEach(name => {
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/auth;`;
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/dashboard;`;
+          document.cookie = `${name}.0=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`; // Also clear indexed cookies
+          document.cookie = `${name}.1=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        });
+        
+        // Also clear any project-specific cookies (using regex pattern)
+        const allCookies = document.cookie.split('; ');
+        allCookies.forEach(cookie => {
+          const cookieName = cookie.split('=')[0];
+          if (cookieName.includes('oibpypueiknfqnljgqjr')) {
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          }
+        });
+        
+        console.log(`[AUTH ${timestamp}] Cookies after manual clear:`, document.cookie);
+      }
+      
+      // Force a page reload to ensure clean state
+      if (typeof window !== 'undefined') {
+        console.log(`[AUTH ${timestamp}] Forcing page reload for clean state`);
+        window.location.href = '/';
+      }
+      
+      console.log(`[AUTH ${timestamp}] Sign out completed`);
     } catch (error) {
-      console.error('Error signing out:', error);
-    } finally {
-      setLoading(false);
+      console.error(`[AUTH ${timestamp}] Unexpected error during sign out:`, error);
+      if (error instanceof Error) {
+        console.error(`[AUTH ${timestamp}] Error details:`, {
+          message: error.message,
+          stack: error.stack
+        });
+      }
+      throw error;
     }
   };
 

@@ -65,47 +65,154 @@ export default function AuthButton() {
   }, [router, supabase.auth]);
 
   const handleSignOut = async () => {
+    const timestamp = new Date().toISOString();
+    console.log(`[AuthButton ${timestamp}] Sign-out initiated`);
+    
     try {
-      setSigningOut(true);
-      setError(null);
-      console.log('Starting sign out process');
+      // Log cookies before sign-out
+      console.log(`[AuthButton ${timestamp}] Cookies before sign-out:`, document.cookie);
       
-      await signOut();
+      setLoading(true);
+      console.log(`[AuthButton ${timestamp}] Calling supabase.auth.signOut()`);
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
       
-      console.log('Sign out completed, refreshing router');
-      router.refresh();
-    } catch (error) {
-      console.error('Error signing out:', error);
-      setError('Error signing out. Please try again.');
+      if (error) {
+        console.error(`[AuthButton ${timestamp}] Error during sign-out:`, error);
+        console.error(`[AuthButton ${timestamp}] Error details:`, {
+          message: error.message,
+          status: error.status
+        });
+        setError('Error signing out. Please try again.');
+      } else {
+        console.log(`[AuthButton ${timestamp}] Sign-out successful`);
+        
+        // Log cookies after sign-out
+        console.log(`[AuthButton ${timestamp}] Cookies after sign-out:`, document.cookie);
+        
+        // Manually check if auth cookies still exist
+        const hasSBCookies = document.cookie.includes('sb-');
+        console.log(`[AuthButton ${timestamp}] Auth cookies still present:`, hasSBCookies);
+        
+        // Force refresh the page to ensure clean state
+        console.log(`[AuthButton ${timestamp}] Forcing page refresh for clean state`);
+        window.location.href = '/';
+      }
+    } catch (err) {
+      console.error(`[AuthButton ${timestamp}] Unexpected error during sign-out:`, err);
+      if (err instanceof Error) {
+        console.error(`[AuthButton ${timestamp}] Error details:`, {
+          message: err.message,
+          stack: err.stack
+        });
+      }
+      setError('Unexpected error during sign-out');
     } finally {
-      setSigningOut(false);
+      setLoading(false);
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignin = async (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    const timestamp = new Date().toISOString();
+    console.log(`[AuthButton ${timestamp}] Google sign-in initiated`);
+    
     try {
-      setSigningIn(true);
+      setLoading(true);
       setError(null);
-      console.log('Starting Google sign in');
+      
+      // Check if we already have auth cookies - might indicate a broken auth state
+      if (typeof document !== 'undefined') {
+        console.log(`[AuthButton ${timestamp}] Cookies before Google sign-in:`, document.cookie);
+        
+        const hasSupabaseCookies = document.cookie.includes('sb-');
+        const hasMockUserCookie = document.cookie.includes('mock_user');
+        
+        console.log(`[AuthButton ${timestamp}] Existing auth state check:`, {
+          hasSupabaseCookies,
+          hasMockUserCookie
+        });
+        
+        if (hasMockUserCookie) {
+          console.log(`[AuthButton ${timestamp}] Found mock_user cookie, clearing it before sign-in`);
+          document.cookie = 'mock_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        }
+        
+        // If we already have Supabase cookies but no user, try refreshing the session first
+        if (hasSupabaseCookies) {
+          console.log(`[AuthButton ${timestamp}] Found Supabase cookies, checking session state`);
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          console.log(`[AuthButton ${timestamp}] Current session status:`, {
+            hasSession: !!session,
+            expires: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'none'
+          });
+          
+          if (!session) {
+            console.log(`[AuthButton ${timestamp}] Found cookies but no session, attempting refresh`);
+            const { error: refreshError } = await supabase.auth.refreshSession();
+            
+            if (refreshError) {
+              console.log(`[AuthButton ${timestamp}] Session refresh failed, clearing cookies before new sign-in`);
+              await supabase.auth.signOut({ scope: 'local' });
+            } else {
+              console.log(`[AuthButton ${timestamp}] Session refreshed successfully, redirecting to dashboard`);
+              window.location.href = '/dashboard';
+              return;
+            }
+          }
+        }
+      }
+      
+      const returnPath = '/dashboard';
+      console.log(`[AuthButton ${timestamp}] Calling supabase.auth.signInWithOAuth with provider: google, returnTo: ${returnPath}`);
+      
+      // Set up detailed redirect options
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      console.log(`[AuthButton ${timestamp}] Redirect URL configured as: ${redirectUrl}`);
       
       const {data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
+          redirectTo: `${redirectUrl}?returnTo=${returnPath}`,
+          queryParams: {
+            prompt: 'select_account', // Force Google to show account selection
+            access_type: 'offline' // Request a refresh token
+          }
+        }
       });
       
       if (error) {
-        console.error('Google sign in error:', error.message);
-        setError(error.message);
-      } else {
-        console.log('Google sign in initiated');
+        console.error(`[AuthButton ${timestamp}] Error during Google sign-in:`, error);
+        console.error(`[AuthButton ${timestamp}] Error details:`, {
+          message: error.message,
+          status: error.status,
+          stack: error.stack
+        });
+        setError('Error signing in with Google. Please try again.');
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error('Unexpected error during Google sign in:', error);
-      setError('Error signing in with Google. Please try again.');
-    } finally {
-      setSigningIn(false);
+      
+      console.log(`[AuthButton ${timestamp}] OAuth initialization successful, redirecting to provider`);
+      if (data?.url) {
+        console.log(`[AuthButton ${timestamp}] OAuth URL:`, data.url);
+        console.log(`[AuthButton ${timestamp}] Redirecting to Google auth page`);
+        // No need to set loading to false as we're redirecting
+      } else {
+        console.warn(`[AuthButton ${timestamp}] No redirect URL returned from signInWithOAuth!`);
+        setError('Error starting Google sign-in flow. Please try again.');
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error(`[AuthButton ${timestamp}] Unexpected error during Google sign-in:`, err);
+      if (err instanceof Error) {
+        console.error(`[AuthButton ${timestamp}] Error details:`, {
+          message: err.message,
+          stack: err.stack
+        });
+      }
+      setError('Unexpected error during sign-in');
+      setLoading(false);
     }
   };
 
@@ -231,7 +338,7 @@ export default function AuthButton() {
           
           <div className="space-y-4 py-4">
             <Button 
-              onClick={handleGoogleSignIn} 
+              onClick={handleGoogleSignin} 
               disabled={signingIn}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none h-12"
             >
@@ -259,7 +366,7 @@ export default function AuthButton() {
                       placeholder="Your name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="pl-10 bg-gray-800 border-gray-700 text-white"
+                      className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-400"
                       required={isSignUp}
                     />
                   </div>
@@ -276,7 +383,7 @@ export default function AuthButton() {
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 bg-gray-800 border-gray-700 text-white"
+                    className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-400"
                     required
                   />
                 </div>
@@ -292,12 +399,11 @@ export default function AuthButton() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 bg-gray-800 border-gray-700 text-white"
+                    className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-400"
                     required
                   />
                 </div>
               </div>
-              
               {error && (
                 <div className="bg-red-900/30 border border-red-800 p-3 rounded-md flex items-start gap-2">
                   <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />

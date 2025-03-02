@@ -97,19 +97,6 @@ const TOOLTIP_CLASSES = {
   arrow: "border-gray-800"
 };
 
-// Replace the hardcoded MOCK_USER with a function to get the user from cookies
-const getMockUser = () => {
-  const mockUserCookie = document.cookie.split(';').find(c => c.trim().startsWith('mock_user='));
-  if (!mockUserCookie) return null;
-  try {
-    return JSON.parse(decodeURIComponent(mockUserCookie.split('=')[1]));
-  } catch (e) {
-    console.error('Error parsing mock user cookie:', e);
-    return null;
-  }
-};
-
-
 export default function DashboardPage() {
   const [mode, setMode] = useState<DashboardMode>({ type: 'view' });
   const [isNewUserDialogOpen, setIsNewUserDialogOpen] = useState(false);
@@ -279,29 +266,137 @@ const ViewerMode = ({ onSwitchToEdit }: { onSwitchToEdit: () => void }) => {
 
   useEffect(() => {
     const fetchViewerData = async () => {
+      const timestamp = new Date().toISOString();
+      console.log(`[DASHBOARD ${timestamp}] Starting to fetch viewer data...`);
       setLoading(true);
       setError(null);
 
       try {
+        console.log(`[DASHBOARD ${timestamp}] Creating Supabase client...`);
         const supabase = createClient();
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-        if (!session) throw new Error('No active session');
+        
+        console.log(`[DASHBOARD ${timestamp}] Getting session...`);
+        let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error(`[DASHBOARD ${timestamp}] Session error:`, sessionError);
+          console.error(`[DASHBOARD ${timestamp}] Session error details:`, {
+            message: sessionError.message,
+            status: sessionError.status || 'unknown'
+          });
+          throw sessionError;
+        }
+        
+        // If no session, try to refresh it
+        if (!session) {
+          console.warn(`[DASHBOARD ${timestamp}] No active session found, attempting refresh`);
+          
+          // Check if we have auth cookies that might indicate a broken session
+          const hasSBCookies = typeof document !== 'undefined' && document.cookie.includes('sb-');
+          console.log(`[DASHBOARD ${timestamp}] Auth cookies present without session: ${hasSBCookies}`);
+          
+          if (hasSBCookies) {
+            console.log(`[DASHBOARD ${timestamp}] Attempting session refresh...`);
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+            
+            if (refreshError) {
+              console.error(`[DASHBOARD ${timestamp}] Session refresh failed:`, refreshError);
+            } else if (refreshData.session) {
+              console.log(`[DASHBOARD ${timestamp}] Session refreshed successfully`);
+              session = refreshData.session;
+            } else {
+              console.error(`[DASHBOARD ${timestamp}] Session refresh returned no session or error`);
+            }
+          }
+        }
+        
+        if (!session) {
+          console.error(`[DASHBOARD ${timestamp}] No active session found after refresh attempt`);
+          
+          // Check if there's a mock_user cookie that might be causing issues
+          const hasMockUser = typeof document !== 'undefined' && document.cookie.includes('mock_user');
+          if (hasMockUser) {
+            console.warn(`[DASHBOARD ${timestamp}] Found mock_user cookie that may be causing issues`);
+            document.cookie = 'mock_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            console.log(`[DASHBOARD ${timestamp}] Cleared mock_user cookie, reloading page`);
+            window.location.reload();
+            return;
+          }
+          
+          setError('Your session has expired. Please sign in again.');
+          setLoading(false);
+          
+          // Redirect to login after a short delay
+          setTimeout(() => {
+            window.location.href = '/login?expired=true';
+          }, 2000);
+          
+          return;
+        }
 
+        console.log(`[DASHBOARD ${timestamp}] Active session found, user ID:`, session.user.id);
+        console.log(`[DASHBOARD ${timestamp}] Session expires:`, session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'unknown');
+        
         const userId = session.user.id;
         
-        const [sectionsResponse, subsectionsResponse, userResponsesResponse, userProgressResponse] = await Promise.all([
-          supabase.from('guide_sections').select('*').order('order_position'),
-          supabase.from('guide_subsections').select('*').order('order_position'),
-          supabase.from('user_responses').select('*').eq('user_id', userId),
-          supabase.from('user_progress').select('*').eq('user_id', userId).eq('completed', true)
-        ]);
+        console.log(`[DASHBOARD ${timestamp}] Fetching blueprint data for user ${userId}...`);
+        
+        // Wrap each query in a try/catch to get better error reporting
+        let sectionsResponse, subsectionsResponse, userResponsesResponse, userProgressResponse;
+        
+        try {
+          console.log(`[DASHBOARD ${timestamp}] Fetching guide sections...`);
+          sectionsResponse = await supabase.from('guide_sections').select('*').order('order_position');
+          if (sectionsResponse.error) {
+            console.error(`[DASHBOARD ${timestamp}] Error fetching sections:`, sectionsResponse.error);
+            throw sectionsResponse.error;
+          }
+          console.log(`[DASHBOARD ${timestamp}] Sections fetched:`, sectionsResponse.data.length);
+        } catch (err) {
+          console.error(`[DASHBOARD ${timestamp}] Exception fetching sections:`, err);
+          throw err;
+        }
+        
+        try {
+          console.log(`[DASHBOARD ${timestamp}] Fetching guide subsections...`);
+          subsectionsResponse = await supabase.from('guide_subsections').select('*').order('order_position');
+          if (subsectionsResponse.error) {
+            console.error(`[DASHBOARD ${timestamp}] Error fetching subsections:`, subsectionsResponse.error);
+            throw subsectionsResponse.error;
+          }
+          console.log(`[DASHBOARD ${timestamp}] Subsections fetched:`, subsectionsResponse.data.length);
+        } catch (err) {
+          console.error(`[DASHBOARD ${timestamp}] Exception fetching subsections:`, err);
+          throw err;
+        }
+        
+        try {
+          console.log(`[DASHBOARD ${timestamp}] Fetching user responses...`);
+          userResponsesResponse = await supabase.from('user_responses').select('*').eq('user_id', userId);
+          if (userResponsesResponse.error) {
+            console.error(`[DASHBOARD ${timestamp}] Error fetching user responses:`, userResponsesResponse.error);
+            throw userResponsesResponse.error;
+          }
+          console.log(`[DASHBOARD ${timestamp}] User responses fetched:`, userResponsesResponse.data.length);
+        } catch (err) {
+          console.error(`[DASHBOARD ${timestamp}] Exception fetching user responses:`, err);
+          throw err;
+        }
+        
+        try {
+          console.log(`[DASHBOARD ${timestamp}] Fetching user progress...`);
+          userProgressResponse = await supabase.from('user_progress').select('*').eq('user_id', userId).eq('completed', true);
+          if (userProgressResponse.error) {
+            console.error(`[DASHBOARD ${timestamp}] Error fetching user progress:`, userProgressResponse.error);
+            throw userProgressResponse.error;
+          }
+          console.log(`[DASHBOARD ${timestamp}] User progress fetched:`, userProgressResponse.data.length);
+        } catch (err) {
+          console.error(`[DASHBOARD ${timestamp}] Exception fetching user progress:`, err);
+          throw err;
+        }
 
-        if (sectionsResponse.error) throw sectionsResponse.error;
-        if (subsectionsResponse.error) throw subsectionsResponse.error;
-        if (userResponsesResponse.error) throw userResponsesResponse.error;
-        if (userProgressResponse.error) throw userProgressResponse.error;
-
+        console.log(`[DASHBOARD ${timestamp}] Setting state with fetched data...`);
         setSections(sectionsResponse.data);
         setSubsections(subsectionsResponse.data);
 
@@ -310,6 +405,7 @@ const ViewerMode = ({ onSwitchToEdit }: { onSwitchToEdit: () => void }) => {
         userResponsesResponse.data.forEach((response: UserResponse) => {
           responses[response.subsection_id] = response.content;
         });
+        console.log(`[DASHBOARD ${timestamp}] Processed ${Object.keys(responses).length} user responses`);
         setUserResponses(responses);
 
         // Process committed responses
@@ -317,6 +413,7 @@ const ViewerMode = ({ onSwitchToEdit }: { onSwitchToEdit: () => void }) => {
         userProgressResponse.data.forEach((progress: UserProgress) => {
           committed.add(progress.subsection_id);
         });
+        console.log(`[DASHBOARD ${timestamp}] Processed ${committed.size} committed responses`);
         setCommittedResponses(committed);
 
         // Set isSectionComplete
@@ -326,16 +423,26 @@ const ViewerMode = ({ onSwitchToEdit }: { onSwitchToEdit: () => void }) => {
           sectionComplete[section.id] = sectionSubsections.every((sub: Subsection) => committed.has(sub.id));
         });
         setIsSectionComplete(sectionComplete);
+        console.log(`[DASHBOARD ${timestamp}] Section completion calculated`);
+        
+        console.log(`[DASHBOARD ${timestamp}] Data fetch completed successfully`);
       } catch (error) {
-        console.error('Error fetching viewer data:', error);
+        console.error(`[DASHBOARD ${timestamp}] Error fetching viewer data:`, error);
+        if (error instanceof Error) {
+          console.error(`[DASHBOARD ${timestamp}] Error details:`, {
+            message: error.message,
+            stack: error.stack
+          });
+        }
         setError('Failed to load blueprint data');
       } finally {
+        console.log(`[DASHBOARD ${timestamp}] Setting loading state to false`);
         setLoading(false);
       }
     };
 
     fetchViewerData();
-  }, [isSectionComplete]);
+  }, []);
 
   // Add this function to toggle section details
   const toggleSectionDetails = (sectionId: string) => {
@@ -503,42 +610,97 @@ function EditorMode({ onClose }: { onClose: () => void }) {
   }, [sections]);
 
   const fetchBlueprintData = async () => {
+    const timestamp = new Date().toISOString();
+    console.log(`[EDITOR ${timestamp}] Starting to fetch blueprint data...`);
     setLoading(true);
     setError(null);
     
     try {
+      console.log(`[EDITOR ${timestamp}] Creating Supabase client...`);
       const supabase = createClient();
 
       // Get session
+      console.log(`[EDITOR ${timestamp}] Getting session...`);
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
-        console.error('Session error:', sessionError);
+        console.error(`[EDITOR ${timestamp}] Session error:`, sessionError);
+        console.error(`[EDITOR ${timestamp}] Session error details:`, {
+          message: sessionError.message,
+          status: sessionError.status || 'unknown'
+        });
         setError('Authentication error');
         setLoading(false);
         return;
       }
       if (!session) {
-        console.error('No active session found');
+        console.error(`[EDITOR ${timestamp}] No active session found`);
         setError('No active session');
         setLoading(false);
         return;
       }
 
       const userId = session.user.id;
-      console.log('Fetching data for user:', userId);
+      console.log(`[EDITOR ${timestamp}] Active session found, user ID:`, userId);
+      console.log(`[EDITOR ${timestamp}] Session expires:`, session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'unknown');
+      
+      console.log(`[EDITOR ${timestamp}] Fetching blueprint data for user ${userId}...`);
+      
+      // Wrap each query in a try/catch to get better error reporting
+      let sectionsResponse, subsectionsResponse, userResponsesResponse, userProgressResponse;
+      
+      try {
+        console.log(`[EDITOR ${timestamp}] Fetching guide sections...`);
+        sectionsResponse = await supabase.from('guide_sections').select('*').order('order_position');
+        if (sectionsResponse.error) {
+          console.error(`[EDITOR ${timestamp}] Error fetching sections:`, sectionsResponse.error);
+          throw sectionsResponse.error;
+        }
+        console.log(`[EDITOR ${timestamp}] Sections fetched:`, sectionsResponse.data.length);
+      } catch (err) {
+        console.error(`[EDITOR ${timestamp}] Exception fetching sections:`, err);
+        throw err;
+      }
+      
+      try {
+        console.log(`[EDITOR ${timestamp}] Fetching guide subsections...`);
+        subsectionsResponse = await supabase.from('guide_subsections').select('*').order('order_position');
+        if (subsectionsResponse.error) {
+          console.error(`[EDITOR ${timestamp}] Error fetching subsections:`, subsectionsResponse.error);
+          throw subsectionsResponse.error;
+        }
+        console.log(`[EDITOR ${timestamp}] Subsections fetched:`, subsectionsResponse.data.length);
+      } catch (err) {
+        console.error(`[EDITOR ${timestamp}] Exception fetching subsections:`, err);
+        throw err;
+      }
+      
+      try {
+        console.log(`[EDITOR ${timestamp}] Fetching user responses...`);
+        userResponsesResponse = await supabase.from('user_responses').select('*').eq('user_id', userId);
+        if (userResponsesResponse.error) {
+          console.error(`[EDITOR ${timestamp}] Error fetching user responses:`, userResponsesResponse.error);
+          throw userResponsesResponse.error;
+        }
+        console.log(`[EDITOR ${timestamp}] User responses fetched:`, userResponsesResponse.data.length);
+      } catch (err) {
+        console.error(`[EDITOR ${timestamp}] Exception fetching user responses:`, err);
+        throw err;
+      }
+      
+      try {
+        console.log(`[EDITOR ${timestamp}] Fetching user progress...`);
+        userProgressResponse = await supabase.from('user_progress').select('*').eq('user_id', userId);
+        if (userProgressResponse.error) {
+          console.error(`[EDITOR ${timestamp}] Error fetching user progress:`, userProgressResponse.error);
+          throw userProgressResponse.error;
+        }
+        console.log(`[EDITOR ${timestamp}] User progress fetched:`, userProgressResponse.data.length);
+      } catch (err) {
+        console.error(`[EDITOR ${timestamp}] Exception fetching user progress:`, err);
+        throw err;
+      }
 
-      const [sectionsResponse, subsectionsResponse, userResponsesResponse, userProgressResponse] = await Promise.all([
-        supabase.from('guide_sections').select('*').order('order_position'),
-        supabase.from('guide_subsections').select('*').order('order_position'),
-        supabase.from('user_responses').select('*').eq('user_id', userId),
-        supabase.from('user_progress').select('*').eq('user_id', userId)
-      ]);
-
-      if (sectionsResponse.error) throw sectionsResponse.error;
-      if (subsectionsResponse.error) throw subsectionsResponse.error;
-      if (userResponsesResponse.error) throw userResponsesResponse.error;
-      if (userProgressResponse.error) throw userProgressResponse.error;
-
+      console.log(`[EDITOR ${timestamp}] Setting state with fetched data...`);
       setSections(sectionsResponse.data);
       setSubsections(subsectionsResponse.data);
       
@@ -547,6 +709,7 @@ function EditorMode({ onClose }: { onClose: () => void }) {
       userResponsesResponse.data.forEach((response: UserResponse) => {
         responses[response.subsection_id] = response.content;
       });
+      console.log(`[EDITOR ${timestamp}] Processed ${Object.keys(responses).length} user responses`);
       setUserResponses(responses);
 
       // Set committed responses and bookmarks
@@ -556,6 +719,7 @@ function EditorMode({ onClose }: { onClose: () => void }) {
           subsectionId: progress.subsection_id,
           isCommitted: true
         }));
+      console.log(`[EDITOR ${timestamp}] Processed ${committed.length} committed responses`);
       setCommittedResponses(committed);
 
       // Set bookmarks from flagged items
@@ -564,165 +728,136 @@ function EditorMode({ onClose }: { onClose: () => void }) {
           .filter((progress: UserProgress) => progress.flagged)
           .map((progress: UserProgress) => progress.subsection_id)
       );
+      console.log(`[EDITOR ${timestamp}] Processed ${bookmarked.size} bookmarked subsections`);
       setBookmarkedSubsections(bookmarked);
+      
+      console.log(`[EDITOR ${timestamp}] Data fetch completed successfully`);
     } catch (error) {
       console.error('Error fetching blueprint data:', error);
       setError('Failed to load blueprint data');
     } finally {
+      console.log(`[EDITOR ${timestamp}] Setting loading state to false`);
       setLoading(false);
     }
   };
 
-  // Update saveUserResponse function
-  const saveUserResponse = async (subsectionId: string, content: string) => {
-    const user = getMockUser();
-    if (!user) {
-      console.error('User session not found');
-      return;
-    }
-
-    console.log('Attempting to save response for user:', user.id);
-    
-    try {
-      const supabase = createClient();
-      
-      // First verify we have an active session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        console.error('Session error:', sessionError);
-        return;
-      }
-      if (!session) {
-        console.error('No active session found');
-        return;
-      }
-      
-      // Important: Use the session user ID instead of mock user
-      const userId = session.user.id;
-      console.log('Active session found for user:', userId);
-      
-      // First, check if a response exists
-      console.log('Checking for existing response...');
-      const { data: existingResponses, error: fetchError } = await supabase
-        .from('user_responses')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('subsection_id', subsectionId);
-
-      if (fetchError) {
-        console.error('Error fetching existing response:', fetchError);
-        throw fetchError;
-      }
-
-      const existingResponse = existingResponses?.[0];
-      console.log('Existing response:', existingResponse);
-
-      if (existingResponse) {
-        console.log('Updating existing response...');
-        const { error: updateError } = await supabase
-          .from('user_responses')
-          .update({
-            content: content,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingResponse.id);
-          
-        if (updateError) {
-          console.error('Error updating response:', updateError);
-          throw updateError;
-        }
-      } else {
-        console.log('Creating new response...');
-        const { error: insertError } = await supabase
-          .from('user_responses')
-          .insert({
-            user_id: userId,
-            subsection_id: subsectionId,
-            content: content,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
-          
-        if (insertError) {
-          console.error('Error inserting response:', insertError);
-          throw insertError;
-        }
-      }
-      
-      console.log('Successfully saved response');
-    } catch (error) {
-      console.error('Error saving response:', error);
-    }
-  };
-
-  // Update saveUserProgress function
+  // Add back the saveUserProgress function with enhanced logging
   const saveUserProgress = async (subsectionId: string, completed: boolean) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[PROGRESS ${timestamp}] Attempting to save progress for subsection: ${subsectionId.substring(0, 8)}...`);
     try {
+      console.log(`[PROGRESS ${timestamp}] Creating Supabase client...`);
       const supabase = createClient();
       
       // First verify we have an active session
+      console.log(`[PROGRESS ${timestamp}] Verifying active session...`);
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
-        console.error('Session error:', sessionError);
+        console.error(`[PROGRESS ${timestamp}] Session error:`, sessionError);
+        console.error(`[PROGRESS ${timestamp}] Session error details:`, {
+          message: sessionError.message,
+          status: sessionError.status || 'unknown'
+        });
         return;
       }
       if (!session) {
-        console.error('No active session found');
+        console.error(`[PROGRESS ${timestamp}] No active session found`);
         return;
       }
       
       const userId = session.user.id;
-      console.log('Saving progress for user:', userId);
+      console.log(`[PROGRESS ${timestamp}] Active session found for user: ${userId}`);
+      console.log(`[PROGRESS ${timestamp}] Session expires: ${session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'unknown'}`);
+      console.log(`[PROGRESS ${timestamp}] Saving progress for user: ${userId}, subsection: ${subsectionId.substring(0, 8)}, completed: ${completed}`);
 
-      // First check if a record exists
-      const { data: existingProgress, error: fetchError } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('subsection_id', subsectionId)
-        .maybeSingle();  // Use maybeSingle instead of single to avoid 406
+      try {
+        // First check if a record exists
+        console.log(`[PROGRESS ${timestamp}] Checking for existing progress...`);
+        const { data: existingProgress, error: fetchError } = await supabase
+          .from('user_progress')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('subsection_id', subsectionId)
+          .maybeSingle();  // Use maybeSingle instead of single to avoid 406
 
-      if (fetchError) {
-        console.error('Error checking existing progress:', fetchError);
-        return;
+        if (fetchError) {
+          console.error(`[PROGRESS ${timestamp}] Error checking existing progress:`, fetchError);
+          console.error(`[PROGRESS ${timestamp}] Error details:`, {
+            message: fetchError.message,
+            code: fetchError.code,
+            details: fetchError.details
+          });
+          throw fetchError;
+        }
+
+        console.log(`[PROGRESS ${timestamp}] Existing progress:`, existingProgress ? `Found with ID ${existingProgress.id}` : 'None found');
+
+        if (existingProgress) {
+          // Update existing record
+          console.log(`[PROGRESS ${timestamp}] Updating existing progress with ID: ${existingProgress.id}`);
+          const { error: updateError } = await supabase
+            .from('user_progress')
+            .update({
+              completed: completed,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingProgress.id)
+            .select();  // Add select() to ensure proper response format
+
+          if (updateError) {
+            console.error(`[PROGRESS ${timestamp}] Error updating progress:`, updateError);
+            console.error(`[PROGRESS ${timestamp}] Error details:`, {
+              message: updateError.message,
+              code: updateError.code,
+              details: updateError.details
+            });
+            throw updateError;
+          }
+          console.log(`[PROGRESS ${timestamp}] Progress updated successfully`);
+        } else {
+          // Insert new record
+          console.log(`[PROGRESS ${timestamp}] Creating new progress for user: ${userId}, subsection: ${subsectionId.substring(0, 8)}`);
+          const { error: insertError } = await supabase
+            .from('user_progress')
+            .insert({
+              user_id: userId,
+              subsection_id: subsectionId,
+              completed: completed,
+              updated_at: new Date().toISOString()
+            })
+            .select();  // Add select() to ensure proper response format
+
+          if (insertError) {
+            console.error(`[PROGRESS ${timestamp}] Error inserting progress:`, insertError);
+            console.error(`[PROGRESS ${timestamp}] Error details:`, {
+              message: insertError.message,
+              code: insertError.code,
+              details: insertError.details
+            });
+            throw insertError;
+          }
+          console.log(`[PROGRESS ${timestamp}] New progress created successfully`);
+        }
+      } catch (dbError) {
+        console.error(`[PROGRESS ${timestamp}] Database operation error:`, dbError);
+        if (dbError instanceof Error) {
+          console.error(`[PROGRESS ${timestamp}] Error details:`, {
+            message: dbError.message,
+            stack: dbError.stack
+          });
+        }
+        throw dbError;
       }
 
-      if (existingProgress) {
-        // Update existing record
-        const { error: updateError } = await supabase
-          .from('user_progress')
-          .update({
-            completed: completed,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingProgress.id)
-          .select();  // Add select() to ensure proper response format
-
-        if (updateError) {
-          console.error('Error updating progress:', updateError);
-          return;
-        }
-      } else {
-        // Insert new record
-        const { error: insertError } = await supabase
-          .from('user_progress')
-          .insert({
-            user_id: userId,
-            subsection_id: subsectionId,
-            completed: completed,
-            updated_at: new Date().toISOString()
-          })
-          .select();  // Add select() to ensure proper response format
-
-        if (insertError) {
-          console.error('Error inserting progress:', insertError);
-          return;
-        }
-      }
-
-      console.log('Successfully saved progress');
+      console.log(`[PROGRESS ${timestamp}] Successfully saved progress`);
     } catch (error) {
-      console.error('Error saving progress:', error);
+      console.error(`[PROGRESS ${timestamp}] Error saving progress:`, error);
+      if (error instanceof Error) {
+        console.error(`[PROGRESS ${timestamp}] Error details:`, {
+          message: error.message,
+          stack: error.stack
+        });
+      }
     }
   };
 
@@ -950,6 +1085,117 @@ function EditorMode({ onClose }: { onClose: () => void }) {
       }
       return newExpanded;
     });
+  };
+
+  // Add the saveUserResponse function with enhanced logging
+  const saveUserResponse = async (subsectionId: string, content: string) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[EDITOR ${timestamp}] Attempting to save response for subsection: ${subsectionId.substring(0, 8)}...`);
+    try {
+      console.log(`[EDITOR ${timestamp}] Creating Supabase client...`);
+      const supabase = createClient();
+      
+      // First verify we have an active session
+      console.log(`[EDITOR ${timestamp}] Verifying active session...`);
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error(`[EDITOR ${timestamp}] Session error:`, sessionError);
+        console.error(`[EDITOR ${timestamp}] Session error details:`, {
+          message: sessionError.message,
+          status: sessionError.status || 'unknown'
+        });
+        return;
+      }
+      if (!session) {
+        console.error(`[EDITOR ${timestamp}] No active session found`);
+        return;
+      }
+      
+      const userId = session.user.id;
+      console.log(`[EDITOR ${timestamp}] Active session found for user: ${userId}`);
+      console.log(`[EDITOR ${timestamp}] Session expires: ${session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'unknown'}`);
+      
+      // First, check if a response exists
+      console.log(`[EDITOR ${timestamp}] Checking for existing response...`);
+      try {
+        const { data: existingResponses, error: fetchError } = await supabase
+          .from('user_responses')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('subsection_id', subsectionId);
+
+        if (fetchError) {
+          console.error(`[EDITOR ${timestamp}] Error fetching existing response:`, fetchError);
+          throw fetchError;
+        }
+
+        const existingResponse = existingResponses?.[0];
+        console.log(`[EDITOR ${timestamp}] Existing response:`, existingResponse ? `Found with ID ${existingResponse.id}` : 'None found');
+
+        if (existingResponse) {
+          console.log(`[EDITOR ${timestamp}] Updating existing response with ID: ${existingResponse.id}`);
+          const { error: updateError } = await supabase
+            .from('user_responses')
+            .update({
+              content: content,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingResponse.id);
+            
+          if (updateError) {
+            console.error(`[EDITOR ${timestamp}] Error updating response:`, updateError);
+            console.error(`[EDITOR ${timestamp}] Error details:`, {
+              message: updateError.message,
+              code: updateError.code,
+              details: updateError.details
+            });
+            throw updateError;
+          }
+          console.log(`[EDITOR ${timestamp}] Response updated successfully`);
+        } else {
+          console.log(`[EDITOR ${timestamp}] Creating new response for user: ${userId}, subsection: ${subsectionId.substring(0, 8)}`);
+          const { error: insertError } = await supabase
+            .from('user_responses')
+            .insert({
+              user_id: userId,
+              subsection_id: subsectionId,
+              content: content,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+            
+          if (insertError) {
+            console.error(`[EDITOR ${timestamp}] Error inserting response:`, insertError);
+            console.error(`[EDITOR ${timestamp}] Error details:`, {
+              message: insertError.message,
+              code: insertError.code,
+              details: insertError.details
+            });
+            throw insertError;
+          }
+          console.log(`[EDITOR ${timestamp}] New response created successfully`);
+        }
+      } catch (dbError) {
+        console.error(`[EDITOR ${timestamp}] Database operation error:`, dbError);
+        if (dbError instanceof Error) {
+          console.error(`[EDITOR ${timestamp}] Error details:`, {
+            message: dbError.message,
+            stack: dbError.stack
+          });
+        }
+        throw dbError;
+      }
+      
+      console.log(`[EDITOR ${timestamp}] Successfully saved response`);
+    } catch (error) {
+      console.error(`[EDITOR ${timestamp}] Error saving response:`, error);
+      if (error instanceof Error) {
+        console.error(`[EDITOR ${timestamp}] Error details:`, {
+          message: error.message,
+          stack: error.stack
+        });
+      }
+    }
   };
 
   if (loading) {

@@ -77,7 +77,7 @@ export default function OverviewCarousel() {
             key={index}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: index * 0.5 }}
+            transition={{ duration: .3, delay: index * 0.1 }}
             className="flex flex-col items-center text-center p-2 md:p-3 bg-gray-800/50 rounded-xl h-full"
           >
             <div className="text-blue-500 mb-2 shrink-0">

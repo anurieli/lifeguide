@@ -47,7 +47,7 @@ export default function WelcomePage() {
             Welcome to LifeGuide
           </h1>
           
-          <p className="text-xl text-gray-300 mb-0 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-400 mb-0 max-w-2xl mx-auto">
           A No-Bullshit, practical, interactive guide designed to help you organize your life, 
           sharpen your mindset, and achieve your goals. Built on battle-tested strategies from 
   the military, business, and personal development, Lifegaid combines structure with 
@@ -117,7 +117,7 @@ export default function WelcomePage() {
                 transition={{ duration: 0.6 }}
               >
                 <h2 className={`text-3xl md:text-4xl font-bold ${gradientText} mb-4`}>How It Works</h2>
-                <p className="text-white">Your journey to being one with yourself.</p>
+                <p className="text-gray-400 text-xl">Your journey to being one with yourself.</p>
               </motion.div>
 
               <div className="max-w-full overflow-hidden">
@@ -184,41 +184,40 @@ export default function WelcomePage() {
                 className="text-center mb-8 md:mb-12"
               >
                 <h2 className={`text-3xl md:text-4xl font-bold ${gradientText} mb-4`}>About LifeGuide</h2>
-                <p className="text-white">Why the fuck did I make this?</p>
+                <p className="text-xl text-gray-400 mb-0 max-w-2xl mx-auto">Why does this exist?</p>
               </motion.div>
 
               <div className="prose prose-invert max-w-none space-y-4 md:space-y-6">
-                <p className="text-base md:text-lg text-white break-words">
-                 <ReactMarkdown>
-                  LifeGuide came from a raw truth: you can’t chase goals that matter until you 
-                  know who’s staring back in the mirror. Life moves fast—too fast. We’re all scrambling, 
-                  chasing dreams we can’t even explain, never pausing to ask: What the hell do I actually
-                   want? That question isn’t fluff—it’s your lifeline. When everything falls apart, a clear 
-                   vision of who you are and why you’re fighting is what keeps you standing.
-                  </ReactMarkdown>
-               
-               </p>
+                <ReactMarkdown components={{
+                  p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
+                }}>
+                  LifeGuide came from a raw truth: you can't chase goals that matter until you 
+                  know who's staring back in the mirror. Life moves fast—too fast. We're all scrambling, 
+                  chasing dreams we can't even explain, never pausing to ask: What the hell do I actually
+                   want? That question isn't fluff—it's your lifeline. When everything falls apart, a clear 
+                   vision of who you are and why you're fighting is what keeps you standing.
+                </ReactMarkdown>
 
-                <p className="text-base md:text-lg text-white break-words">
-                  <ReactMarkdown>
-                  This isn’t another productivity app. Lifeguide is a system, stripped down and real, built to 
+                <ReactMarkdown components={{
+                  p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
+                }}>
+                  **This isn't another productivity app**. Lifeguide is a system, stripped down and real, built to 
                   make you face yourself first. No shortcuts, no tech crutches—just you, sitting with your thoughts, digging
-                   into who you are and where you’re headed. It’s tough, unglamorous work. Other platforms peddle quick fixes, 
-                   promising change in five minutes. They’re wrong. You’re here because you’ve tried them all and learned the hard 
-                   way: real change demands inner work, and there’s no dodging it.
+                   into who you are and where you're headed. It's tough, unglamorous work. Other platforms peddle quick fixes, 
+                   promising change in five minutes. They're wrong. You're here because you've tried them all and learned the hard 
+                   way: real change demands inner work, and there's no dodging it.
                    To reach your goals, you need to know your core—your strengths, your flaws, where you stand in this
-                    messy life, the tools you’ve got, the habits you carry. Without that, you’re swinging blind. If you don’t
-                     stop to find the cracks, how will you mend them? And when your head’s a storm of noise, how do you even see 
-                     what’s broken beneath it all? Lifeguide cuts through that chaos, forcing you to name your truth so you can reshape it.
-                  </ReactMarkdown>
-                </p>
+                    messy life, the tools you've got, the habits you carry. Without that, you're swinging blind. If you don't
+                     stop to find the cracks, how will you mend them? And when your head's a storm of noise, how do you even see 
+                     what's broken beneath it all? Lifeguide cuts through that chaos, forcing you to name your truth so you can reshape it.
+                </ReactMarkdown>
 
                 <h3 className={`text-xl md:text-2xl font-bold ${gradientText}`}>The Vision</h3>
-                <p className="text-base md:text-lg text-white break-words">
+                
+                <p className="text-base md:text-lg text-gray-300 break-words">
                 Our vision is a world where everyone can live with purpose, not just drift through the noise. Lifeguide is our 
-                stand—a tool to guide you toward a life that’s intentional, honest, and yours. We believe in the power of that pause,
-                 that unflinching look inside. Because once you know who you are, you can become who you’re meant to be.
-
+                stand—a tool to guide you toward a life that's intentional, honest, and yours. We believe in the power of that pause,
+                 that unflinching look inside. Because once you know who you are, you can become who you're meant to be.
                 </p>
               </div>
             </div>

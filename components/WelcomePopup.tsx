@@ -44,8 +44,7 @@ export default function WelcomePopup() {
             <div className="text-center">
               <h2 className="text-2xl font-bold mb-4">Ready to Lock In?</h2>
               <p className="text-gray-400 mb-8">
-                Welcome to LifeGuide! We&apos;re here to help you organize your life, define your goals,
-                and build the resilience you need to achieve them.
+                Welcome to LifeGuide – Desgined to help you take back control of your life.
               </p>
 
               <div className="flex flex-col gap-4">

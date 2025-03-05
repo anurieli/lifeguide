@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { useEffect, useState } from 'react';
-import AuthButton from '@/components/AuthButton';
+import SimpleAuthButton from '@/components/SimpleAuthButton';
 import type { User, Session } from '@supabase/supabase-js';
 
 export default function Navbar() {
@@ -115,7 +115,7 @@ export default function Navbar() {
             </Link>
 
             {/* Auth button on the far right */}
-            <AuthButton />
+            <SimpleAuthButton />
           </div>
         </div>
       </div>

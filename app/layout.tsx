@@ -1,7 +1,7 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { AuthProvider } from '@/context/AuthProvider'
+import { AuthProvider } from '@/utils/AuthProvider'
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import { Toaster } from '@/components/ui/sonner'

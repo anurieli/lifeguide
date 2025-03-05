@@ -1,6 +1,6 @@
 'use client';
 
-import AuthDebug from '@/components/AuthDebug';
+
 import { useState, useEffect } from 'react';
 
 // This component will wrap your app to provide debugging tools
@@ -23,7 +23,6 @@ export function DebugLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
-      {isDebugEnabled && <AuthDebug />}
       {/* Tiny indicator in the corner */}
       <div 
         className="fixed bottom-0 left-0 bg-black/50 text-xs text-white p-1 z-50"

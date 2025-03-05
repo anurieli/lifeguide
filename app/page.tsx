@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/utils/AuthProvider';
 import { motion } from 'framer-motion';
 import SectionIndicator from '@/components/SectionIndicator';
 import TopSectionIndicator from '@/components/TopSectionIndicator';
@@ -10,15 +10,15 @@ import OverviewCarousel from '@/components/OverviewCarousel';
 import ContactForm from '@/components/ContactForm';
 import PersonaRibbon from '@/components/PersonaRibbon';
 import WelcomePopup from '@/components/WelcomePopup';
-import VideoCarousel from '@/components/VideoCarousel';
-import AuthButton from '@/components/AuthButton';
+// import VideoCarousel from '@/components/VideoCarousel';
+import SimpleAuthButton from '@/components/SimpleAuthButton';
 import ReactMarkdown from 'react-markdown';
 
 
 const gradientText = "bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text";
 
 export default function WelcomePage() {
-  const { signIn } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     // Show welcome popup for first-time visitors
@@ -129,7 +129,7 @@ export default function WelcomePage() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <AuthButton />
+                  <SimpleAuthButton />
                 </motion.div>
                 
                 <Link href="/guide">

@@ -16,6 +16,8 @@ import { HowToGuide } from '@/components/HowToGuide';
 import RichTextInput from "@/components/RichTextInput";
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
+import { useAuth } from '@/utils/AuthProvider';
+import { AlertCircle } from 'lucide-react';
 
 interface Section {
   id: string;
@@ -98,10 +100,42 @@ const TOOLTIP_CLASSES = {
 };
 
 export default function DashboardPage() {
+  const { user, loading, error } = useAuth();
   const [mode, setMode] = useState<DashboardMode>({ type: 'view' });
   const [isNewUserDialogOpen, setIsNewUserDialogOpen] = useState(false);
   const [selectedPage, setSelectedPage] = useState<'home' | 'actionables' | 'settings'>('home');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  // Add logging for debugging
+  useEffect(() => {
+    console.log('[DashboardPage] Auth state:', { 
+      user: user ? `User: ${user.email}` : 'No user', 
+      loading, 
+      error: error || 'None' 
+    });
+    
+    // If we have auth cookies but no user, try to refresh the page once
+    if (!user && !loading && typeof window !== 'undefined') {
+      const projectId = process.env.NEXT_PUBLIC_SUPABASE_URL?.match(/https:\/\/([^\.]+)\./)?.[1];
+      const hasCookies = document.cookie.includes(`sb-${projectId}-auth-token`);
+      
+      console.log(`[DashboardPage] Auth cookies present: ${hasCookies}, projectId: ${projectId}`);
+      
+      if (hasCookies) {
+        console.log('[DashboardPage] Auth cookies present but no user, refreshing session...');
+        const supabase = createClient();
+        supabase.auth.refreshSession().then(({ data, error }) => {
+          console.log('[DashboardPage] Session refresh result:', 
+                      data.session ? 'Session refreshed' : 'No session', 
+                      'Error:', error ? error.message : 'None');
+          
+          if (data.session) {
+            window.location.reload();
+          }
+        });
+      }
+    }
+  }, [user, loading, error]);
 
   // Add this useEffect to handle automatic sidebar collapse
   useEffect(() => {
@@ -121,6 +155,78 @@ export default function DashboardPage() {
     // Cleanup
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // If still loading, show a loading state
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-400">Loading your dashboard...</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // If there's an error or no user (should not happen due to middleware, but as a fallback)
+  if (error || !user) {
+    // Check if we have auth cookies but no user object
+    const projectId = process.env.NEXT_PUBLIC_SUPABASE_URL?.match(/https:\/\/([^\.]+)\./)?.[1];
+    const hasCookies = typeof window !== 'undefined' && 
+                      (document.cookie.includes(`sb-${projectId}-auth-token.0`) || 
+                       document.cookie.includes(`sb-${projectId}-auth-token.1`));
+    
+    // If we have cookies but no user, try to force a session refresh
+    if (hasCookies && typeof window !== 'undefined') {
+      const supabase = createClient();
+      
+      // Try to refresh the session one more time
+      supabase.auth.refreshSession().then(({ data, error: refreshError }) => {
+        if (data.session) {
+          console.log('[DashboardPage] Session refreshed successfully, reloading page');
+          window.location.reload();
+        } else {
+          console.error('[DashboardPage] Failed to refresh session:', refreshError);
+        }
+      });
+    }
+    
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-900">
+        <div className="text-center max-w-md p-6 bg-gray-800 rounded-lg shadow-lg">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
+          <h2 className="mt-4 text-xl font-bold text-white">Authentication Error</h2>
+          <p className="mt-2 text-gray-400">
+            {error || "You need to be signed in to access this page."}
+          </p>
+          <div className="mt-4 flex flex-col gap-2">
+            <Link href="/auth/login" className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+              Go to Login
+            </Link>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="inline-block px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+            >
+              Refresh Page
+            </button>
+            <div className="mt-2 p-2 bg-gray-700 rounded text-xs text-left text-gray-300">
+              <p>Debug info:</p>
+              <p>User: {user ? `Found (${user.email})` : 'Not found'}</p>
+              <p>Has Auth Cookies: {hasCookies ? 'Yes' : 'No'}</p>
+              <p>Error: {error || 'None'}</p>
+              <p>Cookies: {typeof window !== 'undefined' ? document.cookie : 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen">

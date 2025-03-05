@@ -12,6 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { HowToGuide } from '@/components/HowToGuide';
 import { FeatureManager } from '@/components/FeatureManager';
+import { useAuth } from '@/utils/AuthProvider';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface Section {
   id: string;
@@ -33,6 +36,10 @@ interface Subsection {
 }
 
 export default function AdminDashboard() {
+  const { user, loading, error } = useAuth();
+  const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminCheckComplete, setAdminCheckComplete] = useState(false);
   const [sections, setSections] = useState<Section[]>([]);
   const [subsections, setSubsections] = useState<Subsection[]>([]);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
@@ -54,10 +61,6 @@ export default function AdminDashboard() {
     example: ''
   });
 
-  useEffect(() => {
-    fetchBlueprintData();
-  }, []);
-
   const fetchBlueprintData = async () => {
     const supabase = createClient();
     
@@ -74,6 +77,87 @@ export default function AdminDashboard() {
     if (sectionsData) setSections(sectionsData);
     if (subsectionsData) setSubsections(subsectionsData);
   };
+
+  useEffect(() => {
+    fetchBlueprintData();
+  }, []);
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (!user) return;
+      
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('admin_users')
+        .select('id')
+        .eq('email', user.email)
+        .single();
+      
+      setIsAdmin(!!data);
+      setAdminCheckComplete(true);
+    };
+
+    if (user) {
+      checkAdminStatus();
+    }
+  }, [user]);
+
+  // If still loading, show a loading state
+  if (loading || !adminCheckComplete) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-400">Loading admin dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If there's an error, no user, or user is not an admin
+  if (error || !user || !isAdmin) {
+    // Redirect to dashboard if not an admin
+    if (user && !isAdmin) {
+      router.push('/dashboard');
+      return null;
+    }
+    
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-900">
+        <div className="text-center max-w-md p-6 bg-gray-800 rounded-lg shadow-lg">
+          <Trash2 className="h-12 w-12 text-red-500 mx-auto" />
+          <h2 className="mt-4 text-xl font-bold text-white">Access Denied</h2>
+          <p className="mt-2 text-gray-400">
+            {error || "You don't have permission to access this page."}
+          </p>
+          <div className="mt-4 flex flex-col gap-2">
+            <div className="flex justify-center space-x-4">
+              <Link href="/dashboard" className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                Go to Dashboard
+              </Link>
+              <Link href="/auth/login" className="inline-block px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+                Login as Admin
+              </Link>
+            </div>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-2 inline-block px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+            >
+              Refresh Page
+            </button>
+            <div className="mt-2 p-2 bg-gray-700 rounded text-xs text-left text-gray-300">
+              <p>Debug info:</p>
+              <p>User: {user ? 'Exists' : 'Not found'}</p>
+              <p>Admin: {isAdmin ? 'Yes' : 'No'}</p>
+              <p>Error: {error || 'None'}</p>
+              <p>Admin check complete: {adminCheckComplete ? 'Yes' : 'No'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
 
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return;

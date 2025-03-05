@@ -6,49 +6,47 @@ import { createClient } from '@/utils/supabase/client';
 import { useEffect, useState } from 'react';
 import SimpleAuthButton from '@/components/SimpleAuthButton';
 import type { User, Session } from '@supabase/supabase-js';
+import { useAuth } from '@/utils/AuthProvider';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading } = useAuth(); // Use the AuthProvider context
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
-
-    const checkAdminStatus = async (email: string | undefined) => {
-      if (!email) {
+    // Only check admin status if we have a user
+    if (!user) {
+      setIsAdmin(false);
+      return;
+    }
+    
+    const checkAdminStatus = async () => {
+      const supabase = createClient();
+      console.log('[Navbar] Checking admin status for user:', user.email);
+      
+      if (!user.email) {
         setIsAdmin(false);
         return;
       }
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('admin_users')
         .select('id')
-        .eq('email', email)
+        .eq('email', user.email)
         .single();
       
+      if (error) {
+        console.error('[Navbar] Error checking admin status:', error);
+        setIsAdmin(false);
+        return;
+      }
+      
+      console.log('[Navbar] Admin status check result:', !!data);
       setIsAdmin(!!data);
     };
 
-    // Check current auth state
-    const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      await checkAdminStatus(session?.user?.email);
-    };
-
-    initializeAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string, session: Session | null) => {
-      setUser(session?.user ?? null);
-      await checkAdminStatus(session?.user?.email);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+    checkAdminStatus();
+  }, [user]); // Re-run when user changes
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-lg border-b border-white/10">

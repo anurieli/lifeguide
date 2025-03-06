@@ -41,7 +41,7 @@ export function DashboardContent() {
       const { data: progressData, error: progressError } = await supabase
         .from('user_progress')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', user?.id)
         .eq('completed', true);
       
       if (progressError) throw progressError;

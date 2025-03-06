@@ -104,7 +104,7 @@ export default function EditorContent({ onClose }: { onClose: () => void }) {
       const { data: responsesData, error: responsesError } = await supabase
         .from('user_responses')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user?.id);
       
       if (responsesError) throw responsesError;
       
@@ -112,7 +112,7 @@ export default function EditorContent({ onClose }: { onClose: () => void }) {
       const { data: progressData, error: progressError } = await supabase
         .from('user_progress')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user?.id);
       
       if (progressError) throw progressError;
       

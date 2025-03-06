@@ -55,7 +55,7 @@ export function BlueprintContent() {
       const { data: responsesData, error: responsesError } = await supabase
         .from('user_responses')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user?.id);
       
       if (responsesError) throw responsesError;
       
@@ -63,7 +63,7 @@ export function BlueprintContent() {
       const { data: progressData, error: progressError } = await supabase
         .from('user_progress')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', user?.id)
         .eq('completed', true);
       
       if (progressError) throw progressError;

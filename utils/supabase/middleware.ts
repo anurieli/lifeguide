@@ -9,9 +9,48 @@ export const updateSession = async (request: NextRequest) => {
     const allCookies = request.cookies.getAll();
     console.log(`[Middleware] Request cookies:`, allCookies.map(c => c.name));
     
-    // Check for auth transition parameters
+    // Check for special modes and parameters
     const isRefresh = request.nextUrl.searchParams.has('refresh');
     const isAuthTransition = request.nextUrl.searchParams.has('auth_transition');
+    
+    // Check for password recovery mode
+    const isPasswordRecoveryParam = request.nextUrl.searchParams.has('type') && 
+                              request.nextUrl.searchParams.get('type') === 'recovery';
+    
+    // Check for recovery code_verifier cookie
+    const hasRecoveryCodeVerifier = allCookies.some(cookie => 
+      cookie.name.includes('auth-token-code-verifier') && 
+      cookie.value.includes('PASSWORD_RECOVERY')
+    );
+    
+    const isPasswordRecovery = isPasswordRecoveryParam || hasRecoveryCodeVerifier;
+    
+    // For password recovery flow, ONLY allow access to reset-password page
+    // This prevents the weird state where users appear signed in but aren't fully
+    if (isPasswordRecovery) {
+      console.log('[Middleware] Password recovery session detected');
+      
+      // Only allow access to reset-password page and callback routes
+      const allowedPaths = ['/auth/reset-password', '/auth/callback'];
+      const isAllowedPath = allowedPaths.some(path => request.nextUrl.pathname.startsWith(path));
+      
+      if (!isAllowedPath) {
+        console.log('[Middleware] Recovery session accessing restricted page, redirecting to reset password');
+        const url = request.nextUrl.clone();
+        url.pathname = '/auth/reset-password';
+        return NextResponse.redirect(url);
+      }
+      
+      // Otherwise, allow them to proceed to the reset password page
+      console.log('[Middleware] Password recovery session accessing allowed page');
+      
+      // Create response with unmodified request
+      let response = NextResponse.next({
+        request,
+      });
+      
+      return response;
+    }
     
     if (isRefresh) {
       console.log('[Middleware] Refresh parameter detected, likely after sign-out');

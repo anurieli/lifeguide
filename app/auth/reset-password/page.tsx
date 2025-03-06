@@ -58,10 +58,16 @@ function ResetPasswordForm() {
     
     startTransition(async () => {
       try {
+        console.log('Submitting password reset form');
         const formData = new FormData();
         formData.append('password', password);
         formData.append('confirmPassword', confirmPassword);
+        
+        // Add a flag to indicate this is from the recovery flow
+        formData.append('isRecovery', 'true');
+        
         await resetPasswordAction(formData);
+        setSuccess(true);
       } catch (err) {
         console.error('Error during password reset:', err);
         setError('An unexpected error occurred. Please try again.');

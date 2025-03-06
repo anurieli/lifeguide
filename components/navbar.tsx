@@ -10,12 +10,12 @@ import { useAuth } from '@/utils/AuthProvider';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { user, loading } = useAuth(); // Use the AuthProvider context
+  const { user, loading, isRecoverySession } = useAuth(); // Add isRecoverySession
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Only check admin status if we have a user
-    if (!user) {
+    // Only check admin status if we have a user and not in recovery mode
+    if (!user || isRecoverySession) {
       setIsAdmin(false);
       return;
     }
@@ -46,7 +46,7 @@ export default function Navbar() {
     };
 
     checkAdminStatus();
-  }, [user]); // Re-run when user changes
+  }, [user, isRecoverySession]); // Re-run when user or recovery state changes
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-lg border-b border-white/10">
@@ -72,8 +72,8 @@ export default function Navbar() {
               The Guide
             </Link>
             
-            {/* Dashboard is only visible when logged in */}
-            {user && (
+            {/* Dashboard is only visible when logged in and NOT in recovery session */}
+            {user && !isRecoverySession && (
               <Link
                 href="/dashboard"
                 className={`text-sm ${
@@ -86,8 +86,8 @@ export default function Navbar() {
               </Link>
             )}
 
-            {/* Admin is only visible for admin users */}
-            {isAdmin && user && (
+            {/* Admin is only visible for admin users and NOT in recovery session */}
+            {isAdmin && user && !isRecoverySession && (
               <Link
                 href="/admin"
                 className={`text-sm ${
@@ -111,6 +111,13 @@ export default function Navbar() {
             >
               Coming Soon
             </Link>
+
+            {/* Show a special message during recovery mode */}
+            {isRecoverySession && (
+              <span className="text-yellow-400 text-sm">
+                Password Reset Mode
+              </span>
+            )}
 
             {/* Auth button on the far right */}
             <SimpleAuthButton />

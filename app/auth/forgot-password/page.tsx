@@ -94,6 +94,7 @@ function ForgotPasswordForm() {
         const formData = new FormData();
         formData.append('email', email);
         await forgotPasswordAction(formData);
+        setSuccess(true);
       } catch (err) {
         console.error('Error during password reset request:', err);
         setError('An unexpected error occurred. Please try again.');

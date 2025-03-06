@@ -9,6 +9,7 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   error: string | null;
+  isRecoverySession: boolean;
   refreshSession: (manualUserState?: User | null) => Promise<void>;
 };
 
@@ -18,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRecoverySession, setIsRecoverySession] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -26,6 +28,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.search.includes('auth_transition=true');
   const isRefresh = typeof window !== 'undefined' && 
     window.location.search.includes('refresh=true');
+  
+  // Check for password recovery mode
+  const detectRecoveryMode = () => {
+    if (typeof window === 'undefined') return false;
+    
+    // Check URL parameters
+    const isRecoveryParam = window.location.search.includes('type=recovery');
+    
+    // Check for recovery cookie
+    const isRecoveryCookie = document.cookie.includes('auth-token-code-verifier') && 
+                            document.cookie.includes('PASSWORD_RECOVERY');
+    
+    // If we're on the reset-password page, that's a strong signal too
+    const isResetPasswordPage = window.location.pathname.startsWith('/auth/reset-password');
+    
+    return isRecoveryParam || isRecoveryCookie || isResetPasswordPage;
+  };
+
+  // Handle password recovery detection
+  useEffect(() => {
+    const isRecovery = detectRecoveryMode();
+    
+    if (isRecovery) {
+      console.log('[AuthProvider] Password recovery session detected');
+      setIsRecoverySession(true);
+      
+      // If not on reset password page, redirect there
+      if (typeof window !== 'undefined' && 
+          !window.location.pathname.startsWith('/auth/reset-password')) {
+        console.log('[AuthProvider] Recovery session detected, redirecting to reset password page');
+        router.push('/auth/reset-password');
+      }
+    }
+  }, [router]);
+
+  // Force update all tabs when a recovery session starts
+  useEffect(() => {
+    // Set up storage event listener to detect changes in other tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'auth_recovery_session') {
+        console.log('[AuthProvider] Recovery session change detected in another tab');
+        const isRecovery = e.newValue === 'true';
+        setIsRecoverySession(isRecovery);
+        
+        // If recovery started and we're not on reset password, redirect
+        if (isRecovery && 
+            typeof window !== 'undefined' && 
+            !window.location.pathname.startsWith('/auth/reset-password')) {
+          router.push('/auth/reset-password');
+        }
+        
+        // Force refresh auth state
+        refreshSession();
+      }
+    };
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageChange);
+      
+      // If we just detected recovery mode, broadcast to other tabs
+      if (isRecoverySession) {
+        localStorage.setItem('auth_recovery_session', 'true');
+      }
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorageChange);
+      }
+    };
+  }, [isRecoverySession, router]);
 
   useEffect(() => {
     // If we detect a refresh parameter (sign-out), clear any cached user state immediately
@@ -273,10 +346,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const value = {
+  const value: AuthContextType = {
     user,
     loading,
     error,
+    isRecoverySession,
     refreshSession,
   };
 

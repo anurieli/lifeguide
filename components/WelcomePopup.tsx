@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/utils/AuthProvider';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getOAuthSignInAction } from '@/utils/supabase/actions';
 
 export default function WelcomePopup() {
   const [isOpen, setIsOpen] = useState(false);
@@ -24,14 +23,9 @@ export default function WelcomePopup() {
     localStorage.setItem('hasVisited', 'true');
   };
 
-  const handleSignIn = async () => {
-    try {
-      // Redirect to Google sign-in
-      router.push('/auth/login');
-      handleClose();
-    } catch (error) {
-      console.error('Error signing in:', error);
-    }
+  const handleSignIn = () => {
+    router.push('/auth/login');
+    handleClose();
   };
 
   return (

@@ -8,7 +8,7 @@ import { signOutAction } from '@/utils/supabase/actions';
 import { useAuth } from '@/utils/AuthProvider';
 
 export default function SimpleAuthButton() {
-  const { user, loading, error, refreshSession } = useAuth();
+  const { user, loading, error, isRecoverySession, refreshSession } = useAuth();
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const supabase = createClient();
@@ -35,6 +35,33 @@ export default function SimpleAuthButton() {
       subscription.unsubscribe();
     };
   }, [router, supabase.auth]);
+
+  // Special handler for cancelling password reset mode
+  const handleCancelRecovery = async () => {
+    try {
+      console.log('[SimpleAuthButton] Cancelling password recovery session');
+      
+      // Sign out to clear the recovery session
+      await supabase.auth.signOut({ scope: 'global' });
+      
+      // Clear recovery flag in local storage
+      localStorage.removeItem('auth_recovery_session');
+      
+      // Immediately update UI state
+      refreshSession(null);
+      
+      // Redirect to login
+      router.push('/auth/login');
+      
+      // Force a full page reload to ensure clean state
+      setTimeout(() => {
+        window.location.href = '/auth/login';
+      }, 100);
+      
+    } catch (err) {
+      console.error('[SimpleAuthButton] Error cancelling recovery session:', err);
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -112,6 +139,19 @@ export default function SimpleAuthButton() {
       window.location.href = `/?refresh=true&timestamp=${Date.now()}`;
     }
   };
+
+  // If we're in recovery mode, show a cancel button
+  if (isRecoverySession) {
+    return (
+      <Button 
+        onClick={handleCancelRecovery}
+        variant="outline"
+        className="text-yellow-400 border-yellow-500/20 hover:bg-yellow-500/10 hover:text-yellow-300 hover:border-yellow-400/40 transition-all"
+      >
+        Cancel Reset
+      </Button>
+    );
+  }
 
   if (loading) {
     return (

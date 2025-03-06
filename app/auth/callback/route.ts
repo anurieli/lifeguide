@@ -1,5 +1,6 @@
 import { createRouteHandlerClient } from '@/utils/supabase/route'
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 
 export async function GET(request: Request) {
   const timestamp = new Date().toISOString();
@@ -10,22 +11,25 @@ export async function GET(request: Request) {
   
   const code = requestUrl.searchParams.get('code')
   const returnTo = requestUrl.searchParams.get('returnTo') || '/dashboard'
+  const next = requestUrl.searchParams.get('next') || returnTo
+  const type = requestUrl.searchParams.get('type') // Can be 'recovery' for password reset
   
   console.log(`[AuthCallback ${timestamp}] Auth code present: ${Boolean(code)}`);
   console.log(`[AuthCallback ${timestamp}] Auth code length: ${code?.length || 0}`);
-  console.log(`[AuthCallback ${timestamp}] Return path: ${returnTo}`);
+  console.log(`[AuthCallback ${timestamp}] Return path: ${next}`);
+  console.log(`[AuthCallback ${timestamp}] Auth type: ${type || 'standard'}`);
 
   try {
     // Check request headers for cookie information
     const cookieHeader = request.headers.get('cookie') || '';
     console.log(`[AuthCallback ${timestamp}] Request cookies:`, 
       cookieHeader.split('; ')
-        .filter(c => c.startsWith('sb-') || c.includes('auth') || c.includes('mock_user'))
+        .filter(c => c.startsWith('sb-') || c.includes('auth') || c.includes('mock_user') || c.includes('pending_password'))
         .map(c => {
           const [name, value] = c.split('=');
           return { 
             name, 
-            valuePreview: name.includes('token') ? `${value.substring(0, 8)}...` : 'present' 
+            valuePreview: name.includes('token') || name.includes('password') ? `${value.substring(0, 3)}...` : 'present' 
           };
         })
     );
@@ -33,7 +37,7 @@ export async function GET(request: Request) {
     if (code) {
       console.log(`[AuthCallback ${timestamp}] Exchanging code for session...`);
       
-      const response = NextResponse.redirect(new URL(returnTo, requestUrl.origin))
+      const response = NextResponse.redirect(new URL(next, requestUrl.origin))
       console.log(`[AuthCallback ${timestamp}] Creating route handler client...`);
       const supabase = await createRouteHandlerClient(response)
 
@@ -70,6 +74,33 @@ export async function GET(request: Request) {
           accessTokenLength: data.session.access_token?.length || 0
         });
         
+        // Check if this is a password reset and we have a pending password
+        const cookieStore = await cookies();
+        const pendingPassword = cookieStore.get('pending_password')?.value;
+        
+        if (type === 'recovery' && pendingPassword) {
+          console.log(`[AuthCallback ${timestamp}] Password reset detected with pending password`);
+          
+          // Update the user's password
+          const { error: updateError } = await supabase.auth.updateUser({
+            password: pendingPassword,
+          });
+          
+          if (updateError) {
+            console.error(`[AuthCallback ${timestamp}] Error updating password:`, updateError);
+          } else {
+            console.log(`[AuthCallback ${timestamp}] Password updated successfully`);
+            
+            // Clear the pending password cookie
+            response.cookies.delete('pending_password');
+            
+            // Add a success message
+            const successUrl = new URL(next, requestUrl.origin);
+            successUrl.searchParams.set('success', 'Your password has been updated successfully');
+            return NextResponse.redirect(successUrl);
+          }
+        }
+        
         // Check response cookies
         const setCookieHeader = response.headers.get('set-cookie') || '';
         const cookiesSet = setCookieHeader.split(', ')
@@ -86,7 +117,7 @@ export async function GET(request: Request) {
         console.log(`[AuthCallback ${timestamp}] Full response data:`, JSON.stringify(data));
       }
       
-      console.log(`[AuthCallback ${timestamp}] Redirecting to: ${returnTo}`);
+      console.log(`[AuthCallback ${timestamp}] Redirecting to: ${next}`);
       return response
     }
 

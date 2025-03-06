@@ -75,13 +75,13 @@ export default async function ComingSoonPage() {
             </p>
             <ul className="list-disc list-inside text-gray-300 mb-4 space-y-1">
               <li><span className="text-pink-400 font-medium">Liking</span> features you find interesting</li>
-              <li><span className="text-blue-400 font-medium">Upvoting</span> the ONE feature you want to see developed next</li>
+              {/* <li><span className="text-blue-400 font-medium">Upvoting</span> the ONE feature you want to see developed next</li> */}
             </ul>
             <p className="text-gray-400 text-sm italic">
               Note: You can only cast one upvote across all features, so choose wisely!
             </p>
           </div>
-          
+        
           {featureCards.length === 0 ? (
             <div className="text-center">
               <h2 className="text-2xl font-semibold mb-4">No features available yet</h2>

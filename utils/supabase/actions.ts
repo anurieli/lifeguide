@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { headers } from "next/headers";
+import { cookies } from "next/headers";
 
 // Helper function to handle redirects with messages
 export const redirectWithMessage = async (
@@ -54,9 +55,8 @@ export const signUpAction = async (formData: FormData) => {
   try {
     console.log(`[signUpAction] Attempting to sign up user: ${email}`);
     
+    // Check if a user with this email already exists
     // First, try to sign in with the provided credentials
-    // This will help us determine if this is an existing account
-    console.log(`[signUpAction] Checking if user already exists: ${email}`);
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -68,70 +68,63 @@ export const signUpAction = async (formData: FormData) => {
       return redirect(redirectTo); // Redirect to dashboard
     }
     
-    // Check if the user exists but with OAuth (no password)
-    // Try to sign in with OTP to see if the email exists
+    // If sign in fails, check if the user exists with a different password
     if (signInError) {
-      console.log(`[signUpAction] Sign in failed, checking if user exists with OAuth: ${email}`);
+      console.log(`[signUpAction] Sign in failed, checking if user exists: ${email}`);
       
-      // Send a magic link to check if the email exists
-      const { data: otpData, error: otpError } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: false, // Only send OTP if user exists
-        }
-      });
-      
-      // If OTP was sent successfully, the user exists but with OAuth
-      if (!otpError && otpData) {
-        console.log(`[signUpAction] User exists with OAuth, attempting to log in and add password: ${email}`);
-        
-        // Sign in the user with OAuth
-        const { data: oauthSignInData, error: oauthSignInError } = await supabase.auth.signInWithOtp({
-          email,
-          options: {
-            shouldCreateUser: false, // Ensure not to create a new user
-          }
+      // Check if the user exists by using the check_user_exists function
+      try {
+        const { data, error: rpcError } = await supabase.rpc('check_user_exists', { 
+          email_to_check: email 
         });
         
-        if (!oauthSignInError && oauthSignInData) {
-          // Use updateUser to set the password for the existing OAuth account
-          const { error: updateError } = await supabase.auth.updateUser({
-            password,
-          });
+        if (!rpcError && data && data.length > 0 && data[0].user_exists === true) {
+          // User exists - redirect back to signup page with parameters to show dialog
+          console.log(`[signUpAction] User exists (via RPC): ${email}, name: ${data[0].user_name}`);
           
-          if (!updateError) {
-            console.log(`[signUpAction] Successfully updated OAuth user with password: ${email}`);
-            
-            // Update user profile
-            const { data: userData, error: userError } = await supabase.auth.getUser();
-            if (!userError && userData.user) {
-              const fullName = userData.user.user_metadata?.name || name || '';
-              const firstName = fullName ? fullName.split(' ')[0] : email.split('@')[0];
-              
-              await supabase.from('profiles').upsert({
-                id: userData.user.id,
-                display_name: firstName,
-                full_name: fullName,
-                avatar_url: userData.user.user_metadata?.avatar_url || null,
-              });
-              
-              return redirect(redirectTo);
-            }
-          } else {
-            console.error(`[signUpAction] Failed to update OAuth user with password: ${updateError.message}`);
-            return redirectWithMessage(
-              "/auth/signup",
-              "error",
-              "Failed to link password to your account. Please try again."
-            );
-          }
+          // Store user info in query params for the dialog
+          const searchParams = new URLSearchParams();
+          searchParams.set('userExists', 'true');
+          searchParams.set('email', email);
+          searchParams.set('name', data[0].user_name || email.split('@')[0]);
+          
+          // Redirect back to signup page with dialog parameters
+          return redirect(`/auth/signup?${searchParams.toString()}`);
+        }
+      } catch (checkError) {
+        // Only log the error if it's not a NEXT_REDIRECT error
+        if (!(checkError instanceof Error && checkError.message === 'NEXT_REDIRECT')) {
+          console.error(`[signUpAction] Error checking user existence via RPC:`, checkError);
         } else {
-          console.error(`[signUpAction] Failed to sign in OAuth user: ${oauthSignInError.message}`);
-          return redirectWithMessage(
-            "/auth/signup",
-            "error",
-            "Failed to authenticate your account. Please try again. Try signing in with Google."
-          );
+          // If it's a NEXT_REDIRECT error, just rethrow it to allow the redirect to happen
+          throw checkError;
+        }
+      }
+      
+      // Second approach: Try to sign up with the email to see if it's already registered
+      const { error: signUpError } = await supabase.auth.signUp({
+        email,
+        password: 'TemporaryPassword123!', // Temporary password just to check if user exists
+        options: {
+          emailRedirectTo: `${origin}/auth/callback?returnTo=${redirectTo}`,
+        },
+      });
+      
+      if (signUpError) {
+        console.log(`[signUpAction] Sign up check error: ${signUpError.message}`);
+        
+        if (signUpError.message.includes('already registered')) {
+          // User exists - redirect back to signup page with parameters to show dialog
+          console.log(`[signUpAction] User exists with email: ${email}`);
+          
+          // Store user info in query params for the dialog
+          const searchParams = new URLSearchParams();
+          searchParams.set('userExists', 'true');
+          searchParams.set('email', email);
+          searchParams.set('name', name || email.split('@')[0]); // Use name if provided, otherwise email prefix
+          
+          // Redirect back to signup page with dialog parameters
+          return redirect(`/auth/signup?${searchParams.toString()}`);
         }
       }
     }
@@ -167,48 +160,48 @@ export const signUpAction = async (formData: FormData) => {
       console.error(`[signUpAction] Sign up error: ${error.code} - ${error.message}`);
       
       // Handle specific error cases
-      if (error.message.includes('already registered')) {
-        return redirectWithMessage(
-          "/auth/login",
-          "error",
-          "This email is already registered. Please sign in instead."
-        );
+      if (error.message.includes('already registered') || error.message.includes('already exists')) {
+        // User exists - redirect back to signup page with parameters to show dialog
+        console.log(`[signUpAction] User exists with email (from error): ${email}`);
+        
+        // Store user info in query params for the dialog
+        const searchParams = new URLSearchParams();
+        searchParams.set('userExists', 'true');
+        searchParams.set('email', email);
+        searchParams.set('name', name || email.split('@')[0]); // Use name if provided, otherwise email prefix
+        
+        // Redirect back to signup page with dialog parameters
+        return redirect(`/auth/signup?${searchParams.toString()}`);
       }
       
       return redirectWithMessage("/auth/signup", "error", error.message);
     }
 
     console.log(`[signUpAction] Sign up successful for: ${email}`);
-    console.log(`[signUpAction] User data:`, data?.user);
     
-    // Check if email confirmation is required
-    if (data?.user && !data?.session) {
-      console.log(`[signUpAction] Email confirmation required for: ${email}`);
-      return redirectWithMessage(
-        "/auth/signup",
-        "success",
-        "Check your email for a verification link to complete your registration."
-      );
-    } else if (data?.user && data?.session) {
-      // User is immediately signed in (email confirmation disabled)
+    // User is immediately signed in (email confirmation disabled)
+    if (data?.user && data?.session) {
       console.log(`[signUpAction] User immediately signed in: ${email}`);
       return redirect(redirectTo);
     } else {
-      // Fallback for unexpected cases
-      console.error(`[signUpAction] Unexpected response:`, data);
-      return redirectWithMessage(
-        "/auth/signup",
-        "success",
-        "Your account has been created. Please check your email if verification is required."
-      );
+      // Redirect to dashboard even if session is not immediately available
+      // This removes the email confirmation message
+      console.log(`[signUpAction] Redirecting to dashboard without waiting for session`);
+      return redirect(redirectTo);
     }
   } catch (err) {
-    console.error(`[signUpAction] Unexpected error during sign up:`, err);
-    return redirectWithMessage(
-      "/auth/signup",
-      "error",
-      "An unexpected error occurred. Please try again."
-    );
+    // Only handle non-redirect errors
+    if (!(err instanceof Error && err.message === 'NEXT_REDIRECT')) {
+      console.error(`[signUpAction] Unexpected error during sign up:`, err);
+      return redirectWithMessage(
+        "/auth/signup",
+        "error",
+        "An unexpected error occurred. Please try again."
+      );
+    }
+    
+    // If it's a redirect error, rethrow it to allow the redirect to happen
+    throw err;
   }
 };
 
@@ -289,27 +282,70 @@ export const forgotPasswordAction = async (formData: FormData) => {
   const origin = (await headers()).get("origin") || '';
 
   if (!email) {
-    return redirectWithMessage("/auth/forgot-password", "error", "Email is required");
-  }
-
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback?returnTo=/auth/reset-password`,
-  });
-
-  if (error) {
-    console.error(`Reset password error: ${error.code} - ${error.message}`);
     return redirectWithMessage(
       "/auth/forgot-password",
       "error",
-      "Could not reset password"
+      "Email is required"
     );
   }
 
-  return redirectWithMessage(
-    "/auth/forgot-password",
-    "success",
-    "Check your email for a link to reset your password."
-  );
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${origin}/auth/update-password`,
+    });
+
+    if (error) {
+      console.error('Reset password error:', error);
+      
+      // Handle different error types
+      switch (error.status) {
+        case 429:
+          return redirectWithMessage(
+            "/auth/forgot-password",
+            "error",
+            "Too many reset attempts. Please wait a few minutes before trying again."
+          );
+        case 500:
+          return redirectWithMessage(
+            "/auth/forgot-password",
+            "error",
+            "Unable to send reset email. Please try again later or contact support if the problem persists."
+          );
+        case 400:
+          return redirectWithMessage(
+            "/auth/forgot-password",
+            "error",
+            "Invalid email address. Please check and try again."
+          );
+        default:
+          if (error.message.includes('rate limit')) {
+            return redirectWithMessage(
+              "/auth/forgot-password",
+              "error",
+              "Too many reset attempts. Please wait a few minutes before trying again."
+            );
+          }
+          return redirectWithMessage(
+            "/auth/forgot-password",
+            "error",
+            `Could not reset password: ${error.message}`
+          );
+      }
+    }
+
+    return redirectWithMessage(
+      "/auth/forgot-password",
+      "success",
+      "Check your email for a password reset link. Could take a few minutes to receive."
+    );
+  } catch (err) {
+    console.error('Reset password error:', err);
+    return redirectWithMessage(
+      "/auth/forgot-password",
+      "error",
+      "An unexpected error occurred. Please try again later."
+    );
+  }
 };
 
 // Reset password
@@ -387,6 +423,62 @@ export const signOutAction = async () => {
     console.error('[signOutAction] Unexpected error during sign out:', err);
     // Still redirect to home even if there's an error, but with an error parameter
     return redirect(`/?error=signout_failed&timestamp=${Date.now()}`);
+  }
+};
+
+export const updateExistingUserPasswordAction = async (formData: FormData) => {
+  const email = formData.get("email")?.toString();
+  const password = formData.get("password")?.toString();
+  const redirectTo = formData.get("redirectTo")?.toString() || '/auth/login';
+  const supabase = await createClient();
+
+  if (!email || !password) {
+    return redirectWithMessage(
+      "/auth/user-exists",
+      "error",
+      "Email and password are required"
+    );
+  }
+
+  try {
+    console.log(`[updateExistingUserPasswordAction] Attempting to update password for: ${email}`);
+    
+    // Send a password reset email
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${(await headers()).get("origin") || ''}/auth/callback?next=${redirectTo}&type=recovery`,
+    });
+    
+    if (error) {
+      console.error(`[updateExistingUserPasswordAction] Error sending reset email: ${error.message}`);
+      return redirectWithMessage(
+        "/auth/user-exists",
+        "error",
+        `Failed to send password reset email: ${error.message}`
+      );
+    }
+    
+    // Store the new password in a secure cookie or session to be used when the user clicks the reset link
+    // This is a simplified approach - in a production app, you might want to use a more secure method
+    const cookieStore = await cookies();
+    cookieStore.set('pending_password', password, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60, // 1 hour
+      path: '/',
+    });
+    
+    return redirectWithMessage(
+      "/auth/login",
+      "success",
+      "Check your email for a password reset link. Could take a few minutes to receive."
+    );
+  } catch (err) {
+    console.error(`[updateExistingUserPasswordAction] Unexpected error:`, err);
+    return redirectWithMessage(
+      "/auth/user-exists",
+      "error",
+      "An unexpected error occurred. Please try again."
+    );
   }
 };
 

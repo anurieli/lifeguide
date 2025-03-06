@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { forgotPasswordAction } from '@/utils/supabase/actions';
@@ -11,7 +11,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowLeft, AlertCircle, CheckCircle2, Mail } from 'lucide-react';
 
-export default function ForgotPasswordPage() {
+// Create a separate component that uses useSearchParams
+function ForgotPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -49,13 +50,15 @@ export default function ForgotPasswordPage() {
   }, []);
   
   // Use error or success from URL if available
-  if (errorMessage && !error) {
-    setError(errorMessage);
-  }
-  
-  if (successMessage && !success) {
-    setSuccess(true);
-  }
+  useEffect(() => {
+    if (errorMessage && !error) {
+      setError(errorMessage);
+    }
+    
+    if (successMessage && !success) {
+      setSuccess(true);
+    }
+  }, [errorMessage, successMessage, error, success]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,34 +103,32 @@ export default function ForgotPasswordPage() {
   
   if (success) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-900 px-4 py-8">
-        <div className="w-full max-w-md space-y-8 text-center">
-          <div className="bg-gray-800/50 p-8 rounded-xl border border-gray-700 shadow-xl">
-            <h1 className="text-2xl font-bold text-white mb-4">Check your email</h1>
-            <p className="text-gray-300 mb-6">
-              {successMessage || "We've sent you a password reset link. Please check your inbox and follow the instructions to reset your password."}
-            </p>
-            <div className="space-y-4">
-              {timeLeft > 0 ? (
-                <p className="text-sm text-gray-400">
-                  You can request another email in {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-                </p>
-              ) : (
-                <Button 
-                  onClick={() => setSuccess(false)}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none"
-                >
-                  Didn't get the email? Try again
-                </Button>
-              )}
+      <div className="w-full max-w-md space-y-8 text-center">
+        <div className="bg-gray-800/50 p-8 rounded-xl border border-gray-700 shadow-xl">
+          <h1 className="text-2xl font-bold text-white mb-4">Check your email</h1>
+          <p className="text-gray-300 mb-6">
+            {successMessage || "We've sent you a password reset link. Please check your inbox and follow the instructions to reset your password."}
+          </p>
+          <div className="space-y-4">
+            {timeLeft > 0 ? (
+              <p className="text-sm text-gray-400">
+                You can request another email in {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+              </p>
+            ) : (
               <Button 
-                onClick={() => router.push('/auth/login')}
-                variant="outline"
-                className="w-full border-gray-700 text-gray-300 hover:bg-gray-800"
+                onClick={() => setSuccess(false)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none"
               >
-                Return to Sign In
+                Didn't get the email? Try again
               </Button>
-            </div>
+            )}
+            <Button 
+              onClick={() => router.push('/auth/login')}
+              variant="outline"
+              className="w-full border-gray-700 text-gray-300 hover:bg-gray-800"
+            >
+              Return to Sign In
+            </Button>
           </div>
         </div>
       </div>
@@ -135,73 +136,96 @@ export default function ForgotPasswordPage() {
   }
   
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-900 px-4 py-8">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
-            Reset Password
-          </h1>
-          <p className="mt-2 text-gray-400">
-            Enter your email to receive a password reset link
+    <div className="w-full max-w-md space-y-8">
+      <div className="text-center">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
+          Reset Password
+        </h1>
+        <p className="mt-2 text-gray-400">
+          Enter your email to receive a password reset link
+        </p>
+      </div>
+
+      <div className="mt-8 space-y-6 bg-gray-800/50 p-8 rounded-xl border border-gray-700 shadow-xl">
+        <div className="flex items-center mb-4">
+          <Button 
+            variant="ghost" 
+            className="p-0 mr-2 text-gray-400 hover:text-white hover:bg-transparent" 
+            onClick={() => router.push('/auth/login')}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        {error && (
+          <div className="bg-red-900/30 border border-red-800 p-3 rounded-md flex items-start gap-2">
+            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-red-400">{error}</p>
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-gray-300">Email</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-400"
+                disabled={isPending}
+              />
+            </div>
+          </div>
+          
+          <Button
+            type="submit"
+            disabled={isPending || timeLeft > 0}
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none h-12"
+          >
+            {isPending ? 'Sending...' : timeLeft > 0 ? `Wait ${timeLeft}s` : 'Send Reset Link'}
+          </Button>
+        </form>
+        
+        <div className="text-center text-sm">
+          <p className="text-gray-400">
+            Remember your password?{' '}
+            <Link href="/auth/login" className="text-blue-400 hover:text-blue-300 transition-colors">
+              Sign in
+            </Link>
           </p>
         </div>
+      </div>
+    </div>
+  );
+}
 
-        <div className="mt-8 space-y-6 bg-gray-800/50 p-8 rounded-xl border border-gray-700 shadow-xl">
-          <div className="flex items-center mb-4">
-            <Button 
-              variant="ghost" 
-              className="p-0 mr-2 text-gray-400 hover:text-white hover:bg-transparent" 
-              onClick={() => router.push('/auth/login')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+// Main component with Suspense boundary
+export default function ForgotPasswordPage() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-900 px-4 py-8">
+      <Suspense fallback={
+        <div className="w-full max-w-md space-y-8 text-center">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-700 rounded w-3/4 mx-auto mb-4"></div>
+            <div className="h-4 bg-gray-700 rounded w-1/2 mx-auto"></div>
           </div>
-          
-          {error && (
-            <div className="bg-red-900/30 border border-red-800 p-3 rounded-md flex items-start gap-2">
-              <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-red-400">{error}</p>
+          <div className="mt-8 space-y-6 bg-gray-800/50 p-8 rounded-xl border border-gray-700 shadow-xl">
+            <div className="h-12 bg-gray-700 rounded animate-pulse"></div>
+            <div className="space-y-4">
+              <div className="h-10 bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-12 bg-gray-700 rounded animate-pulse"></div>
             </div>
-          )}
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-300">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-400"
-                  disabled={isPending}
-                />
-              </div>
-            </div>
-            
-            <Button
-              type="submit"
-              disabled={isPending || timeLeft > 0}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none h-12"
-            >
-              {isPending ? 'Sending...' : timeLeft > 0 ? `Wait ${timeLeft}s` : 'Send Reset Link'}
-            </Button>
-          </form>
-          
-          <div className="text-center text-sm">
-            <p className="text-gray-400">
-              Remember your password?{' '}
-              <Link href="/auth/login" className="text-blue-400 hover:text-blue-300 transition-colors">
-                Sign in
-              </Link>
-            </p>
           </div>
         </div>
-      </div>
+      }>
+        <ForgotPasswordForm />
+      </Suspense>
     </div>
   );
 } 

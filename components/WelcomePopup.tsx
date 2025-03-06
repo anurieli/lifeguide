@@ -4,10 +4,13 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/utils/AuthProvider';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { getOAuthSignInAction } from '@/utils/supabase/actions';
 
 export default function WelcomePopup() {
   const [isOpen, setIsOpen] = useState(false);
-  const { signIn } = useAuth();
+  const { user } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     const hasVisited = localStorage.getItem('hasVisited');
@@ -19,6 +22,16 @@ export default function WelcomePopup() {
   const handleClose = () => {
     setIsOpen(false);
     localStorage.setItem('hasVisited', 'true');
+  };
+
+  const handleSignIn = async () => {
+    try {
+      // Redirect to Google sign-in
+      router.push('/auth/login');
+      handleClose();
+    } catch (error) {
+      console.error('Error signing in:', error);
+    }
   };
 
   return (
@@ -49,10 +62,7 @@ export default function WelcomePopup() {
 
               <div className="flex flex-col gap-4">
                 <button
-                  onClick={() => {
-                    signIn();
-                    handleClose();
-                  }}
+                  onClick={handleSignIn}
                   className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
                 >
                   Sign in with Google

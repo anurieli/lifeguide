@@ -70,9 +70,11 @@ export default function WelcomePage() {
                 allowFullScreen
               />
             </div>
-            <p className="text-xs text-amber-400/80 italic absolute bottom-[-19px] left-2" style={{ fontFamily: 'Comic Sans MS, cursive, sans-serif' }}>
-              *you thought you got rickrolled, but this is just a placeholder till my demo video is ready!
-            </p>
+            <div className="w-full mt-2 text-center">
+              <p className="text-xs text-amber-400/80 italic font-sans">
+                *you thought you got rickrolled, but this is just a placeholder till my demo video is ready!
+              </p>
+            </div>
           </div>
 
           <motion.button

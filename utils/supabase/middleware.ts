@@ -258,12 +258,6 @@ export const updateSession = async (request: NextRequest) => {
       }
     }
 
-    // Redirect authenticated users from home page to dashboard
-    if (request.nextUrl.pathname === "/" && user) {
-      console.log('[Middleware] Authenticated user at home page, redirecting to dashboard');
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
-
     // IMPORTANT: You must return the supabaseResponse object as it is
     console.log('[Middleware] Request processed successfully');
     

@@ -21,6 +21,7 @@ const sections: Section[] = [
 
 export default function SectionIndicator() {
   const [activeSection, setActiveSection] = useState('hero');
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const isLargeScreen = useMediaQuery('(min-width: 1280px)');
   const isNarrowScreen = useMediaQuery('(max-width: 80vw)'); // Changed to 68% width
 
@@ -53,7 +54,8 @@ export default function SectionIndicator() {
     }
   };
 
-  if (isNarrowScreen) return null;
+  // Hide on mobile or narrow screen
+  if (isMobile || isNarrowScreen) return null;
 
   return (
     <div className="fixed right-4 md:right-8 top-1/2 transform -translate-y-1/2 z-30">

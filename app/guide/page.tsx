@@ -195,23 +195,25 @@ export default async function GuidePage() {
                                   </div>
                                   
                                   {/* Malleability Badge with Tooltip */}
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <div 
-                                          className={`px-2 py-1 rounded-full text-xs ${malleabilityStyle.bg} ${malleabilityStyle.border} ${malleabilityStyle.text} cursor-help flex items-center gap-1`}
-                                        >
-                                          {malleabilityStyle.label}
-                                          <HelpCircle className="h-3 w-3" />
-                                        </div>
-                                      </TooltipTrigger>
-                                      <TooltipContent className="bg-gray-800 border border-gray-700 text-white max-w-md">
-                                        <div className="prose prose-invert prose-sm max-w-none">
-                                          <ReactMarkdown>{subsection.malleability_details}</ReactMarkdown>
-                                        </div>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
+                                  <div 
+                                    className={`px-2 py-1 rounded-full text-xs ${malleabilityStyle.bg} ${malleabilityStyle.border} ${malleabilityStyle.text} flex items-center gap-1`}
+                                  >
+                                    {malleabilityStyle.label}
+                                    {subsection.malleability_details && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <HelpCircle className="h-3 w-3 cursor-help" />
+                                          </TooltipTrigger>
+                                          <TooltipContent className="bg-gray-800 border border-gray-700 text-white max-w-md">
+                                            <div className="prose prose-invert prose-sm max-w-none">
+                                              <ReactMarkdown>{subsection.malleability_details}</ReactMarkdown>
+                                            </div>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                  </div>
                                 </div>
                                 
                                 {/* Description - render markdown */}

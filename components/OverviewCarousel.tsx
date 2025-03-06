@@ -2,8 +2,9 @@
 
 import React from 'react';
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Step {
   title: string;
@@ -57,17 +58,35 @@ const steps: Step[] = [
 
 export default function OverviewCarousel() {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const isTablet = useMediaQuery('(max-width: 1023px) and (min-width: 769px)');
   const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const isTouchDevice = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
+  const goToNext = () => {
+    setCurrentIndex((current) => (current + 1) % steps.length);
+  };
+
+  const goToPrevious = () => {
+    setCurrentIndex((current) => (current - 1 + steps.length) % steps.length);
+  };
+
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (info.offset.x > 50) {
+      goToPrevious();
+    } else if (info.offset.x < -50) {
+      goToNext();
+    }
+  };
 
   useEffect(() => {
-    if (isDesktop) return;
-
+    // Auto-shift every 16 seconds (doubled from 8 seconds)
     const timer = setInterval(() => {
-      setCurrentIndex((current) => (current + 1) % steps.length);
-    }, 5000);
+      goToNext();
+    }, 16000);
 
     return () => clearInterval(timer);
-  }, [isDesktop]);
+  }, []);
 
   if (isDesktop) {
     return (
@@ -101,16 +120,20 @@ export default function OverviewCarousel() {
   }
 
   return (
-    <div className="mx-auto w-full">
+    <div className="mx-auto w-full relative">
       <div className="overflow-hidden rounded-xl bg-gray-800/50 p-3 md:p-4">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentIndex}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 1 }}
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -100 }}
+            transition={{ duration: .5 }}
             className="flex flex-col items-center text-center"
+            drag={isTouchDevice ? "x" : false}
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.1}
+            onDragEnd={handleDragEnd}
           >
             <div className="text-blue-500 mb-2 shrink-0">
               {steps[currentIndex].icon}
@@ -129,6 +152,26 @@ export default function OverviewCarousel() {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* Navigation buttons - visible on non-mobile and tablet */}
+      {(!isMobile || isTablet) && (
+        <div className="absolute top-1/2 left-0 right-0 -mt-6 flex justify-between px-2 pointer-events-none">
+          <button 
+            onClick={goToPrevious}
+            className="bg-gray-800/70 hover:bg-gray-700 text-white rounded-full p-2 pointer-events-auto"
+            aria-label="Previous slide"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <button 
+            onClick={goToNext}
+            className="bg-gray-800/70 hover:bg-gray-700 text-white rounded-full p-2 pointer-events-auto"
+            aria-label="Next slide"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      )}
 
       <div className="flex justify-center mt-3 gap-2">
         {steps.map((_, index) => (

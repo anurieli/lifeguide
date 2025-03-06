@@ -41,13 +41,13 @@ const DEFAULT_GUIDE = `# Welcome to Your Guide
 
 // Markdown components configuration
 const markdownComponents: Components = {
-  h1: ({ children }) => <h1 className="text-2xl font-bold text-white mb-4">{children}</h1>,
-  h2: ({ children }) => <h2 className="text-xl font-bold text-white mb-3">{children}</h2>,
-  h3: ({ children }) => <h3 className="text-lg font-bold text-white mb-2">{children}</h3>,
-  p: ({ children }) => <p className="text-white mb-4">{children}</p>,
-  ul: ({ children }) => <ul className="list-disc pl-6 text-white mb-4">{children}</ul>,
-  ol: ({ children }) => <ol className="list-decimal pl-6 text-white mb-4">{children}</ol>,
-  li: ({ children }) => <li className="text-white mb-1 pl-1">{children}</li>,
+  h1: ({ children }) => <h1 className="text-2xl font-bold text-white mb-4 text-left">{children}</h1>,
+  h2: ({ children }) => <h2 className="text-xl font-bold text-white mb-3 text-left">{children}</h2>,
+  h3: ({ children }) => <h3 className="text-lg font-bold text-white mb-2 text-left">{children}</h3>,
+  p: ({ children }) => <p className="text-white mb-4 text-left">{children}</p>,
+  ul: ({ children }) => <ul className="list-disc pl-6 text-white mb-4 text-left">{children}</ul>,
+  ol: ({ children }) => <ol className="list-decimal pl-6 text-white mb-4 text-left">{children}</ol>,
+  li: ({ children }) => <li className="text-white mb-1 pl-1 text-left">{children}</li>,
   strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
   em: ({ children }) => <em className="italic text-white">{children}</em>,
 } as Components;
@@ -139,12 +139,12 @@ export function HowToGuide({
           <textarea
             ref={textareaRef}
             defaultValue={savedContent}
-            className={`w-full p-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full p-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-left ${
               isEditing ? 'block' : 'hidden'
             } ${isExpanded ? 'h-[calc(100vh-150px)]' : 'h-64'}`}
           />
-          <div className={`${isEditing ? 'hidden' : 'block'} ${isExpanded ? '' : 'max-h-[420px] overflow-hidden'}`}>
-            <div className="prose">
+          <div className={`${isEditing ? 'hidden' : 'block'} ${isExpanded ? '' : 'max-h-[420px] overflow-hidden'} text-left`}>
+            <div className="prose text-left">
               <ReactMarkdown components={markdownComponents}>{savedContent}</ReactMarkdown>
             </div>
           </div>
@@ -209,16 +209,16 @@ export function HowToGuide({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-gray-900 text-white p-6 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-auto">
             <div className="space-y-4">
-              <h2 className="text-xl font-bold">How to Use This</h2>
+              <h2 className="text-xl font-bold text-left">How to Use This</h2>
               <textarea
                 ref={textareaRef}
                 defaultValue={savedContent}
-                className={`w-full h-64 p-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                className={`w-full h-64 p-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-left ${
                   isEditing ? 'block' : 'hidden'
                 }`}
               />
-              <div className={isEditing ? 'hidden' : 'block'}>
-                <div className="prose">
+              <div className={isEditing ? 'hidden' : 'block text-left'}>
+                <div className="prose text-left">
                   <ReactMarkdown components={markdownComponents}>{savedContent}</ReactMarkdown>
                 </div>
               </div>

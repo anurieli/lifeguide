@@ -168,7 +168,7 @@ export default function SimpleAuthButton() {
     return (
       <div className="flex items-center gap-4">
         <p className="text-sm text-white font-medium">
-          Welcome, <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">{user.user_metadata?.display_name || user.email?.split('@')[0] || 'User'}</span>
+          Welcome, <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">{user.user_metadata?.name ? user.user_metadata.name.split(' ')[0] : user.email?.split('@')[0] || 'User'}</span>
         </p>
         <Button 
           onClick={handleSignOut} 

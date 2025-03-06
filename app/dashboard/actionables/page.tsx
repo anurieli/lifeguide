@@ -76,15 +76,6 @@ export default function ActionablesPage() {
           </Link>
         </div>
       </div>
-
-      <div className="flex-1 p-8">
-        <div className="max-w-5xl mx-auto">
-          <h1 className="text-3xl font-bold text-white mb-6">Your Actionables</h1>
-          <p className="text-gray-300 mb-8">
-            This is where you&apos;ll find personalized recommendations and actions based on your Blueprint.
-          </p>
-        </div>
-      </div>
     </div>
   );
 } 

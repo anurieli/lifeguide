@@ -1,13 +1,35 @@
-export default function DashboardLayout({
+import { createClient } from '@/utils/supabase/server';
+import { DashboardProvider } from '@/context/DashboardContext';
+import { Sidebar } from '@/components/dashboard/Sidebar';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  // Get the user server-side
+  const supabase = await createClient();
+  
+  // Get user from Supabase
+  const { data } = await supabase.auth.getUser();
+  const user = data.user;
+  
+  if (!user) {
+    redirect('/auth/login');
+  }
+  
   return (
-    <div className="min-h-screen bg-gray-900 pt-16 md:pt-20">
-      <main className="container mx-auto px-4 py-8">
-        {children}
-      </main>
-    </div>
+    <DashboardProvider user={user}>
+      <div className="min-h-screen bg-gray-900 pt-16 md:pt-20">
+        <div className="flex h-[calc(100vh-5rem)]">
+          <Sidebar />
+          <main className="flex-1 overflow-auto p-4">
+            {children}
+          </main>
+        </div>
+      </div>
+    </DashboardProvider>
   );
 } 

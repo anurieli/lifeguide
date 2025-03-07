@@ -344,3 +344,80 @@
 .animate-fadeIn {
   animation: fadeIn 0.5s ease forwards;
 }
+
+/* Mobile layout adjustments */
+@media (max-width: 768px) {
+  /* Reset fixed positioning */
+  html, body {
+    overflow: visible;
+    height: auto;
+    width: 100%;
+    position: static;
+  }
+  
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  
+  main {
+    position: static;
+    flex: 1;
+    overflow-y: auto;
+    padding-top: 7rem; /* Adjust based on your header height */
+    padding-bottom: 5rem; /* Adjust for mobile navbar */
+  }
+  
+  /* Ensure footer is at the bottom */
+  footer {
+    margin-top: auto;
+    position: relative;
+    z-index: 1; /* Below the mobile navbar */
+    padding-bottom: 5rem; /* Add padding to account for the mobile navbar */
+  }
+  
+  /* Add padding to account for the mobile banner */
+  .fixed.top-16 + main {
+    padding-top: 10rem !important; /* Force extra padding to account for the banner */
+  }
+  
+  /* Ensure fixed elements stay in place */
+  .fixed {
+    position: fixed;
+  }
+  
+  /* Z-index hierarchy */
+  nav.fixed {
+    z-index: 50;
+  }
+  
+  .fixed.top-16 {
+    z-index: 35; /* Below TopSectionIndicator */
+  }
+  
+  .fixed.top-26 {
+    z-index: 35; /* Below TopSectionIndicator */
+  }
+}
+
+/* Custom top position for homepage banner */
+.top-26 {
+  top: 6.5rem; /* Positioned below the TopSectionIndicator */
+}
+
+/* Mobile banner spacing fix */
+.fixed.top-16 + main {
+  padding-top: 10rem !important; /* Force extra padding to account for the banner */
+}
+
+/* Homepage specific padding */
+.fixed.top-26 + main {
+  padding-top: 12rem !important; /* Extra padding for homepage with TopSectionIndicator */
+}
+
+/* Adjust padding when banner is dismissed */
+main.banner-dismissed {
+  padding-top: 7rem !important; /* Reduce padding when banner is dismissed */
+  transition: padding-top 0.3s ease; /* Smooth transition */
+}

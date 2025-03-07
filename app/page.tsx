@@ -201,24 +201,19 @@ export default function WelcomePage() {
                         <ReactMarkdown components={{
                           p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
                         }}>
-                          A No-Bullshit, practical, interactive guide designed to help you organize your life, 
-                          sharpen your mindset, and achieve your goals. Built on battle-tested strategies from 
-                          the military, business, and personal development, Lifeguide combines structure with 
-                          adaptability—helping you cut through distractions and take control of your future.
+                          Life Guide is a raw, interactive blueprint built to wrestle your life into focus, sharpen your mind, and 
+                          carve out a path forward. Drawing from hard-earned lessons in military grit, business strategy, and real 
+                          self-discovery, it’s a system that bends to fit you—cutting through the noise so you can own your future.
                         </ReactMarkdown>
-                        
+
                         <ReactMarkdown components={{
                           p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
                         }}>
-                          **This isn't another productivity app**. Lifeguide is a *back-to-basics* system that promotes the philosophy of chanigng your 
-                          life by first and formost facing yourself. No shortcuts, no tech crutches—just you, sitting with your thoughts, digging
-                          into who you are and where you're headed. It's tough, unglamorous work. Other platforms peddle quick fixes, 
-                          promising change in five minutes.  You're here because you've tried them all and learned the hard 
-                          way: real change demands inner work, and there's no dodging it.
-                          To reach your goals, you need to know your core—your strengths, your flaws, where you stand in this
-                          messy life, the tools you've got, the habits you carry. Without that, you're swinging blind. If you don't
-                          stop to find the cracks, how will you mend them? And when your head's a storm of noise, how do you even see 
-                          what's broken beneath it all? Lifeguide cuts through that chaos, forcing you to name your truth so you can reshape it.
+                        This isn’t some slick app peddling quick fixes. Life Guide is a back-to-basics gut check that demands you 
+                        face yourself—no shortcuts, no fluff. Other tools promise change in five minutes; you’re here because you know
+                         that’s bullshit. Real shifts take real work. To know where you’re going, you’ve got to dig into who you are: 
+                         your strengths, your cracks, your chaos. Without that, you’re just flailing. Life Guide forces you to sit in 
+                         the mess, name it, and reshape it into something solid.
                         </ReactMarkdown>
                       </div>
                     </AccordionContent>
@@ -236,19 +231,21 @@ export default function WelcomePage() {
                         <ReactMarkdown components={{
                           p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
                         }}>
-                          LifeGuide came from a raw truth: you can't chase goals that matter until you 
-                          know who's staring back in the mirror. In todays world, life moves fast—too fast. We're all scrambling, 
-                          chasing dreams we can't even explain, never pausing to ask: What the hell do I actually
-                          want? That question isn't fluff—it's your lifeline. When everything falls apart, a clear 
-                          vision of who you are and why you're fighting is what keeps you standing with a smile on your face amidst all the chaos.
+                          Life Guide was born from a brutal truth: you can’t chase what matters until you know who’s staring
+                           back at you. Life’s a blur these days—too damn fast. We’re all scrambling after dreams we can’t 
+                           even define, never stopping to ask: What do I actually want? That’s not a soft question—it’s your anchor.
+                           When shit hits the fan, knowing who you are and why you’re still swinging is what keeps you steady.
+                           </ReactMarkdown>
                           
-                          Lifeguide started out as a way for me to get my life back on track after coming back from a year long war (not a figurative one). 
-                          Restless from jetlag and thoughts of "what now?", 1 AM i picked up a pen and paper and started writing. 
-                          by 5 AM I had a new "bible" that I would read morning an night. Fow weeks I would read it first thing in the morning, and right before bed, 
-                          and editiing it whenever I felt the need. After months of leaning on this document, and seeing the insane positive benefit it has created in my life, 
-                          I realized it has been the only thing that has been able to have such a profound efffect for such a long period of time. No longer am I running away from my flaws,
-                          no longer am I anxious about my future. I am no longer afraid of myself, and therefore I am in full control of my life. SO I decided to pay it forwward, and share
-                          the tool with the world. Free of charge ofcourse.
+                          <ReactMarkdown components={{
+                          p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
+                        }}>
+                        It started after I got back from a year-long war—real war, not some metaphor. Jetlagged, restless, asking 
+                        “What now?” at 1 AM, I grabbed a pen and paper. By 5 AM, I had a personal manual—a lifeline I’d read every 
+                        morning and night. For weeks, I leaned on it, tweaking it when I had to. Months later, the impact was undeniable:
+                         no more running from my flaws, no more dread about what’s next. I stopped fearing myself and took the 
+                         reins. That’s when I knew—this wasn’t just for me. I had to share it, free, with anyone ready to face 
+                         their own fight.
                         </ReactMarkdown>
                       </div>
                     </AccordionContent>
@@ -264,10 +261,11 @@ export default function WelcomePage() {
                     <AccordionContent className="text-gray-300">
                       <div className="prose prose-invert max-w-none space-y-4 pt-4">
                         <p className="text-base md:text-lg text-gray-300 break-words">
-                          My vision is a world where everyone can live with purpose, not just drift through the noise. Lifeguide is our 
-                          stand—a truly simple tool to guide you toward a life that's intentional, honest, and yours. We believe in the power of that pause,
-                          that unflinching look inside. Because once you know who you are, you can become who you're meant to be.
-                        </p>
+                        I see a world where people don’t just drift—they live with guts and purpose.
+                        \Life Guide is our weapon: a dead-simple tool to cut through the haze and build a 
+                        life that’s real and yours. It’s about that pause, that unflinching stare into yourself.
+                         Because once you see who you are, you can step into who you’re meant to be.
+                         </p>
                       </div>
                     </AccordionContent>
                   </AccordionItem>

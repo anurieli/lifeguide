@@ -168,7 +168,7 @@ function MobileNavbar() {
       </nav>
 
       {/* Mobile bottom navigation menu - Instagram-style */}
-      <div className={`fixed inset-x-0 bottom-0 z-40 bg-gray-900/90 backdrop-blur-md border-t border-gray-800 md:hidden transition-transform duration-300 ${mobileMenuOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+      <div className={`fixed inset-x-0 bottom-0 z-50 bg-gray-900/90 backdrop-blur-md border-t border-gray-800 md:hidden transition-transform duration-300 ${mobileMenuOpen ? 'translate-y-0' : 'translate-y-full'}`}>
         {/* Tab-style toggle at the top of the navbar */}
         <div className="absolute -top-10 left-1/2 transform -translate-x-1/2">
           <button 

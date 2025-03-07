@@ -60,190 +60,232 @@ export function HowToGuide({
   onOpenChange,
   buttonPosition = 'fixed',
 }: HowToGuideProps) {
-  // State for visibility and editing mode
-  const [isVisible, setIsVisible] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [content, setContent] = useState(DEFAULT_GUIDE);
   const [isEditing, setIsEditing] = useState(false);
-  const [savedContent, setSavedContent] = useState(DEFAULT_GUIDE);
   const [isExpanded, setIsExpanded] = useState(false);
-
-  // Ref for uncontrolled textarea
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
 
-  // Load content and check first-time status on mount
+  // Sync with external open state if provided
   useEffect(() => {
-    const storedContent = localStorage.getItem('guideContent');
-    if (storedContent) {
-      setSavedContent(storedContent);
-    }
-
-    const hasSeen = localStorage.getItem('hasSeenGuide');
-    if (!hasSeen && displayMode === 'dialog') {
-      setIsVisible(true);
-    }
-  }, [displayMode]);
-
-  // Handle external control of visibility
-  useEffect(() => {
-    if (typeof externalIsOpen !== 'undefined') {
-      setIsVisible(externalIsOpen);
+    if (externalIsOpen !== undefined) {
+      setIsOpen(externalIsOpen);
     }
   }, [externalIsOpen]);
 
-  // Handlers
+  // Handle escape key to close dialog
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+        if (onOpenChange) onOpenChange(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onOpenChange]);
+
+  // Handle click outside to close dialog
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dialogRef.current && !dialogRef.current.contains(e.target as Node) && isOpen) {
+        setIsOpen(false);
+        if (onOpenChange) onOpenChange(false);
+      }
+    };
+
+    if (displayMode === 'dialog') {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen, displayMode, onOpenChange]);
+
   const toggleVisibility = () => {
-    const newState = !isVisible;
-    setIsVisible(newState);
-    if (onOpenChange) {
-      onOpenChange(newState);
-    }
-    if (newState) {
-      localStorage.setItem('hasSeenGuide', 'true');
-    }
+    const newState = !isOpen;
+    setIsOpen(newState);
+    if (onOpenChange) onOpenChange(newState);
   };
 
   const startEditing = () => {
     setIsEditing(true);
-    setIsExpanded(true); // Auto-expand when editing
-    if (textareaRef.current) {
-      textareaRef.current.value = savedContent;
-    }
-    setTimeout(() => textareaRef.current?.focus(), 0);
+    // Focus the textarea after it's rendered
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+    }, 0);
   };
 
   const saveContent = () => {
     if (textareaRef.current) {
-      const newContent = textareaRef.current.value;
-      setSavedContent(newContent);
-      localStorage.setItem('guideContent', newContent);
+      setContent(textareaRef.current.value);
     }
     setIsEditing(false);
-    setIsExpanded(false); // Collapse after saving
   };
 
   const cancelEditing = () => {
     setIsEditing(false);
-    setIsExpanded(false); // Collapse after canceling
   };
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
   };
 
-  // Inline mode: render directly in the page
-  if (displayMode === 'inline') {
-    return (
-      <div className={`bg-gray-900 text-white rounded-lg relative transition-all duration-300 ${
-        isExpanded ? 'fixed inset-4 z-50 overflow-auto' : 'h-[500px] overflow-hidden'
-      }`}>
-        <div className={`p-4 ${isExpanded ? 'max-w-4xl mx-auto' : ''}`}>
-          <textarea
-            ref={textareaRef}
-            defaultValue={savedContent}
-            className={`w-full p-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-left ${
-              isEditing ? 'block' : 'hidden'
-            } ${isExpanded ? 'h-[calc(100vh-150px)]' : 'h-64'}`}
-          />
-          <div className={`${isEditing ? 'hidden' : 'block'} ${isExpanded ? '' : 'max-h-[420px] overflow-hidden'} text-left`}>
-            <div className="prose text-left">
-              <ReactMarkdown components={markdownComponents}>{savedContent}</ReactMarkdown>
+  // Button component
+  const GuideButton = () => (
+    <Button
+      onClick={toggleVisibility}
+      className={`flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white ${
+        buttonPosition === 'fixed'
+          ? 'fixed bottom-4 right-4 z-50 shadow-lg'
+          : 'inline-flex'
+      }`}
+    >
+      <HelpCircle className="w-4 h-4" />
+      <span className="hidden sm:inline">Guide Instructions</span>
+    </Button>
+  );
+
+  // Dialog content
+  const DialogContent = () => (
+    <div
+      ref={dialogRef}
+      className={`bg-gray-900 border border-gray-700 rounded-lg shadow-xl overflow-hidden ${
+        isExpanded
+          ? 'fixed inset-4 z-50'
+          : `fixed bottom-20 right-4 w-[90vw] max-w-md z-50 ${isMobile ? 'max-h-[70vh]' : 'max-h-[600px]'}`
+      }`}
+    >
+      <div className="flex items-center justify-between p-4 border-b border-gray-700">
+        <h2 className="text-lg font-semibold text-white">Guide Instructions</h2>
+        <div className="flex items-center gap-2">
+          {isEditable && !isEditing && (
+            <Button
+              onClick={startEditing}
+              variant="outline"
+              size="sm"
+              className="text-xs"
+            >
+              Edit
+            </Button>
+          )}
+          <Button
+            onClick={toggleExpand}
+            variant="ghost"
+            size="sm"
+            className="text-gray-400 hover:text-white"
+          >
+            {isExpanded ? (
+              <Minimize2 className="w-4 h-4" />
+            ) : (
+              <Maximize2 className="w-4 h-4" />
+            )}
+          </Button>
+          <Button
+            onClick={toggleVisibility}
+            variant="ghost"
+            size="sm"
+            className="text-gray-400 hover:text-white"
+          >
+            ✕
+          </Button>
+        </div>
+      </div>
+
+      <div className={`overflow-y-auto p-4 ${isMobile ? 'max-h-[50vh]' : 'max-h-[500px]'}`}>
+        {isEditing ? (
+          <div className="flex flex-col gap-4">
+            <textarea
+              ref={textareaRef}
+              defaultValue={content}
+              className="w-full h-[300px] p-3 bg-gray-800 text-white border border-gray-700 rounded-md"
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                onClick={cancelEditing}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={saveContent}
+                size="sm"
+                className="text-xs bg-blue-600 hover:bg-blue-700"
+              >
+                Save
+              </Button>
             </div>
           </div>
-          
-          <div className="flex justify-between items-center mt-4">
-            {isEditable && (
-              <div className="flex gap-2">
-                {isEditing ? (
-                  <>
-                    <Button variant="outline" onClick={cancelEditing}>
-                      Cancel
-                    </Button>
-                    <Button onClick={saveContent}>Save</Button>
-                  </>
-                ) : (
-                  <Button onClick={startEditing}>Edit</Button>
-                )}
-              </div>
-            )}
-            
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={toggleExpand} 
-              className="ml-auto"
-            >
-              {isExpanded ? (
-                <Minimize2 className="h-4 w-4" />
-              ) : (
-                <Maximize2 className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        </div>
-        
-        {isExpanded && (
-          <div 
-            className="fixed inset-0 bg-black/50 -z-10" 
-            onClick={() => !isEditing && setIsExpanded(false)}
-          />
+        ) : (
+          <ReactMarkdown components={markdownComponents}>{content}</ReactMarkdown>
         )}
       </div>
-    );
-  }
+    </div>
+  );
 
-  // Dialog mode: render as a modal
-  return (
-    <>
-      {showButton && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleVisibility}
-          className={buttonPosition === 'fixed' 
-            ? "fixed bottom-4 right-4 bg-gray-800 text-white hover:bg-gray-700" 
-            : "bg-gray-800 text-white hover:bg-gray-700"}
-        >
-          <HelpCircle className="h-5 w-5" />
-        </Button>
-      )}
-      {isVisible && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-900 text-white p-6 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-auto">
-            <div className="space-y-4">
-              <h2 className="text-xl font-bold text-left">How to Use This</h2>
-              <textarea
-                ref={textareaRef}
-                defaultValue={savedContent}
-                className={`w-full h-64 p-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-left ${
-                  isEditing ? 'block' : 'hidden'
-                }`}
-              />
-              <div className={isEditing ? 'hidden' : 'block text-left'}>
-                <div className="prose text-left">
-                  <ReactMarkdown components={markdownComponents}>{savedContent}</ReactMarkdown>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                {isEditable && isEditing ? (
-                  <>
-                    <Button variant="outline" onClick={cancelEditing}>
-                      Cancel
-                    </Button>
-                    <Button onClick={saveContent}>Save</Button>
-                  </>
-                ) : (
-                  <>
-                    {isEditable && (
-                      <Button onClick={startEditing} variant="outline">
-                        Edit
-                      </Button>
-                    )}
-                    <Button onClick={toggleVisibility}>Close</Button>
-                  </>
-                )}
-              </div>
+  // Inline content
+  const InlineContent = () => (
+    <div className="bg-gray-900 border border-gray-700 rounded-lg shadow-lg overflow-hidden w-full">
+      <div className="flex items-center justify-between p-4 border-b border-gray-700">
+        <h2 className="text-lg font-semibold text-white">Guide Instructions</h2>
+        {isEditable && !isEditing && (
+          <Button
+            onClick={startEditing}
+            variant="outline"
+            size="sm"
+            className="text-xs"
+          >
+            Edit
+          </Button>
+        )}
+      </div>
+
+      <div className="p-4">
+        {isEditing ? (
+          <div className="flex flex-col gap-4">
+            <textarea
+              ref={textareaRef}
+              defaultValue={content}
+              className="w-full h-[300px] p-3 bg-gray-800 text-white border border-gray-700 rounded-md"
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                onClick={cancelEditing}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={saveContent}
+                size="sm"
+                className="text-xs bg-blue-600 hover:bg-blue-700"
+              >
+                Save
+              </Button>
             </div>
           </div>
-        </div>
+        ) : (
+          <ReactMarkdown components={markdownComponents}>{content}</ReactMarkdown>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {showButton && <GuideButton />}
+      
+      {displayMode === 'dialog' ? (
+        isOpen && <DialogContent />
+      ) : (
+        <InlineContent />
       )}
     </>
   );

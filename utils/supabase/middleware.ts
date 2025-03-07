@@ -146,10 +146,10 @@ export const updateSession = async (request: NextRequest) => {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          getAll() {
+          async getAll() {
             return request.cookies.getAll();
           },
-          setAll(cookiesToSet) {
+          async setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) => {
               console.log(`[Middleware] Setting cookie: ${name}`);
               request.cookies.set(name, value);

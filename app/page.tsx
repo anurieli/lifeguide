@@ -13,6 +13,7 @@ import WelcomePopup from '@/components/WelcomePopup';
 // import VideoCarousel from '@/components/VideoCarousel';
 import SimpleAuthButton from '@/components/SimpleAuthButton';
 import ReactMarkdown from 'react-markdown';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 
 const gradientText = "bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text";
@@ -36,7 +37,7 @@ export default function WelcomePage() {
       <SectionIndicator />
 
       {/* Hero Section */}
-      <section id="hero" className="py-20 md:py-24 flex flex-col items-center justify-center relative min-h-[600px] md:min-h-[700px]">
+      <section id="hero" className="py-5 md:py-24 flex flex-col items-center justify-center relative min-h-[600px] md:min-h-[700px]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -44,14 +45,11 @@ export default function WelcomePage() {
           className="text-center max-w-4xl mx-auto px-4 mb-16"
         >
           <h1 className={`text-5xl md:text-6xl font-bold ${gradientText} mb-6`}>
-            Welcome to LifeGuide
+            Welcome to Lifeguide
           </h1>
           
           <p className="text-xl text-gray-400 mb-0 max-w-2xl mx-auto">
-          A No-Bullshit, practical, interactive guide designed to help you organize your life, 
-          sharpen your mindset, and achieve your goals. Built on battle-tested strategies from 
-  the military, business, and personal development, Lifegaid combines structure with 
-  adaptability—helping you cut through distractions and take control of your future.
+          Pause the chaos. Build your life's manual. Start living right.
           </p>
 
           <PersonaRibbon />
@@ -71,7 +69,7 @@ export default function WelcomePage() {
               />
             </div>
             <div className="w-full mt-2 text-center">
-              <p className="text-xs text-amber-400/80 italic font-sans">
+              <p className="text-xs text-amber-400/80 italic font-sans max-w-xs sm:max-w-none mx-auto">
                 *you thought you got rickrolled, but this is just a placeholder till my demo video is ready!
               </p>
             </div>
@@ -189,47 +187,91 @@ export default function WelcomePage() {
                 <p className="text-xl text-gray-400 mb-0 max-w-2xl mx-auto">Why does this exist?</p>
               </motion.div>
 
-              <div className="prose prose-invert max-w-none space-y-4 md:space-y-6">
-                <ReactMarkdown components={{
-                  p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
-                }}>
-                  LifeGuide came from a raw truth: you can't chase goals that matter until you 
-                  know who's staring back in the mirror. In todays world, life moves fast—too fast. We're all scrambling, 
-                  chasing dreams we can't even explain, never pausing to ask: What the hell do I actually
-                   want? That question isn't fluff—it's your lifeline. When everything falls apart, a clear 
-                   vision of who you are and why you're fighting is what keeps you standing with a smile on your face amidst all the chaos. 
-                   
-                   
-                  Lifeguide started out as a way for me to get my life back on track after coming back from a year long war (not a figurative one). 
-                  Restless from jetlag and thoughts of "what now?", 1 AM i picked up a pen and paper and started writing. 
-                  by 5 AM I had a new "bible" that I would read morning an night. Fow weeks I would read it first thing in the morning, and right before bed, 
-                  and editiing it whenever I felt the need. After months of leaning on this document, and seeing the insane positive benefit it has created in my life, 
-                   I realized it has been the only thing that has been able to have such a profound efffect for such a long period of time. No longer am I running away from my flaws,
-                   no longer am I anxious about my future. I am no longer afraid of myself, and therefore I am in full control of my life. SO I decided to pay it forwward, and share
-                   the tool with the world. Free of charge ofcourse. 
-                </ReactMarkdown>
-
-                <ReactMarkdown components={{
-                  p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
-                }}>
-                  **This isn't another productivity app**. Lifeguide is a *back-to-basics* system that promotes the philosophy of chanigng your 
-                  life by first and formost facing yourself. No shortcuts, no tech crutches—just you, sitting with your thoughts, digging
-                   into who you are and where you're headed. It's tough, unglamorous work. Other platforms peddle quick fixes, 
-                   promising change in five minutes.  You're here because you've tried them all and learned the hard 
-                   way: real change demands inner work, and there's no dodging it.
-                   To reach your goals, you need to know your core—your strengths, your flaws, where you stand in this
-                    messy life, the tools you've got, the habits you carry. Without that, you're swinging blind. If you don't
-                     stop to find the cracks, how will you mend them? And when your head's a storm of noise, how do you even see 
-                     what's broken beneath it all? Lifeguide cuts through that chaos, forcing you to name your truth so you can reshape it.
-                </ReactMarkdown>
-
-                <h3 className={`text-xl md:text-2xl font-bold ${gradientText}`}>The Vision</h3>
-                
-                <p className="text-base md:text-lg text-gray-300 break-words">
-                My vision is a world where everyone can live with purpose, not just drift through the noise. Lifeguide is our 
-                stand—a truly simple tool to guide you toward a life that's intentional, honest, and yours. We believe in the power of that pause,
-                 that unflinching look inside. Because once you know who you are, you can become who you're meant to be.
-                </p>
+              <div className="space-y-6">
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="what-is-lifeguide" className="border-white/10">
+                    <AccordionTrigger className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center text-left gap-2">
+                        <h3 className={`text-xl font-bold ${gradientText}`}>What is LifeGuide</h3>
+                        <p className="text-gray-400 text-sm sm:text-base sm:ml-4">A practical, no-nonsense approach to personal development</p>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="text-gray-300">
+                      <div className="prose prose-invert max-w-none space-y-4 pt-4">
+                        <ReactMarkdown components={{
+                          p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
+                        }}>
+                          A No-Bullshit, practical, interactive guide designed to help you organize your life, 
+                          sharpen your mindset, and achieve your goals. Built on battle-tested strategies from 
+                          the military, business, and personal development, Lifeguide combines structure with 
+                          adaptability—helping you cut through distractions and take control of your future.
+                        </ReactMarkdown>
+                        
+                        <ReactMarkdown components={{
+                          p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
+                        }}>
+                          **This isn't another productivity app**. Lifeguide is a *back-to-basics* system that promotes the philosophy of chanigng your 
+                          life by first and formost facing yourself. No shortcuts, no tech crutches—just you, sitting with your thoughts, digging
+                          into who you are and where you're headed. It's tough, unglamorous work. Other platforms peddle quick fixes, 
+                          promising change in five minutes.  You're here because you've tried them all and learned the hard 
+                          way: real change demands inner work, and there's no dodging it.
+                          To reach your goals, you need to know your core—your strengths, your flaws, where you stand in this
+                          messy life, the tools you've got, the habits you carry. Without that, you're swinging blind. If you don't
+                          stop to find the cracks, how will you mend them? And when your head's a storm of noise, how do you even see 
+                          what's broken beneath it all? Lifeguide cuts through that chaos, forcing you to name your truth so you can reshape it.
+                        </ReactMarkdown>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                  
+                  <AccordionItem value="inspiration" className="border-white/10">
+                    <AccordionTrigger className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center text-left gap-2">
+                        <h3 className={`text-xl font-bold ${gradientText}`}>The Inspiration</h3>
+                        <p className="text-gray-400 text-sm sm:text-base sm:ml-4">Born from personal struggle and transformation</p>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="text-gray-300">
+                      <div className="prose prose-invert max-w-none space-y-4 pt-4">
+                        <ReactMarkdown components={{
+                          p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
+                        }}>
+                          LifeGuide came from a raw truth: you can't chase goals that matter until you 
+                          know who's staring back in the mirror. In todays world, life moves fast—too fast. We're all scrambling, 
+                          chasing dreams we can't even explain, never pausing to ask: What the hell do I actually
+                          want? That question isn't fluff—it's your lifeline. When everything falls apart, a clear 
+                          vision of who you are and why you're fighting is what keeps you standing with a smile on your face amidst all the chaos.
+                          
+                          Lifeguide started out as a way for me to get my life back on track after coming back from a year long war (not a figurative one). 
+                          Restless from jetlag and thoughts of "what now?", 1 AM i picked up a pen and paper and started writing. 
+                          by 5 AM I had a new "bible" that I would read morning an night. Fow weeks I would read it first thing in the morning, and right before bed, 
+                          and editiing it whenever I felt the need. After months of leaning on this document, and seeing the insane positive benefit it has created in my life, 
+                          I realized it has been the only thing that has been able to have such a profound efffect for such a long period of time. No longer am I running away from my flaws,
+                          no longer am I anxious about my future. I am no longer afraid of myself, and therefore I am in full control of my life. SO I decided to pay it forwward, and share
+                          the tool with the world. Free of charge ofcourse.
+                        </ReactMarkdown>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                  
+                  <AccordionItem value="vision" className="border-white/10">
+                    <AccordionTrigger className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center text-left gap-2">
+                        <h3 className={`text-xl font-bold ${gradientText}`}>The Vision</h3>
+                        <p className="text-gray-400 text-sm sm:text-base sm:ml-4">Creating a world of intentional, purpose-driven lives</p>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="text-gray-300">
+                      <div className="prose prose-invert max-w-none space-y-4 pt-4">
+                        <p className="text-base md:text-lg text-gray-300 break-words">
+                          My vision is a world where everyone can live with purpose, not just drift through the noise. Lifeguide is our 
+                          stand—a truly simple tool to guide you toward a life that's intentional, honest, and yours. We believe in the power of that pause,
+                          that unflinching look inside. Because once you know who you are, you can become who you're meant to be.
+                        </p>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </div>
             </div>
           </div>

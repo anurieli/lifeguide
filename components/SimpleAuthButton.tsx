@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client';
 import { useEffect, useState, useTransition } from 'react';
 import { signOutAction } from '@/utils/supabase/actions';
 import { useAuth } from '@/utils/AuthProvider';
+import { LogIn, LogOut, UserPlus, X } from 'lucide-react';
 
 export default function SimpleAuthButton() {
   const { user, loading, error, isRecoverySession, refreshSession } = useAuth();
@@ -148,7 +149,8 @@ export default function SimpleAuthButton() {
         variant="outline"
         className="text-yellow-400 border-yellow-500/20 hover:bg-yellow-500/10 hover:text-yellow-300 hover:border-yellow-400/40 transition-all"
       >
-        Cancel Reset
+        <X className="h-4 w-4 mr-2 md:mr-2" />
+        <span className="hidden md:inline">Cancel Reset</span>
       </Button>
     );
   }
@@ -157,26 +159,28 @@ export default function SimpleAuthButton() {
     return (
       <Button 
         disabled
-        className="bg-gradient-to-r from-blue-600/50 to-purple-600/50 text-white border-none px-5 sm:px-6 py-2.5 sm:py-3 h-auto rounded-lg"
+        className="bg-gradient-to-r from-blue-600/50 to-purple-600/50 text-white border-none px-3 sm:px-6 py-2 sm:py-3 h-auto rounded-lg"
       >
-        Loading...
+        <span className="animate-pulse">...</span>
       </Button>
     );
   }
 
   if (user) {
     return (
-      <div className="flex items-center gap-4">
-        <p className="text-sm text-white font-medium">
+      <div className="flex items-center gap-2 md:gap-4">
+        <p className="hidden md:block text-sm text-white font-medium">
           Welcome, <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">{user.user_metadata?.name ? user.user_metadata.name.split(' ')[0] : user.email?.split('@')[0] || 'User'}</span>
         </p>
         <Button 
           onClick={handleSignOut} 
           disabled={isPending}
           variant="outline"
-          className="text-white border-white/20 hover:bg-white/10 hover:text-white hover:border-white/40 transition-all"
+          className="text-white border-white/20 hover:bg-white/10 hover:text-white hover:border-white/40 transition-all px-3 py-2"
+          title="Sign out"
         >
-          {isPending ? 'Signing out...' : 'Sign out'}
+          <LogOut className="h-4 w-4 md:mr-2" />
+          <span className="hidden md:inline">{isPending ? 'Signing out...' : 'Sign out'}</span>
         </Button>
       </div>
     );
@@ -187,15 +191,19 @@ export default function SimpleAuthButton() {
       <Button 
         onClick={() => router.push('/auth/login')}
         variant="outline"
-        className="text-white border-white/20 hover:bg-white/10 hover:text-white hover:border-white/40 transition-all"
+        className="text-white border-white/20 hover:bg-white/10 hover:text-white hover:border-white/40 transition-all px-3 py-2"
+        title="Sign in"
       >
-        Sign in
+        <LogIn className="h-4 w-4 md:mr-2" />
+        <span className="hidden md:inline">Sign in</span>
       </Button>
       <Button 
         onClick={() => router.push('/auth/signup')}
-        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none px-5 sm:px-6 py-2.5 sm:py-3 h-auto rounded-lg"
+        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none px-3 sm:px-6 py-2 sm:py-3 h-auto rounded-lg"
+        title="Sign up"
       >
-        Sign up
+        <UserPlus className="h-4 w-4 md:mr-2" />
+        <span className="hidden md:inline">Sign up</span>
       </Button>
     </div>
   );

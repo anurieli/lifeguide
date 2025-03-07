@@ -3,9 +3,13 @@
 import Link from 'next/link';
 import Image from 'next/image';
 
-export default function Footer() {
+interface FooterProps {
+  className?: string;
+}
+
+export default function Footer({ className = '' }: FooterProps) {
   return (
-    <footer className="bg-gray-800 text-gray-300 mt-16">
+    <footer className={`bg-gray-800 text-gray-300 mt-16 ${className}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* About */}

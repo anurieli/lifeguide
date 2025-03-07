@@ -53,7 +53,7 @@ export default function TopSectionIndicator() {
   };
 
   return (
-    <div className="sticky top-[60px] z-40 bg-black/50 backdrop-blur-sm border-b border-white/5">
+    <div className="fixed top-16 left-0 right-0 z-40 bg-black/50 backdrop-blur-sm border-b border-white/5">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-center items-center h-10">
           <div className="flex gap-6 md:gap-12">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -40,6 +40,14 @@ export default function VideoCarousel() {
   const [currentIndex, setCurrentIndex] = useState(1);
   const [isPlaying, setIsPlaying] = useState<number | null>(null);
   const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const isMobile = useMediaQuery('(max-width: 640px)');
+
+  // Pause video when switching to mobile
+  useEffect(() => {
+    if (isMobile && isPlaying !== null) {
+      setIsPlaying(null);
+    }
+  }, [isMobile, isPlaying]);
 
   const handlePrevious = () => {
     setIsPlaying(null);
@@ -60,6 +68,7 @@ export default function VideoCarousel() {
             ? 'absolute left-[10%] md:left-[15%] top-1/2 -translate-y-1/2 z-20' 
             : 'flex items-center justify-center'
         }`}
+        aria-label="Previous video"
       >
         <ChevronLeft className="w-6 h-6 md:w-8 md:h-8 text-white opacity-75 group-hover:opacity-100 transition-opacity" />
       </button>
@@ -71,6 +80,7 @@ export default function VideoCarousel() {
             ? 'absolute right-[10%] md:right-[15%] top-1/2 -translate-y-1/2 z-20'
             : 'flex items-center justify-center'
         }`}
+        aria-label="Next video"
       >
         <ChevronRight className="w-6 h-6 md:w-8 md:h-8 text-white opacity-75 group-hover:opacity-100 transition-opacity" />
       </button>
@@ -79,7 +89,7 @@ export default function VideoCarousel() {
 
   return (
     <div className="relative w-full py-1">
-      <div className="relative h-[50vh] md:h-[70vh] flex items-center justify-center">
+      <div className={`relative ${isMobile ? 'h-[40vh]' : 'h-[50vh] md:h-[70vh]'} flex items-center justify-center`}>
         <AnimatePresence mode="popLayout">
           {videos.map((video, index) => {
             const position = (index - currentIndex + videos.length) % videos.length;
@@ -87,7 +97,10 @@ export default function VideoCarousel() {
             const isLeft = position === videos.length - 1;
             const isRight = position === 1;
             
-            if (!isCenter && !isLeft && !isRight) return null;
+            // On mobile, only show the center video
+            if (isMobile && !isCenter) return null;
+            // On desktop, show left, center, and right videos
+            if (!isMobile && !isCenter && !isLeft && !isRight) return null;
 
             const xOffset = isDesktop 
               ? (isLeft ? '-65%' : isRight ? '65%' : '5%')
@@ -99,13 +112,13 @@ export default function VideoCarousel() {
                 initial={false}
                 animate={{
                   scale: isCenter ? 1 : 0.7,
-                  x: xOffset,
+                  x: isMobile ? '0%' : xOffset,
                   zIndex: isCenter ? 10 : 0,
                   opacity: isCenter ? 1 : 0.4,
-                  rotateY: isLeft ? 25 : isRight ? -25 : 0,
+                  rotateY: isMobile ? 0 : (isLeft ? 25 : isRight ? -25 : 0),
                 }}
                 transition={{ duration: 0.4 }}
-                className="absolute w-[250px] md:w-[300px] rounded-xl overflow-hidden shadow-2xl bg-gray-800/80"
+                className={`absolute ${isMobile ? 'w-[85%] max-w-[300px]' : 'w-[250px] md:w-[300px]'} rounded-xl overflow-hidden shadow-2xl bg-gray-800/80`}
                 style={{ aspectRatio: '9/16' }}
               >
                 {/* Video Container */}
@@ -133,6 +146,7 @@ export default function VideoCarousel() {
                       <button
                         onClick={() => setIsPlaying(isPlaying === video.id ? null : video.id)}
                         className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition-colors"
+                        aria-label={isPlaying === video.id ? "Pause video" : "Play video"}
                       >
                         {isPlaying === video.id ? (
                           <svg className="w-16 h-16 text-white opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -149,9 +163,9 @@ export default function VideoCarousel() {
                   )}
 
                   {/* Content Overlay */}
-                  <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
-                    <h3 className="text-xl font-semibold mb-2 text-white">{video.title}</h3>
-                    <p className="text-sm text-gray-300">{video.description}</p>
+                  <div className="absolute inset-x-0 bottom-0 p-4 md:p-6 bg-gradient-to-t from-black/80 to-transparent">
+                    <h3 className="text-lg md:text-xl font-semibold mb-1 md:mb-2 text-white">{video.title}</h3>
+                    <p className="text-xs md:text-sm text-gray-300">{video.description}</p>
                   </div>
                 </div>
               </motion.div>
@@ -159,7 +173,7 @@ export default function VideoCarousel() {
           })}
         </AnimatePresence>
 
-        {/* Navigation Buttons */}
+        {/* Navigation Buttons - Desktop */}
         {isDesktop ? (
           <NavigationButtons />
         ) : null}
@@ -169,6 +183,25 @@ export default function VideoCarousel() {
       {!isDesktop && (
         <div className="flex justify-center gap-4 mt-4">
           <NavigationButtons />
+        </div>
+      )}
+
+      {/* Mobile Video Indicator */}
+      {isMobile && (
+        <div className="flex justify-center gap-2 mt-4">
+          {videos.map((video, index) => (
+            <button
+              key={video.id}
+              onClick={() => {
+                setIsPlaying(null);
+                setCurrentIndex(index);
+              }}
+              className={`w-2 h-2 rounded-full ${
+                index === currentIndex ? 'bg-white' : 'bg-white/30'
+              }`}
+              aria-label={`Go to video ${index + 1}`}
+            />
+          ))}
         </div>
       )}
     </div>

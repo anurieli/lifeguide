@@ -54,7 +54,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           <div className="flex flex-col items-start">
             <Link href="/" className="text-white font-bold text-xl">
-              LifeGuide
+              <img src="/lifeguide.svg" alt="LifeGuide Logo" className="h-8 w-auto" />
             </Link>
             <p className="text-gray-400 text-xs italic">Know who you are & where you're going</p>
           </div>

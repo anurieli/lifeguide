@@ -1,8 +1,7 @@
 'use client';
 
-import React from 'react';
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, PanInfo, useAnimation } from 'framer-motion';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -62,30 +61,141 @@ export default function OverviewCarousel() {
   const isTablet = useMediaQuery('(max-width: 1023px) and (min-width: 769px)');
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const isTouchDevice = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  
+  // For the carousel animation
+  const controls = useAnimation();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   const goToNext = () => {
-    setCurrentIndex((current) => (current + 1) % steps.length);
+    if (isDragging) return;
+    
+    const nextIndex = (currentIndex + 1) % steps.length;
+    
+    // Animate slide out to the left
+    controls.start({
+      x: '-100%',
+      transition: { duration: 0.3 }
+    }).then(() => {
+      setCurrentIndex(nextIndex);
+      // Reset position and animate in from the right
+      controls.set({ x: '100%' });
+      controls.start({
+        x: 0,
+        transition: { duration: 0.3 }
+      });
+    });
   };
 
   const goToPrevious = () => {
-    setCurrentIndex((current) => (current - 1 + steps.length) % steps.length);
+    if (isDragging) return;
+    
+    const prevIndex = (currentIndex - 1 + steps.length) % steps.length;
+    
+    // Animate slide out to the right
+    controls.start({
+      x: '100%',
+      transition: { duration: 0.3 }
+    }).then(() => {
+      setCurrentIndex(prevIndex);
+      // Reset position and animate in from the left
+      controls.set({ x: '-100%' });
+      controls.start({
+        x: 0,
+        transition: { duration: 0.3 }
+      });
+    });
   };
 
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (info.offset.x > 50) {
-      goToPrevious();
-    } else if (info.offset.x < -50) {
-      goToNext();
+  const handleDragStart = () => {
+    setIsDragging(true);
+    if (containerRef.current) {
+      setDragStartX(0); // Reset to 0 as we'll use relative values
     }
+  };
+
+  const handleDrag = (_: any, info: PanInfo) => {
+    // Update the position as the user drags
+    controls.set({ x: info.offset.x });
+  };
+
+  const handleDragEnd = (_: any, info: PanInfo) => {
+    setIsDragging(false);
+    
+    // Determine if we should navigate based on drag distance and velocity
+    const threshold = 50;
+    const velocity = 0.5;
+    
+    if (info.offset.x > threshold || (info.velocity.x > velocity && info.offset.x > 0)) {
+      // Dragged right - go to previous
+      controls.start({
+        x: '100%',
+        transition: { duration: 0.2 }
+      }).then(() => {
+        const prevIndex = (currentIndex - 1 + steps.length) % steps.length;
+        setCurrentIndex(prevIndex);
+        controls.set({ x: '-100%' });
+        controls.start({
+          x: 0,
+          transition: { duration: 0.2 }
+        });
+      });
+    } else if (info.offset.x < -threshold || (info.velocity.x < -velocity && info.offset.x < 0)) {
+      // Dragged left - go to next
+      controls.start({
+        x: '-100%',
+        transition: { duration: 0.2 }
+      }).then(() => {
+        const nextIndex = (currentIndex + 1) % steps.length;
+        setCurrentIndex(nextIndex);
+        controls.set({ x: '100%' });
+        controls.start({
+          x: 0,
+          transition: { duration: 0.2 }
+        });
+      });
+    } else {
+      // Not enough drag - snap back
+      controls.start({
+        x: 0,
+        transition: { duration: 0.2 }
+      });
+    }
+  };
+
+  const goToSlide = (index: number) => {
+    if (isDragging || index === currentIndex) return;
+    
+    const direction = index > currentIndex ? -1 : 1;
+    
+    controls.start({
+      x: `${direction * 100}%`,
+      transition: { duration: 0.3 }
+    }).then(() => {
+      setCurrentIndex(index);
+      controls.set({ x: `${-direction * 100}%` });
+      controls.start({
+        x: 0,
+        transition: { duration: 0.3 }
+      });
+    });
   };
 
   useEffect(() => {
     // Auto-shift every 16 seconds (doubled from 8 seconds)
     const timer = setInterval(() => {
-      goToNext();
+      if (!isDragging) {
+        goToNext();
+      }
     }, 16000);
 
     return () => clearInterval(timer);
+  }, [isDragging]);
+
+  // Initialize animation control
+  useEffect(() => {
+    controls.set({ x: 0 });
   }, []);
 
   if (isDesktop) {
@@ -121,36 +231,36 @@ export default function OverviewCarousel() {
 
   return (
     <div className="mx-auto w-full relative">
-      <div className="overflow-hidden rounded-xl bg-gray-800/50 p-3 md:p-4">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentIndex}
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -100 }}
-            transition={{ duration: .5 }}
-            className="flex flex-col items-center text-center"
-            drag={isTouchDevice ? "x" : false}
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.1}
-            onDragEnd={handleDragEnd}
-          >
-            <div className="text-blue-500 mb-2 shrink-0">
-              {steps[currentIndex].icon}
-            </div>
-            <h3 className="text-lg md:text-xl font-bold mb-2 text-white">
-              {steps[currentIndex].title}
-            </h3>
-            <div className="w-full overflow-hidden">
-              <p className="text-white text-xs md:text-sm mb-1 break-words line-clamp-4">
-                {steps[currentIndex].description}
-              </p>
-              <p className="text-gray-400 text-xs italic break-words line-clamp-3">
-                {steps[currentIndex].subdescription}
-              </p>
-            </div>
-          </motion.div>
-        </AnimatePresence>
+      <div 
+        className="overflow-hidden rounded-xl bg-gray-800/50 p-3 md:p-4"
+        ref={containerRef}
+      >
+        <motion.div
+          animate={controls}
+          initial={{ x: 0 }}
+          drag={isTouchDevice ? "x" : false}
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.1}
+          onDragStart={handleDragStart}
+          onDrag={handleDrag}
+          onDragEnd={handleDragEnd}
+          className="flex flex-col items-center text-center touch-pan-y"
+        >
+          <div className="text-blue-500 mb-2 shrink-0">
+            {steps[currentIndex].icon}
+          </div>
+          <h3 className="text-lg md:text-xl font-bold mb-2 text-white">
+            {steps[currentIndex].title}
+          </h3>
+          <div className="w-full overflow-hidden">
+            <p className="text-white text-xs md:text-sm mb-1 break-words line-clamp-4">
+              {steps[currentIndex].description}
+            </p>
+            <p className="text-gray-400 text-xs italic break-words line-clamp-3">
+              {steps[currentIndex].subdescription}
+            </p>
+          </div>
+        </motion.div>
       </div>
 
       {/* Navigation buttons - visible on non-mobile and tablet */}
@@ -177,7 +287,7 @@ export default function OverviewCarousel() {
         {steps.map((_, index) => (
           <button
             key={index}
-            onClick={() => setCurrentIndex(index)}
+            onClick={() => goToSlide(index)}
             className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full transition-all duration-300 ${
               index === currentIndex ? 'bg-blue-500 w-6 md:w-8' : 'bg-gray-600'
             }`}

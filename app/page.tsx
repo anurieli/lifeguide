@@ -6,7 +6,7 @@ import { useAuth } from '@/utils/AuthProvider';
 import { motion } from 'framer-motion';
 import SectionIndicator from '@/components/SectionIndicator';
 import TopSectionIndicator from '@/components/TopSectionIndicator';
-import OverviewCarousel from '@/components/OverviewCarousel';
+import ClientOverviewCarousel from '@/components/ClientOverviewCarousel';
 import ContactForm from '@/components/ContactForm';
 import PersonaRibbon from '@/components/PersonaRibbon';
 import WelcomePopup from '@/components/WelcomePopup';
@@ -121,7 +121,7 @@ export default function WelcomePage() {
               </motion.div>
 
               <div className="max-w-full overflow-hidden">
-                <OverviewCarousel />
+                <ClientOverviewCarousel />
               </div>
 
               <div className="mt-8 md:mt-12 flex flex-wrap justify-center gap-4">
@@ -203,16 +203,16 @@ export default function WelcomePage() {
                         }}>
                           Life Guide is a raw, interactive blueprint built to wrestle your life into focus, sharpen your mind, and 
                           carve out a path forward. Drawing from hard-earned lessons in military grit, business strategy, and real 
-                          self-discovery, it’s a system that bends to fit you—cutting through the noise so you can own your future.
+                          self-discovery, it's a system that bends to fit you—cutting through the noise so you can own your future.
                         </ReactMarkdown>
 
                         <ReactMarkdown components={{
                           p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
                         }}>
-                        This isn’t some slick app peddling quick fixes. Life Guide is a back-to-basics gut check that demands you 
-                        face yourself—no shortcuts, no fluff. Other tools promise change in five minutes; you’re here because you know
-                         that’s bullshit. Real shifts take real work. To know where you’re going, you’ve got to dig into who you are: 
-                         your strengths, your cracks, your chaos. Without that, you’re just flailing. Life Guide forces you to sit in 
+                        This isn't some slick app peddling quick fixes. Life Guide is a back-to-basics gut check that demands you 
+                        face yourself—no shortcuts, no fluff. Other tools promise change in five minutes; you're here because you know
+                         that's bullshit. Real shifts take real work. To know where you're going, you've got to dig into who you are: 
+                         your strengths, your cracks, your chaos. Without that, you're just flailing. Life Guide forces you to sit in 
                          the mess, name it, and reshape it into something solid.
                         </ReactMarkdown>
                       </div>
@@ -231,20 +231,20 @@ export default function WelcomePage() {
                         <ReactMarkdown components={{
                           p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
                         }}>
-                          Life Guide was born from a brutal truth: you can’t chase what matters until you know who’s staring
-                           back at you. Life’s a blur these days—too damn fast. We’re all scrambling after dreams we can’t 
-                           even define, never stopping to ask: What do I actually want? That’s not a soft question—it’s your anchor.
-                           When shit hits the fan, knowing who you are and why you’re still swinging is what keeps you steady.
+                          Life Guide was born from a brutal truth: you can't chase what matters until you know who's staring
+                           back at you. Life's a blur these days—too damn fast. We're all scrambling after dreams we can't 
+                           even define, never stopping to ask: What do I actually want? That's not a soft question—it's your anchor.
+                           When shit hits the fan, knowing who you are and why you're still swinging is what keeps you steady.
                            </ReactMarkdown>
                           
                           <ReactMarkdown components={{
                           p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
                         }}>
                         It started after I got back from a year-long war—real war, not some metaphor. Jetlagged, restless, asking 
-                        “What now?” at 1 AM, I grabbed a pen and paper. By 5 AM, I had a personal manual—a lifeline I’d read every 
+                        "What now?" at 1 AM, I grabbed a pen and paper. By 5 AM, I had a personal manual—a lifeline I'd read every 
                         morning and night. For weeks, I leaned on it, tweaking it when I had to. Months later, the impact was undeniable:
-                         no more running from my flaws, no more dread about what’s next. I stopped fearing myself and took the 
-                         reins. That’s when I knew—this wasn’t just for me. I had to share it, free, with anyone ready to face 
+                         no more running from my flaws, no more dread about what's next. I stopped fearing myself and took the 
+                         reins. That's when I knew—this wasn't just for me. I had to share it, free, with anyone ready to face 
                          their own fight.
                         </ReactMarkdown>
                       </div>
@@ -261,10 +261,10 @@ export default function WelcomePage() {
                     <AccordionContent className="text-gray-300">
                       <div className="prose prose-invert max-w-none space-y-4 pt-4">
                         <p className="text-base md:text-lg text-gray-300 break-words">
-                        I see a world where people don’t just drift—they live with guts and purpose.
+                        I see a world where people don't just drift—they live with guts and purpose.
                         \Life Guide is our weapon: a dead-simple tool to cut through the haze and build a 
-                        life that’s real and yours. It’s about that pause, that unflinching stare into yourself.
-                         Because once you see who you are, you can step into who you’re meant to be.
+                        life that's real and yours. It's about that pause, that unflinching stare into yourself.
+                         Because once you see who you are, you can step into who you're meant to be.
                          </p>
                       </div>
                     </AccordionContent>

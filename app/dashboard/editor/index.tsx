@@ -15,6 +15,7 @@ import { cn } from "@/utils/utils";
 import { HowToGuide } from '@/components/HowToGuide';
 import RichTextInput from "@/components/RichTextInput";
 import ReactMarkdown from 'react-markdown';
+import ProgressBar from "@/app/components/ProgressBar";
 
 interface Section {
   id: string;
@@ -1136,75 +1137,16 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
           </div>
   
           {/* Progress Sidebar */}
-          <div className={cn(
-            "h-full border-l border-white/10 bg-gray-900 transition-all duration-300 overflow-y-auto p-4",
-            isSidebarCollapsed ? "w-16" : "w-64",
-            "max-[800px]:hidden" // Hide completely on small screens
-          )}>
-            <div className="space-y-6">
-              {!isSidebarCollapsed && (
-                <>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-400 mb-3">Progress</h3>
-                    <div className="space-y-4">
-                      {sections.map((section) => {
-                        const sectionSubsections = subsections.filter(sub => sub.section_id === section.id);
-                        const completedSubsections = sectionSubsections.filter(sub => isSubsectionCommitted(sub.id));
-                        const progress = sectionSubsections.length ? 
-                          (completedSubsections.length / sectionSubsections.length) * 100 : 0;
-                        
-                        return (
-                          <div key={section.id} className="space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-gray-400 truncate">{section.title}</span>
-                              <span className="text-xs text-gray-400">{Math.round(progress)}%</span>
-                            </div>
-                            <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                                style={{ width: `${progress}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-  
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-medium text-gray-400">Bookmarks</h3>
-                      {bookmarkedSubsections.size > 0 && (
-                        <button
-                          onClick={clearBookmarks}
-                          className="p-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      {Array.from(bookmarkedSubsections).map(subsectionId => {
-                        const subsection = subsections.find(sub => sub.id === subsectionId);
-                        if (!subsection) return null;
-                        
-                        return (
-                          <button
-                            key={subsectionId}
-                            onClick={() => scrollToSubsection(subsectionId)}
-                            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-sm"
-                          >
-                            <Bookmark className="h-4 w-4 text-blue-400" />
-                            <span className="text-gray-300 truncate">{subsection.title}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+          <ProgressBar 
+            sections={sections}
+            subsections={subsections}
+            isSubsectionCommitted={isSubsectionCommitted}
+            isSidebarCollapsed={isSidebarCollapsed}
+            bookmarkedSubsections={bookmarkedSubsections}
+            clearBookmarks={clearBookmarks}
+            scrollToSubsection={scrollToSubsection}
+            className="max-[800px]:hidden" // Hide completely on small screens
+          />
         </div>
   
         {/* Exit Dialog */}

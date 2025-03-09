@@ -26,7 +26,6 @@ interface ProgressBarProps {
   sections: Section[];
   subsections: Subsection[];
   isSubsectionCommitted: (subsectionId: string) => boolean;
-  isSidebarCollapsed?: boolean;
   bookmarkedSubsections?: Set<string>;
   clearBookmarks?: () => void;
   scrollToSubsection?: (subsectionId: string) => void;
@@ -37,28 +36,24 @@ export default function ProgressBar({
   sections,
   subsections,
   isSubsectionCommitted,
-  isSidebarCollapsed: externalCollapsed = false,
   bookmarkedSubsections = new Set(),
   clearBookmarks = () => {},
   scrollToSubsection = () => {},
   className
 }: ProgressBarProps) {
-  const [internalCollapsed, setInternalCollapsed] = useState(false);
-  
-  // Use either the external collapse state (if provided) or the internal state
-  const isCollapsed = externalCollapsed || internalCollapsed;
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
     <div className={cn(
-      "relative h-full border-l border-white/10 bg-gray-900 transition-all duration-300 overflow-y-auto",
+      "relative h-full bg-gray-900 transition-all duration-300 overflow-y-auto",
       isCollapsed ? "w-16" : "w-64",
       className
     )}>
       {/* Toggle button */}
       <button 
-        onClick={() => setInternalCollapsed(!internalCollapsed)}
-        className="absolute top-4 -left-3 p-1 rounded-full bg-gray-800 border border-white/10 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors z-10"
-        aria-label={isCollapsed ? "Show progress" : "Hide progress"}
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="absolute top-4 left-2 p-1 rounded-full bg-gray-800 border border-white/10 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors z-10"
+        aria-label={isCollapsed ? "Expand progress" : "Collapse progress"}
       >
         {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </button>

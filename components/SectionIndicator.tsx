@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Home, Video, Info, Mail, CircleHelp } from 'lucide-react';
+import { Home, Video, Info, Mail, CircleHelp, User } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface Section {
@@ -13,9 +13,9 @@ interface Section {
 const sections: Section[] = [
   { id: 'hero', label: '', icon: <Home className="w-4 h-4" /> },
   { id: 'overview', label: '', icon: <CircleHelp className="w-4 h-4" /> },
-  // TODO: Add videos back in
-  // { id: 'videos', label: '', icon: <Video className="w-4 h-4" /> },
   { id: 'about', label: '', icon: <Info className="w-4 h-4" /> },
+  { id: 'video', label: '', icon: <Video className="w-4 h-4" /> },
+  { id: 'about-me', label: '', icon: <User className="w-4 h-4" /> },
   { id: 'contact', label: '', icon: <Mail className="w-4 h-4" /> }
 ];
 
@@ -50,7 +50,13 @@ export default function SectionIndicator() {
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+      const elementRect = element.getBoundingClientRect();
+      const absoluteElementTop = elementRect.top + window.pageYOffset;
+      const middle = absoluteElementTop - (window.innerHeight / 2) + (elementRect.height / 2);
+      window.scrollTo({
+        top: middle,
+        behavior: 'smooth'
+      });
     }
   };
 

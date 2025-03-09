@@ -49,7 +49,7 @@ export default function WelcomePopup() {
             className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-900 rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 z-50"
           >
             <div className="text-center">
-              <h2 className="text-2xl font-bold mb-4">Ready to Lock In?</h2>
+              <h2 className="text-2xl font-bold mb-4 text-white">Ready to Lock In?</h2>
               <p className="text-gray-400 mb-8">
                 Welcome to LifeGuide – Desgined to help you take back control of your life.
               </p>
@@ -67,14 +67,14 @@ export default function WelcomePopup() {
                   onClick={handleClose}
                   className="w-full py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-medium transition-colors"
                 >
-                  View Guide
+                  View the Guide
                 </Link>
 
                 <button
                   onClick={handleClose}
                   className="text-gray-400 hover:text-gray-300 transition-colors"
                 >
-                  Maybe Later
+                  Just Browsing For Now
                 </button>
               </div>
             </div>

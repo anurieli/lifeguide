@@ -22,8 +22,8 @@ export default async function DashboardLayout({
   
   return (
     <DashboardProvider user={user}>
-      <div className="min-h-screen bg-gray-900 pt-16 md:pt-20">
-        <div className="flex h-[calc(100vh-5rem)]">
+      <div className="min-h-screen bg-gray-900 pt-4 md:pt-6">
+        <div className="flex h-[calc(100vh-1.5rem)]">
           <Sidebar />
           <main className="flex-1 overflow-auto p-4">
             {children}

@@ -1,5 +1,6 @@
 import { cn } from "@/utils/utils";
-import { Bookmark, Trash2 } from "lucide-react";
+import { Bookmark, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState } from "react";
 
 interface Section {
   id: string;
@@ -36,20 +37,34 @@ export default function ProgressBar({
   sections,
   subsections,
   isSubsectionCommitted,
-  isSidebarCollapsed = false,
+  isSidebarCollapsed: externalCollapsed = false,
   bookmarkedSubsections = new Set(),
   clearBookmarks = () => {},
   scrollToSubsection = () => {},
   className
 }: ProgressBarProps) {
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
+  
+  // Use either the external collapse state (if provided) or the internal state
+  const isCollapsed = externalCollapsed || internalCollapsed;
+
   return (
     <div className={cn(
-      "h-full border-l border-white/10 bg-gray-900 transition-all duration-300 overflow-y-auto p-4",
-      isSidebarCollapsed ? "w-16" : "w-64",
+      "relative h-full border-l border-white/10 bg-gray-900 transition-all duration-300 overflow-y-auto",
+      isCollapsed ? "w-16" : "w-64",
       className
     )}>
-      <div className="space-y-6">
-        {!isSidebarCollapsed && (
+      {/* Toggle button */}
+      <button 
+        onClick={() => setInternalCollapsed(!internalCollapsed)}
+        className="absolute top-4 -left-3 p-1 rounded-full bg-gray-800 border border-white/10 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors z-10"
+        aria-label={isCollapsed ? "Show progress" : "Hide progress"}
+      >
+        {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+      </button>
+
+      <div className="p-4 space-y-6">
+        {!isCollapsed && (
           <>
             <div>
               <h3 className="text-sm font-medium text-gray-400 mb-3">Progress</h3>

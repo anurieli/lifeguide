@@ -1141,7 +1141,6 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
             sections={sections}
             subsections={subsections}
             isSubsectionCommitted={isSubsectionCommitted}
-            isSidebarCollapsed={isSidebarCollapsed}
             bookmarkedSubsections={bookmarkedSubsections}
             clearBookmarks={clearBookmarks}
             scrollToSubsection={scrollToSubsection}

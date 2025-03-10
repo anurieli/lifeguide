@@ -1,96 +1,136 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Home, Video, Info, Mail, CircleHelp, User } from 'lucide-react';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { cn } from '@/utils/utils';
 
 interface Section {
   id: string;
-  label: string;
-  icon: React.ReactElement;
+  title: string;
+  description: string;
+  order_position: number;
+  subdescription?: string;
 }
 
-const sections: Section[] = [
-  { id: 'hero', label: '', icon: <Home className="w-4 h-4" /> },
-  { id: 'overview', label: '', icon: <CircleHelp className="w-4 h-4" /> },
-  { id: 'about', label: '', icon: <Info className="w-4 h-4" /> },
-  { id: 'video', label: '', icon: <Video className="w-4 h-4" /> },
-  { id: 'about-me', label: '', icon: <User className="w-4 h-4" /> },
-  { id: 'contact', label: '', icon: <Mail className="w-4 h-4" /> }
-];
+interface Subsection {
+  id: string;
+  section_id: string;
+  title: string;
+  description: string;
+  subdescription: string;
+  malleability_level: 'green' | 'yellow' | 'red';
+  malleability_details: string;
+  example: string;
+  order_position: number;
+}
 
-export default function SectionIndicator() {
-  const [activeSection, setActiveSection] = useState('hero');
-  const isMobile = useMediaQuery('(max-width: 768px)');
-  const isLargeScreen = useMediaQuery('(min-width: 1280px)');
-  const isNarrowScreen = useMediaQuery('(max-width: 80vw)'); // Changed to 68% width
+interface SectionIndicatorProps {
+  sections: Section[];
+  allSubsections: Subsection[];
+  currentSubsectionId: string;
+  currentIndex: number;
+  className?: string;
+  position?: 'left' | 'right';
+}
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.id);
-          }
-        });
-      },
-      {
-        rootMargin: '-50% 0px -50% 0px'
-      }
-    );
-
-    sections.forEach(({ id }) => {
-      const element = document.getElementById(id);
-      if (element) observer.observe(element);
-    });
-
-    return () => observer.disconnect();
-  }, []);
-
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      const elementRect = element.getBoundingClientRect();
-      const absoluteElementTop = elementRect.top + window.pageYOffset;
-      const middle = absoluteElementTop - (window.innerHeight / 2) + (elementRect.height / 2);
-      window.scrollTo({
-        top: middle,
-        behavior: 'smooth'
-      });
-    }
-  };
-
-  // Hide on mobile or narrow screen
-  if (isMobile || isNarrowScreen) return null;
-
+export default function SectionIndicator({
+  sections,
+  allSubsections,
+  currentSubsectionId,
+  currentIndex,
+  className,
+  position = 'left'
+}: SectionIndicatorProps) {
+  // Find the current subsection
+  const currentSubsection = allSubsections.find(sub => sub.id === currentSubsectionId);
+  
   return (
-    <div className="fixed right-4 md:right-8 top-1/2 transform -translate-y-1/2 z-30">
-      <div className="flex flex-col gap-4">
-        {sections.map(({ id, label, icon }) => (
-          <button
-            key={id}
-            onClick={() => scrollToSection(id)}
-            className={`relative group flex items-center ${
-              activeSection === id ? 'text-blue-500' : 'text-gray-400'
-            }`}
-          >
-            {isLargeScreen ? (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5">
-                {icon}
-                <span className="text-sm whitespace-nowrap">{label}</span>
-              </div>
-            ) : (
-              <div className="relative">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/5">
-                  {icon}
-                </div>
-                <span className="absolute right-full mr-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap text-sm">
-                  {label}
-                </span>
-              </div>
-            )}
-          </button>
-        ))}
+    <div 
+      className={cn(
+        "absolute top-1/2 transform -translate-y-1/2 h-2/5 w-px bg-gray-700 hidden md:block",
+        position === 'left' ? "left-8" : "right-8",
+        className
+      )}
+    >
+      <div className="relative h-full w-full">
+        {/* Subsection ticks */}
+        {allSubsections.map((subsection, index) => {
+          // Calculate position - going down as you progress
+          const position = (index / (allSubsections.length - 1)) * 100;
+          
+          // Determine if this is the current subsection
+          const isActive = subsection.id === currentSubsectionId;
+          
+          // Determine if this is the first subsection of a section
+          const isFirstInSection = index === 0 || 
+            allSubsections[index - 1]?.section_id !== subsection.section_id;
+          
+          // Skip some ticks to make it more compact (show only every 3rd tick unless it's active or first in section)
+          if (!isActive && !isFirstInSection && index % 3 !== 0) {
+            return null;
+          }
+          
+          return (
+            <div 
+              key={subsection.id}
+              className={cn(
+                "absolute h-px transition-all duration-200",
+                position === 'left' ? "left-0" : "right-0",
+                isActive ? "w-3 bg-blue-500" : "w-1.5 bg-gray-500",
+                isFirstInSection ? "mt-1" : ""
+              )}
+              style={{ 
+                top: `${position}%`,
+                marginTop: isFirstInSection ? '2px' : '0'
+              }}
+            />
+          );
+        })}
+        
+        {/* Current position indicator */}
+        <div 
+          className={cn(
+            "absolute w-3 h-1 bg-blue-500 rounded-sm transition-all duration-300",
+            position === 'left' ? "left-0" : "right-0"
+          )}
+          style={{ 
+            top: `${(currentIndex / (allSubsections.length - 1)) * 100}%`,
+            transform: 'translateY(-50%)'
+          }}
+        />
+        
+        {/* Section labels */}
+        {sections.map((section, sectionIndex) => {
+          // Find the first subsection of this section
+          const firstSubsectionOfSection = allSubsections.find(sub => sub.section_id === section.id);
+          if (!firstSubsectionOfSection) return null;
+          
+          // Find its index
+          const subsectionIndex = allSubsections.findIndex(sub => sub.id === firstSubsectionOfSection.id);
+          
+          // Calculate position - going down
+          const position = (subsectionIndex / (allSubsections.length - 1)) * 100;
+          
+          // Determine if this section is active
+          const isActive = currentSubsection?.section_id === section.id;
+          
+          // Skip some section labels to make it more compact (show only every other section unless it's active)
+          if (!isActive && sectionIndex % 2 !== 0) {
+            return null;
+          }
+          
+          return (
+            <div 
+              key={section.id}
+              className={cn(
+                "absolute whitespace-nowrap transition-all duration-200",
+                position === 'left' ? "left-4" : "right-4",
+                isActive ? "text-blue-400" : "text-gray-500"
+              )}
+              style={{ top: `${position}%`, transform: 'translateY(-50%)' }}
+            >
+              <span className="text-[8px] font-medium opacity-60">{section.title}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

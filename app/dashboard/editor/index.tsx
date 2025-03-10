@@ -16,6 +16,9 @@ import { HowToGuide } from '@/components/HowToGuide';
 import RichTextInput from "@/components/RichTextInput";
 import ReactMarkdown from 'react-markdown';
 import ProgressBar from "@/app/components/ProgressBar";
+import FocusMode from '@/components/FocusMode';
+import { ArrowUp, ArrowDown } from 'lucide-react';
+import SectionIndicator from '@/components/SectionIndicator';
 
 interface Section {
   id: string;
@@ -110,7 +113,10 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
     const [hasUncommittedChanges, setHasUncommittedChanges] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
-    const [isFocusMode, setIsFocusMode] = useState(false);
+    const [isFocusMode, setIsFocusMode] = useState(true);
+    const [showProgressInFocusMode, setShowProgressInFocusMode] = useState(false);
+    const [currentRegularSubsectionId, setCurrentRegularSubsectionId] = useState<string>('');
+    const [currentRegularSubsectionIndex, setCurrentRegularSubsectionIndex] = useState(0);
   
     useEffect(() => {
       const hasSeenEditor = localStorage.getItem('hasSeenEditor');
@@ -492,8 +498,8 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
       }
     };
   
-    const isSubsectionCommitted = (subsectionId: string) => {
-      return committedResponses.some(r => r.subsectionId === subsectionId && r.isCommitted);
+    const isSubsectionCommitted = (subsectionId: string): boolean => {
+      return committedResponses.some(response => response.subsectionId === subsectionId && response.isCommitted);
     };
   
     const canCommitSubsection = (subsectionId: string) => {
@@ -723,6 +729,61 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
       }
     };
   
+    const updateCurrentSubsection = () => {
+      if (!isFocusMode) {
+        // Get all subsection elements
+        const subsectionElements = Object.entries(subsectionRefs.current);
+        if (subsectionElements.length === 0) return;
+        
+        // Find the one most in view
+        let mostVisibleSubsection = { id: '', visibility: 0 };
+        
+        subsectionElements.forEach(([id, element]) => {
+          if (!element) return;
+          
+          const rect = element.getBoundingClientRect();
+          const windowHeight = window.innerHeight;
+          
+          // Calculate how much of the element is visible
+          const visibleTop = Math.max(0, rect.top);
+          const visibleBottom = Math.min(windowHeight, rect.bottom);
+          const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+          const visibility = visibleHeight / rect.height;
+          
+          if (visibility > mostVisibleSubsection.visibility) {
+            mostVisibleSubsection = { id, visibility };
+          }
+        });
+        
+        if (mostVisibleSubsection.id && mostVisibleSubsection.id !== currentRegularSubsectionId) {
+          setCurrentRegularSubsectionId(mostVisibleSubsection.id);
+          
+          // Find the index of this subsection in the flattened list
+          const allSubsections = sections.flatMap(section => 
+            subsections
+              .filter(sub => sub.section_id === section.id)
+              .sort((a, b) => a.order_position - b.order_position)
+          );
+          
+          const index = allSubsections.findIndex(sub => sub.id === mostVisibleSubsection.id);
+          if (index !== -1) {
+            setCurrentRegularSubsectionIndex(index);
+          }
+        }
+      }
+    };
+  
+    useEffect(() => {
+      if (!isFocusMode) {
+        const handleScroll = () => {
+          updateCurrentSubsection();
+        };
+        
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+      }
+    }, [isFocusMode, currentRegularSubsectionId]);
+  
     if (loading) {
       return (
         <div className="fixed inset-0 bg-gray-900 z-50 flex items-center justify-center">
@@ -783,7 +844,12 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
                 )}
                 <button
                   onClick={() => setIsFocusMode(!isFocusMode)}
-                  className="px-3 py-1.5 bg-yellow-500/20 text-yellow-400 rounded-lg hover:bg-yellow-500/30 transition-colors text-sm flex items-center gap-1.5 w-auto max-[800px]:w-9 max-[800px]:px-0 max-[800px]:justify-center"
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg transition-colors text-sm flex items-center gap-1.5 w-auto max-[800px]:w-9 max-[800px]:px-0 max-[800px]:justify-center",
+                    isFocusMode 
+                      ? "bg-gradient-to-r from-yellow-400 to-amber-500 text-gray-900 font-medium shadow-lg hover:shadow-xl" 
+                      : "bg-gradient-to-r from-yellow-400/20 to-amber-500/20 text-yellow-400 hover:from-yellow-400/30 hover:to-amber-500/30"
+                  )}
                 >
                   <Eye className="h-4 w-4" />
                   <span className="max-[800px]:hidden">{isFocusMode ? "Exit Focus" : "Focus Mode"}</span>
@@ -799,6 +865,31 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
                     <span className="max-[800px]:hidden">Restart</span>
                   </button>
                 )}
+                
+                {/* Keyboard shortcuts - only shown in focus mode */}
+                {isFocusMode && (
+                  <div className="hidden md:flex items-center gap-3 px-3 py-1.5 bg-gray-800/70 backdrop-blur-sm rounded-lg text-xs text-gray-400 border border-white/10">
+                    <div className="flex items-center gap-1">
+                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">⌘</kbd>
+                      <span>+</span>
+                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">Enter</kbd>
+                      <span className="ml-0.5">Next</span>
+                    </div>
+                    <div className="hidden lg:flex items-center gap-1">
+                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">⌘</kbd>
+                      <span>+</span>
+                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">⇧</kbd>
+                      <span>+</span>
+                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">Enter</kbd>
+                      <span className="ml-0.5">Prev</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">Esc</kbd>
+                      <span className="ml-0.5">Exit</span>
+                    </div>
+                  </div>
+                )}
+                
                 <button
                   onClick={handleClose}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -842,321 +933,356 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
           <div className="flex flex-1 overflow-hidden">
             {/* Main Editor Content - Takes remaining space */}
             <div className={cn(
-              "flex-1 p-6 overflow-auto transition-all duration-300",
+              "flex-1 overflow-auto transition-all duration-300",
               isFocusMode ? "bg-gray-950" : ""
             )}>
-              <div className={cn(
-                "space-y-8 transition-all duration-300",
-                isFocusMode ? "max-w-3xl mx-auto" : "max-w-5xl mx-auto"
-              )}>
-                {sections.map((section) => {
-                  const status = getSectionStatus(section.id);
-                  const ringColor = status.isComplete ? 'ring-green-500/50' : 
-                                 status.hasStarted ? 'ring-blue-500/50' : 
-                                 'ring-white/10';
+              {isFocusMode ? (
+                <FocusMode
+                  sections={sections}
+                  subsections={subsections}
+                  userResponses={userResponses}
+                  bookmarkedSubsections={bookmarkedSubsections}
+                  committedResponses={committedResponses}
+                  expandedExamples={expandedExamples}
+                  onToggleExample={toggleExample}
+                  onToggleBookmark={toggleBookmark}
+                  onToggleCommit={toggleCommit}
+                  onResponseChange={(subsectionId, content) => {
+                    setUserResponses(prev => ({
+                      ...prev,
+                      [subsectionId]: content
+                    }));
+                    const timeoutId = setTimeout(() => {
+                      saveUserResponse(subsectionId, content);
+                    }, 500);
+                    return () => clearTimeout(timeoutId);
+                  }}
+                  isSubsectionCommitted={isSubsectionCommitted}
+                  canCommitSubsection={canCommitSubsection}
+                  canEditSection={canEditSection}
+                  TOOLTIP_CLASSES={TOOLTIP_CLASSES}
+                  clearBookmarks={clearBookmarks}
+                  onExitFocusMode={() => setIsFocusMode(false)}
+                  onToggleProgress={() => setShowProgressInFocusMode(!showProgressInFocusMode)}
+                />
+              ) : (
+                <div className="space-y-8 max-w-5xl mx-auto p-6">
+                  <SectionIndicator 
+                    sections={sections}
+                    allSubsections={sections.flatMap(section => 
+                      subsections
+                        .filter(sub => sub.section_id === section.id)
+                        .sort((a, b) => a.order_position - b.order_position)
+                    )}
+                    currentSubsectionId={currentRegularSubsectionId}
+                    currentIndex={currentRegularSubsectionIndex}
+                    position="left"
+                    className="z-10 fixed left-4"
+                  />
+                  
+                  {sections.map((section) => {
+                    const status = getSectionStatus(section.id);
+                    const ringColor = status.isComplete ? 'ring-green-500/50' : 
+                                   status.hasStarted ? 'ring-blue-500/50' : 
+                                   'ring-white/10';
 
-                  // In focus mode, only show the expanded section
-                  if (isFocusMode && expandedSection !== section.id) {
-                    return null;
-                  }
-
-                  return (
-                    <div
-                      key={section.id}
-                      className={cn(
-                        "bg-white/5 rounded-xl backdrop-blur-sm border border-white/10 p-6 ring-1",
-                        ringColor,
-                        isFocusMode && "bg-white/10 shadow-xl"
-                      )}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div>
-                            <h2 className="text-xl font-semibold text-white">{section.title}</h2>
-                            <ReactMarkdown components={{
-                              p: ({node, ...props}) => <p className="text-gray-400 mt-1" {...props} />
-                            }}>
-                              {section.description}
-                            </ReactMarkdown>
-                            
-                            {/* Add More Detail button */}
-                            {section.subdescription && (
-                              <div className="mt-3">
-                                <button
-                                  onClick={() => toggleSectionDetails(section.id)}
-                                  className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30 rounded-lg text-amber-300 hover:from-amber-500/30 hover:to-yellow-500/30 transition-all shadow-sm hover:shadow-amber-500/20"
-                                >
-                                  {expandedSectionDetails.has(section.id) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                  <span className="text-sm font-medium">More Detail</span>
-                                </button>
-                                
-                                {expandedSectionDetails.has(section.id) && (
-                                  <div className="mt-3 p-4 bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 rounded-lg animate-fadeIn shadow-inner">
-                                    <div className="prose prose-invert prose-sm max-w-none">
-                                      <ReactMarkdown>{section.subdescription}</ReactMarkdown>
+                    return (
+                      <div
+                        key={section.id}
+                        className={cn(
+                          "bg-white/5 rounded-xl backdrop-blur-sm border border-white/10 p-6 ring-1",
+                          ringColor
+                        )}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div>
+                              <h2 className="text-xl font-semibold text-white">{section.title}</h2>
+                              <ReactMarkdown components={{
+                                p: ({node, ...props}) => <p className="text-gray-400 mt-1" {...props} />
+                              }}>
+                                {section.description}
+                              </ReactMarkdown>
+                              
+                              {/* Add More Detail button */}
+                              {section.subdescription && (
+                                <div className="mt-3">
+                                  <button
+                                    onClick={() => toggleSectionDetails(section.id)}
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30 rounded-lg text-amber-300 hover:from-amber-500/30 hover:to-yellow-500/30 transition-all shadow-sm hover:shadow-amber-500/20"
+                                  >
+                                    {expandedSectionDetails.has(section.id) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                    <span className="text-sm font-medium">More Detail</span>
+                                  </button>
+                                  
+                                  {expandedSectionDetails.has(section.id) && (
+                                    <div className="mt-3 p-4 bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 rounded-lg animate-fadeIn shadow-inner">
+                                      <div className="prose prose-invert prose-sm max-w-none">
+                                        <ReactMarkdown>{section.subdescription}</ReactMarkdown>
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            {!canEditSection(section.id) && (
+                              <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 rounded-lg">
+                                <Lock className="h-4 w-4 text-gray-400" />
+                                <span className="text-gray-400 text-sm font-medium">Section Locked</span>
                               </div>
                             )}
                           </div>
-                          {!canEditSection(section.id) && (
-                            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 rounded-lg">
-                              <Lock className="h-4 w-4 text-gray-400" />
-                              <span className="text-gray-400 text-sm font-medium">Section Locked</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {status.hasStarted && (
-                            <>
-                              <button
-                                onClick={() => setClearingSectionId(section.id)}
-                                className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors text-sm"
-                              >
-                                Clear Section
-                              </button>
-                              {status.isComplete ? (
-                                <div className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-sm">
-                                  Completed
-                                </div>
+                          <div className="flex items-center gap-2">
+                            {status.hasStarted && (
+                              <>
+                                <button
+                                  onClick={() => setClearingSectionId(section.id)}
+                                  className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors text-sm"
+                                >
+                                  Clear Section
+                                </button>
+                                {status.isComplete ? (
+                                  <div className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-sm">
+                                    Completed
+                                  </div>
+                                ) : (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          onClick={() => canCommitSection(section.id) ? setCommitSectionId(section.id) : null}
+                                          className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                                            canCommitSection(section.id)
+                                              ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+                                              : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                          }`}
+                                        >
+                                          Commit Section
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent className={TOOLTIP_CLASSES.content}>
+                                        <p className="max-w-xs">
+                                          {canCommitSection(section.id)
+                                            ? "Commit all responses in this section"
+                                            : "All subsections must have valid responses to commit the section"}
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </>
+                            )}
+                            <button
+                              onClick={() => setExpandedSection(expandedSection === section.id ? null : section.id)}
+                              className="p-2 bg-gray-700 rounded-full hover:bg-gray-600 transition-colors"
+                            >
+                              {expandedSection === section.id ? (
+                                <ChevronUp className="h-5 w-5 text-white" />
                               ) : (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
+                                <ChevronDown className="h-5 w-5 text-white" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        {expandedSection === section.id && (
+                          <div className="mt-6 space-y-4">
+                            {subsections
+                              .filter(sub => sub.section_id === section.id)
+                              .map((subsection) => (
+                                <div
+                                  key={subsection.id}
+                                  ref={el => {
+                                    if (el) subsectionRefs.current[subsection.id] = el;
+                                  }}
+                                  className={cn(
+                                    "bg-gray-800/50 rounded-lg p-4 border border-white/10",
+                                    isSubsectionCommitted(subsection.id) ? "ring-1 ring-green-500/50" :
+                                    userResponses[subsection.id]?.trim() ? "ring-1 ring-blue-500/50" : ""
+                                  )}
+                                >
+                                  <div className="flex items-start justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                      <h3 className="text-white font-medium">{subsection.title}</h3>
+                                      {subsection.subdescription && (
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger>
+                                              <Info className="h-4 w-4 text-gray-400" />
+                                            </TooltipTrigger>
+                                            <TooltipContent className={TOOLTIP_CLASSES.content}>
+                                              <div className="prose prose-invert max-w-xs">
+                                                <ReactMarkdown
+                                                  components={{
+                                                    p: ({ children }) => <p className="text-gray-400 mt-1">{children}</p>,
+                                                    strong: ({ children }) => <strong className="text-white">{children}</strong>,
+                                                    em: ({ children }) => <em className="text-gray-300">{children}</em>,
+                                                    ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
+                                                    ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
+                                                    li: ({ children }) => <li className="text-gray-400">{children}</li>
+                                                  }}
+                                                >
+                                                  {subsection.subdescription}
+                                                </ReactMarkdown>
+                                              </div>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
                                       <button
-                                        onClick={() => canCommitSection(section.id) ? setCommitSectionId(section.id) : null}
-                                        className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                                          canCommitSection(section.id)
-                                            ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
-                                            : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                        onClick={() => toggleBookmark(subsection.id)}
+                                        disabled={isSubsectionCommitted(subsection.id)}
+                                        className={`p-1.5 rounded-full transition-colors ${
+                                          isSubsectionCommitted(subsection.id)
+                                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                            : bookmarkedSubsections.has(subsection.id)
+                                            ? 'bg-blue-500/20 text-blue-400'
+                                            : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
                                         }`}
                                       >
-                                        Commit Section
+                                        <Bookmark className="h-4 w-4" />
                                       </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent className={TOOLTIP_CLASSES.content}>
-                                      <p className="max-w-xs">
-                                        {canCommitSection(section.id)
-                                          ? "Commit all responses in this section"
-                                          : "All subsections must have valid responses to commit the section"}
-                                      </p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
-                            </>
-                          )}
-                          <button
-                            onClick={() => setExpandedSection(expandedSection === section.id ? null : section.id)}
-                            className="p-2 bg-gray-700 rounded-full hover:bg-gray-600 transition-colors"
-                          >
-                            {expandedSection === section.id ? (
-                              <ChevronUp className="h-5 w-5 text-white" />
-                            ) : (
-                              <ChevronDown className="h-5 w-5 text-white" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      {expandedSection === section.id && (
-                        <div className="mt-6 space-y-4">
-                          {subsections
-                            .filter(sub => sub.section_id === section.id)
-                            .map((subsection) => (
-                              <div
-                                key={subsection.id}
-                                ref={el => {
-                                  if (el) subsectionRefs.current[subsection.id] = el;
-                                }}
-                                className={cn(
-                                  "bg-gray-800/50 rounded-lg p-4 border border-white/10",
-                                  isSubsectionCommitted(subsection.id) ? "ring-1 ring-green-500/50" :
-                                  userResponses[subsection.id]?.trim() ? "ring-1 ring-blue-500/50" : ""
-                                )}
-                              >
-                                <div className="flex items-start justify-between mb-3">
-                                  <div className="flex items-center gap-2">
-                                    <h3 className="text-white font-medium">{subsection.title}</h3>
-                                    {subsection.subdescription && (
                                       <TooltipProvider>
                                         <Tooltip>
-                                          <TooltipTrigger>
-                                            <Info className="h-4 w-4 text-gray-400" />
+                                          <TooltipTrigger asChild>
+                                            <button
+                                              onClick={() => toggleCommit(subsection.id)}
+                                              disabled={!canCommitSubsection(subsection.id) || !canEditSection(section.id)}
+                                              className={`p-1.5 rounded-full transition-colors ${
+                                                !canEditSection(section.id)
+                                                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                                  : isSubsectionCommitted(subsection.id)
+                                                  ? 'bg-green-500/20 text-green-400'
+                                                  : canCommitSubsection(subsection.id)
+                                                  ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/40'
+                                                  : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                              }`}
+                                            >
+                                              {isSubsectionCommitted(subsection.id) ? (
+                                                <Edit className="h-4 w-4" />
+                                              ) : (
+                                                <Check className="h-4 w-4" />
+                                              )}
+                                            </button>
                                           </TooltipTrigger>
                                           <TooltipContent className={TOOLTIP_CLASSES.content}>
-                                            <div className="prose prose-invert max-w-xs">
-                                              <ReactMarkdown
-                                                components={{
-                                                  p: ({ children }) => <p className="text-gray-400 mt-1">{children}</p>,
-                                                  strong: ({ children }) => <strong className="text-white">{children}</strong>,
-                                                  em: ({ children }) => <em className="text-gray-300">{children}</em>,
-                                                  ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
-                                                  ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
-                                                  li: ({ children }) => <li className="text-gray-400">{children}</li>
-                                                }}
-                                              >
-                                                {subsection.subdescription}
-                                              </ReactMarkdown>
-                                            </div>
+                                            <p>{isSubsectionCommitted(subsection.id) ? 'Edit Response' : 'Commit Response'}</p>
                                           </TooltipContent>
                                         </Tooltip>
                                       </TooltipProvider>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={() => toggleBookmark(subsection.id)}
-                                      disabled={isSubsectionCommitted(subsection.id)}
-                                      className={`p-1.5 rounded-full transition-colors ${
-                                        isSubsectionCommitted(subsection.id)
-                                          ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                                          : bookmarkedSubsections.has(subsection.id)
-                                          ? 'bg-blue-500/20 text-blue-400'
-                                          : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                                      }`}
-                                    >
-                                      <Bookmark className="h-4 w-4" />
-                                    </button>
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <button
-                                            onClick={() => toggleCommit(subsection.id)}
-                                            disabled={!canCommitSubsection(subsection.id) || !canEditSection(section.id)}
-                                            className={`p-1.5 rounded-full transition-colors ${
-                                              !canEditSection(section.id)
-                                                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                                                : isSubsectionCommitted(subsection.id)
-                                                ? 'bg-green-500/20 text-green-400'
-                                                : canCommitSubsection(subsection.id)
-                                                ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/40'
-                                                : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                                            }`}
-                                          >
-                                            {isSubsectionCommitted(subsection.id) ? (
-                                              <Edit className="h-4 w-4" />
-                                            ) : (
-                                              <Check className="h-4 w-4" />
-                                            )}
-                                          </button>
-                                        </TooltipTrigger>
-                                        <TooltipContent className={TOOLTIP_CLASSES.content}>
-                                          <p>{isSubsectionCommitted(subsection.id) ? 'Edit Response' : 'Commit Response'}</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
-                                  </div>
-                                </div>
-
-                                <div className="space-y-3 text-sm">
-                                  <div className="flex items-start gap-2">
-                                    <div className="flex-1 prose prose-invert max-w-none">
-                                      <ReactMarkdown
-                                        components={{
-                                          p: ({ children }) => <p className="text-gray-400 mt-1">{children}</p>,
-                                          strong: ({ children }) => <strong className="text-white">{children}</strong>,
-                                          em: ({ children }) => <em className="text-gray-300">{children}</em>,
-                                          ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
-                                          ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
-                                          li: ({ children }) => <li className="text-gray-400">{children}</li>
-                                        }}
-                                      >
-                                        {subsection.description}
-                                      </ReactMarkdown>
                                     </div>
-                                    <span className={`px-2 py-0.5 rounded-full text-xs ${
-                                      subsection.malleability_level === 'green' ? 'bg-green-500/20 text-green-400' :
-                                      subsection.malleability_level === 'yellow' ? 'bg-yellow-500/20 text-yellow-400' :
-                                      'bg-red-500/20 text-red-400'
-                                    }`}>
-                                      {subsection.malleability_level === 'green' ? 'flexible' :
-                                       subsection.malleability_level === 'yellow' ? 'stiff' :
-                                       'static'}
-                                    </span>
-                                    {subsection.malleability_details && (
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger>
-                                            <HelpCircle className="h-3 w-3 text-gray-400" />
-                                          </TooltipTrigger>
-                                          <TooltipContent className={TOOLTIP_CLASSES.content}>
-                                            <div className="prose prose-invert max-w-xs">
-                                              <ReactMarkdown>
-                                                {subsection.malleability_details}
-                                              </ReactMarkdown>
-                                            </div>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-                                    )}
                                   </div>
 
-                                  <div>
-                                    <button
-                                      onClick={() => toggleExample(subsection.id)}
-                                      className="text-blue-400 hover:text-blue-300 transition-colors text-sm"
-                                    >
-                                      {expandedExamples.has(subsection.id) ? 'Hide Example' : 'Show Example'}
-                                    </button>
-                                    {expandedExamples.has(subsection.id) && (
-                                      <div className="mt-2 p-3 bg-gray-900/80 rounded-lg border border-gray-800">
-                                        <div className="prose prose-invert max-w-none">
-                                          <ReactMarkdown
-                                            components={{
-                                              p: ({ children }) => <p className="text-gray-400">{children}</p>,
-                                              strong: ({ children }) => <strong className="text-white">{children}</strong>,
-                                              em: ({ children }) => <em className="text-gray-300">{children}</em>,
-                                              ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
-                                              ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
-                                              li: ({ children }) => <li className="text-gray-400">{children}</li>
-                                            }}
-                                          >
-                                            {subsection.example}
-                                          </ReactMarkdown>
-                                        </div>
+                                  <div className="space-y-3 text-sm">
+                                    <div className="flex items-start gap-2">
+                                      <div className="flex-1 prose prose-invert max-w-none">
+                                        <ReactMarkdown
+                                          components={{
+                                            p: ({ children }) => <p className="text-gray-400 mt-1">{children}</p>,
+                                            strong: ({ children }) => <strong className="text-white">{children}</strong>,
+                                            em: ({ children }) => <em className="text-gray-300">{children}</em>,
+                                            ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
+                                            ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
+                                            li: ({ children }) => <li className="text-gray-400">{children}</li>
+                                          }}
+                                        >
+                                          {subsection.description}
+                                        </ReactMarkdown>
                                       </div>
-                                    )}
-                                  </div>
+                                      <span className={`px-2 py-0.5 rounded-full text-xs ${
+                                        subsection.malleability_level === 'green' ? 'bg-green-500/20 text-green-400' :
+                                        subsection.malleability_level === 'yellow' ? 'bg-yellow-500/20 text-yellow-400' :
+                                        'bg-red-500/20 text-red-400'
+                                      }`}>
+                                        {subsection.malleability_level === 'green' ? 'flexible' :
+                                         subsection.malleability_level === 'yellow' ? 'stiff' :
+                                         'static'}
+                                      </span>
+                                      {subsection.malleability_details && (
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger>
+                                              <HelpCircle className="h-3 w-3 text-gray-400" />
+                                            </TooltipTrigger>
+                                            <TooltipContent className={TOOLTIP_CLASSES.content}>
+                                              <div className="prose prose-invert max-w-xs">
+                                                <ReactMarkdown>
+                                                  {subsection.malleability_details}
+                                                </ReactMarkdown>
+                                              </div>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      )}
+                                    </div>
 
-                                  <div>
-                                    <RichTextInput
-                                      value={userResponses[subsection.id] || ''}
-                                      onChange={(newValue) => {
-                                        setUserResponses(prev => ({
-                                          ...prev,
-                                          [subsection.id]: newValue
-                                        }));
-                                        // Debounce the save
-                                        const timeoutId = setTimeout(() => {
-                                          saveUserResponse(subsection.id, newValue);
-                                        }, 500);
-                                        return () => clearTimeout(timeoutId);
-                                      }}
-                                      disabled={isSubsectionCommitted(subsection.id) || !canEditSection(section.id)}
-                                      placeholder={
-                                        !canEditSection(section.id)
-                                          ? "Complete previous sections first"
-                                          : isSubsectionCommitted(subsection.id)
-                                          ? "Response committed. Click edit to modify."
-                                          : "Enter your response... (Formatting supported)"
-                                      }
-                                    />
+                                    <div>
+                                      <button
+                                        onClick={() => toggleExample(subsection.id)}
+                                        className="text-blue-400 hover:text-blue-300 transition-colors text-sm"
+                                      >
+                                        {expandedExamples.has(subsection.id) ? 'Hide Example' : 'Show Example'}
+                                      </button>
+                                      {expandedExamples.has(subsection.id) && (
+                                        <div className="mt-2 p-3 bg-gray-900/80 rounded-lg border border-gray-800">
+                                          <div className="prose prose-invert max-w-none">
+                                            <ReactMarkdown
+                                              components={{
+                                                p: ({ children }) => <p className="text-gray-400">{children}</p>,
+                                                strong: ({ children }) => <strong className="text-white">{children}</strong>,
+                                                em: ({ children }) => <em className="text-gray-300">{children}</em>,
+                                                ul: ({ children }) => <ul className="list-disc pl-4 text-gray-400">{children}</ul>,
+                                                ol: ({ children }) => <ol className="list-decimal pl-4 text-gray-400">{children}</ol>,
+                                                li: ({ children }) => <li className="text-gray-400">{children}</li>
+                                              }}
+                                            >
+                                              {subsection.example}
+                                            </ReactMarkdown>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div>
+                                      <RichTextInput
+                                        value={userResponses[subsection.id] || ''}
+                                        onChange={(newValue) => {
+                                          setUserResponses(prev => ({
+                                            ...prev,
+                                            [subsection.id]: newValue
+                                          }));
+                                          // Debounce the save
+                                          const timeoutId = setTimeout(() => {
+                                            saveUserResponse(subsection.id, newValue);
+                                          }, 500);
+                                          return () => clearTimeout(timeoutId);
+                                        }}
+                                        disabled={isSubsectionCommitted(subsection.id) || !canEditSection(section.id)}
+                                        placeholder={
+                                          !canEditSection(section.id)
+                                            ? "Complete previous sections first"
+                                            : isSubsectionCommitted(subsection.id)
+                                            ? "Response committed. Click edit to modify."
+                                            : "Enter your response... (Formatting supported)"
+                                        }
+                                      />
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
-            {/* Progress Sidebar - Only shown when not in focus mode */}
-            {!isFocusMode && (
+            {/* Progress Sidebar - Show in regular mode or when explicitly toggled in focus mode */}
+            {(!isFocusMode || (isFocusMode && showProgressInFocusMode)) && (
               <div className="relative border-l border-white/10 transition-all duration-300 h-full flex">
                 <ProgressBar 
                   sections={sections}

@@ -54,7 +54,7 @@ export default function SectionIndicator({
         {/* Subsection ticks */}
         {allSubsections.map((subsection, index) => {
           // Calculate position - going down as you progress
-          const position = (index / (allSubsections.length - 1)) * 100;
+          const positionPercent = (index / (allSubsections.length - 1)) * 100;
           
           // Determine if this is the current subsection
           const isActive = subsection.id === currentSubsectionId;
@@ -78,7 +78,7 @@ export default function SectionIndicator({
                 isFirstInSection ? "mt-1" : ""
               )}
               style={{ 
-                top: `${position}%`,
+                top: `${positionPercent}%`,
                 marginTop: isFirstInSection ? '2px' : '0'
               }}
             />
@@ -107,7 +107,7 @@ export default function SectionIndicator({
           const subsectionIndex = allSubsections.findIndex(sub => sub.id === firstSubsectionOfSection.id);
           
           // Calculate position - going down
-          const position = (subsectionIndex / (allSubsections.length - 1)) * 100;
+          const positionPercent = (subsectionIndex / (allSubsections.length - 1)) * 100;
           
           // Determine if this section is active
           const isActive = currentSubsection?.section_id === section.id;
@@ -125,7 +125,7 @@ export default function SectionIndicator({
                 position === 'left' ? "left-4" : "right-4",
                 isActive ? "text-blue-400" : "text-gray-500"
               )}
-              style={{ top: `${position}%`, transform: 'translateY(-50%)' }}
+              style={{ top: `${positionPercent}%`, transform: 'translateY(-50%)' }}
             >
               <span className="text-[8px] font-medium opacity-60">{section.title}</span>
             </div>

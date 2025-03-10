@@ -14,7 +14,7 @@ const sections: Section[] = [
   { id: 'hero', label: 'Home', icon: <Home className="w-4 h-4" /> },
   { id: 'overview', label: 'Overview', icon: <CircleHelp className="w-4 h-4" /> },
   { id: 'about', label: 'About', icon: <Info className="w-4 h-4" /> },
-  { id: 'video', label: 'Video', icon: <Video className="w-4 h-4" /> },
+  { id: 'demo', label: 'Demo', icon: <Video className="w-4 h-4" /> },
   { id: 'about-me', label: 'Creator', icon: <User className="w-4 h-4" /> },
   { id: 'contact', label: 'Contact', icon: <Mail className="w-4 h-4" /> }
 ];

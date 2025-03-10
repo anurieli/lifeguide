@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/utils/AuthProvider';
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
-import SectionIndicator from '@/components/SectionIndicator';
 import TopSectionIndicator from '@/components/TopSectionIndicator';
 import ClientOverviewCarousel from '@/components/ClientOverviewCarousel';
 import ContactForm from '@/components/ContactForm';
@@ -142,7 +141,6 @@ export default function WelcomePage() {
     <>
       <WelcomePopup />
       <TopSectionIndicator />
-      <SectionIndicator />
       
       {/* Progress Bar */}
       <motion.div 
@@ -197,7 +195,7 @@ export default function WelcomePage() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.3 }}
           >
-            Pause the chaos. Build your life's manual. Start living right.
+            The "How-To" manual for your life: built by you, for you.
           </motion.p>
 
           <motion.div
@@ -220,11 +218,11 @@ export default function WelcomePage() {
               whileTap={{ scale: 0.95 }}
               className="text-lg font-medium px-8 py-3 bg-blue-600 rounded-full hover:bg-blue-700 transition-colors"
             >
-              So How Does This Work 😩
+              So What's The Deal 🤔 ?
             </motion.button>
             
             <motion.button
-              onClick={() => scrollToSection('video')}
+              onClick={() => scrollToSection('demo')}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="text-lg font-medium px-8 py-3 bg-white text-gray-900 rounded-full hover:bg-gray-100 transition-colors"
@@ -367,7 +365,7 @@ export default function WelcomePage() {
       </section>
 
       {/* Intro Video Section */}
-      <section id="video" className="py-16 md:py-20 mt-8 md:mt-12">
+      <section id="demo" className="py-16 md:py-20 mt-8 md:mt-12">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
           <motion.div 
             className="bg-white/5 rounded-3xl shadow-2xl backdrop-blur-sm overflow-hidden"

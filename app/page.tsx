@@ -193,7 +193,7 @@ export default function WelcomePage() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.3 }}
           >
-            The "How-To" manual for your life: built by you, for you.
+            The "How-To" manual for your life: Built by you, for you.
           </motion.p>
 
           <motion.div
@@ -216,7 +216,7 @@ export default function WelcomePage() {
               whileTap={{ scale: 0.95 }}
               className="text-lg font-medium px-8 py-3 bg-blue-600 rounded-full hover:bg-blue-700 transition-colors"
             >
-              So What's The Deal 🤔 ?
+              <span className="text-white">So What's The Deal 🤔 ?</span>
             </motion.button>
             
             <motion.button

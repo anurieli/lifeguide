@@ -290,15 +290,17 @@ export default function AdminDashboard() {
         {/* Admin Tools Section */}
         <div className="flex flex-col md:flex-row gap-8 mb-8">
           {/* How-To Guide Editor */}
-          <div className="bg-white/5 rounded-xl p-6 backdrop-blur-sm border border-white/10 w-full md:w-1/2">
+          <div className="bg-white/5 rounded-xl p-6 backdrop-blur-sm border border-white/10 w-full md:w-1/2 h-[500px]">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-semibold text-white">How-To Guide</h2>
             </div>
-            <HowToGuide isEditable={true} showButton={false} displayMode="inline" />
+            <div className="h-[calc(100%-60px)]">
+              <HowToGuide isEditable={true} showButton={false} displayMode="inline" />
+            </div>
           </div>
 
           {/* Feature Manager */}
-          <div className="w-full md:w-1/2">
+          <div className="w-full md:w-1/2 h-[500px]">
             <FeatureManager />
           </div>
         </div>

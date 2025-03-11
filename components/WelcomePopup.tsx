@@ -57,7 +57,7 @@ export default function WelcomePopup() {
               <div className="flex flex-col gap-4">
                 <button
                   onClick={handleSignIn}
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors text-white"
                 >
                   Sign in with Google
                 </button>
@@ -65,7 +65,7 @@ export default function WelcomePopup() {
                 <Link
                   href="/guide"
                   onClick={handleClose}
-                  className="w-full py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-medium transition-colors"
+                  className="w-full py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-medium transition-colors text-white"
                 >
                   View the Guide
                 </Link>

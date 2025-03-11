@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 
 export function DashboardContent() {
-  const { user } = useDashboard();
+  const { user, isMobile } = useDashboard();
   const [sections, setSections] = useState<Section[]>([]);
   const [completedSections, setCompletedSections] = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -93,15 +93,15 @@ export function DashboardContent() {
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-white">Welcome back{userName ? <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">, {userName}</span> : ''}</h1>
+    <div className="space-y-6">
+      <div className={isMobile ? "" : ""}>
+        <h1 className="text-2xl md:text-3xl font-bold text-white">Welcome back{userName ? <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">, {userName}</span> : ''}</h1>
         <p className="text-muted-foreground">Here&apos;s your personal Life Blueprint dashboard.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         {/* Blueprint Panel */}
-        <div className="col-span-2 p-6 bg-card rounded-lg border">
+        <div className={`p-5 bg-card rounded-lg border ${isMobile ? "" : "col-span-2"}`}>
           <h2 className="text-xl font-semibold mb-4">Your Blueprint</h2>
           {loading ? (
             <div className="animate-pulse flex space-x-4">
@@ -115,11 +115,11 @@ export function DashboardContent() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className={`flex ${isMobile ? "flex-col space-y-2" : "items-center justify-between"}`}>
                 <p className="text-muted-foreground">
                   {completedSections} of {sections.length} sections completed
                 </p>
-                <div className="bg-gray-800 rounded-full h-2 w-48">
+                <div className={`bg-gray-800 rounded-full h-2 ${isMobile ? "w-full" : "w-48"}`}>
                   <div 
                     className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full" 
                     style={{ width: `${sections.length ? (completedSections / sections.length) * 100 : 0}%` }}
@@ -146,7 +146,7 @@ export function DashboardContent() {
         </div>
 
         {/* Quick Insights */}
-        <div className="p-6 bg-card rounded-lg border">
+        <div className="p-5 bg-card rounded-lg border">
           <h2 className="text-xl font-semibold mb-4">Quick Insights</h2>
           <p className="text-muted-foreground">Your journey insights will appear here as you build your blueprint.</p>
         </div>

@@ -42,11 +42,8 @@ export default function MobileBanner({ className = '' }: MobileBannerProps) {
   const dismissBanner = () => {
     setIsVisible(false);
     
-    // Add a class to the main element to adjust its padding when banner is closed
-    const mainElement = document.querySelector('main');
-    if (mainElement) {
-      mainElement.classList.add('banner-dismissed');
-    }
+    // Add a class to the body element to track banner status
+    document.body.classList.add('banner-dismissed');
   };
 
   // Don't show on desktop or if dismissed
@@ -57,7 +54,7 @@ export default function MobileBanner({ className = '' }: MobileBannerProps) {
   return (
     <>
       <div 
-        className={`fixed ${isHomepage ? 'top-26' : 'top-16'} left-0 right-0 z-35 bg-gradient-to-r from-blue-500/90 to-purple-600/90 backdrop-blur-sm text-white py-1.5 px-3 ${className}`}
+        className={`fixed ${isHomepage ? 'top-24' : 'top-16'} left-0 right-0 z-40 bg-gradient-to-r from-blue-500/90 to-purple-600/90 backdrop-blur-sm text-white py-1.5 px-3 ${className}`}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center">

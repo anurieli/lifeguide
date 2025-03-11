@@ -62,7 +62,7 @@ export default function ProgressBar({
         {!isCollapsed && (
           <>
             <div>
-              <h3 className="text-sm font-medium text-gray-400 mb-3">Progress</h3>
+              <h3 className="text-sm font-medium text-gray-400 mb-3 ml-6">Progress</h3>
               <div className="space-y-4">
                 {sections.map((section) => {
                   const sectionSubsections = subsections.filter(sub => sub.section_id === section.id);

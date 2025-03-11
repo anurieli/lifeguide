@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Home, CircleHelp, Video, Info, Mail, User } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { usePathname } from 'next/navigation';
 
 interface Section {
   id: string;
@@ -22,8 +23,14 @@ const sections: Section[] = [
 export default function TopSectionIndicator() {
   const [activeSection, setActiveSection] = useState('hero');
   const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const pathname = usePathname();
+  
+  // Only show on homepage
+  const isHomepage = pathname === '/';
 
   useEffect(() => {
+    if (!isHomepage) return;
+    
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -39,11 +46,20 @@ export default function TopSectionIndicator() {
 
     sections.forEach(({ id }) => {
       const element = document.getElementById(id);
-      if (element) observer.observe(element);
+      if (element) {
+        observer.observe(element);
+      }
     });
 
-    return () => observer.disconnect();
-  }, []);
+    return () => {
+      sections.forEach(({ id }) => {
+        const element = document.getElementById(id);
+        if (element) {
+          observer.unobserve(element);
+        }
+      });
+    };
+  }, [isHomepage]);
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -57,11 +73,15 @@ export default function TopSectionIndicator() {
       });
     }
   };
+  
+  if (!isHomepage) {
+    return null;
+  }
 
   return (
     <div className="fixed top-16 left-0 right-0 z-40 bg-black/50 backdrop-blur-sm border-b border-white/5">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex justify-center items-center h-10">
+        <div className="flex justify-center items-center h-8">
           <div className="flex gap-6 md:gap-12">
             {sections.map(({ id, label, icon }) => (
               <button

@@ -365,7 +365,7 @@
     position: static;
     flex: 1;
     overflow-y: auto;
-    padding-top: 7rem; /* Adjust based on your header height */
+    padding-top: 4rem; /* Reduced from 7rem */
     padding-bottom: 5rem; /* Adjust for mobile navbar */
   }
   
@@ -377,9 +377,15 @@
     padding-bottom: 5rem; /* Add padding to account for the mobile navbar */
   }
   
-  /* Add padding to account for the mobile banner */
+  /* Add padding to account for the mobile banner - ONLY FOR HOMEPAGE */
   .fixed.top-16 + main {
-    padding-top: 10rem !important; /* Force extra padding to account for the banner */
+    padding-top: 6rem !important; /* Reduced from 10rem */
+  }
+  
+  /* Dashboard and editor specific adjustments */
+  .dashboard main, 
+  .editor main {
+    padding-top: 1rem !important;
   }
   
   /* Ensure fixed elements stay in place */
@@ -406,18 +412,36 @@
   top: 6.5rem; /* Positioned below the TopSectionIndicator */
 }
 
-/* Mobile banner spacing fix */
+/* Mobile banner spacing fix - ONLY FOR HOMEPAGE */
 .fixed.top-16 + main {
-  padding-top: 10rem !important; /* Force extra padding to account for the banner */
+  padding-top: 6rem !important; /* Reduced from 10rem */
 }
 
 /* Homepage specific padding */
 .fixed.top-26 + main {
-  padding-top: 12rem !important; /* Extra padding for homepage with TopSectionIndicator */
+  padding-top: 8rem !important; /* Reduced from 12rem */
 }
 
 /* Adjust padding when banner is dismissed */
 main.banner-dismissed {
-  padding-top: 7rem !important; /* Reduce padding when banner is dismissed */
+  padding-top: 4rem !important; /* Reduced from 7rem */
   transition: padding-top 0.3s ease; /* Smooth transition */
+}
+
+/* Dashboard and editor specific adjustments */
+.dashboard main, 
+.editor main {
+  padding-top: 1rem !important;
+}
+
+/* Mobile editor notice specific adjustments */
+.editor .min-h-screen {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+/* Remove any extra padding from editor container */
+.editor {
+  padding: 0 !important;
+  margin: 0 !important;
 }

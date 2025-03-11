@@ -967,19 +967,6 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
                 />
               ) : (
                 <div className="space-y-8 max-w-5xl mx-auto p-6">
-                  <SectionIndicator 
-                    sections={sections}
-                    allSubsections={sections.flatMap(section => 
-                      subsections
-                        .filter(sub => sub.section_id === section.id)
-                        .sort((a, b) => a.order_position - b.order_position)
-                    )}
-                    currentSubsectionId={currentRegularSubsectionId}
-                    currentIndex={currentRegularSubsectionIndex}
-                    position="left"
-                    className="z-10 fixed left-4"
-                  />
-                  
                   {sections.map((section) => {
                     const status = getSectionStatus(section.id);
                     const ringColor = status.isComplete ? 'ring-green-500/50' : 

@@ -6,6 +6,7 @@ import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import { Toaster } from '@/components/ui/sonner'
 import MobileBanner from '@/components/MobileBanner'
+import TopSectionIndicator from '@/components/TopSectionIndicator'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -27,6 +28,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-gray-900 flex flex-col">
         <AuthProvider>
             <Navbar />
+            <TopSectionIndicator />
             <MobileBanner />
             <main className="flex-1 pb-20 md:pb-0 pt-28">
               {children}

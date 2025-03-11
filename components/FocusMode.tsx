@@ -338,7 +338,14 @@ export default function FocusMode({
         currentSubsectionId={currentSubsection?.id || ''}
         currentIndex={currentFocusIndex}
         position="left"
-        className="z-10 left-4"
+        onNavigateToSubsection={(subsectionId) => {
+          const index = allSubsections.findIndex(sub => sub.id === subsectionId);
+          if (index !== -1) {
+            setCurrentFocusIndex(index);
+          }
+        }}
+        isSubsectionCommitted={isSubsectionCommitted}
+        canEditSection={canEditSection}
       />
 
       {/* How To Dialog - Update to include ESC key info */}

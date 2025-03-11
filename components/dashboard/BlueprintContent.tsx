@@ -10,7 +10,7 @@ import { cn } from '@/utils/utils';
 import ProgressBar from '@/app/components/ProgressBar';
 
 export function BlueprintContent() {
-  const { user } = useDashboard();
+  const { user, isMobile } = useDashboard();
   const [sections, setSections] = useState<Section[]>([]);
   const [subsections, setSubsections] = useState<Subsection[]>([]);
   const [userResponses, setUserResponses] = useState<Record<string, string>>({});
@@ -143,9 +143,9 @@ export function BlueprintContent() {
 
   return (
     <div className="flex justify-center">
-      <div className="flex w-full max-w-6xl">
-        <div className="flex-grow space-y-6 pr-4">
-          <h1 className="text-3xl font-bold text-white">Welcome back{userName ? <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">, {userName}</span> : ''}</h1>
+      <div className={`flex w-full ${isMobile ? "flex-col" : "max-w-6xl"}`}>
+        <div className={`flex-grow space-y-6 ${isMobile ? "" : "pr-4"}`}>
+          <h1 className={`${isMobile ? "text-2xl" : "text-3xl"} font-bold text-white`}>Welcome back{userName ? <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">, {userName}</span> : ''}</h1>
           <p className="text-white font-bold">Here's your personal Life Blueprint.</p>
 
           {completedSections.length === 0 ? (
@@ -161,7 +161,7 @@ export function BlueprintContent() {
                   key={section.id} 
                   className="bg-white/5 rounded-xl backdrop-blur-sm border border-white/10 p-6"
                 >
-                  <div className="flex items-start justify-between mb-4">
+                  <div className={`flex ${isMobile ? "flex-col" : "items-start justify-between"} mb-4`}>
                     <div>
                       <h2 className="text-xl font-semibold text-white">{section.title}</h2>
                       <ReactMarkdown components={{

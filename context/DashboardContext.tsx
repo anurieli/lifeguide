@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 
 interface DashboardContextType {
@@ -9,6 +9,7 @@ interface DashboardContextType {
   user: User | null;
   activeSection: string;
   setActiveSection: (section: string) => void;
+  isMobile: boolean;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -22,6 +23,29 @@ export function DashboardProvider({
 }) {
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    // Check if the device is mobile
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      
+      // Auto-hide sidebar on mobile
+      if (mobile) {
+        setIsSidebarVisible(false);
+      }
+    };
+    
+    // Initial check
+    checkMobile();
+    
+    // Add event listener for window resize
+    window.addEventListener('resize', checkMobile);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   const toggleSidebar = () => setIsSidebarVisible(!isSidebarVisible);
   
@@ -31,7 +55,8 @@ export function DashboardProvider({
       toggleSidebar,
       user,
       activeSection,
-      setActiveSection
+      setActiveSection,
+      isMobile
     }}>
       {children}
     </DashboardContext.Provider>

@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/utils/AuthProvider';
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
-import TopSectionIndicator from '@/components/TopSectionIndicator';
 import ClientOverviewCarousel from '@/components/ClientOverviewCarousel';
 import ContactForm from '@/components/ContactForm';
 import PersonaRibbon from '@/components/PersonaRibbon';
@@ -140,7 +139,6 @@ export default function WelcomePage() {
   return (
     <>
       <WelcomePopup />
-      <TopSectionIndicator />
       
       {/* Progress Bar */}
       <motion.div 

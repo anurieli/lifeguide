@@ -3,19 +3,19 @@
 import { useDashboard } from '@/context/DashboardContext';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Settings, CheckSquare, Edit, ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
+import { Home, Settings, CheckSquare, Edit, ChevronLeft, ChevronRight, HelpCircle, X } from 'lucide-react';
 import { cn } from '@/utils/utils';
 import { useState } from 'react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export function Sidebar() {
-  const { isSidebarVisible, toggleSidebar, activeSection, setActiveSection } = useDashboard();
+  const { isSidebarVisible, toggleSidebar, activeSection, setActiveSection, isMobile } = useDashboard();
   const pathname = usePathname();
   const router = useRouter();
   const [isNewUserDialogOpen, setIsNewUserDialogOpen] = useState(false);
   
-  // Hide sidebar completely when in editor mode
-  if (pathname === '/dashboard/editor') {
+  // Hide sidebar completely when in editor mode or on mobile
+  if (pathname === '/dashboard/editor' || isMobile) {
     return null;
   }
   
@@ -33,20 +33,22 @@ export function Sidebar() {
       )}>
         <div className="flex flex-col h-full">
           <div className="p-4 flex flex-col gap-4">
-            <button
-              onClick={toggleSidebar}
-              className={cn(
-                "w-full flex items-center justify-between px-3 py-2 bg-gray-800/80 rounded-lg hover:bg-gray-700 transition-colors",
-                !isSidebarVisible && "justify-center"
-              )}
-            >
-              <span className="text-gray-400 text-sm">{isSidebarVisible ? '' : ''} </span>
-              {isSidebarVisible ? (
-                <ChevronLeft className="h-5 w-5 text-gray-300" />
-              ) : (
-                <ChevronRight className="h-6 w-6 text-gray-200" />
-              )}
-            </button>
+            <div className="flex items-center justify-between">
+              <button
+                onClick={toggleSidebar}
+                className={cn(
+                  "flex items-center justify-between px-3 py-2 bg-gray-800/80 rounded-lg hover:bg-gray-700 transition-colors",
+                  !isSidebarVisible && "justify-center w-full"
+                )}
+              >
+                <span className="text-gray-400 text-sm">{isSidebarVisible ? '' : ''} </span>
+                {isSidebarVisible ? (
+                  <ChevronLeft className="h-5 w-5 text-gray-300" />
+                ) : (
+                  <ChevronRight className="h-6 w-6 text-gray-200" />
+                )}
+              </button>
+            </div>
             
             {isSidebarVisible && (
               <div className="flex items-center gap-2">
@@ -144,7 +146,7 @@ export function Sidebar() {
                 <p>
                   This is your personal space to create and manage your life blueprint. Here&apos;s how it works:
                 </p>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-white/5 rounded-lg p-4">
                     <h3 className="font-medium text-white mb-2">Viewer Mode</h3>
                     <p className="text-sm">

@@ -71,11 +71,7 @@ export default function FocusMode({
 }: FocusModeProps) {
   const [currentFocusIndex, setCurrentFocusIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [scrollTimeout, setScrollTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [lastScrollY, setLastScrollY] = useState(0);
-  const [dragDirection, setDragDirection] = useState<null | 'up' | 'down'>(null);
-  const [dragProgress, setDragProgress] = useState(0);
-  const dragConstraintsRef = useRef(null);
+  const [showShortcutHelper, setShowShortcutHelper] = useState(true); // Show by default
   const [isHowToOpen, setIsHowToOpen] = useState(false);
   
   // Get a flat list of subsections ordered by section
@@ -96,86 +92,95 @@ export default function FocusMode({
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Command+Enter to go to next
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !e.shiftKey) {
+      // Command+Down to go to next
+      if ((e.metaKey || e.ctrlKey) && e.key === 'ArrowDown') {
         e.preventDefault();
         if (nextIndex !== null) {
-          setCurrentFocusIndex(nextIndex);
+          // If current card is uncommitted, commit it before moving
+          if (currentSubsection && !isSubsectionCommitted(currentSubsection.id) && 
+              canCommitSubsection(currentSubsection.id)) {
+            onToggleCommit(currentSubsection.id);
+            setTimeout(() => {
+              setCurrentFocusIndex(nextIndex);
+            }, 100);
+          } else {
+            setCurrentFocusIndex(nextIndex);
+          }
         }
       }
-      // Command+Shift+Enter to go to previous
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && e.shiftKey) {
+      // Command+Up to go to previous
+      if ((e.metaKey || e.ctrlKey) && e.key === 'ArrowUp') {
         e.preventDefault();
         if (prevIndex !== null) {
-          setCurrentFocusIndex(prevIndex);
+          // If current card is uncommitted, commit it before moving
+          if (currentSubsection && !isSubsectionCommitted(currentSubsection.id) && 
+              canCommitSubsection(currentSubsection.id)) {
+            onToggleCommit(currentSubsection.id);
+            setTimeout(() => {
+              setCurrentFocusIndex(prevIndex);
+            }, 100);
+          } else {
+            setCurrentFocusIndex(prevIndex);
+          }
         }
+      }
+      
+      // Space key to enter edit mode
+      if (e.key === ' ' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        // Only if the target is not an input element (to avoid conflicts with typing)
+        const target = e.target as HTMLElement;
+        const isInputElement = target.tagName === 'INPUT' || 
+                              target.tagName === 'TEXTAREA' || 
+                              target.isContentEditable;
+        
+        if (!isInputElement && currentSubsection) {
+          // If the current subsection is committed, toggle it to edit mode
+          if (isSubsectionCommitted(currentSubsection.id) && canEditSection(currentSubsection.section_id)) {
+            e.preventDefault(); // Prevent space from scrolling the page
+            onToggleCommit(currentSubsection.id);
+          }
+        }
+      }
+      
+      // Toggle shortcut helper with ? key
+      if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+        e.preventDefault();
+        setShowShortcutHelper(prev => !prev);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [prevIndex, nextIndex]);
-
-  // Replace the scroll navigation with drag-based navigation
-  useEffect(() => {
-    const handleWheel = (e: WheelEvent) => {
-      // Prevent default scrolling behavior
-      e.preventDefault();
-      
-      // Clear previous timeout
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
-      }
-
-      // Determine scroll direction
-      const isScrollingDown = e.deltaY > 0;
-      
-      // Update drag direction for visual feedback
-      setDragDirection(isScrollingDown ? 'down' : 'up');
-      
-      // Calculate drag progress (0-100%) based on scroll intensity
-      // Clamp between 0-100%
-      const newProgress = Math.min(100, Math.max(0, Math.abs(e.deltaY) / 5));
-      setDragProgress(newProgress);
-      
-      // Set a timeout to detect end of scroll
-      const timeout = setTimeout(() => {
-        // Only navigate on larger scroll gestures (adjust threshold as needed)
-        const scrollThreshold = 50;
-        if (Math.abs(e.deltaY) > scrollThreshold) {
-          if (isScrollingDown && nextIndex !== null) {
-            setCurrentFocusIndex(nextIndex);
-          } else if (!isScrollingDown && prevIndex !== null) {
-            setCurrentFocusIndex(prevIndex);
-          }
-        }
-        // Reset drag animation
-        setDragDirection(null);
-        setDragProgress(0);
-      }, 100);
-      
-      setScrollTimeout(timeout);
-    };
-
-    const container = containerRef.current;
-    if (container) {
-      container.addEventListener('wheel', handleWheel, { passive: false });
-      return () => {
-        container.removeEventListener('wheel', handleWheel);
-      };
-    }
-  }, [prevIndex, nextIndex, scrollTimeout]);
+  }, [prevIndex, nextIndex, currentSubsection, isSubsectionCommitted, canCommitSubsection, onToggleCommit, canEditSection]);
 
   // Navigation methods
   const goToPrevious = () => {
     if (prevIndex !== null) {
-      setCurrentFocusIndex(prevIndex);
+      // If current card is uncommitted, commit it before moving
+      if (currentSubsection && !isSubsectionCommitted(currentSubsection.id) && 
+          canCommitSubsection(currentSubsection.id)) {
+        onToggleCommit(currentSubsection.id);
+        setTimeout(() => {
+          setCurrentFocusIndex(prevIndex);
+        }, 100);
+      } else {
+        setCurrentFocusIndex(prevIndex);
+      }
     }
   };
 
   const goToNext = () => {
     if (nextIndex !== null) {
-      setCurrentFocusIndex(nextIndex);
+      // If current card is uncommitted, commit it before moving
+      if (currentSubsection && !isSubsectionCommitted(currentSubsection.id) && 
+          canCommitSubsection(currentSubsection.id)) {
+        onToggleCommit(currentSubsection.id);
+        setTimeout(() => {
+          setCurrentFocusIndex(nextIndex);
+        }, 100);
+      } else {
+        setCurrentFocusIndex(nextIndex);
+      }
     }
   };
 
@@ -211,22 +216,96 @@ export default function FocusMode({
     }
   };
 
+  // Shortcut helper component
+  const ShortcutHelper = () => (
+    <div className="bg-gray-800/70 backdrop-blur-sm border border-white/10 rounded-lg p-1.5 w-full max-w-3xl">
+      <div className="flex items-center flex-wrap gap- text-xs text-gray-400">
+        <div className="flex items-center gap-1 font-medium mr-1">
+          <span>Shortcuts</span>
+          <span>👉</span>
+        </div>
+        <div className="flex-1 flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-1">
+            <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">Esc</kbd>
+            <span className="ml-0.5">Exit</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">Space</kbd>
+            <span className="ml-0.5">Edit</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="flex items-center">
+              <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">{navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</kbd>
+              <span>+</span>
+              <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">↑</kbd>
+            </div>
+            <span className="ml-0.5">Prev</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="flex items-center">
+              <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">{navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</kbd>
+              <span>+</span>
+              <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">↓</kbd>
+            </div>
+            <span className="ml-0.5">Next</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   // Add ESC key handler
   useEffect(() => {
     const handleEscKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && onExitFocusMode) {
-        onExitFocusMode();
+      if (e.key === 'Escape') {
+        // First close the shortcut helper if it's open
+        if (showShortcutHelper) {
+          setShowShortcutHelper(false);
+          return;
+        }
+        
+        // Then exit focus mode if the handler exists
+        if (onExitFocusMode) {
+          // Auto-commit any uncommitted subsections before exiting
+          if (currentSubsection && !isSubsectionCommitted(currentSubsection.id) && 
+              canCommitSubsection(currentSubsection.id) && canEditSection(currentSubsection.section_id)) {
+            onToggleCommit(currentSubsection.id);
+            // Small delay to ensure the commit is processed
+            setTimeout(() => {
+              onExitFocusMode();
+            }, 100);
+          } else {
+            onExitFocusMode();
+          }
+        }
       }
     };
 
     window.addEventListener('keydown', handleEscKey);
     return () => window.removeEventListener('keydown', handleEscKey);
-  }, [onExitFocusMode]);
+  }, [onExitFocusMode, showShortcutHelper, currentSubsection, isSubsectionCommitted, canCommitSubsection, canEditSection, onToggleCommit]);
 
   // Get the current section for the section title
   const currentSection = sections.find(section => 
     section.id === currentSubsection?.section_id
   );
+
+  // Update the exit focus mode button to auto-commit
+  const handleExitFocusMode = () => {
+    if (onExitFocusMode) {
+      // Auto-commit any uncommitted subsections before exiting
+      if (currentSubsection && !isSubsectionCommitted(currentSubsection.id) && 
+          canCommitSubsection(currentSubsection.id) && canEditSection(currentSubsection.section_id)) {
+        onToggleCommit(currentSubsection.id);
+        // Small delay to ensure the commit is processed
+        setTimeout(() => {
+          onExitFocusMode();
+        }, 100);
+      } else {
+        onExitFocusMode();
+      }
+    }
+  };
 
   if (!currentSubsection) {
     return (
@@ -283,7 +362,7 @@ export default function FocusMode({
         {/* Exit focus mode button */}
         {onExitFocusMode && (
           <button
-            onClick={onExitFocusMode}
+            onClick={handleExitFocusMode}
             className="p-2 bg-gray-700/80 text-gray-400 rounded-full hover:bg-gray-700 transition-colors"
             aria-label="Exit focus mode"
           >
@@ -348,7 +427,7 @@ export default function FocusMode({
         canEditSection={canEditSection}
       />
 
-      {/* How To Dialog - Update to include ESC key info */}
+      {/* How To Dialog - Update to include new shortcuts */}
       <Dialog open={isHowToOpen} onOpenChange={setIsHowToOpen}>
         <DialogContent className="bg-gray-900/95 backdrop-blur-sm border border-white/10 text-white max-w-2xl">
           <DialogHeader>
@@ -359,7 +438,56 @@ export default function FocusMode({
           
           <div className="space-y-6 py-4">
             <div className="grid grid-cols-2 gap-6">
-              {/* Navigation */}
+              {/* Keyboard Shortcuts - Updated */}
+              <div className="bg-gray-800/50 rounded-lg p-4 border border-white/10">
+                <h3 className="text-lg font-medium text-white mb-3 flex items-center gap-2">
+                  <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">⌘</kbd>
+                  <span>Keyboard Shortcuts</span>
+                </h3>
+                <ul className="space-y-2 text-gray-300">
+                  <li className="flex items-center gap-2">
+                    <span className="text-blue-400">•</span>
+                    <div className="flex items-center gap-1">
+                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">Space</kbd>
+                      <span className="ml-1">Edit current card</span>
+                    </div>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-blue-400">•</span>
+                    <div className="flex items-center gap-1">
+                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">{navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</kbd>
+                      <span>+</span>
+                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">↓</kbd>
+                      <span className="ml-1">Go to next card</span>
+                    </div>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-blue-400">•</span>
+                    <div className="flex items-center gap-1">
+                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">{navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</kbd>
+                      <span>+</span>
+                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">↑</kbd>
+                      <span className="ml-1">Go to previous card</span>
+                    </div>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-blue-400">•</span>
+                    <div className="flex items-center gap-1">
+                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">Esc</kbd>
+                      <span className="ml-1">Exit focus mode (auto-saves)</span>
+                    </div>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-blue-400">•</span>
+                    <div className="flex items-center gap-1">
+                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">?</kbd>
+                      <span className="ml-1">Toggle shortcut helper</span>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+              
+              {/* Navigation - Updated */}
               <div className="bg-gray-800/50 rounded-lg p-4 border border-white/10">
                 <h3 className="text-lg font-medium text-white mb-3 flex items-center gap-2">
                   <motion.div 
@@ -383,52 +511,15 @@ export default function FocusMode({
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="text-blue-400">•</span>
-                    <span>Scroll or drag up/down to navigate</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-blue-400">•</span>
                     <span>Click on the previous/next cards to jump</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="text-blue-400">•</span>
                     <span>The timeline on the left shows your place</span>
                   </li>
-                </ul>
-              </div>
-              
-              {/* Keyboard Shortcuts */}
-              <div className="bg-gray-800/50 rounded-lg p-4 border border-white/10">
-                <h3 className="text-lg font-medium text-white mb-3 flex items-center gap-2">
-                  <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">⌘</kbd>
-                  <span>Keyboard Shortcuts</span>
-                </h3>
-                <ul className="space-y-2 text-gray-300">
                   <li className="flex items-center gap-2">
                     <span className="text-blue-400">•</span>
-                    <div className="flex items-center gap-1">
-                      <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">⌘</kbd>
-                      <span>+</span>
-                      <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">Enter</kbd>
-                      <span className="ml-1">Next card</span>
-                    </div>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-blue-400">•</span>
-                    <div className="flex items-center gap-1">
-                      <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">⌘</kbd>
-                      <span>+</span>
-                      <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">⇧</kbd>
-                      <span>+</span>
-                      <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">Enter</kbd>
-                      <span className="ml-1">Previous card</span>
-                    </div>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-blue-400">•</span>
-                    <div className="flex items-center gap-1">
-                      <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">Esc</kbd>
-                      <span className="ml-1">Exit focus mode</span>
-                    </div>
+                    <span>Uncommitted changes are saved when navigating</span>
                   </li>
                 </ul>
               </div>
@@ -483,66 +574,28 @@ export default function FocusMode({
         </DialogContent>
       </Dialog>
 
-      {/* Content with drag constraints */}
-      <motion.div 
+      {/* Content without drag constraints */}
+      <div 
         className="flex-1 overflow-hidden py-8 focus-mode-container"
-        ref={dragConstraintsRef}
       >
-        <motion.div 
+        <div 
           className="h-full flex flex-col gap-4 w-full max-w-4xl mx-auto px-4"
-          drag="y"
-          dragConstraints={dragConstraintsRef}
-          dragElastic={0.2}
-          dragTransition={{ 
-            bounceStiffness: 300, 
-            bounceDamping: 20 
-          }}
-          onDragEnd={(e, info) => {
-            if (info.offset.y < -100 && nextIndex !== null) {
-              setCurrentFocusIndex(nextIndex);
-            } else if (info.offset.y > 100 && prevIndex !== null) {
-              setCurrentFocusIndex(prevIndex);
-            }
-          }}
         >
           {/* Previous subsection with animation */}
           {prevSubsection && (
-            <motion.div 
-              className="transform transition-all duration-300 opacity-80 hover:opacity-100"
-              animate={{
-                y: dragDirection === 'up' ? dragProgress : 0,
-                scale: dragDirection === 'up' ? 1 + (dragProgress * 0.002) : 1,
-                opacity: dragDirection === 'up' ? 0.8 + (dragProgress * 0.002) : 0.8
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 300,
-                damping: 20
-              }}
-            >
+            <div className="transform transition-all duration-300 opacity-80 hover:opacity-100">
               <AdjacentCard
                 subsection={prevSubsection}
                 isBookmarked={bookmarkedSubsections.has(prevSubsection.id)}
                 isPrevious={true}
                 onClick={goToPrevious}
               />
-            </motion.div>
+            </div>
           )}
 
           {/* Current subsection with animation */}
-          <motion.div 
-            className="flex-1 min-h-[60vh] flex items-center py-4 w-full"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ 
-              opacity: 1, 
-              y: dragDirection === 'up' ? dragProgress : dragDirection === 'down' ? -dragProgress : 0
-            }}
-            transition={{ 
-              type: "spring",
-              stiffness: 400,
-              damping: 30
-            }}
-            layout
+          <div 
+            className="flex-1 min-h-[60vh] flex flex-col items-center py-4 w-full"
           >
             <FocusCard
               subsection={currentSubsection}
@@ -558,34 +611,28 @@ export default function FocusMode({
               onToggleExample={() => onToggleExample(currentSubsection.id)}
               isExampleShown={expandedExamples.has(currentSubsection.id)}
               TOOLTIP_CLASSES={TOOLTIP_CLASSES}
+              autoFocus={true}
             />
-          </motion.div>
+            
+            {/* Shortcut helper below the card */}
+            {showShortcutHelper && <div className="mt-2 w-full flex justify-center">
+              <ShortcutHelper />
+            </div>}
+          </div>
 
           {/* Next subsection with animation */}
           {nextSubsection && (
-            <motion.div 
-              className="transform transition-all duration-300 opacity-80 hover:opacity-100"
-              animate={{
-                y: dragDirection === 'down' ? -dragProgress : 0,
-                scale: dragDirection === 'down' ? 1 + (dragProgress * 0.002) : 1,
-                opacity: dragDirection === 'down' ? 0.8 + (dragProgress * 0.002) : 0.8
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 300,
-                damping: 20
-              }}
-            >
+            <div className="transform transition-all duration-300 opacity-80 hover:opacity-100">
               <AdjacentCard
                 subsection={nextSubsection}
                 isBookmarked={bookmarkedSubsections.has(nextSubsection.id)}
                 isPrevious={false}
                 onClick={goToNext}
               />
-            </motion.div>
+            </div>
           )}
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     </div>
   );
 } 

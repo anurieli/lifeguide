@@ -9,9 +9,10 @@ interface RichTextInputProps {
   onChange: (value: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  autoFocus?: boolean;
 }
 
-export default function RichTextInput({ value, onChange, disabled, placeholder }: RichTextInputProps) {
+export default function RichTextInput({ value, onChange, disabled, placeholder, autoFocus }: RichTextInputProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [text, setText] = useState(value || '');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -30,6 +31,13 @@ export default function RichTextInput({ value, onChange, disabled, placeholder }
       textarea.style.height = textarea.scrollHeight + 'px';
     }
   }, [text]);
+
+  // Auto-focus the textarea when autoFocus is true and not disabled
+  useEffect(() => {
+    if (autoFocus && !disabled && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [autoFocus, disabled]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;

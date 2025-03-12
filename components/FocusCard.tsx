@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Bookmark, Edit, Check, Info, HelpCircle } from 'lucide-react';
 import { 
   Tooltip, 
@@ -38,6 +38,7 @@ interface FocusCardProps {
   onToggleExample: () => void;
   isExampleShown: boolean;
   TOOLTIP_CLASSES: { content: string; arrow: string };
+  autoFocus?: boolean;
 }
 
 export default function FocusCard({
@@ -53,11 +54,14 @@ export default function FocusCard({
   onToggleBookmark,
   onToggleExample,
   isExampleShown,
-  TOOLTIP_CLASSES
+  TOOLTIP_CLASSES,
+  autoFocus
 }: FocusCardProps) {
+  // Reference to the card container
+  const cardRef = useRef<HTMLDivElement>(null);
   
   return (
-    <div className="flex flex-col w-full max-w-4xl mx-auto">
+    <div className="flex flex-col w-full max-w-4xl mx-auto" ref={cardRef}>
       {sectionTitle && (
         <div className="mb-3 pointer-events-none">
           <style jsx>{`
@@ -228,8 +232,9 @@ export default function FocusCard({
                   ? "Complete previous sections first"
                   : isCommitted
                   ? "Response committed. Click edit to modify."
-                  : "Enter your response... (Formatting supported)"
+                  : "Start typing here..."
               }
+              autoFocus={autoFocus && !isCommitted && canEdit}
             />
           </div>
         </div>

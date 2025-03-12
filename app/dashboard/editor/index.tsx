@@ -866,29 +866,6 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
                   </button>
                 )}
                 
-                {/* Keyboard shortcuts - only shown in focus mode */}
-                {isFocusMode && (
-                  <div className="hidden md:flex items-center gap-3 px-3 py-1.5 bg-gray-800/70 backdrop-blur-sm rounded-lg text-xs text-gray-400 border border-white/10">
-                    <div className="flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">⌘</kbd>
-                      <span>+</span>
-                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">Enter</kbd>
-                      <span className="ml-0.5">Next</span>
-                    </div>
-                    <div className="hidden lg:flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">⌘</kbd>
-                      <span>+</span>
-                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">⇧</kbd>
-                      <span>+</span>
-                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">Enter</kbd>
-                      <span className="ml-0.5">Prev</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-[10px]">Esc</kbd>
-                      <span className="ml-0.5">Exit</span>
-                    </div>
-                  </div>
-                )}
                 
                 <button
                   onClick={handleClose}
@@ -1252,7 +1229,7 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
                                             ? "Complete previous sections first"
                                             : isSubsectionCommitted(subsection.id)
                                             ? "Response committed. Click edit to modify."
-                                            : "Enter your response... (Formatting supported)"
+                                            : "Start typing here ... "
                                         }
                                       />
                                     </div>

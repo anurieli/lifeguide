@@ -287,7 +287,7 @@ export default function WelcomePage() {
                         <ReactMarkdown components={{
                           p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
                         }}>
-                          Life Guide is a raw, interactive blueprint built to wrestle your life into focus, sharpen your mind, and 
+                          Lifeguide is a raw, interactive blueprint built to wrestle your life into focus, sharpen your mind, and 
                           carve out a path forward. Drawing from hard-earned lessons in military grit, business strategy, and real 
                           self-discovery, it's a system that bends to fit you—cutting through the noise so you can own your future.
                         </ReactMarkdown>
@@ -295,10 +295,10 @@ export default function WelcomePage() {
                         <ReactMarkdown components={{
                           p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
                         }}>
-                        This isn't some slick app peddling quick fixes. Life Guide is a back-to-basics gut check that demands you 
+                        This isn't some slick app peddling quick fixes. Lifeguide is a back-to-basics gut check that demands you 
                         face yourself—no shortcuts, no fluff. Other tools promise change in five minutes; you're here because you know
                          that's bullshit. Real shifts take real work. To know where you're going, you've got to dig into who you are: 
-                         your strengths, your cracks, your chaos. Without that, you're just flailing. Life Guide forces you to sit in 
+                         your strengths, your cracks, your chaos. Without that, you're just flailing. Lifeguide forces you to sit in 
                          the mess, name it, and reshape it into something solid.
                         </ReactMarkdown>
                       </div>
@@ -317,7 +317,7 @@ export default function WelcomePage() {
                         <ReactMarkdown components={{
                           p: ({node, ...props}) => <p className="text-base md:text-lg text-gray-300 break-words" {...props} />
                         }}>
-                          Life Guide was born from a brutal truth: you can't chase what matters until you know who's staring
+                          Lifeguide was born from a brutal truth: you can't chase what matters until you know who's staring
                            back at you. Life's a blur these days—too damn fast. We're all scrambling after dreams we can't 
                            even define, never stopping to ask: What do I actually want? That's not a soft question—it's your anchor.
                            When shit hits the fan, knowing who you are and why you're still swinging is what keeps you steady.
@@ -347,8 +347,8 @@ export default function WelcomePage() {
                     <AccordionContent className="text-gray-300">
                       <div className="prose prose-invert max-w-none space-y-4 pt-4">
                         <p className="text-base md:text-lg text-gray-300 break-words">
-                        I see a world where people don't just drift—they live with guts and purpose.
-                        \Life Guide is our weapon: a dead-simple tool to cut through the haze and build a 
+                        I see a world where people don't just drift—they live with guts and purpose – They can lock in on the life they dream about.
+                        Lifeguide is our weapon: a dead-simple tool to cut through the haze and build a 
                         life that's real and yours. It's about that pause, that unflinching stare into yourself.
                          Because once you see who you are, you can step into who you're meant to be.
                          </p>

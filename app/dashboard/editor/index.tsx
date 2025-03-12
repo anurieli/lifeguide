@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/utils/utils";
 import { HowToGuide } from '@/components/HowToGuide';
+import FirstTimeEditorWindow from '@/components/FirstTimeEditorWindow';
 import RichTextInput from "@/components/RichTextInput";
 import ReactMarkdown from 'react-markdown';
 import ProgressBar from "@/app/components/ProgressBar";
@@ -117,13 +118,30 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
     const [showProgressInFocusMode, setShowProgressInFocusMode] = useState(false);
     const [currentRegularSubsectionId, setCurrentRegularSubsectionId] = useState<string>('');
     const [currentRegularSubsectionIndex, setCurrentRegularSubsectionIndex] = useState(0);
+    const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
+    const [hasAgreedToRules, setHasAgreedToRules] = useState(false);
+    
+    // Current version of the editor rules
+    const EDITOR_RULES_VERSION = "1.1";
+  
+    // Function to check if rules need to be shown again
+    const checkRulesAgreement = () => {
+      const agreedToRulesVersion = localStorage.getItem('agreedToEditorRulesVersion');
+      
+      // If no version or different version, show rules
+      if (!agreedToRulesVersion || agreedToRulesVersion !== EDITOR_RULES_VERSION) {
+        setIsFirstTimeUser(true);
+        return false;
+      }
+      
+      // User has agreed to current version
+      setHasAgreedToRules(true);
+      return true;
+    };
   
     useEffect(() => {
-      const hasSeenEditor = localStorage.getItem('hasSeenEditor');
-      if (!hasSeenEditor) {
-        setIsHelpOpen(true);
-        localStorage.setItem('hasSeenEditor', 'true');
-      }
+      // Check if user has agreed to the current version of the editor rules
+      checkRulesAgreement();
     }, []);
   
     useEffect(() => {
@@ -784,6 +802,27 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
       }
     }, [isFocusMode, currentRegularSubsectionId]);
   
+    // Function to force showing the rules again (for testing or manual triggering)
+    const forceShowRules = () => {
+      setIsFirstTimeUser(true);
+      setHasAgreedToRules(false);
+    };
+  
+    const handleFirstTimeComplete = () => {
+      setIsFirstTimeUser(false);
+      setHasAgreedToRules(true);
+      
+      // Store agreement details
+      const timestamp = new Date().toISOString();
+      localStorage.setItem('hasSeenEditor', 'true');
+      localStorage.setItem('agreedToEditorRules', 'true');
+      localStorage.setItem('agreedToEditorRulesVersion', EDITOR_RULES_VERSION);
+      localStorage.setItem('agreedToEditorRulesTimestamp', timestamp);
+      
+      // Log for debugging
+      console.log(`User agreed to editor rules v${EDITOR_RULES_VERSION} at ${timestamp}`);
+    };
+  
     if (loading) {
       return (
         <div className="fixed inset-0 bg-gray-900 z-50 flex items-center justify-center">
@@ -813,6 +852,9 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
   
     return (
       <div className="fixed inset-0 bg-gray-900 z-50">
+        {isFirstTimeUser && (
+          <FirstTimeEditorWindow onComplete={handleFirstTimeComplete} />
+        )}
         <div className="h-full flex flex-col">
           {/* Editor Header - Fixed at the top */}
           <div className={cn(
@@ -824,15 +866,18 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
                   Blueprint Editor {isFocusMode && <span className="text-sm font-normal text-yellow-400 ml-2">(Focus Mode)</span>}
                 </h1>
+                {/* Custom Guide Instructions button that controls the dialog state */}
+                <button
+                  onClick={() => {
+                    setIsHelpOpen(!isHelpOpen);
+                  }}
+                  className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors text-sm flex items-center gap-1.5 w-auto max-[800px]:w-9 max-[800px]:px-0 max-[800px]:justify-center"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                  <span className="max-[800px]:hidden">Guide Instructions</span>
+                </button>
                 {!isFocusMode && (
                   <>
-                    <button
-                      onClick={() => setIsHelpOpen(true)}
-                      className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors text-sm flex items-center gap-1.5 w-auto max-[800px]:w-9 max-[800px]:px-0 max-[800px]:justify-center"
-                    >
-                      <HelpCircle className="h-4 w-4" />
-                      <span className="max-[800px]:hidden">Help?</span>
-                    </button>
                     <button
                       onClick={() => setExpandedProTips(!expandedProTips)}
                       className="px-3 py-1.5 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors text-sm flex items-center gap-1.5 w-auto max-[800px]:w-9 max-[800px]:px-0 max-[800px]:justify-center"
@@ -1368,13 +1413,64 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
           </DialogContent>
         </Dialog>
 
-        {/* Add HowToGuide Dialog */}
-        <HowToGuide
-          isOpen={isHelpOpen}
-          onOpenChange={setIsHelpOpen}
-          showButton={false}
-          displayMode="dialog"
-        />
+        {/* Direct implementation of guide dialog */}
+        {isHelpOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center"
+            onClick={() => setIsHelpOpen(false)}
+          >
+            <div 
+              className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl w-[90vw] max-w-2xl max-h-[90vh] overflow-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-4 border-b border-gray-700">
+                <h2 className="text-xl font-semibold text-white">Guide Instructions</h2>
+                <button 
+                  onClick={() => setIsHelpOpen(false)}
+                  className="p-1 text-gray-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-6">
+                <div className="prose prose-invert max-w-none">
+                  <ReactMarkdown components={{
+                    ol: ({node, ...props}) => <ol className="list-decimal pl-6 space-y-2" {...props} />,
+                    ul: ({node, ...props}) => <ul className="list-disc pl-6 space-y-2" {...props} />,
+                    li: ({node, ...props}) => <li className="text-white" {...props} />,
+                    h1: ({node, ...props}) => <h1 className="text-2xl font-bold mb-4" {...props} />,
+                    p: ({node, ...props}) => <p className="mb-4" {...props} />,
+                    strong: ({node, ...props}) => <strong className="font-bold text-white" {...props} />,
+                    em: ({node, ...props}) => <em className="italic text-gray-300" {...props} />
+                  }}>
+                    {`# Welcome to Your Guide
+
+1. **Build this in order.** First Persona Building (defining who you are)… then goal setting (where most people fail)… etc.
+
+2. **Finish this in a week or less,** and for the best results in the same day. Complete section by section in order. When you return to do the next session, start from the very first section by re-reading all your previous completions, and making any changes you feel necessary.
+
+3. **If you're stuck on a section** and aren't capable of providing a genuine response, then stop. Remember, the next time you get back to the document, start from the top, as these things build on each other.
+
+4. **Until completion, read every day** (morning and night) no matter, and once completed, continue doing so for 5 days straight. Engage with it as much as possible when first starting.
+
+5. **This can change,** its dynamic (the goals portion should be less dynamic). Read this every day if you can, morning and night. The more you become one with it the better you can get it to be exactly what you need to succeed (you can cut out fluff, hone in on what really matters as you slowly remove things that don't feed your purpose). (Rules for changing below)
+
+6. **Malleability Level:** How often can I alter my answer?  
+   - 🟢 *Flexible, dynamic, designed to be changed and altered as fast as you change.* Hell, it's even advised that you engage with these sections as often as possible.  
+   - 🟡 *Don't rush to change.* These sections are subject to change, as we are not robots, but don't make it a habit to alter these sections once set in stone. Before submitting these sections, review them and question them before moving onto the next section.  
+   - 🔴 *This should be a constant,* as it's much harder to run towards a moving goal. Each section's description will define its own rules for alteration. Before submitting these sections, review them before moving onto the next section, and be sure to get back to them once more before submitting the entire sheet.
+
+   *Hover over a flag for more details.*
+
+7. **Before submitting,** go over the whole thing again (I know it's tedious), but as we work on this sheet, our brains are becoming increasingly accustomed to this introspectiveness. Leverage the state you will be in to thoroughly review your sheet, remembering that there are certain sections that are temporarily "permanent" (as per #6).
+
+8. **No one is reading this,** so speak the fucking truth.`}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   } 

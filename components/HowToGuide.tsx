@@ -25,26 +25,24 @@ interface HowToGuideProps {
 
 const DEFAULT_GUIDE = `# Welcome to Your Guide
 
-1. **Build this in order.** First Persona Building (defining who you are)… then goal setting (where most people fail)… etc.
+1. **Build in Order.** **Order matters** Lifeguide was designed with first principles, and the order of the guides sections is not without reason. So work on this sheet in order: first *Persona Building* (defining who you are), then *Goal Setting* (where most people fail), and finally *Forging The Mindset* (Tools for later).
 
-2. **Finish this in a week or less,** and for the best results in the same day. Complete section by section in order. When you return to do the next session, start from the very first section by re-reading all your previous completions, and making any changes you feel necessary.
+2. **Complete Quickly.** **You want to be in an introspective state of flow when filling your guide.** You want to maintain the linearity of your motivated self. For the best results, finish in the same day. If you don't finish in the same day, when you return start from the top by re-reading all your previous completions, and making any changes you feel necessary.
 
-3. **If you're stuck on a section** and aren't capable of providing a genuine response, then stop. Remember, the next time you get back to the document, start from the top, as these things build on each other.
+3. **Handling Roadblocks.** **If you're stuck on a section** and aren't capable of providing a genuine response, then bookmark it and move on. If you are no longer in that introspective state of flow, close the editor and go chill. Remember, the next time you get back to the document, start from the top, as these things build on each other.
 
-4. **Until completion, read every day** (morning and night) no matter, and once completed, continue doing so for 5 days straight. Engage with it as much as possible when first starting.
+4. **Daily Review.** **You want to keep this top of mind for a while.** Read this every day (morning and night), no matter, for at least 5 days straight. Engage with it as much as possible when first starting. Try and incorporate it into your daily routine, as it will become a part of your identity.
 
-5. **This can change,** its dynamic (the goals portion should be less dynamic). Read this every day if you can, morning and night. The more you become one with it the better you can get it to be exactly what you need to succeed (you can cut out fluff, hone in on what really matters as you slowly remove things that don't feed your purpose). (Rules for changing below)
+5. **Dynamic Blueprint.** **This can change,** it's supposed to. It's dynamic (the goals portion should be less dynamic). When you read it every day, think if your responses still resonate; if not, change them. The more you become one with it the better you can get it to be exactly what you need to succeed (you can cut out fluff, hone in on what really matters as you slowly remove things that don't feed your purpose).
 
-6. **Malleability Level:** How often can I alter my answer?  
+6. **Understand Malleability Levels.** **How dynamic is this section?** *Regarding previous card...*  
    - 🟢 *Flexible, dynamic, designed to be changed and altered as fast as you change.* Hell, it's even advised that you engage with these sections as often as possible.  
    - 🟡 *Don't rush to change.* These sections are subject to change, as we are not robots, but don't make it a habit to alter these sections once set in stone. Before submitting these sections, review them and question them before moving onto the next section.  
    - 🔴 *This should be a constant,* as it's much harder to run towards a moving goal. Each section's description will define its own rules for alteration. Before submitting these sections, review them before moving onto the next section, and be sure to get back to them once more before submitting the entire sheet.
 
-   *Hover over a flag for more details.*
+7. **Final Review.** **Before submitting,** go over the whole thing again (I know it's tedious), but as we work on this sheet, our brains are becoming increasingly accustomed to this introspectiveness. Leverage the state you will be in to thoroughly review your sheet, remembering that there are certain sections that are temporarily "permanent".
 
-7. **Before submitting,** go over the whole thing again (I know it's tedious), but as we work on this sheet, our brains are becoming increasingly accustomed to this introspectiveness. Leverage the state you will be in to thoroughly review your sheet, remembering that there are certain sections that are temporarily "permanent" (as per #6).
-
-8. **No one is reading this,** so speak the fucking truth.`;
+8. **Be Authentic.** **No one is reading this,** so speak the your truth.`;
 
 // Markdown components configuration
 const markdownComponents: Components = {

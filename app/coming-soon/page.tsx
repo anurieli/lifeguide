@@ -1,7 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import EmailSubscriptionForm from '../../components/EmailSubscriptionForm';
-import FeatureCardDialog from '../../components/FeatureCardDialog';
-import FeatureInteraction from '@/components/FeatureInteraction';
+import FeatureCardsGrid from '../../components/FeatureCardsGrid';
 
 interface FeatureCard {
   id: string;
@@ -10,6 +9,7 @@ interface FeatureCard {
   use_case: string;
   upvotes: number;
   likes: number;
+  status: 'Complete' | 'In Progress' | 'TBA';
 }
 
 export default async function ComingSoonPage() {
@@ -82,56 +82,8 @@ export default async function ComingSoonPage() {
             </p>
           </div>
         
-          {featureCards.length === 0 ? (
-            <div className="text-center">
-              <h2 className="text-2xl font-semibold mb-4">No features available yet</h2>
-              <p className="text-gray-400 max-w-md mx-auto">
-                We&apos;re working on our feature roadmap. Check back soon to see what&apos;s coming next!
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featureCards.map((feature) => (
-                <div 
-                  key={feature.id} 
-                  className="flex flex-col bg-gradient-to-b from-gray-800 to-gray-900 border border-gray-700/50 rounded-xl overflow-hidden shadow-xl transform transition-all duration-300 hover:scale-[1.02] hover:shadow-blue-900/20 h-[400px]"
-                >
-                  {/* Card Header - Title (Like a baseball card top banner) */}
-                  <div className="bg-gradient-to-r from-blue-900/80 to-purple-900/80 px-5 py-3 border-b border-gray-700/50">
-                    <h2 className="text-lg font-bold text-white truncate">{feature.feature_title}</h2>
-                  </div>
-                  
-                  {/* Card Body - Description (Middle section) */}
-                  <div className="p-5 flex-1 overflow-hidden">
-                    {/* Clickable area for opening dialog */}
-                    <div 
-                      className="cursor-pointer h-full"
-                      id={`feature-card-clickable-${feature.id}`}
-                    >
-                      <div className="line-clamp-4 mb-3">
-                        <p className="text-gray-300">{feature.feature_description}</p>
-                      </div>
-                      <div className="bg-gray-800/50 rounded-lg p-3">
-                        <h3 className="text-sm font-medium text-blue-400 mb-1">Use Case:</h3>
-                        <p className="text-gray-400 text-sm line-clamp-3">{feature.use_case}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Card Footer - Stats and Actions (Always visible at bottom) */}
-                  <div className="px-5 py-3 bg-gray-800/70 border-t border-gray-700/50 mt-auto">
-                    <div className="flex justify-between items-center">
-                      <FeatureInteraction 
-                        featureId={feature.id} 
-                        initialLikes={feature.likes || 0} 
-                        initialUpvotes={feature.upvotes || 0} 
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Use the client component for feature cards */}
+          <FeatureCardsGrid features={featureCards} />
           
           <div className="mt-12 text-center">
             <p className="text-gray-400 text-sm">
@@ -139,21 +91,6 @@ export default async function ComingSoonPage() {
             </p>
           </div>
         </div>
-        
-        {/* This is a client component to handle the clicked feature card dialog */}
-        <FeatureCardDialog />
-        
-        {/* Script to add click handlers to card bodies to open dialogs */}
-        <script dangerouslySetInnerHTML={{ __html: `
-          document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('[id^="feature-card-clickable-"]').forEach(card => {
-              card.addEventListener('click', () => {
-                const featureId = card.id.replace('feature-card-clickable-', '');
-                document.dispatchEvent(new CustomEvent('openFeatureDialog', { detail: { featureId } }));
-              });
-            });
-          });
-        `}} />
       </div>
     );
   } catch (error) {
@@ -168,16 +105,12 @@ export default async function ComingSoonPage() {
           </h1>
           <div className="bg-red-900/30 border border-red-800/50 rounded-xl p-8 text-center">
             <p className="text-xl text-red-300 mb-2">Error Loading Features</p>
-            <p className="text-gray-300">We&apos;re having trouble loading the upcoming features. Please try again later.</p>
-            <button 
-              className="mt-4 px-4 py-2 bg-red-800/50 hover:bg-red-800/70 rounded-md transition-colors"
-              onClick={() => window.location.reload()}
-            >
-              Try Again
-            </button>
+            <p className="text-gray-300">We're having trouble loading the upcoming features. Please try again later.</p>
+            {/* Note: This button won't work in a Server Component, users will need to manually refresh */}
+            <p className="mt-4 text-gray-400 text-sm">Please refresh the page to try again.</p>
           </div>
         </div>
       </div>
     );
   }
-} 
+}

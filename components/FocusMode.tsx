@@ -371,43 +371,35 @@ export default function FocusMode({
         )}
       </div>
 
-      {/* Update the buttons to be vertical */}
-      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex flex-col gap-3 z-10">
+      {/* Navigation buttons - now centered vertically */}
+      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 flex flex-col gap-2">
         <button
           onClick={goToPrevious}
           disabled={prevIndex === null}
           className={cn(
-            "p-3 rounded-full shadow-lg transition-all",
-            prevIndex !== null 
-              ? "bg-gray-800 text-white hover:bg-gray-700" 
-              : "bg-gray-800/50 text-gray-500 cursor-not-allowed"
+            "p-2 rounded-full transition-colors",
+            prevIndex !== null
+              ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
+              : "bg-gray-700/50 text-gray-500 cursor-not-allowed"
           )}
+          aria-label="Go to previous card"
         >
           <ArrowUp className="h-5 w-5" />
         </button>
+        
         <button
           onClick={goToNext}
           disabled={nextIndex === null}
           className={cn(
-            "p-3 rounded-full shadow-lg transition-all",
-            nextIndex !== null 
-              ? "bg-gray-800 text-white hover:bg-gray-700" 
-              : "bg-gray-800/50 text-gray-500 cursor-not-allowed"
+            "p-2 rounded-full transition-colors",
+            nextIndex !== null
+              ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
+              : "bg-gray-700/50 text-gray-500 cursor-not-allowed"
           )}
+          aria-label="Go to next card"
         >
           <ArrowDown className="h-5 w-5" />
         </button>
-        
-        {/* Back to Start button - only shown on the last card */}
-        {nextIndex === null && prevIndex !== null && (
-          <button
-            onClick={() => setCurrentFocusIndex(0)}
-            className="p-3 rounded-full shadow-lg transition-all bg-blue-600 text-white hover:bg-blue-700 mt-2"
-            title="Back to Start"
-          >
-            <RotateCcw className="h-5 w-5" />
-          </button>
-        )}
       </div>
 
       {/* Use the SectionIndicator component */}
@@ -579,7 +571,7 @@ export default function FocusMode({
         className="flex-1 overflow-hidden py-8 focus-mode-container"
       >
         <div 
-          className="h-full flex flex-col gap-4 w-full max-w-4xl mx-auto px-4"
+          className="h-full flex flex-col justify-center gap-4 w-full max-w-4xl mx-auto px-4"
         >
           {/* Previous subsection with animation */}
           {prevSubsection && (
@@ -595,7 +587,7 @@ export default function FocusMode({
 
           {/* Current subsection with animation */}
           <div 
-            className="flex-1 min-h-[60vh] flex flex-col items-center py-4 w-full"
+            className="flex-1 min-h-[60vh] flex flex-col items-center justify-center py-4 w-full"
           >
             <FocusCard
               subsection={currentSubsection}

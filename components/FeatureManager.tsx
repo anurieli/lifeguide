@@ -19,6 +19,7 @@ interface Feature {
   likes: number;
   created_at: string;
   updated_at: string;
+  status: 'Complete' | 'In Progress' | 'TBA';
 }
 
 export function FeatureManager() {
@@ -29,7 +30,8 @@ export function FeatureManager() {
   const [newFeature, setNewFeature] = useState({
     feature_title: '',
     feature_description: '',
-    use_case: ''
+    use_case: '',
+    status: 'TBA' as 'Complete' | 'In Progress' | 'TBA'
   });
   const [editingFeature, setEditingFeature] = useState<Feature | null>(null);
 
@@ -65,7 +67,8 @@ export function FeatureManager() {
         feature_description: newFeature.feature_description,
         use_case: newFeature.use_case,
         upvotes: 0,
-        likes: 0
+        likes: 0,
+        status: newFeature.status
       });
 
     if (error) {
@@ -77,7 +80,8 @@ export function FeatureManager() {
       setNewFeature({
         feature_title: '',
         feature_description: '',
-        use_case: ''
+        use_case: '',
+        status: 'TBA'
       });
       fetchFeatures();
     }
@@ -207,7 +211,8 @@ export function FeatureManager() {
       .update({
         feature_title: editingFeature.feature_title,
         feature_description: editingFeature.feature_description,
-        use_case: editingFeature.use_case
+        use_case: editingFeature.use_case,
+        status: editingFeature.status
       })
       .eq('id', editingFeature.id);
 
@@ -252,7 +257,17 @@ export function FeatureManager() {
               >
                 <div className="flex justify-between">
                   <div className="space-y-2 flex-1 pr-4">
-                    <h3 className="font-medium text-white">{feature.feature_title}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-white">{feature.feature_title}</h3>
+                      {/* Status Badge */}
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        feature.status === 'Complete' ? 'bg-green-500/20 text-green-400' : 
+                        feature.status === 'In Progress' ? 'bg-blue-500/20 text-blue-400' : 
+                        'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {feature.status}
+                      </span>
+                    </div>
                     <p className="text-gray-400 text-sm">{feature.feature_description}</p>
                     {feature.use_case && (
                       <div className="mt-3 p-2 bg-gray-700/50 rounded text-xs text-gray-300">
@@ -336,6 +351,21 @@ export function FeatureManager() {
                 className="bg-gray-700 min-h-[80px]"
               />
             </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <select
+                value={newFeature.status}
+                onChange={(e) => setNewFeature({ 
+                  ...newFeature, 
+                  status: e.target.value as 'Complete' | 'In Progress' | 'TBA' 
+                })}
+                className="w-full bg-gray-700 text-white rounded-md border border-gray-600 p-2"
+              >
+                <option value="Complete">Complete</option>
+                <option value="In Progress">In Progress</option>
+                <option value="TBA">TBA</option>
+              </select>
+            </div>
             <div className="flex justify-end pt-4">
               <Button onClick={handleAddFeature}>Add Feature</Button>
             </div>
@@ -374,6 +404,21 @@ export function FeatureManager() {
                   onChange={(e) => setEditingFeature({ ...editingFeature, use_case: e.target.value })}
                   className="bg-gray-700 min-h-[80px]"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <select
+                  value={editingFeature.status}
+                  onChange={(e) => setEditingFeature({ 
+                    ...editingFeature, 
+                    status: e.target.value as 'Complete' | 'In Progress' | 'TBA' 
+                  })}
+                  className="w-full bg-gray-700 text-white rounded-md border border-gray-600 p-2"
+                >
+                  <option value="Complete">Complete</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="TBA">TBA</option>
+                </select>
               </div>
               <div className="flex justify-end pt-4">
                 <Button onClick={handleEditFeature}>Save Changes</Button>

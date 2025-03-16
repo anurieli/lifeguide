@@ -233,10 +233,6 @@ function SignupForm() {
             {isPending ? 'Processing...' : 'Sign up with Google'}
           </Button>
           
-          <p className="text-xs text-gray-500 text-center mt-1">
-            If you see a 'oibpypueiknfqnljgqjr.supabase.co' that is Lifeguide. Waiting Google approval for correct branding.
-          </p>
-          
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-gray-700"></span>

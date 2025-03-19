@@ -8,6 +8,7 @@ import ReactMarkdown from 'react-markdown';
 import { ChevronDown, ChevronUp, ChevronRight, Check } from 'lucide-react';
 import { cn } from '@/utils/utils';
 import ProgressBar from '@/app/components/ProgressBar';
+import CongratsPopup from '@/components/CongratulationsPopup';
 
 export function BlueprintContent() {
   const { user, isMobile } = useDashboard();
@@ -20,6 +21,7 @@ export function BlueprintContent() {
   const [error, setError] = useState<string | null>(null);
   const [isSectionComplete, setIsSectionComplete] = useState<Record<string, boolean>>({});
   const [userName, setUserName] = useState<string>('');
+  const [showCongratsPopup, setShowCongratsPopup] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -30,6 +32,36 @@ export function BlueprintContent() {
       setUserName(firstName);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!loading && sections.length > 0) {
+      // Check if all sections have 100% progress
+      const allSectionsComplete = sections.length > 0 && sections.every(section => {
+        const sectionSubsections = subsections.filter(sub => sub.section_id === section.id);
+        // Only consider sections that have subsections
+        if (sectionSubsections.length === 0) return true;
+        
+        // Check if all subsections in this section are committed
+        const completedSubsections = sectionSubsections.filter(sub => committedResponses.has(sub.id));
+        const progress = completedSubsections.length / sectionSubsections.length * 100;
+        
+        // Section is complete when progress is 100%
+        return progress >= 99.99;
+      });
+      
+      if (allSectionsComplete) {
+        // Check sessionStorage instead of localStorage so it resets when the browser session ends
+        const key = `blueprint_congrats_shown_${user?.id}`;
+        const hasShownBefore = sessionStorage.getItem(key);
+        
+        if (!hasShownBefore) {
+          // Show popup and mark it as shown
+          setShowCongratsPopup(true);
+          sessionStorage.setItem(key, Date.now().toString());
+        }
+      }
+    }
+  }, [loading, sections, subsections, committedResponses, user?.id]);
 
   const fetchBlueprintData = async () => {
     try {
@@ -128,6 +160,19 @@ export function BlueprintContent() {
     return committedResponses.has(subsectionId);
   };
 
+  const handleCloseCongratsPopup = () => {
+    setShowCongratsPopup(false);
+  };
+
+  // Add debug function to reset localStorage flag and trigger popup
+  const resetCongratsPopup = () => {
+    if (user) {
+      const key = `blueprint_congrats_shown_${user.id}`;
+      sessionStorage.removeItem(key);
+      setShowCongratsPopup(true);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -143,9 +188,24 @@ export function BlueprintContent() {
 
   return (
     <div className="flex justify-center">
+      <CongratsPopup isOpen={showCongratsPopup} onClose={handleCloseCongratsPopup} />
+      
       <div className={`flex w-full ${isMobile ? "flex-col" : "max-w-6xl"}`}>
         <div className={`flex-grow space-y-6 ${isMobile ? "" : "pr-4"}`}>
-          <h1 className={`${isMobile ? "text-2xl" : "text-3xl"} font-bold text-white`}>Welcome back{userName ? <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">, {userName}</span> : ''}</h1>
+          <h1 className={`${isMobile ? "text-2xl" : "text-3xl"} font-bold text-white`}>
+            Welcome back{userName ? <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">, {userName}</span> : ''}
+            
+            {/* Add hidden debug button for devs only - will be invisible in production */}
+            {process.env.NODE_ENV === 'development' && (
+              <button 
+                onClick={resetCongratsPopup}
+                className="ml-2 text-xs text-gray-700 hover:text-gray-500 bg-gray-900 py-1 px-2 rounded-md"
+                title="Debug: Show Congrats Popup"
+              >
+                🎉
+              </button>
+            )}
+          </h1>
           <p className="text-white font-bold">Here's your personal Life Blueprint.</p>
 
           {completedSections.length === 0 ? (

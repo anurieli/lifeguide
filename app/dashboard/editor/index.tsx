@@ -20,6 +20,7 @@ import ProgressBar from "@/app/components/ProgressBar";
 import FocusMode from '@/components/FocusMode';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import SectionIndicator from '@/components/SectionIndicator';
+import CongratsPopup from '@/components/CongratulationsPopup';
 
 interface Section {
   id: string;
@@ -120,6 +121,8 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
     const [currentRegularSubsectionIndex, setCurrentRegularSubsectionIndex] = useState(0);
     const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
     const [hasAgreedToRules, setHasAgreedToRules] = useState(false);
+    const [showCongratsPopup, setShowCongratsPopup] = useState(false);
+    const [allSectionsJustCompleted, setAllSectionsJustCompleted] = useState(false);
     
     // Current version of the editor rules
     const EDITOR_RULES_VERSION = "1.1";
@@ -467,11 +470,30 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
         newBookmarks.delete(subsectionId);
         setBookmarkedSubsections(newBookmarks);
         await saveUserProgress(subsectionId, true);
+        
+        // Check if this was the last remaining subsection to complete the blueprint
+        setCommittedResponses(newCommittedResponses);
+        const wasComplete = checkCompletionStatus();
+        
+        // If the blueprint is now complete after this commit, show the popup
+        if (wasComplete) {
+          // Check sessionStorage instead of localStorage so it resets when the browser session ends
+          const userId = await getUserId();
+          if (userId) {
+            const key = `blueprint_congrats_shown_${userId}`;
+            const hasShownBefore = sessionStorage.getItem(key);
+            
+            if (!hasShownBefore) {
+              setAllSectionsJustCompleted(true);
+              setShowCongratsPopup(true);
+              sessionStorage.setItem(key, Date.now().toString());
+            }
+          }
+        }
       } else {
         await saveUserProgress(subsectionId, false);
+        setCommittedResponses(newCommittedResponses);
       }
-      
-      setCommittedResponses(newCommittedResponses);
     };
   
     // Check for uncommitted changes when trying to exit
@@ -821,6 +843,45 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
       
       // Log for debugging
       console.log(`User agreed to editor rules v${EDITOR_RULES_VERSION} at ${timestamp}`);
+    };
+  
+    // Check if all sections have 100% progress
+    const checkCompletionStatus = () => {
+      // Only run if we have sections loaded
+      if (sections.length === 0) return false;
+      
+      const allSectionsComplete = sections.every(section => {
+        const sectionSubsections = subsections.filter(sub => sub.section_id === section.id);
+        // Only consider sections that have subsections
+        if (sectionSubsections.length === 0) return true;
+        
+        // Check if all subsections in this section are committed
+        const completedSubsections = sectionSubsections.filter(sub => isSubsectionCommitted(sub.id));
+        const progress = (completedSubsections.length / sectionSubsections.length) * 100;
+        
+        // Section is complete when progress is 100%
+        return progress >= 99.99;
+      });
+      
+      return allSectionsComplete;
+    };
+  
+    // Add helper function to get user ID
+    const getUserId = async (): Promise<string | null> => {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.user?.id || null;
+    };
+  
+    // Add handler for closing the popup
+    const handleCloseCongratsPopup = () => {
+      setShowCongratsPopup(false);
+      
+      // If the user just completed all sections, navigate them away from the editor
+      if (allSectionsJustCompleted) {
+        setAllSectionsJustCompleted(false);
+        onClose(); // Navigate back to dashboard
+      }
     };
   
     if (loading) {
@@ -1470,6 +1531,10 @@ export default function EditorMode({ onClose }: { onClose: () => void }) {
               </div>
             </div>
           </div>
+        )}
+
+        {showCongratsPopup && (
+          <CongratsPopup isOpen={showCongratsPopup} onClose={handleCloseCongratsPopup} />
         )}
       </div>
     );

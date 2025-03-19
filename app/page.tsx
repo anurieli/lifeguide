@@ -400,38 +400,24 @@ export default function WelcomePage() {
                 }}
               >
                 <motion.div 
-                  className="absolute inset-0 -m-8 border-4 border-dashed border-amber-400/70 rounded-xl" 
-                  style={{ 
-                    filter: 'drop-shadow(0 0 2px rgba(251, 191, 36, 0.4))',
-                    transform: 'rotate(-0.5deg)'
-                  }}
-                  animate={{
-                    borderColor: ["rgba(251, 191, 36, 0.7)", "rgba(251, 191, 36, 0.3)", "rgba(251, 191, 36, 0.7)"],
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                ></motion.div>
-                <motion.div 
                   className="aspect-video w-full max-w-2xl mx-auto rounded-lg overflow-hidden shadow-2xl relative"
                   whileHover={{ 
                     scale: 1.02,
                     transition: { duration: 0.3 }
                   }}
                 >
-                  <iframe
-                    src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-                    title="LifeGuide Introduction"
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
+                 <video
+                  src="https://oibpypueiknfqnljgqjr.supabase.co/storage/v1/object/sign/short-form/lifeguide%20demo.mp4?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmwiOiJzaG9ydC1mb3JtL2xpZmVndWlkZSBkZW1vLm1wNCIsImlhdCI6MTc0MjM1MTYwMiwiZXhwIjoxNzczODg3NjAyfQ.ZFYCKTHN7ZI015YmdxvAdyGUYDYHVZfLllLJHWRjxS8"
+                  poster="/introThumbnail.png"
+                  controls
+                  className="w-full h-full"
+                >
+                  Your browser does not support the video tag.
+                </video>
                 </motion.div>
                 <div className="w-full mt-2 text-center">
                   <p className="text-xs text-amber-400/80 italic font-sans max-w-xs sm:max-w-none mx-auto">
-                    *you thought you got rickrolled, but this is just a placeholder till my demo video is ready!
+                    *Better video on the way!
                   </p>
                 </div>
               </motion.div>

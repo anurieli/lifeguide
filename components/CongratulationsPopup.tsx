@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle, BookmarkIcon, Bell, Calendar, Smartphone } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
-// Properly import confetti only on the client side
-const confetti = dynamic(
-  () => import('canvas-confetti').then(mod => mod.default),
+// Import confetti properly for client-side only
+const ConfettiGenerator = dynamic(
+  () => import('canvas-confetti'),
   { ssr: false }
 );
 
@@ -21,42 +21,59 @@ export default function CongratsPopup({ isOpen, onClose }: CongratsPopupProps) {
 
   // Trigger confetti when the popup opens
   useEffect(() => {
-    if (isOpen && !showConfetti && confetti) {
+    if (isOpen && !showConfetti && typeof window !== 'undefined') {
       setShowConfetti(true);
       
-      // Create a confetti cannon
-      const duration = 3 * 1000;
-      const animationEnd = Date.now() + duration;
-      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
-
-      function randomInRange(min: number, max: number) {
-        return Math.random() * (max - min) + min;
-      }
-
-      const interval = setInterval(function() {
-        const timeLeft = animationEnd - Date.now();
-
-        if (timeLeft <= 0) {
-          return clearInterval(interval);
-        }
-
-        const particleCount = 50 * (timeLeft / duration);
+      // Use the confetti after making sure it's been loaded
+      const runConfetti = async () => {
+        const confettiModule = await import('canvas-confetti');
+        const confetti = confettiModule.default;
         
-        // Since particles fall down, start a bit higher than random
-        confetti({
-          ...defaults,
-          particleCount,
-          origin: { x: randomInRange(0.1, 0.3), y: randomInRange(0, 0.2) }
-        });
-        confetti({
-          ...defaults,
-          particleCount,
-          origin: { x: randomInRange(0.7, 0.9), y: randomInRange(0, 0.2) }
-        });
-      }, 250);
-
-      // Clean up the interval
-      return () => clearInterval(interval);
+        // Create a confetti cannon
+        const duration = 3 * 1000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+  
+        function randomInRange(min: number, max: number) {
+          return Math.random() * (max - min) + min;
+        }
+  
+        const interval = setInterval(function() {
+          const timeLeft = animationEnd - Date.now();
+  
+          if (timeLeft <= 0) {
+            return clearInterval(interval);
+          }
+  
+          const particleCount = 50 * (timeLeft / duration);
+          
+          // Since particles fall down, start a bit higher than random
+          confetti({
+            ...defaults,
+            particleCount,
+            origin: { x: randomInRange(0.1, 0.3), y: randomInRange(0, 0.2) }
+          });
+          confetti({
+            ...defaults,
+            particleCount,
+            origin: { x: randomInRange(0.7, 0.9), y: randomInRange(0, 0.2) }
+          });
+        }, 250);
+  
+        // Return cleanup function
+        return () => clearInterval(interval);
+      };
+      
+      // Run the confetti and store cleanup
+      let cleanup: (() => void) | undefined;
+      runConfetti().then(cleanupFn => {
+        cleanup = cleanupFn;
+      });
+      
+      // Clean up the interval when component unmounts
+      return () => {
+        if (cleanup) cleanup();
+      };
     }
   }, [isOpen, showConfetti]);
 

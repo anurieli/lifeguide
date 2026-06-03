@@ -1,8 +1,10 @@
 # LifeGuide — Agent Operating Guide
 
-LifeGuide is an AI-first, context-aware personal life platform — **"the space for the individual."** It helps (primarily) young men who feel lost reflect, hold themselves accountable, set goals that matter to them, and stay aligned with who they're becoming. Two surfaces share one brain: a spatial **Whiteboard** and a conversational **Coach / Guide**, both reading and writing a shared **Mirror** — the evolving "text layer behind the human."
+LifeGuide is an AI-first, context-aware personal life platform: **"the space for the individual."** It helps (primarily) young men who feel lost reflect, hold themselves accountable, set goals that matter to them, and stay aligned with who they're becoming. It builds and steers one thing: a person's true self and the plan for their life, through a **Core** (who you are) and daily **Sessions** (your days), curated by the **Coach**.
 
-**Start here:** [`docs/README.md`](docs/README.md) (documentation map) · soul: [`docs/product/concept-and-soul.md`](docs/product/concept-and-soul.md) · spec: [`docs/product/prd.md`](docs/product/prd.md)
+> **Docs reset 2026-06-03.** The old spec set was cleared to remove stale, conflicting direction (all recoverable from git). We rebuild from two seeds: this repo's [`docs/product/concept-and-soul.md`](docs/product/concept-and-soul.md) (see its "evolved system" section, the current source of truth) and the original **Life Blueprint** app at `~/lifeguide` (the working model for the Journal and the Core). Treat nothing as spec unless it lives in those two places or was rebuilt from them.
+
+**Start here:** [`docs/README.md`](docs/README.md) · soul and current vision: [`docs/product/concept-and-soul.md`](docs/product/concept-and-soul.md)
 
 ---
 
@@ -31,28 +33,23 @@ The changelog is how any agent or session picks up cold. No silent changes.
 
 ---
 
-## Documentation map (what lives where)
+## Documentation map (rebuilding)
+
+The docs were reset on 2026-06-03 to a clean slate. Current state:
 
 ```
 docs/
-├── README.md              # the map (read first)
-├── product/
-│   ├── concept-and-soul.md   # the why, the mission, the soul
-│   ├── prd.md                # the product requirements (the spec)
-│   ├── personas.md           # who this is for
-│   ├── glossary.md           # shared vocabulary — define terms here, link don't redefine
-│   └── features/             # ONE fully-expanded doc per feature (see _TEMPLATE.md)
-├── architecture/          # overview, context-bus, data-model, ai-layer, stack, security-privacy
-├── design/                # design-system, interaction-principles, screens
-├── decisions/             # ADRs — one per notable decision
-├── research/              # codebase extraction + competitive/landscape research
-├── plans/                 # implementation plans (foundation-first, bite-sized)
-└── roadmap.md             # phases: v1 plans → v1.5 → v2
-mockup/                    # the clickable HTML prototype (the visual target)
+├── README.md                 # the rebuild plan + the two seeds
+└── product/
+    └── concept-and-soul.md   # the soul + the evolved vision (current source of truth)
+mockup/
+└── index.html                # the clickable prototype (visual reference)
 ```
 
-## Feature docs must be COMPLETE
-Per `docs/product/features/_TEMPLATE.md`, every feature doc describes **all** of: purpose · user-facing behavior · every function/action · dynamics & interactions with other features · states · edge cases · AI involvement · data touched · reuse source · open questions. "All possible uses, functions, and dynamics" is the bar. If a behavior exists, it is written down.
+Everything else (prd, architecture, feature docs, design, decisions, research, plans, roadmap) was removed and is being rebuilt to the evolved vision; it all remains in git history. The working model for rebuilding the Journal and the Core is the original Life Blueprint app at `~/lifeguide`. See [`docs/README.md`](docs/README.md).
+
+## Feature docs must be COMPLETE (when we rebuild them)
+Every feature doc (one per component, the units) must describe **all** of: purpose, user-facing behavior, every function/action, dynamics and interactions with other components, states, edge cases, AI involvement, data touched, and open questions. "All possible uses, functions, and dynamics" is the bar. If a behavior exists, it is written down.
 
 ## Working principles (from the concept — honor these in every build)
 - **AI-first.** The app reflects the user's full context at all times via the Context Bus.
@@ -62,7 +59,7 @@ Per `docs/product/features/_TEMPLATE.md`, every feature doc describes **all** of
 - **DRY docs.** Link, don't duplicate. One canonical home per concept; the glossary anchors terms.
 
 ## Stack
-Next.js (App Router) + Convex (real-time backend: reactive DB, file storage, vector index, server-side OpenAI actions) + OpenAI. Rationale: `docs/architecture/stack.md`.
+Next.js (App Router) + Convex (real-time backend: reactive DB, file storage, server-side AI actions) + OpenRouter (preferred) with OpenAI as automatic fallback. The live schema is `convex/schema.ts`; the AI client is `convex/ai/openai.ts`.
 
 ## Status
-Pre-build. The clickable prototype lives in `mockup/`. Implementation begins with `docs/plans/2026-05-20-lifeguide-v1-plan1-foundation-whiteboard.md`.
+Built and live in local dev: Convex backend, anonymous multi-tenant auth, the vision board (Whiteboard), capture and distillation on OpenRouter, the app shell (rail nav), the Today ritual, Guide, Settings, and a context-aware Coach (basic). Docs were reset on 2026-06-03; next is rebuilding the spec and the component docs to the evolved vision, seeded by the original Life Blueprint. The clickable prototype lives in `mockup/`.

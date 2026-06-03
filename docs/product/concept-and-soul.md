@@ -3,6 +3,8 @@
 **Date**: 2026-05-20
 **Status**: The philosophical core. Everything else serves this.
 
+> **Reading order (updated 2026-06-03).** The current source of truth is the section **"The evolved system"** near the end of this file. The earlier sections are kept for history; where they conflict, the evolved section wins. The original **Life Blueprint** app at `~/lifeguide` (GitHub `anurieli/lifeguide`) is the working model for the Journal and the Core. As of this date, every other doc under `docs/` was cleared to remove stale, conflicting specs; the docs are being rebuilt from this file and the Blueprint.
+
 ---
 
 ## The pain

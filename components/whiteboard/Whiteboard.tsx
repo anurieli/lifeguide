@@ -1,24 +1,28 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SurfaceId } from "@/lib/types";
 import { useViewport } from "@/hooks/useViewport";
 import { useNodes } from "@/hooks/useNodes";
 import { useEdges } from "@/hooks/useEdges";
+import { useCaptures } from "@/hooks/useCaptures";
 import { NodeCard } from "./NodeCard";
 import { EdgeLayer } from "./EdgeLayer";
 import { Toolbar } from "./Toolbar";
+import { Inbox } from "./Inbox";
+
+const VIDEO_HOSTS = /(youtube\.com|youtu\.be|tiktok\.com|instagram\.com|vimeo\.com)/i;
 
 export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
   const { vp, pan, zoomAt } = useViewport();
   const { nodes, create, move, setText, remove } = useNodes(surfaceId);
   const { edges, connect, remove: removeEdge } = useEdges(surfaceId);
+  const { inbox, create: createCapture, softDelete, place, generateUploadUrl } = useCaptures();
 
   const panning = useRef<{ mx: number; my: number } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [linkFrom, setLinkFrom] = useState<string | null>(null);
 
-  // Escape cancels an in-progress connection.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setLinkFrom(null);
@@ -26,6 +30,63 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  const uploadImage = useCallback(
+    async (file: File, source: "paste" | "upload") => {
+      const url = await generateUploadUrl();
+      const r = await fetch(url, { method: "POST", headers: { "Content-Type": file.type }, body: file });
+      const { storageId } = await r.json();
+      await createCapture({ source, rawType: "image", rawFileId: storageId });
+    },
+    [generateUploadUrl, createCapture],
+  );
+
+  const addLink = useCallback(
+    (raw: string) => {
+      const url = raw.trim();
+      if (!/^https?:\/\//.test(url)) {
+        alert("Please paste a full URL starting with http(s)://");
+        return;
+      }
+      void createCapture({
+        source: "url",
+        rawType: VIDEO_HOSTS.test(url) ? "video_link" : "link",
+        rawUrl: url,
+      });
+    },
+    [createCapture],
+  );
+
+  // Type-anywhere capture: paste an image, a link, or text onto the board.
+  useEffect(() => {
+    const onPaste = async (e: ClipboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT")) return;
+      if (!e.clipboardData) return;
+
+      for (const item of e.clipboardData.items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            await uploadImage(file, "paste");
+            return;
+          }
+        }
+      }
+
+      const text = e.clipboardData.getData("text").trim();
+      if (!text) return;
+      const isUrl = /^https?:\/\//.test(text);
+      await createCapture({
+        source: isUrl ? "url" : "paste",
+        rawType: isUrl ? (VIDEO_HOSTS.test(text) ? "video_link" : "link") : "text",
+        rawText: isUrl ? undefined : text,
+        rawUrl: isUrl ? text : undefined,
+      });
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [createCapture, uploadImage]);
 
   const onDown = (e: React.PointerEvent) => {
     setIsPanning(true);
@@ -46,7 +107,7 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
     zoomAt(e.deltaY < 0 ? 1.06 : 0.94, e.clientX, e.clientY);
   };
 
-  const add = (type: "text" | "quote") => {
+  const addNode = (type: "text" | "quote") => {
     const cx = (window.innerWidth / 2 - vp.x) / vp.scale - 110;
     const cy = (window.innerHeight / 2 - vp.y) / vp.scale - 65;
     void create({
@@ -100,12 +161,18 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
       </div>
 
       {linkFrom && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-accent text-white text-xs px-3 py-1.5 rounded-full shadow-md z-20">
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-accent text-white text-xs px-3 py-1.5 rounded-full shadow-md z-30">
           Click a node to connect · Esc to cancel
         </div>
       )}
 
-      <Toolbar onAdd={add} />
+      <Inbox
+        captures={inbox}
+        onPlace={(c) => void place({ captureId: c._id, surfaceId })}
+        onDismiss={(c) => void softDelete({ captureId: c._id })}
+      />
+
+      <Toolbar onAddNode={addNode} onUpload={(f) => void uploadImage(f, "upload")} onAddLink={addLink} />
     </div>
   );
 }

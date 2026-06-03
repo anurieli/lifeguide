@@ -7,6 +7,10 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-03 · Docs: reset to a clean slate (stale specs removed, soul kept) ✅
+Cleared the entire pre-evolution documentation set (38 files: the PRD, all of `architecture/`, every feature doc, `design/`, `decisions/`, `research/`, `plans/`, and the roadmap) because it described the old Whiteboard-plus-Coach direction and conflicted with where LifeGuide is now going. Everything remains in git history. Kept `docs/product/concept-and-soul.md` as the seed and added a reading-order banner naming its "evolved system" section as the source of truth. Added a fresh `docs/README.md` (the clean-slate rebuild plan plus the two seeds). Also located the original LifeGuide app at `~/lifeguide` (GitHub `anurieli/lifeguide`, Next.js + Supabase) and identified its Life Blueprint (sections, subsections, guided prompts, written responses, malleability levels) as the working model for the Journal and the Core; recorded it as a seed to rebuild from.
+Commit: ba4f019. **Docs touched:** removed 38 files under `docs/`; kept and annotated `docs/product/concept-and-soul.md`; new `docs/README.md`; updated `CLAUDE.md`.
+
 ## 2026-06-03 · Docs: evolved vision captured; OpenRouter live ✅
 Documented the full evolved product vision into the concept doc: two context streams (the enduring core versus the daily self-sessions), the journal as adaptive prompts (typed or spoken), the Coach as core-curator (a hard filter that strengthens or reshapes the core and surfaces conflicts instead of overwriting), pillars as the "make a human solid" domain framework, the Future Self as its own data model, and the surface map (Home/Dashboard, Journal, Board, Future Self, Guide, Coach). Verified OpenRouter is live: `OPENROUTER_API_KEY` is set and a distillation succeeded through it (model `openai/gpt-4o-mini`), so the AI layer now runs on OpenRouter with the OpenAI key as automatic fallback. Also captured the vision to Brain Vault for cross-session access.
 **Docs touched:** `docs/product/concept-and-soul.md`; `~/brain-vault/00-Inbox/lifeguide-vision-evolved-system.md` (external vault).

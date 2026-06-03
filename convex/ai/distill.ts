@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { Doc } from "../_generated/dataModel";
-import { openrouter } from "./openai";
+import { aiClient, resolveModel } from "./openai";
 import { AI } from "./config";
 import { parseDistilled } from "./parse";
 
@@ -19,9 +19,9 @@ export const distillCapture = internalAction({
     const input = buildInput(capture);
     if (!input) return; // nothing textual to distill yet (e.g. a bare image) — placed as-is
 
-    const client = openrouter();
+    const { client, provider } = aiClient();
     const res = await client.chat.completions.create({
-      model: AI.distill.model,
+      model: resolveModel(AI.distill.model, provider),
       temperature: AI.distill.temperature,
       response_format: { type: "json_object" },
       messages: [

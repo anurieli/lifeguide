@@ -8,9 +8,13 @@ All AI runs **server-side** (Convex actions); keys never reach the client. The g
 Pattern adapted from PillarOS `AI_PROCESSES` + braindump `src/lib/ai/`. Each process declares `provider`, `model`, params, and prompt(s). v1 provider = OpenRouter; the `provider`/`baseURL` indirection makes a model swap (or adding a separate provider for embeddings/transcription) a one-line change.
 
 ```ts
-// convex/ai/openai.ts — one client, pointed at OpenRouter
-new OpenAI({ apiKey: process.env.OPENROUTER_API_KEY, baseURL: "https://openrouter.ai/api/v1" })
+// convex/ai/openai.ts — aiClient() prefers OpenRouter, falls back to OpenAI-direct.
+// OPENROUTER_API_KEY  -> new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" })  (preferred)
+// OPENAI_API_KEY      -> new OpenAI({ apiKey })                                            (fallback)
+// resolveModel() strips the "openai/" prefix from the canonical id for OpenAI-direct,
+// so config id "openai/gpt-4o-mini" works against either provider.
 ```
+**Current dev deployment:** runs on `OPENAI_API_KEY` (no OpenRouter key yet); switches to OpenRouter automatically when `OPENROUTER_API_KEY` is set. See ADR 0006 (2026-06-03 update).
 
 ## Processes
 | Process | Provider · model | Where |

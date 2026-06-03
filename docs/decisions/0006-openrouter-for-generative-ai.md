@@ -23,6 +23,9 @@ OpenRouter is a **chat/completions** gateway. It has **no embeddings endpoint** 
 - Env var: `OPENROUTER_API_KEY`.
 - Updates required (same change): `architecture/ai-layer.md`, `architecture/stack.md`, `architecture/data-model.md` (embeddings note), Plan 1 Task 7 (OpenRouter client + defer the embed action/vector index).
 
+## Update (2026-06-03): provider fallback (OpenRouter preferred, OpenAI-direct fallback)
+When Plan 1 distillation went live there was no OpenRouter key yet, but an OpenAI key already existed (reused from the sibling `braindump` project). Rather than block, `convex/ai/openai.ts` now exposes `aiClient()`, which **prefers `OPENROUTER_API_KEY` and falls back to `OPENAI_API_KEY`** (OpenAI-direct, no `baseURL`). `resolveModel()` strips the `openai/` prefix from the canonical id for OpenAI-direct, so the same config id (`openai/gpt-4o-mini`) works against either provider. OpenRouter stays the documented default and takes over automatically the moment its key is set, with zero code change. **The dev deployment currently runs on `OPENAI_API_KEY`.** Distillation verified live end to end on 2026-06-03.
+
 ## Open questions
 - Final embeddings provider + dimensions (drives the vector index `dimensions`).
 - Whether to keep a tiny OpenAI key *just* for embeddings later vs an alternative provider.

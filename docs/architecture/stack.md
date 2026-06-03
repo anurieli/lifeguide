@@ -6,7 +6,7 @@
 |---|---|---|
 | Shell / routing / SSR | **Next.js** (App Router) | One endpoint hosts all surfaces + auth; renders the canvas as a component |
 | Backend / real-time / DB / storage / vector | **Convex** | Real-time is the *default*; bundles reactive DB + file storage + vector index + secure server-side actions in one runtime |
-| AI (generative) | **OpenRouter** (OpenAI-compatible gateway; default `openai/gpt-4o-mini`, any model swappable) | One key + model flexibility; via the `openai` SDK with a custom baseURL (ADR 0006) |
+| AI (generative) | **OpenRouter** preferred, **OpenAI-direct** fallback (`aiClient()`; default `openai/gpt-4o-mini`, any model swappable) | One key + model flexibility via the `openai` SDK; uses whichever key is set, OpenRouter winning (ADR 0006). Dev currently runs on `OPENAI_API_KEY`. |
 | AI (embeddings / transcription) | **Deferred** (provider TBD) | OpenRouter has no embeddings/audio endpoint; not needed until post-v1 (embeddings) / Plan 3 (transcription) |
 | Canvas | Custom **DOM + CSS transform + SVG** | Not Konva (dead dependency in braindump); lightweight and reuse-friendly |
 | Auth | **Convex Auth** (Anonymous v1) | Instant, frictionless start; real identity → true multi-tenancy from day one |

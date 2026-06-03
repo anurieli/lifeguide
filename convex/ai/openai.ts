@@ -1,21 +1,35 @@
 import OpenAI from "openai";
 
-// One client, pointed at OpenRouter (OpenAI-compatible). Models are swapped by id in config.ts.
-// Key is server-only (Convex env var); never reaches the client. ADR 0006.
-export function openrouter(): OpenAI {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      "OPENROUTER_API_KEY is not set. Run: npx convex env set OPENROUTER_API_KEY sk-or-...",
-    );
+export type AiProvider = "openrouter" | "openai";
+
+// One client, provider-flexible. Prefers OpenRouter (ADR 0006); falls back to OpenAI-direct when
+// only an OpenAI key is present. Same SDK, different baseURL + model namespace. Server-only keys.
+export function aiClient(): { client: OpenAI; provider: AiProvider } {
+  const orKey = process.env.OPENROUTER_API_KEY;
+  if (orKey) {
+    return {
+      client: new OpenAI({
+        apiKey: orKey,
+        baseURL: "https://openrouter.ai/api/v1",
+        defaultHeaders: { "HTTP-Referer": "https://lifeguide.app", "X-Title": "LifeGuide" },
+      }),
+      provider: "openrouter",
+    };
   }
-  return new OpenAI({
-    apiKey,
-    baseURL: "https://openrouter.ai/api/v1",
-    defaultHeaders: {
-      // OpenRouter attribution headers (optional but recommended).
-      "HTTP-Referer": "https://lifeguide.app",
-      "X-Title": "LifeGuide",
-    },
-  });
+  const oaKey = process.env.OPENAI_API_KEY;
+  if (oaKey) {
+    return { client: new OpenAI({ apiKey: oaKey }), provider: "openai" };
+  }
+  throw new Error(
+    "No AI key set. Run: npx convex env set OPENROUTER_API_KEY sk-or-...  (or OPENAI_API_KEY sk-...)",
+  );
+}
+
+// Canonical model ids are OpenRouter-namespaced ("openai/gpt-4o-mini"). For OpenAI-direct, strip
+// the "openai/" prefix so the same config id works against either provider.
+export function resolveModel(canonicalId: string, provider: AiProvider): string {
+  if (provider === "openai" && canonicalId.startsWith("openai/")) {
+    return canonicalId.slice("openai/".length);
+  }
+  return canonicalId;
 }

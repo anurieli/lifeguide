@@ -24,6 +24,8 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
   const [isPanning, setIsPanning] = useState(false);
   const [linkFrom, setLinkFrom] = useState<string | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [isDropping, setIsDropping] = useState(false);
+  const dragDepth = useRef(0);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -133,6 +135,63 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
     setFocusId(id as string);
   };
 
+  // Screen pixel -> board coordinate (inverse of the viewport transform).
+  const screenToBoard = (clientX: number, clientY: number) => ({
+    x: (clientX - vp.x) / vp.scale,
+    y: (clientY - vp.y) / vp.scale,
+  });
+
+  // Drop files from the desktop straight onto the board where they land.
+  // Images become image cards; everything else becomes a file card.
+  const onDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    dragDepth.current = 0;
+    setIsDropping(false);
+    const files = Array.from(e.dataTransfer?.files ?? []);
+    if (files.length === 0) return;
+    const at = screenToBoard(e.clientX, e.clientY);
+
+    await Promise.all(
+      files.map(async (file, i) => {
+        const fileId = await uploadFile(file);
+        const offset = i * 28; // fan out so multiple drops don't stack exactly
+        if (file.type.startsWith("image/")) {
+          await create({
+            surfaceId,
+            type: "image",
+            fileId,
+            position: { x: at.x - 120 + offset, y: at.y - 90 + offset, z: 0 },
+            dimensions: { width: 240, height: 180 },
+          });
+        } else {
+          await create({
+            surfaceId,
+            type: "file",
+            fileId,
+            fileName: file.name,
+            mimeType: file.type || undefined,
+            position: { x: at.x - 110 + offset, y: at.y - 44 + offset, z: 0 },
+            dimensions: { width: 220, height: 88 },
+          });
+        }
+      }),
+    );
+  };
+
+  const onDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer?.types?.includes("Files")) e.preventDefault();
+  };
+  const onDragEnter = (e: React.DragEvent) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    dragDepth.current += 1;
+    setIsDropping(true);
+  };
+  const onDragLeave = (e: React.DragEvent) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setIsDropping(false);
+  };
+
   return (
     <div
       className="relative w-full h-screen overflow-hidden bg-paper touch-none"
@@ -146,6 +205,10 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
       onPointerMove={onMove}
       onPointerUp={onUp}
       onWheel={onWheel}
+      onDragOver={onDragOver}
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
+      onDrop={(e) => void onDrop(e)}
     >
       <div
         className="absolute left-0 top-0"
@@ -180,6 +243,14 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
       {linkFrom && (
         <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-accent text-white text-xs px-3 py-1.5 rounded-full shadow-md z-30">
           Click a node to connect · Esc to cancel
+        </div>
+      )}
+
+      {isDropping && (
+        <div className="pointer-events-none fixed inset-3 z-40 rounded-2xl border-2 border-dashed border-accent bg-accent/5 flex items-center justify-center">
+          <div className="bg-accent text-white text-sm px-4 py-2 rounded-full shadow-md">
+            Drop photos or documents to add them to the board
+          </div>
         </div>
       )}
 

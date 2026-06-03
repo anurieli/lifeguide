@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { NodeDoc } from "@/lib/types";
-import { ImagePlus } from "lucide-react";
+import { ImagePlus, FileText, Download } from "lucide-react";
 
 type Props = {
   node: NodeDoc;
@@ -177,6 +177,33 @@ export function NodeCard({
             <div className="text-ink-mute text-xs mt-1 truncate">{node.attribution}</div>
           )}
         </a>
+      )}
+
+      {node.type === "file" && (
+        <div className="flex items-center gap-2.5 p-3 h-full overflow-hidden">
+          <FileText className="w-7 h-7 shrink-0 text-accent" />
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium text-ink truncate">
+              {node.fileName ?? "Document"}
+            </div>
+            <div className="text-ink-mute text-xs truncate">
+              {node.mimeType ?? "file"}
+            </div>
+          </div>
+          {fileUrl && (
+            <a
+              href={fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              download={node.fileName}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="shrink-0 w-7 h-7 rounded-md text-ink-mute hover:text-ink hover:bg-paper-2 flex items-center justify-center"
+              title="Open / download"
+            >
+              <Download className="w-4 h-4" />
+            </a>
+          )}
+        </div>
       )}
 
       {node.type === "generated_image" && (

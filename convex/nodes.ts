@@ -7,6 +7,7 @@ const NODE_TYPE = v.union(
   v.literal("quote"),
   v.literal("image"),
   v.literal("link"),
+  v.literal("file"),
   v.literal("generated_image"),
 );
 
@@ -35,6 +36,8 @@ export const create = mutation({
     title: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     fileId: v.optional(v.id("_storage")),
+    fileName: v.optional(v.string()),
+    mimeType: v.optional(v.string()),
     attribution: v.optional(v.string()),
     position: POSITION,
     dimensions: DIMENSIONS,
@@ -56,6 +59,8 @@ export const create = mutation({
       text: args.text,
       imageUrl: args.imageUrl,
       fileId: args.fileId,
+      fileName: args.fileName,
+      mimeType: args.mimeType,
       attribution: args.attribution,
       position: args.position,
       dimensions: args.dimensions,

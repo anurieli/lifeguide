@@ -31,6 +31,9 @@ The changelog is how any agent or session picks up cold. No silent changes.
 
 > These reinforce and specialize the global rule in `~/.claude/CLAUDE.md` ("every technical project maintains a changelog"). Here we additionally require that every change names the documentation it updated.
 
+### 3. New work goes through the commitment gate — don't open a loop silently
+Any **net-new** feature, task, or research/spike item proposed in this repo (anything beyond the task already greenlit this session) must pass through the **commitment gate** before any code is written. Invoke the **`lifeguide-gate`** skill: it measures how much dev work is already in flight, sizes the new item (effort + the tests it takes to finish), and forces a deliberate choice — **commit now**, or **park it as an issue in the private LifeGuide Linear project** (`linear.app/cuttheedge/project/lifeguide-67aceaa648cf`). Never start a new loop, and never park one, silently.
+
 ---
 
 ## Documentation map (rebuilding)

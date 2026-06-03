@@ -19,7 +19,18 @@ export const current = query({
           .withIndex("by_user", (q) => q.eq("userId", userId))
           .first()
       : null;
-    return { user, bootstrapped: !!profile, surfaceId: surface?._id ?? null };
+    const settings = profile
+      ? await ctx.db
+          .query("settings")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .first()
+      : null;
+    return {
+      user,
+      bootstrapped: !!profile,
+      surfaceId: surface?._id ?? null,
+      onboarded: !!settings?.onboardedAt,
+    };
   },
 });
 
@@ -65,6 +76,15 @@ export const bootstrap = mutation({
       structured: { values: [], themes: [] },
       version: 1,
       takenAt: now,
+    });
+    await ctx.db.insert("settings", {
+      userId,
+      morningCheckin: true,
+      eveningCheckin: true,
+      dailyExercise: "intention",
+      coachTone: "balanced",
+      reachingOut: "earned",
+      updatedAt: now,
     });
     return await ctx.db.insert("surfaces", {
       userId,

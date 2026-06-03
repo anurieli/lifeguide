@@ -5,29 +5,34 @@ import { Authenticated, Unauthenticated, useMutation, useQuery } from "convex/re
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { StartButton } from "@/components/auth/StartButton";
-import { Whiteboard } from "@/components/whiteboard/Whiteboard";
+import { Onboarding } from "@/components/onboarding/Onboarding";
+import { AppShell } from "@/components/shell/AppShell";
 
-function Board() {
+function Preparing() {
+  return (
+    <div className="h-screen flex items-center justify-center bg-paper text-ink-mute">
+      Preparing your space…
+    </div>
+  );
+}
+
+function Gate() {
   const me = useQuery(api.users.current);
   const bootstrap = useMutation(api.users.bootstrap);
-  const [seededSurface, setSeededSurface] = useState<Id<"surfaces"> | null>(null);
+  const [seeded, setSeeded] = useState<Id<"surfaces"> | null>(null);
 
-  // Seed once on first sign-in; bootstrap returns the new surface id.
+  // Seed once on first sign-in.
   useEffect(() => {
-    if (me && !me.bootstrapped) void bootstrap().then(setSeededSurface);
+    if (me && !me.bootstrapped) void bootstrap().then(setSeeded);
   }, [me, bootstrap]);
 
-  // For a returning user the surface id arrives with `current` (one roundtrip, no flash).
-  const surfaceId = me?.surfaceId ?? seededSurface;
+  if (!me) return <Preparing />;
+  if (!me.bootstrapped && !seeded) return <Preparing />;
+  if (!me.onboarded) return <Onboarding />;
 
-  if (!surfaceId) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-paper text-ink-mute">
-        Preparing your space…
-      </div>
-    );
-  }
-  return <Whiteboard surfaceId={surfaceId} />;
+  const surfaceId = me.surfaceId ?? seeded;
+  if (!surfaceId) return <Preparing />;
+  return <AppShell surfaceId={surfaceId} />;
 }
 
 export default function Home() {
@@ -37,7 +42,7 @@ export default function Home() {
         <StartButton />
       </Unauthenticated>
       <Authenticated>
-        <Board />
+        <Gate />
       </Authenticated>
     </>
   );

@@ -111,6 +111,19 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_user", ["userId"]),
 
+  // Per-user app settings: onboarding state, daily rhythm, Coach behavior, and the north star.
+  settings: defineTable({
+    userId: v.id("users"),
+    onboardedAt: v.optional(v.number()),
+    morningCheckin: v.boolean(),
+    eveningCheckin: v.boolean(),
+    dailyExercise: v.union(v.literal("intention"), v.literal("gratitude"), v.literal("free")),
+    coachTone: v.union(v.literal("gentle"), v.literal("balanced"), v.literal("direct")),
+    reachingOut: v.union(v.literal("leave"), v.literal("earned"), v.literal("often")),
+    northStar: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
   // The Mirror: the evolving "text layer behind the human". Structured records + summary, versioned.
   mirror: defineTable({
     userId: v.id("users"),

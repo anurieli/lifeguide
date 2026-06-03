@@ -13,3 +13,12 @@ body {
   font-family: theme("fontFamily.sans");
   -webkit-font-smoothing: antialiased;
 }
+
+/* Gentle selection that keeps text legible on light paper and dark cards alike
+   (the default solid blue washes text out). Text keeps its own color. */
+::selection {
+  background: rgba(184, 148, 90, 0.32);
+}
+::-moz-selection {
+  background: rgba(184, 148, 90, 0.32);
+}

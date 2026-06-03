@@ -1,52 +1,21 @@
 "use client";
 
-import { useRef } from "react";
-import { Type, Quote, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
+import { Plus } from "lucide-react";
 
-export function Toolbar({
-  onAddNode,
-  onUpload,
-  onAddLink,
-}: {
-  onAddNode: (t: "text" | "quote") => void;
-  onUpload: (file: File) => void;
-  onAddLink: (url: string) => void;
-}) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const btn = "px-3 py-1.5 rounded-full hover:bg-paper-2 text-sm text-ink flex items-center gap-1.5 transition";
-
+// One element to add anything: creates a blank card you can type into, paste an image into,
+// or drop a link into. The card decides what it is from what you put in it.
+export function Toolbar({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-card border border-line rounded-full px-2 py-2 flex items-center gap-1 shadow-md z-20">
-      <button onClick={() => onAddNode("text")} className={btn}>
-        <Type className="w-4 h-4" /> Text
-      </button>
-      <button onClick={() => onAddNode("quote")} className={btn}>
-        <Quote className="w-4 h-4" /> Quote
-      </button>
-      <div className="w-px h-5 bg-line mx-1" />
-      <button onClick={() => fileRef.current?.click()} className={btn}>
-        <ImageIcon className="w-4 h-4" /> Image
-      </button>
+    <div
+      onPointerDown={(e) => e.stopPropagation()}
+      className="fixed bottom-7 left-1/2 -translate-x-1/2 z-20"
+    >
       <button
-        onClick={() => {
-          const u = window.prompt("Paste a link (article, video, post)…");
-          if (u && u.trim()) onAddLink(u.trim());
-        }}
-        className={btn}
+        onClick={onAdd}
+        className="bg-ink text-paper rounded-full pl-4 pr-5 py-3 flex items-center gap-2 shadow-lg hover:bg-[#2a2f3a] transition text-sm font-medium"
       >
-        <LinkIcon className="w-4 h-4" /> Link
+        <Plus className="w-[18px] h-[18px]" /> Add anything
       </button>
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) onUpload(f);
-          e.target.value = "";
-        }}
-      />
     </div>
   );
 }

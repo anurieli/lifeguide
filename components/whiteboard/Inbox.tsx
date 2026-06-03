@@ -16,7 +16,10 @@ export function Inbox({
 }) {
   if (captures.length === 0) return null;
   return (
-    <div className="fixed top-5 right-5 w-80 max-h-[80vh] overflow-y-auto z-20 bg-card/95 backdrop-blur border border-line rounded-2xl shadow-lg p-3">
+    <div
+      onPointerDown={(e) => e.stopPropagation()}
+      className="fixed top-5 right-5 w-80 max-h-[80vh] overflow-y-auto z-20 bg-card/95 backdrop-blur border border-line rounded-2xl shadow-lg p-3"
+    >
       <div className="flex items-center gap-2 px-1 pb-2 text-sm font-medium text-ink">
         <Sparkles className="w-4 h-4 text-gold" />
         Inbox

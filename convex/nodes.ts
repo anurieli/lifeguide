@@ -118,6 +118,28 @@ export const remove = mutation({
   },
 });
 
+// Change a card's type and content in place. Powers the unified "add anything" card:
+// a blank card starts as text and morphs to image/link when you paste into it.
+export const morph = mutation({
+  args: {
+    nodeId: v.id("nodes"),
+    type: NODE_TYPE,
+    text: v.optional(v.string()),
+    title: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    fileId: v.optional(v.id("_storage")),
+    attribution: v.optional(v.string()),
+    dimensions: v.optional(DIMENSIONS),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const n = await ctx.db.get(args.nodeId);
+    if (!n || n.userId !== userId) throw new Error("Not found");
+    const { nodeId, ...rest } = args;
+    await ctx.db.patch(nodeId, { ...rest, updatedAt: Date.now() });
+  },
+});
+
 // Surface context fragment for the assembler (consumed by the Coach in Plan 2).
 export const surfaceContext = query({
   args: { surfaceId: v.id("surfaces") },

@@ -123,7 +123,7 @@ export function Guide() {
               ))}
             </div>
           ) : null}
-          <p className="text-coach-mute text-sm leading-relaxed">
+          <p className="text-[#C7CBD4] text-sm leading-relaxed">
             {mirror?.summary?.trim()
               ? mirror.summary
               : "I'm still learning who you are. Keep adding what pulls at you to your board, and check in on Today. The picture sharpens fast."}

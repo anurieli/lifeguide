@@ -4,33 +4,43 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { NodeDoc } from "@/lib/types";
+import { ImagePlus } from "lucide-react";
 
 type Props = {
   node: NodeDoc;
   scale: number;
+  autoFocus: boolean;
   onMoveCommit: (x: number, y: number) => void;
   onText: (t: string) => void;
   onDelete: () => void;
   onStartLink: () => void;
   onCompleteLink: () => void;
+  onUploadImage: (file: File) => void;
+  onMorphLink: (url: string) => void;
   linking: boolean;
 };
+
+const URL_RE = /^https?:\/\/\S+$/i;
 
 export function NodeCard({
   node,
   scale,
+  autoFocus,
   onMoveCommit,
   onText,
   onDelete,
   onStartLink,
   onCompleteLink,
+  onUploadImage,
+  onMorphLink,
   linking,
 }: Props) {
   const drag = useRef<{ mx: number; my: number; ix: number; iy: number; moved: boolean } | null>(
     null,
   );
+  const fileRef = useRef<HTMLInputElement>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
   const [dragging, setDragging] = useState(false);
-  // Optimistic position while dragging; persisted once on release, cleared when the server confirms.
   const [localPos, setLocalPos] = useState<{ x: number; y: number } | null>(null);
   const pos = localPos ?? node.position;
 
@@ -39,6 +49,10 @@ export function NodeCard({
       setLocalPos(null);
     }
   }, [node.position.x, node.position.y, localPos]);
+
+  useEffect(() => {
+    if (autoFocus) taRef.current?.focus();
+  }, [autoFocus]);
 
   const fileUrl = useQuery(
     api.files.getUrl,
@@ -74,7 +88,37 @@ export function NodeCard({
     drag.current = null;
   };
 
+  const onPaste = (e: React.ClipboardEvent) => {
+    const cd = e.clipboardData;
+    if (!cd) return;
+    for (const item of cd.items) {
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) {
+          e.preventDefault();
+          onUploadImage(file);
+          return;
+        }
+      }
+    }
+    const text = cd.getData("text").trim();
+    if (URL_RE.test(text) && !(node.text ?? "").trim()) {
+      e.preventDefault();
+      onMorphLink(text);
+    }
+  };
+
+  const onBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value.trim();
+    if (URL_RE.test(val)) {
+      onMorphLink(val);
+      return;
+    }
+    if (e.target.value !== node.text) onText(e.target.value);
+  };
+
   const isQuote = node.type === "quote";
+  const isEmptyText = (node.type === "text" || node.type === "quote") && !(node.text ?? "").trim();
 
   return (
     <div
@@ -108,21 +152,60 @@ export function NodeCard({
 
       {(node.type === "text" || node.type === "quote") && (
         <textarea
+          ref={taRef}
           defaultValue={node.text ?? ""}
-          onBlur={(e) => e.target.value !== node.text && onText(e.target.value)}
-          placeholder={isQuote ? "A quote that hit you…" : "An idea…"}
+          onBlur={onBlur}
+          onPaste={onPaste}
+          placeholder={isQuote ? "A quote that hit you…" : "Type, paste an image, or drop a link…"}
           className={`w-full h-full p-3 bg-transparent resize-none outline-none text-sm text-ink placeholder:text-ink-mute ${
             isQuote ? "italic" : ""
           }`}
         />
       )}
 
-      {(node.type === "link" || node.type === "generated_image") && (
-        <div className="p-3 text-sm text-ink overflow-hidden">
-          {node.title && <div className="font-medium">{node.title}</div>}
-          <div className="text-ink-soft">{node.text}</div>
-          {node.attribution && <div className="text-ink-mute text-xs mt-1">{node.attribution}</div>}
-        </div>
+      {node.type === "link" && (
+        <a
+          href={node.attribution ?? "#"}
+          target="_blank"
+          rel="noreferrer"
+          onPointerDown={(e) => e.stopPropagation()}
+          className="block p-3 text-sm h-full overflow-hidden"
+        >
+          {node.title && <div className="font-medium text-ink">{node.title}</div>}
+          <div className="text-accent break-words">{node.text ?? node.attribution}</div>
+          {node.attribution && (
+            <div className="text-ink-mute text-xs mt-1 truncate">{node.attribution}</div>
+          )}
+        </a>
+      )}
+
+      {node.type === "generated_image" && (
+        <div className="p-3 text-sm text-ink overflow-hidden">{node.text ?? node.title}</div>
+      )}
+
+      {/* attach an image file into an empty card */}
+      {isEmptyText && (
+        <>
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => fileRef.current?.click()}
+            className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded-md text-ink-mute hover:text-ink hover:bg-paper-2 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+            title="Add an image"
+          >
+            <ImagePlus className="w-4 h-4" />
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) onUploadImage(f);
+              e.target.value = "";
+            }}
+          />
+        </>
       )}
 
       {/* link handle — click to start a connection */}
@@ -133,7 +216,6 @@ export function NodeCard({
         title="Connect to another node"
       />
 
-      {/* drop target while linking — click to complete the connection */}
       {linking && (
         <div
           onPointerDown={(e) => e.stopPropagation()}

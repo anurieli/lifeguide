@@ -12,6 +12,7 @@ export function useNodes(surfaceId: Id<"surfaces"> | null) {
     resize: useMutation(api.nodes.resize),
     setText: useMutation(api.nodes.setText),
     setPillars: useMutation(api.nodes.setPillars),
+    morph: useMutation(api.nodes.morph),
     remove: useMutation(api.nodes.remove),
   };
 }

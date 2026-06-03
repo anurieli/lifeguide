@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SurfaceId } from "@/lib/types";
+import { Id } from "@/convex/_generated/dataModel";
 import { useViewport } from "@/hooks/useViewport";
 import { useNodes } from "@/hooks/useNodes";
 import { useEdges } from "@/hooks/useEdges";
@@ -15,13 +16,14 @@ const VIDEO_HOSTS = /(youtube\.com|youtu\.be|tiktok\.com|instagram\.com|vimeo\.c
 
 export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
   const { vp, pan, zoomAt } = useViewport();
-  const { nodes, create, move, setText, remove } = useNodes(surfaceId);
+  const { nodes, create, move, setText, remove, morph } = useNodes(surfaceId);
   const { edges, connect, remove: removeEdge } = useEdges(surfaceId);
   const { inbox, create: createCapture, softDelete, place, generateUploadUrl } = useCaptures();
 
   const panning = useRef<{ mx: number; my: number } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [linkFrom, setLinkFrom] = useState<string | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -31,33 +33,42 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const uploadImage = useCallback(
-    async (file: File, source: "paste" | "upload") => {
+  const uploadFile = useCallback(
+    async (file: File) => {
       const url = await generateUploadUrl();
-      const r = await fetch(url, { method: "POST", headers: { "Content-Type": file.type }, body: file });
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
       const { storageId } = await r.json();
-      await createCapture({ source, rawType: "image", rawFileId: storageId });
+      return storageId as Id<"_storage">;
     },
-    [generateUploadUrl, createCapture],
+    [generateUploadUrl],
   );
 
-  const addLink = useCallback(
-    (raw: string) => {
-      const url = raw.trim();
-      if (!/^https?:\/\//.test(url)) {
-        alert("Please paste a full URL starting with http(s)://");
-        return;
-      }
-      void createCapture({
-        source: "url",
-        rawType: VIDEO_HOSTS.test(url) ? "video_link" : "link",
-        rawUrl: url,
+  // Morph an existing card into an image (pasted or attached inside the card).
+  const morphToImage = useCallback(
+    async (nodeId: string, file: File) => {
+      const fileId = await uploadFile(file);
+      await morph({
+        nodeId: nodeId as Id<"nodes">,
+        type: "image",
+        fileId,
+        dimensions: { width: 240, height: 180 },
       });
     },
-    [createCapture],
+    [uploadFile, morph],
   );
 
-  // Type-anywhere capture: paste an image, a link, or text onto the board.
+  const morphToLink = useCallback(
+    (nodeId: string, url: string) => {
+      void morph({ nodeId: nodeId as Id<"nodes">, type: "link", text: url, attribution: url });
+    },
+    [morph],
+  );
+
+  // Type-anywhere capture: paste onto empty board space sends it to the Inbox to distill.
   useEffect(() => {
     const onPaste = async (e: ClipboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -68,7 +79,8 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
         if (item.type.startsWith("image/")) {
           const file = item.getAsFile();
           if (file) {
-            await uploadImage(file, "paste");
+            const fileId = await uploadFile(file);
+            await createCapture({ source: "paste", rawType: "image", rawFileId: fileId });
             return;
           }
         }
@@ -86,7 +98,7 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-  }, [createCapture, uploadImage]);
+  }, [createCapture, uploadFile]);
 
   const onDown = (e: React.PointerEvent) => {
     setIsPanning(true);
@@ -107,16 +119,18 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
     zoomAt(e.deltaY < 0 ? 1.06 : 0.94, e.clientX, e.clientY);
   };
 
-  const addNode = (type: "text" | "quote") => {
+  // One add: a blank card you type into, or paste an image / link into.
+  const addCard = async () => {
     const cx = (window.innerWidth / 2 - vp.x) / vp.scale - 110;
     const cy = (window.innerHeight / 2 - vp.y) / vp.scale - 65;
-    void create({
+    const id = await create({
       surfaceId,
-      type,
+      type: "text",
       text: "",
       position: { x: cx, y: cy, z: 0 },
       dimensions: { width: 220, height: 130 },
     });
+    setFocusId(id as string);
   };
 
   return (
@@ -143,9 +157,12 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
             key={n._id}
             node={n}
             scale={vp.scale}
+            autoFocus={n._id === focusId}
             onMoveCommit={(x, y) => void move({ nodeId: n._id, position: { x, y, z: n.position.z } })}
             onText={(t) => void setText({ nodeId: n._id, text: t })}
             onDelete={() => void remove({ nodeId: n._id })}
+            onUploadImage={(file) => void morphToImage(n._id, file)}
+            onMorphLink={(url) => morphToLink(n._id, url)}
             onStartLink={() => setLinkFrom(n._id)}
             onCompleteLink={() => {
               if (linkFrom && linkFrom !== n._id) {
@@ -172,7 +189,7 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
         onDismiss={(c) => void softDelete({ captureId: c._id })}
       />
 
-      <Toolbar onAddNode={addNode} onUpload={(f) => void uploadImage(f, "upload")} onAddLink={addLink} />
+      <Toolbar onAdd={() => void addCard()} />
     </div>
   );
 }

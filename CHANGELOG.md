@@ -7,6 +7,10 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-03 · Build: Convex live + foundation (Plan 1, Tasks 0 & 1) ✅ verified
+Provisioned the Convex dev deployment (`lifeguide-dev`, team `ariel-nurieli`) and wired **anonymous multi-tenant auth** end to end (client + server providers, middleware, Anonymous sign-in), then deployed the **full v1 schema** and the **user bootstrap** (seeds the Lifestyle pillar, an empty Mirror, and a default Whiteboard surface on first sign-in) plus the pillar preset library. Per ADR 0006 the `nodes` vector index is omitted (embeddings deferred); the `embedding` field stays optional. **Verified live:** schema deploy clean (12 indexes), `npm run build` + types clean, geometry tests 4/4, `GET /` → 200, `users:current` → null, `pillars:presets` → 6. Corrected two plan-vs-reality mismatches: `Anonymous` is a named import (not default), and Task 7 will use `OPENROUTER_API_KEY` (not `OPENAI_API_KEY`).
+Commits: 46c975c (t0), 0154a33 (t1). **Docs touched:** none — the deployed schema already matches `docs/architecture/data-model.md` (embeddings-deferred note). Plan progress note + the docs em-dash cleanup are tracked for an end-of-session docs pass.
+
 ## 2026-05-20 · Decision: OpenRouter for generative AI (ADR 0006)
 Adopted **OpenRouter** as the generative-AI gateway — OpenAI-compatible, so we keep the `openai` SDK with a custom baseURL and one `OPENROUTER_API_KEY`, with swappable models (default `openai/gpt-4o-mini`). **Embeddings and transcription deferred** (OpenRouter has no endpoint for either; embeddings are computed-but-unused in v1, transcription is Plan 3). Env var `OPENAI_API_KEY` → `OPENROUTER_API_KEY`.
 **Docs touched:** `docs/decisions/0006-openrouter-for-generative-ai.md` (new), `docs/decisions/README.md`, `docs/architecture/{ai-layer,stack,data-model}.md`, `docs/plans/2026-05-20-lifeguide-v1-plan1-foundation-whiteboard.md`.

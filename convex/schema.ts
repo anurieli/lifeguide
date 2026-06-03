@@ -136,6 +136,16 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_user_provider", ["userId", "provider"]),
 
+  // The Core: the user's answers to the fixed Life Blueprint (3 sections, 18 questions). The
+  // question/section skeleton lives in code (lib/blueprint.ts, recovered from the original app);
+  // this table holds only the user's written response per question, keyed by the blueprint key.
+  coreResponses: defineTable({
+    userId: v.id("users"),
+    questionKey: v.string(), // e.g. "s1q0" — matches lib/blueprint.ts
+    content: v.string(),
+    updatedAt: v.number(),
+  }).index("by_user_question", ["userId", "questionKey"]),
+
   // The Mirror: the evolving "text layer behind the human". Structured records + summary, versioned.
   mirror: defineTable({
     userId: v.id("users"),

@@ -1,10 +1,14 @@
 # The Core
 
-**Status:** partial · **Element of:** Core · **Owns:** `mirror`
+**Status:** partial · **Element of:** Core · **Owns:** `coreResponses` (the raw Blueprint answers) + `mirror` (the synthesized self)
 
-> The Core is the synthesized identity, the enduring "who you are" stream and the heart of the Mirror. Its one job: hold and keep honest the text layer behind the human, shaped by the Life Blueprint, published to everything.
+> The Core is the enduring "who you are" stream and the heart of the Mirror. Its one job: hold and keep honest the text layer behind the human, shaped by the Life Blueprint, published to everything.
 
-What exists today: the `mirror` table and basic `assemble` / `current` / `recordDelta` in [`../../../convex/mirror.ts`](../../../convex/mirror.ts). Proposed: the Blueprint backbone on `mirror.structured`, gap-awareness, and the Coach's curation pass. This doc specs the whole; the proposed parts ship as `mirror` fills out.
+The Core has two halves: the **raw backbone** (the person's own answers to the Life Blueprint) and the **synthesized self** (the Mirror, distilled from those answers and everything else).
+
+**Built today (the Core surface):** the Life Blueprint is now a real surface in the app, not just recovered files. A **Core** rail item (gem icon) shows the 3 sections and 18 questions, each with its malleability dot (green / yellow / red), prompt, and an editable answer that autosaves on blur. The fixed skeleton is code config in [`../../../lib/blueprint.ts`](../../../lib/blueprint.ts) (auto-generated from [`../blueprint/blueprint.json`](../blueprint/blueprint.json), keys `s{section}q{index}`); the user's answers live in the `coreResponses` table via `get` / `save` in [`../../../convex/core.ts`](../../../convex/core.ts). The Mirror (`mirror` table, basic `assemble` / `current` / `recordDelta` in [`../../../convex/mirror.ts`](../../../convex/mirror.ts)) is the distinct synthesized layer.
+
+**Proposed:** gap-awareness, and the Coach's curation pass that (re)generates the Mirror from the raw backbone plus the streams. This doc specs the whole; the proposed parts ship as the curation loop lands.
 
 ## 1. Purpose
 

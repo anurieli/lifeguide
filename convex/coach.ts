@@ -12,22 +12,23 @@ const TONE_GUIDE = {
   direct: "Direct and challenging, like a coach who believes in them. Still kind.",
 } as const;
 
-// Single-turn Coach reply, context-aware (Mirror + the surface they're on). Plan 2 adds tools
-// (so it can act on the board) and thread persistence; this is the live, grounded conversation.
+// Context-aware Coach reply (Mirror + the surface they're on), persisted to the user's thread.
+// History is loaded from the DB (not passed by the client) so the conversation survives reloads.
+// Plan 2 adds tools so it can act on the board directly.
 export const ask = action({
   args: {
     message: v.string(),
-    history: v.array(
-      v.object({
-        role: v.union(v.literal("user"), v.literal("coach")),
-        content: v.string(),
-      }),
-    ),
     surfaceId: v.optional(v.id("surfaces")),
   },
   handler: async (ctx, args): Promise<string> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
+
+    // Snapshot prior turns BEFORE persisting this one, then echo the user message immediately
+    // (the mutation commits and pushes to the reactive `messages.list` subscribers right away).
+    const prior = await ctx.runQuery(api.messages.list, {});
+    const history = prior.slice(-8);
+    await ctx.runMutation(api.messages.add, { role: "user", content: args.message });
 
     const fragments: ContextFragment[] = [];
     const mirror = await ctx.runQuery(api.mirror.assemble, {});
@@ -57,13 +58,15 @@ Rules: Be concise, usually 2 to 4 sentences. Talk like a real person, not a self
       temperature,
       messages: [
         { role: "system", content: system },
-        ...args.history.map((m) => ({
+        ...history.map((m) => ({
           role: m.role === "coach" ? ("assistant" as const) : ("user" as const),
           content: m.content,
         })),
         { role: "user", content: args.message },
       ],
     });
-    return res.choices[0]?.message?.content ?? "I'm here.";
+    const reply = res.choices[0]?.message?.content ?? "I'm here.";
+    await ctx.runMutation(api.messages.add, { role: "coach", content: reply });
+    return reply;
   },
 });

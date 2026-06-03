@@ -16,7 +16,7 @@ Every table is multi-tenant: every row carries `userId` and every query/mutation
 | Future Self | `futureSelf` | proposed |
 | Journal / Sessions | `sessions`, `prompts` | proposed |
 | Pillars & Goals | `pillars`, `goals` | `pillars` live; `goals` proposed |
-| The Core | `mirror` | live |
+| The Core | `coreResponses` (raw Blueprint answers) + `mirror` (synthesized) | live |
 | The Coach | `threads`, `messages` | live (reserved, lightly used) |
 | Mirror / Context Bus | `interactions` + the assembler | live |
 | (system) | `profiles`, `settings`, `apiKeys`, `authTables` | live |
@@ -50,6 +50,9 @@ Per-user app settings. `{ userId, onboardedAt?, morningCheckin, eveningCheckin, 
 
 ### apiKeys
 Per-profile AI provider keys. `{ userId, provider: openrouter|openai|local, key, last4, createdAt, updatedAt }`, indexed `by_user_provider`. A user's own key wins over the deployment env key for that provider when their AI tasks run (see [`ai-layer.md`](ai-layer.md)). Server-only: `key` is never returned to the client (`convex/aiKeys.ts` exposes only status plus `last4`, and an `internalQuery` for server use). Encryption at rest is a tracked hardening step (see [`security-privacy.md`](security-privacy.md)).
+
+### coreResponses (the Core's raw backbone)
+The person's own answers to the fixed Life Blueprint. `{ userId, questionKey, content, updatedAt }`, indexed `by_user_question`. The question/section skeleton (3 sections, 18 questions, malleability) is code config in `lib/blueprint.ts` (generated from [`../product/blueprint/blueprint.json`](../product/blueprint/blueprint.json)); `questionKey` is `s{section}q{index}` (e.g. `s1q0`). This is the raw text the Coach curates into the synthesized `mirror`. See [`../product/features/core.md`](../product/features/core.md).
 
 ### mirror (the Core's store)
 The evolving text layer behind the human. `{ userId, summary, structured{ values[], themes[] }, version, takenAt }`, indexed `by_user` over `takenAt` (versioned history). This is what the Core **owns** and the Coach **curates**. The `structured` shape grows as the Core fills the Blueprint backbone (see Proposed: the Core backbone).
@@ -128,8 +131,8 @@ goals {
 }  // index by_user, by_pillar
 ```
 
-### Proposed: the Core backbone on `mirror.structured`
-The Core's skeleton is the Life Blueprint (3 sections, 18 questions). The Mirror's `structured` object grows to hold backbone answers and gap-awareness:
+### Proposed: the synthesized backbone on `mirror.structured`
+The raw Blueprint answers live in `coreResponses` (built, above). What is proposed here is the *synthesized* layer: as the curation pass lands, the Mirror's `structured` object grows to hold the Coach's distillation of those answers plus gap-awareness:
 ```
 structured {
   values[], themes[],                 // (live today)

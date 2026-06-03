@@ -16,6 +16,20 @@ The previous docs described an earlier direction (a Whiteboard plus Coach build,
 | Core idea | Life Blueprint (guided reflection) | rebuilding to the evolved vision |
 | Role | the model and seed | the live build |
 
+## Live in the app (build state, 2026-06-03)
+What actually works in code today (`~/Desktop/Life Board/LifeGuide`, Convex deployment `gregarious-boar-475`):
+- [x] **Auth** — Convex Auth with **Google** (durable, cross-device) + Anonymous ("just look around"). No Supabase.
+- [x] **Onboarding** — 5-step flow; completion persists (`settings.onboardedAt`).
+- [x] **Today** — AM/PM ritual, north star, one-move capture.
+- [x] **Core** — the Life Blueprint: 3 sections, 18 questions, malleability colors, editable, autosaved (`coreResponses` + `lib/blueprint.ts`).
+- [x] **Board** — vision board (nodes/edges), unified "Add anything" card, capture → AI distillation (OpenRouter, OpenAI fallback).
+- [x] **Guide** — the Mirror (synthesized reflection) + north star + pillars.
+- [x] **Coach** — context-aware dock; **conversation persists** to `messages`/`threads`.
+- [x] **Settings** — rhythm, tone, pillars, plus AI models and per-profile keys.
+- [ ] Sessions (daily self-stream), Journal as adaptive prompts, Future Self — not built.
+- [ ] Coach tool-use (acting on the board) and Core→Mirror regeneration — not built.
+- [ ] Account linking (anonymous data → Google account) — not built (clean start chosen).
+
 ## The map (rebuilt 2026-06-03)
 
 The rebuild is complete. The set below is written fresh to the evolved vision; nothing was restored from the old docs.

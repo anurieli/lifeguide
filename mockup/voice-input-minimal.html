@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LifeGuide · VoiceField — minimal</title>
+<style>
+  :root{
+    --paper:#FAF8F2; --ink:#1A1D24; --ink-soft:#444B58; --ink-mute:#9A9384; --ghost:#C7BEAC;
+    --gold:#B8945A; --gold-2:#8A6A2E; --green:#4F7A4A;
+    --coach:#1E232E; --coach-ink:#E9E6DD; --coach-mute:#8A8F9C;
+    --ease-out:cubic-bezier(0.23,1,0.32,1);
+    --ease-io:cubic-bezier(0.77,0,0.175,1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);
+    background:radial-gradient(1200px 700px at 50% -12%,#FFFDF7,var(--paper));-webkit-font-smoothing:antialiased}
+
+  .stage{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:8vh 24px;gap:0}
+  .vf{position:relative;width:min(620px,92vw)}
+
+  /* question — light, airy, it does the framing */
+  .q{font-size:26px;font-weight:500;line-height:1.32;letter-spacing:-.015em;color:var(--ink);
+    text-align:center;transition:opacity .4s var(--ease-out),filter .4s var(--ease-out);}
+  .q .small{display:block;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-mute);
+    font-weight:600;margin-bottom:14px}
+
+  /* ---- IDLE: just a hairline + ghost placeholder + a whisper-quiet mic ---- */
+  .idle{margin-top:34px;display:flex;flex-direction:column;align-items:center;gap:22px;
+    transition:opacity .35s var(--ease-out),filter .35s var(--ease-out),transform .35s var(--ease-out)}
+  .idle.gone{opacity:0;filter:blur(6px);transform:scale(.97);pointer-events:none;position:absolute;inset:0}
+  .type{width:100%;text-align:center}
+  .type input{width:100%;border:none;background:transparent;text-align:center;font-family:inherit;
+    font-size:17px;color:var(--ink);outline:none;padding:8px 0}
+  .type input::placeholder{color:var(--ghost)}
+  .hair{height:1px;width:100%;background:linear-gradient(90deg,transparent,var(--ghost) 18%,var(--ghost) 82%,transparent);
+    transform:scaleX(.6);transition:transform .5s var(--ease-out),background .3s}
+  .type:focus-within + .hair, .vf:hover .hair{transform:scaleX(1)}
+  .mic{position:relative;width:46px;height:46px;border-radius:50%;border:none;cursor:pointer;background:transparent;
+    color:var(--ink-mute);display:grid;place-items:center;transition:color .2s var(--ease-out),transform .14s var(--ease-out)}
+  .mic:hover{color:var(--gold-2)}
+  .mic:active{transform:scale(.94)}
+  .mic svg{width:21px;height:21px}
+  .mic .halo{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,rgba(184,148,90,.16),transparent 65%);
+    opacity:0;transition:opacity .3s}
+  .vf:hover .mic .halo{opacity:1}
+  .say{font-size:12px;color:var(--ghost);letter-spacing:.02em}
+
+  /* ---- LISTENING / ANALYZING / DONE share one open canvas (no box) ---- */
+  .live{position:relative;margin-top:30px;display:none;flex-direction:column;align-items:center;gap:26px}
+  .live.on{display:flex;animation:rise .45s var(--ease-out)}
+  @keyframes rise{from{opacity:0;filter:blur(6px);transform:scale(.96)}to{opacity:1;filter:blur(0);transform:none}}
+
+  /* waveform — thin, centered, reactive */
+  .wave{display:flex;align-items:center;gap:4px;height:40px;cursor:pointer}
+  .wave i{width:3px;border-radius:3px;background:var(--gold);height:40px;transform:scaleY(.12);
+    transform-origin:center;transition:transform .18s var(--ease-out),background .3s,opacity .3s}
+  .wave.settling i{transform:scaleY(.08)!important;background:var(--ghost)}
+
+  /* transcript — large, light, no container */
+  .script{font-size:21px;line-height:1.5;font-weight:400;color:var(--ink-soft);text-align:center;
+    max-width:540px;min-height:1.5em;transition:filter .4s var(--ease-out),color .4s var(--ease-out)}
+  .script.blurring{filter:blur(7px);opacity:.5}
+  .script .w{opacity:0;animation:win .3s var(--ease-out) forwards}
+  @keyframes win{to{opacity:1}}
+  .script .caret{display:inline-block;width:2px;height:1.05em;background:var(--gold-2);vertical-align:-3px;
+    margin-left:2px;animation:blink .9s step-end infinite}
+  @keyframes blink{50%{opacity:0}}
+  .script.final{color:var(--ink);font-weight:450;animation:resolve .55s var(--ease-out)}
+  @keyframes resolve{from{filter:blur(8px);opacity:0;transform:translateY(4px)}to{filter:blur(0);opacity:1;transform:none}}
+
+  /* ambient floating prompts — surface AROUND, drift, dissolve */
+  .orbit{position:absolute;inset:-30px -10px;pointer-events:none}
+  .prompt{position:absolute;font-size:14px;line-height:1.4;color:var(--gold-2);max-width:200px;
+    opacity:0;filter:blur(5px);transform:translateY(6px);font-style:italic;letter-spacing:.005em}
+  .prompt.show{animation:promptIn .8s var(--ease-out) forwards}
+  .prompt.hide{animation:promptOut .7s var(--ease-out) forwards}
+  @keyframes promptIn{to{opacity:.78;filter:blur(0);transform:translateY(0)}}
+  @keyframes promptOut{from{opacity:.78;filter:blur(0)}to{opacity:0;filter:blur(5px);transform:translateY(-8px)}}
+  .prompt::before{content:"✦";color:var(--gold);opacity:.6;margin-right:6px;font-style:normal;font-size:11px;vertical-align:1px}
+  .p0{top:-6px;left:-6px}
+  .p1{top:34%;right:-14px;text-align:right}
+  .p2{bottom:-10px;left:6%}
+
+  /* breathing status dot (the only chrome) */
+  .pulse{width:7px;height:7px;border-radius:50%;background:var(--gold);
+    animation:breathe 2.2s var(--ease-io) infinite}
+  @keyframes breathe{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}
+  .meta{display:flex;align-items:center;gap:10px;color:var(--ink-mute);font-size:12px;letter-spacing:.03em}
+
+  /* done: polished marker + raw, ghosted */
+  .after{display:none;align-items:center;gap:12px;color:var(--ink-mute);font-size:12.5px;
+    opacity:0;animation:fadeUp .5s var(--ease-out) .2s forwards}
+  .after.on{display:flex}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .after .pol{display:flex;align-items:center;gap:6px;color:var(--green)}
+  .after .raw{color:var(--ghost);cursor:pointer;border:none;background:none;font:inherit;font-size:12.5px;
+    text-underline-offset:3px;transition:color .2s}
+  .after .raw:hover{color:var(--ink-mute);text-decoration:underline}
+
+  /* tiny state dots — minimal replacement for a stepper */
+  .dots{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);display:flex;gap:10px}
+  .dots button{width:7px;height:7px;border-radius:50%;border:none;background:var(--ghost);cursor:pointer;padding:0;
+    transition:transform .2s var(--ease-out),background .2s}
+  .dots button:hover{transform:scale(1.3)}
+  .dots button.active{background:var(--gold);transform:scale(1.3)}
+  .label{position:fixed;bottom:42px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--ghost);letter-spacing:.04em}
+
+  /* compact coach variant, bottom-right */
+  .coach{position:fixed;bottom:78px;right:26px;width:300px;background:var(--coach);border-radius:18px;
+    padding:14px 16px;box-shadow:0 18px 50px -24px rgba(0,0,0,.6)}
+  .coach .ctitle{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:9px}
+  .coach .crow{display:flex;align-items:center;gap:10px}
+  .coach input{flex:1;border:none;background:transparent;color:var(--coach-ink);font:inherit;font-size:14px;outline:none}
+  .coach input::placeholder{color:var(--coach-mute)}
+  .coach .cmic{color:var(--coach-mute)}
+  .coach .cwave{display:none;align-items:center;gap:3px;height:26px;flex:1}
+  .coach .cwave.on{display:flex}
+  .coach .cwave i{width:2.5px;border-radius:2px;background:var(--gold);height:26px;transform:scaleY(.15);transform-origin:center;transition:transform .18s var(--ease-out)}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.001ms!important;transition-duration:.12s!important}
+    .prompt{transform:none!important}
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="vf" id="vf">
+      <div class="q"><span class="small">Core · who you’re becoming</span>Who do you want to be in five years?</div>
+
+      <!-- idle -->
+      <div class="idle" id="idle">
+        <div class="type"><input id="ti" placeholder="Say it however it lives in your head…" /></div>
+        <div class="hair"></div>
+        <button class="mic" id="mic" title="Speak"><span class="halo"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></svg>
+        </button>
+        <div class="say">type, or tap to speak</div>
+      </div>
+
+      <!-- live canvas -->
+      <div class="live" id="liveWrap">
+        <div class="orbit" id="orbit">
+          <div class="prompt p0"></div><div class="prompt p1"></div><div class="prompt p2"></div>
+        </div>
+        <div class="wave" id="wave" title="tap to finish"></div>
+        <div class="script" id="script"></div>
+        <div class="meta" id="meta"><span class="pulse"></span><span>tap the wave when you’re done</span></div>
+        <div class="after" id="after">
+          <span class="pol"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg> shaped with you</span>
+          <button class="raw" id="raw">show raw</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- compact coach -->
+  <div class="coach">
+    <div class="ctitle">Coach</div>
+    <div class="crow">
+      <input id="ci" placeholder="Talk to your Coach…" />
+      <div class="cwave" id="cwave"></div>
+      <button class="mic cmic" id="cmic" style="width:34px;height:34px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></svg></button>
+    </div>
+  </div>
+
+  <div class="label" id="label">idle</div>
+  <div class="dots" id="dots">
+    <button data-s="idle" class="active" title="idle"></button>
+    <button data-s="listening" title="listening"></button>
+    <button data-s="analyzing" title="analyzing"></button>
+    <button data-s="done" title="done"></button>
+  </div>
+
+<script>
+const RAW = 'honestly i picture someone who isnt anxious all the time, who runs his own thing, has a real circle of friends and is in good shape, someone people kind of look up to';
+const CLEAN = 'A calmer version of myself — running my own thing, physically strong, surrounded by a real circle of friends, the kind of person others look up to.';
+const PROMPTS = [
+  'Which part feels furthest away right now?',
+  'Who in your life already lives a piece of this?',
+  'What’s the first pillar to build toward it?',
+  'What would it cost you to stay the same?',
+];
+
+const idle=document.getElementById('idle'), liveWrap=document.getElementById('liveWrap'),
+  wave=document.getElementById('wave'), script=document.getElementById('script'),
+  meta=document.getElementById('meta'), after=document.getElementById('after'),
+  orbit=document.getElementById('orbit'), label=document.getElementById('label');
+const promptEls=[...orbit.querySelectorAll('.prompt')];
+
+// build reactive waveform
+const NB=42, bars=[];
+for(let i=0;i<NB;i++){const b=document.createElement('i');wave.appendChild(b);bars.push(b);}
+let waveTimer, wordTimer, promptTimer, targets=bars.map(()=>.12);
+function runWave(){
+  waveTimer=setInterval(()=>{
+    // moving target per bar; bars lerp via CSS transition -> organic, spring-like
+    for(let i=0;i<NB;i++){
+      const center=1-Math.abs(i-NB/2)/(NB/2);            // louder in the middle
+      const t=(.14+Math.random()*0.9*center+0.08).toFixed(2);
+      bars[i].style.transform='scaleY('+t+')';
+    }
+  },120);
+}
+function stopWave(settle){clearInterval(waveTimer); if(settle){wave.classList.add('settling');}}
+
+let pIdx=0, slot=0;
+function cyclePrompts(){
+  const show=()=>{
+    const el=promptEls[slot%3];
+    el.classList.remove('hide');
+    el.textContent=PROMPTS[pIdx%PROMPTS.length];
+    el.classList.add('show');
+    setTimeout(()=>{el.classList.remove('show');el.classList.add('hide');}, 2600);
+    pIdx++; slot++;
+  };
+  show();
+  promptTimer=setInterval(show, 1500);
+}
+function clearPrompts(){clearInterval(promptTimer);promptEls.forEach(e=>{e.classList.remove('show');e.className='prompt '+e.className.match(/p\d/)[0];e.textContent='';});}
+
+function reset(){
+  clearInterval(waveTimer);clearInterval(wordTimer);clearInterval(promptTimer);
+  wave.classList.remove('settling'); script.className='script'; script.innerHTML='';
+  after.classList.remove('on'); meta.style.display='';
+}
+
+function toIdle(){reset(); liveWrap.classList.remove('on'); idle.classList.remove('gone'); label.textContent='idle';}
+function toListening(){
+  reset(); idle.classList.add('gone'); liveWrap.classList.add('on'); label.textContent='listening';
+  runWave(); cyclePrompts();
+  const words=RAW.split(' '); let i=0; script.innerHTML='<span class="caret"></span>';
+  wordTimer=setInterval(()=>{
+    if(i>=words.length){clearInterval(wordTimer);return;}
+    const s=document.createElement('span');s.className='w';s.textContent=words[i]+' ';
+    script.querySelector('.caret').before(s); i++;
+  },230);
+}
+function toAnalyzing(){
+  clearInterval(wordTimer); clearPrompts(); stopWave(true);
+  meta.style.display='none'; script.classList.add('blurring'); label.textContent='analyzing';
+}
+function toDone(){
+  idle.classList.add('gone'); liveWrap.classList.add('on');
+  clearInterval(waveTimer);clearInterval(wordTimer);clearInterval(promptTimer);
+  wave.classList.add('settling'); meta.style.display='none';
+  script.className='script final'; script.textContent=CLEAN; after.classList.add('on'); label.textContent='done';
+}
+
+document.getElementById('mic').onclick=toListening;
+document.getElementById('ti').addEventListener('keydown',e=>{if(e.key==='Enter')toListening();});
+wave.onclick=()=>{toAnalyzing(); setTimeout(toDone, 1500);};
+document.getElementById('raw').onclick=function(){
+  if(script.textContent===CLEAN){script.className='script';script.style.color='var(--ink-mute)';script.textContent=RAW;this.textContent='show shaped';}
+  else{script.className='script final';script.style.color='';script.textContent=CLEAN;this.textContent='show raw';}
+};
+
+// minimal state dots
+function show(st){
+  if(st==='idle')toIdle();
+  if(st==='listening')toListening();
+  if(st==='analyzing'){toListening();setTimeout(toAnalyzing,40);}
+  if(st==='done'){reset();toDone();}
+}
+document.querySelectorAll('#dots button').forEach(b=>{
+  b.onclick=()=>{document.querySelectorAll('#dots button').forEach(x=>x.classList.remove('active'));b.classList.add('active');show(b.dataset.s);};
+});
+
+// coach mini demo
+const cwave=document.getElementById('cwave'), ci=document.getElementById('ci');
+const cbars=[]; for(let i=0;i<28;i++){const b=document.createElement('i');cwave.appendChild(b);cbars.push(b);}
+let ct;
+document.getElementById('cmic').onclick=()=>{
+  ci.style.display='none'; cwave.classList.add('on');
+  ct=setInterval(()=>cbars.forEach((b,i)=>{const c=1-Math.abs(i-14)/14;b.style.transform='scaleY('+(.15+Math.random()*0.85*c).toFixed(2)+')';}),120);
+  cwave.onclick=()=>{clearInterval(ct);cwave.classList.remove('on');ci.style.display='';ci.value=CLEAN.slice(0,46)+'…';};
+};
+</script>
+</body>
+</html>

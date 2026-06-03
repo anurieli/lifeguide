@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Id } from "@/convex/_generated/dataModel";
 import { Rail, View } from "./Rail";
 import { Today } from "@/components/today/Today";
+import { Core } from "@/components/core/Core";
 import { Whiteboard } from "@/components/whiteboard/Whiteboard";
 import { Guide } from "@/components/guide/Guide";
 import { Settings } from "@/components/settings/Settings";
@@ -21,6 +22,7 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
           <Whiteboard surfaceId={surfaceId} />
         </div>
         {view === "today" && <Today onNavigate={setView} />}
+        {view === "core" && <Core />}
         {view === "guide" && <Guide />}
         {view === "settings" && <Settings />}
       </main>

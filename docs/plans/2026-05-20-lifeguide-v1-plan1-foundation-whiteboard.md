@@ -18,7 +18,11 @@
 
 **Spec:** `LifeGuide/docs/product/prd.md` · **Concept:** `LifeGuide/docs/product/concept-and-soul.md`
 
-> **Progress (2026-05-20):** Task 0 (frontend scaffold) and Task 2 (geometry helpers) are ✅ built and verified (`npm test` 4/4, `npm run build` clean). Because the `LifeGuide/` folder already held docs/mockup, Task 0 was hand-written rather than via `create-next-app`, and `@convex-dev/auth`/`openai`/`convex-test` installs were deferred. **Tasks 1, 3–8 are Convex-dependent and gated on provisioning** — they run once a one-time `npx convex dev` login is done and `OPENAI_API_KEY` is set.
+> **Progress (2026-06-03): Tasks 0–8 BUILT, deployed, and live-verified.** Convex dev deployment `lifeguide-dev` (team `ariel-nurieli`) is provisioned; anonymous multi-tenant auth, full schema, node/edge CRUD, the canvas (pan/zoom/drag, click-to-connect, dot grid), capture intake (paste/upload/url), spiral placement, and the context scaffolding (pure assembler, provider query, Mirror + interactions) are all working against the live backend. Verified in-browser: sign-in seeds the board; create/drag node, connect edge, paste-to-capture, and place-to-node all persist (confirmed via `convex data`). Tests: 18/18 pass (geometry, edges-cycle, distill-parse, assembler).
+>
+> **One piece pending a secret:** the distillation **LLM call** (Task 7) is code-complete but needs `OPENROUTER_API_KEY` set on the deployment (`npx convex env set OPENROUTER_API_KEY sk-or-...`). Until then, captures still land and can be placed; they just show "distilling…" instead of a generated title/essence/pillars.
+>
+> **Deviations from the literal plan** (all to honor ADR 0006 + installed library versions): vector index omitted (embeddings deferred) and `embedding` kept optional; AI gateway is OpenRouter via the `openai` SDK `baseURL` with model `openai/gpt-4o-mini` (no `"use node"` needed; no `embed.ts`); `Anonymous` is a named import; distill action + capture internals are `internal*` (server-only) for tighter security; node drag uses pointer-capture with optimistic-then-commit; `users.current` returns the surface id to remove a load flash. `OPENAI_API_KEY` → `OPENROUTER_API_KEY` throughout.
 
 ---
 

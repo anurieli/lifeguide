@@ -6,7 +6,9 @@
 
 **Architecture:** Next.js App Router shell renders surfaces; Convex is the real-time backend (reactive DB + file storage + vector index + server-side OpenAI actions). Every surface implements a `SurfaceContextProvider` (snapshot + tools); a pure `assembleContext()` function stitches in-view + global context for AI calls. The Whiteboard is the first surface and the first provider. The Coach that consumes the assembled context arrives in Plan 2.
 
-**Tech Stack:** Next.js 15 (App Router) · TypeScript · TailwindCSS · Convex · `@convex-dev/auth` (Anonymous) · `openai` (gpt-4o-mini + text-embedding-3-small) · Vitest + convex-test · Lucide React · custom DOM/CSS/SVG canvas (not Konva).
+**Tech Stack:** Next.js 15 (App Router) · TypeScript · TailwindCSS · Convex · `@convex-dev/auth` (Anonymous) · `openai` SDK → **OpenRouter** (`openai/gpt-4o-mini`; embeddings deferred — ADR 0006) · Vitest + convex-test · Lucide React · custom DOM/CSS/SVG canvas (not Konva).
+
+> **AI note (ADR 0006):** Task 7 uses an OpenRouter client (`new OpenAI({ apiKey: OPENROUTER_API_KEY, baseURL: "https://openrouter.ai/api/v1" })`) and the `openai/gpt-4o-mini` model for distillation. The embedding action + the `nodes`/`captures` vector index are **deferred** (OpenRouter has no embeddings endpoint; nothing reads vectors in v1) — when Task 7 is built live, skip embed generation and the vector index, leaving the `embedding` field optional.
 
 **Plan series (v1):**
 - **Plan 1 (this doc): Foundation + Whiteboard** — platform, schema, node/edge model, canvas, capture+distillation, context scaffolding.

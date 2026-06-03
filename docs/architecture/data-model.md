@@ -41,7 +41,7 @@ messages      { userId, threadId, role: "user"|"coach", content, toolCalls[]?, c
 
 ## Notes
 - **Captures vs nodes:** a capture is the *event of inspiration* (immutable raw); a node is its *visual presence*. Dismissed captures still feed the Mirror.
-- **Embeddings:** OpenAI `text-embedding-3-small` (1536), Convex vector index — powers grouping, search, resurfacing.
+- **Embeddings:** **deferred in v1** (OpenRouter has no embeddings endpoint, and nothing reads vectors until post-v1 recall/grouping — ADR [0006](../decisions/0006-openrouter-for-generative-ai.md)). The `embedding` field stays optional; the Convex vector index is added when embeddings are wired, with provider + dimensions chosen then.
 - **Mirror:** structured records + a compacted summary, versioned. Never a single growing blob (PillarOS's mistake).
 - **Edges:** cycle detection via DFS (`wouldCreateCycle`) + persisted check; one node → many; self/duplicate edges disallowed.
 - Forward-defined tables (`goals`, `threads`, `messages`) exist in the schema from Plan 1 to avoid migration churn even though consumed later.

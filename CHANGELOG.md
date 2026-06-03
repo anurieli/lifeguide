@@ -7,6 +7,10 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-05-20 · Decision: OpenRouter for generative AI (ADR 0006)
+Adopted **OpenRouter** as the generative-AI gateway — OpenAI-compatible, so we keep the `openai` SDK with a custom baseURL and one `OPENROUTER_API_KEY`, with swappable models (default `openai/gpt-4o-mini`). **Embeddings and transcription deferred** (OpenRouter has no endpoint for either; embeddings are computed-but-unused in v1, transcription is Plan 3). Env var `OPENAI_API_KEY` → `OPENROUTER_API_KEY`.
+**Docs touched:** `docs/decisions/0006-openrouter-for-generative-ai.md` (new), `docs/decisions/README.md`, `docs/architecture/{ai-layer,stack,data-model}.md`, `docs/plans/2026-05-20-lifeguide-v1-plan1-foundation-whiteboard.md`.
+
 ## 2026-05-20 · Build: foundation scaffold + geometry (Plan 1, Tasks 0 & 2) ✅ verified
 Scaffolded the Next.js (App Router) + TailwindCSS frontend and initialized the git repo. Implemented the pure geometry module (`screenToCanvas`, `rectsOverlap`, `spiralOffsets`) with Vitest tests. **Verified:** `npm test` → 4/4 pass; `npm run build` → compiles + type-checks clean. Adapted Task 0 to the already-populated folder (hand-wrote the scaffold instead of `create-next-app`; deferred `@convex-dev/auth`/`openai`/`convex-test` to the Convex-provisioning step). Convex backend (Tasks 1, 3–8) is gated on provisioning (Convex login + OpenAI key).
 Commit: c21e831 (+ this). **Docs touched:** `CHANGELOG.md`; progress note in `docs/plans/2026-05-20-lifeguide-v1-plan1-foundation-whiteboard.md`.

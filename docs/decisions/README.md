@@ -9,3 +9,4 @@ One short record per notable decision: context, the decision, status, consequenc
 | [0003](0003-reflection-loop-as-wedge.md) | The closed reflection loop is the product wedge | Accepted |
 | [0004](0004-manual-and-coach-both.md) | Manual and Coach interaction both first-class | Accepted |
 | [0005](0005-pillars-as-tags.md) | Pillars are cross-cutting tags, default "Lifestyle" | Accepted |
+| [0006](0006-openrouter-for-generative-ai.md) | OpenRouter for generative AI; embeddings deferred | Accepted |

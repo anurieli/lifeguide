@@ -11,7 +11,15 @@ export const current = query({
       .query("profiles")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
-    return { user, bootstrapped: !!profile };
+    // Include the default surface id so the client resolves the board in one roundtrip
+    // (no "Preparing…" flash on reload for an already-bootstrapped user).
+    const surface = profile
+      ? await ctx.db
+          .query("surfaces")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .first()
+      : null;
+    return { user, bootstrapped: !!profile, surfaceId: surface?._id ?? null };
   },
 });
 

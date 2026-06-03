@@ -117,3 +117,38 @@ export const remove = mutation({
     await ctx.db.patch(args.nodeId, { isActive: false, updatedAt: Date.now() });
   },
 });
+
+// Surface context fragment for the assembler (consumed by the Coach in Plan 2).
+export const surfaceContext = query({
+  args: { surfaceId: v.id("surfaces") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    const surface = await ctx.db.get(args.surfaceId);
+    if (!surface || surface.userId !== userId) return null;
+
+    const nodes = await ctx.db
+      .query("nodes")
+      .withIndex("by_surface", (q) => q.eq("surfaceId", args.surfaceId).eq("isActive", true))
+      .collect();
+    const edges = await ctx.db
+      .query("edges")
+      .withIndex("by_surface", (q) => q.eq("surfaceId", args.surfaceId))
+      .collect();
+
+    const nodeLines = nodes
+      .map((n) => `- (${n._id}) [${n.type}] ${n.title ?? ""} ${n.text ?? ""}`.trim())
+      .join("\n");
+    const edgeLines = edges
+      .map((e) => `- ${e.fromNode} -> ${e.toNode}${e.label ? ` (${e.label})` : ""}`)
+      .join("\n");
+
+    return {
+      surfaceId: args.surfaceId as string,
+      scope: "surface" as const,
+      label: "Whiteboard",
+      text: `Nodes:\n${nodeLines || "(empty)"}\n\nConnections:\n${edgeLines || "(none)"}`,
+      priority: 8,
+    };
+  },
+});

@@ -124,6 +124,18 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 
+  // Per-profile AI provider keys. A user's own key (e.g. their OpenRouter key) is
+  // used for their AI calls in preference to the deployment env key. Server-only:
+  // `key` is never returned to the client (see convex/aiKeys.ts).
+  apiKeys: defineTable({
+    userId: v.id("users"),
+    provider: v.union(v.literal("openrouter"), v.literal("openai"), v.literal("local")),
+    key: v.string(),
+    last4: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user_provider", ["userId", "provider"]),
+
   // The Mirror: the evolving "text layer behind the human". Structured records + summary, versioned.
   mirror: defineTable({
     userId: v.id("users"),

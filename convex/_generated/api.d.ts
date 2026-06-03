@@ -12,6 +12,7 @@ import type * as ai_config from "../ai/config.js";
 import type * as ai_distill from "../ai/distill.js";
 import type * as ai_openai from "../ai/openai.js";
 import type * as ai_parse from "../ai/parse.js";
+import type * as aiKeys from "../aiKeys.js";
 import type * as auth from "../auth.js";
 import type * as captures from "../captures.js";
 import type * as coach from "../coach.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   "ai/distill": typeof ai_distill;
   "ai/openai": typeof ai_openai;
   "ai/parse": typeof ai_parse;
+  aiKeys: typeof aiKeys;
   auth: typeof auth;
   captures: typeof captures;
   coach: typeof coach;

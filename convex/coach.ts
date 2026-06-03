@@ -2,7 +2,7 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { api } from "./_generated/api";
-import { aiClient, resolveModel } from "./ai/openai";
+import { aiForTask } from "./ai/openai";
 import { assembleContext } from "./context/assemble";
 import { ContextFragment } from "./context/types";
 
@@ -49,10 +49,12 @@ ${context || "(almost nothing yet, they are just getting started, so be welcomin
 
 Rules: Be concise, usually 2 to 4 sentences. Talk like a real person, not a self-help book. No streaks, guilt, or hype. Ground what you say in what you can actually see above. If they ask you to put something on their board, describe what you would add and where it fits (in this version you cannot place it yourself yet).`;
 
-    const { client, provider } = aiClient();
+    // Model + provider for this task come from convex/ai/config.ts; uses the user's
+    // own provider key if they saved one, else the deployment env key.
+    const { client, model, temperature } = await aiForTask(ctx, "coachReply", userId);
     const res = await client.chat.completions.create({
-      model: resolveModel("openai/gpt-4o-mini", provider),
-      temperature: 0.7,
+      model,
+      temperature,
       messages: [
         { role: "system", content: system },
         ...args.history.map((m) => ({

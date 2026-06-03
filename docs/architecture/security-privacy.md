@@ -8,7 +8,11 @@
 Every table carries `userId`. Every query, mutation, and action calls `getAuthUserId` first and filters to that user. A function that cannot establish a user does not read or write. This is enforced per-call, not by a gateway, so there is no path that forgets it. See [`data-model.md`](data-model.md) and [`stack.md`](stack.md).
 
 ## Auth
-Anonymous multi-tenant auth via `@convex-dev/auth`. Identity is established server-side; the client never asserts a `userId`. Caveat: anonymous identity is cookie-bound, so clearing the cookie starts a fresh person. Durable accounts (email/passkey) are a later upgrade on the same gate.
+Multi-tenant auth via `@convex-dev/auth` (`convex/auth.ts`), with two providers wired:
+- **Anonymous:** instant, cookie-bound, throwaway identity for "just look around." Caveat: clearing the cookie starts a fresh person.
+- **Google:** a durable account that survives cookie clears and works across browsers and devices. The code is wired; it needs `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` in the Convex deployment env and the callback URL `https://<deployment>.convex.site/api/auth/callback/google` registered in the Google Cloud OAuth client. Until those exist, `signIn("google")` fails but Anonymous still works.
+
+Identity is established server-side; the client never asserts a `userId`. Durable login is what makes a per-profile OpenRouter key (see [`ai-layer.md`](ai-layer.md)) actually stick to a person across devices.
 
 ## Keys never reach the client
 All AI keys (`OPENROUTER_API_KEY`, the `OPENAI_API_KEY` fallback) live in the Convex deployment environment and are read only inside server actions. No key is bundled, exposed via `NEXT_PUBLIC_`, or returned to the browser. See [`ai-layer.md`](ai-layer.md).

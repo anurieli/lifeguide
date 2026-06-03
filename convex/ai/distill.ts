@@ -2,8 +2,7 @@ import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { Doc } from "../_generated/dataModel";
-import { aiClient, resolveModel } from "./openai";
-import { AI } from "./config";
+import { aiForTask } from "./openai";
 import { parseDistilled } from "./parse";
 
 // Distill a capture into {title, essence, pillars}. Scheduled by captures.create.
@@ -19,13 +18,14 @@ export const distillCapture = internalAction({
     const input = buildInput(capture);
     if (!input) return; // nothing textual to distill yet (e.g. a bare image) — placed as-is
 
-    const { client, provider } = aiClient();
+    // Uses the user's own provider key if they saved one, else the deployment env key.
+    const { client, model, temperature, system } = await aiForTask(ctx, "distill", capture.userId);
     const res = await client.chat.completions.create({
-      model: resolveModel(AI.distill.model, provider),
-      temperature: AI.distill.temperature,
+      model,
+      temperature,
       response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: AI.distill.system },
+        { role: "system", content: system! },
         { role: "user", content: input },
       ],
     });

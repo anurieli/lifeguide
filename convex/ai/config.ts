@@ -1,8 +1,77 @@
-// Central AI config hub. One place to tune models, params, and prompts (ADR 0006: OpenRouter).
-export const AI = {
+// ============================================================================
+// THE AI CONFIG HUB  —  every AI "node" in LifeGuide is defined here, in one file.
+// ============================================================================
+// To change which model a task uses, or move a task to a local model, edit the
+// TASKS table below. Nothing else needs to change. See ./README.md for the how.
+//
+// Two concepts:
+//   PROVIDERS = WHERE a model runs (a base URL + which env var holds the key).
+//   TASKS     = each distinct AI job in the app, each pointing at a provider + model.
+// Everything is OpenAI-compatible, so OpenRouter, OpenAI-direct, and a local
+// router (LM Studio / Ollama / vLLM) all use the same client, just a different
+// baseURL and key.
+// ============================================================================
+
+export type ProviderId = "openrouter" | "openai" | "local";
+
+export type ProviderConfig = {
+  label: string;
+  baseURL?: string; // omit for OpenAI-direct (SDK default)
+  keyEnv: string; // the Convex env var holding the API key for this provider
+  /** When true, a missing key is fine (local routers usually ignore the key). */
+  keyOptional?: boolean;
+  defaultHeaders?: Record<string, string>;
+};
+
+export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
+  // Preferred gateway: one key, hundreds of models, model ids are "vendor/model".
+  openrouter: {
+    label: "OpenRouter",
+    baseURL: "https://openrouter.ai/api/v1",
+    keyEnv: "OPENROUTER_API_KEY",
+    defaultHeaders: { "HTTP-Referer": "https://lifeguide.app", "X-Title": "LifeGuide" },
+  },
+  // OpenAI-direct fallback: model ids are bare ("gpt-4o-mini").
+  openai: {
+    label: "OpenAI",
+    keyEnv: "OPENAI_API_KEY",
+  },
+  // A local model or local router exposing an OpenAI-compatible endpoint.
+  // Point LOCAL_AI_BASE_URL at it (e.g. http://localhost:1234/v1 for LM Studio,
+  // http://localhost:11434/v1 for Ollama). The key is usually ignored.
+  local: {
+    label: "Local",
+    baseURL: process.env.LOCAL_AI_BASE_URL ?? "http://localhost:1234/v1",
+    keyEnv: "LOCAL_AI_API_KEY",
+    keyOptional: true,
+  },
+};
+
+export type TaskConfig = {
+  /** Human label shown in Settings so every AI node is visible in one place. */
+  label: string;
+  provider: ProviderId;
+  /** Model id in the form the chosen provider expects. */
+  model: string;
+  temperature: number;
+  /** Whether this task is actually wired into the app yet. */
+  wired: boolean;
+  system?: string;
+};
+
+// ----------------------------------------------------------------------------
+// THE AI NODES. Add, remove, or re-point any of these. `provider` + `model` are
+// the two dials. To use a local model for distillation, for example, set
+// distill.provider = "local" and distill.model = "llama-3.1-8b-instruct".
+// ----------------------------------------------------------------------------
+export const TASKS: Record<string, TaskConfig> = {
+  // Capture -> {title, essence, pillars}. Live.
   distill: {
+    label: "Distill a capture",
+    provider: "openrouter",
     model: "openai/gpt-4o-mini",
     temperature: 0.4,
+    wired: true,
     system: `You distill a captured artifact (a quote, note, link, or image caption) for a personal life-mapping app, where someone is slowly figuring out who they are and where they're going.
 
 Return ONLY a JSON object, no prose, in this exact shape:
@@ -10,4 +79,52 @@ Return ONLY a JSON object, no prose, in this exact shape:
 
 Be concrete and human. Never invent facts the input doesn't imply. If the input is thin, keep the essence short and honest.`,
   },
-} as const;
+
+  // The Coach's conversational reply. Live (system prompt is built per-call in coach.ts).
+  coachReply: {
+    label: "Coach reply",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.7,
+    wired: true,
+  },
+
+  // Re-synthesize the Mirror from accumulated signal (the core-curation pass). Proposed.
+  // A stronger model is the natural choice here; flip the model when this lands.
+  curate: {
+    label: "Core curation",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.3,
+    wired: false,
+  },
+
+  // Choose the next adaptive Journal prompts from Core + Goals. Proposed.
+  journalPrompts: {
+    label: "Journal prompts",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.6,
+    wired: false,
+  },
+};
+
+export type TaskId = string;
+
+// Back-compat alias: older call sites referenced `AI.distill`. Keep them working.
+export const AI = TASKS;
+
+/** Safe, secret-free view of the registry for the Settings UI ("see all AI nodes"). */
+export function aiNodeSummary() {
+  return Object.keys(TASKS).map((id) => {
+    const t = TASKS[id];
+    return {
+      id,
+      label: t.label,
+      provider: t.provider,
+      providerLabel: PROVIDERS[t.provider].label,
+      model: t.model,
+      wired: t.wired,
+    };
+  });
+}

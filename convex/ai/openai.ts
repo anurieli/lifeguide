@@ -1,17 +1,81 @@
 import OpenAI from "openai";
+import { internal } from "../_generated/api";
+import { PROVIDERS, TASKS, type ProviderId, type TaskId } from "./config";
 
-export type AiProvider = "openrouter" | "openai";
+export type AiProvider = ProviderId;
 
-// One client, provider-flexible. Prefers OpenRouter (ADR 0006); falls back to OpenAI-direct when
-// only an OpenAI key is present. Same SDK, different baseURL + model namespace. Server-only keys.
+// A context that can run queries (action or internalAction ctx). Kept loose so this
+// file does not depend on a specific generated ctx type.
+type RunQueryCtx = { runQuery: (ref: any, args: any) => Promise<any> };
+
+/**
+ * Resolve the API key for a provider: a key the user saved to their own profile
+ * wins over the deployment env key. The key is read server-side only and never
+ * returned to the client.
+ */
+async function resolveKey(
+  ctx: RunQueryCtx,
+  provider: ProviderId,
+  userId?: string | null,
+): Promise<string | undefined> {
+  if (userId) {
+    const profileKey: string | null = await ctx.runQuery(internal.aiKeys.getKeyInternal, {
+      userId,
+      provider,
+    });
+    if (profileKey) return profileKey;
+  }
+  return process.env[PROVIDERS[provider].keyEnv];
+}
+
+export type TaskClient = {
+  client: OpenAI;
+  model: string;
+  temperature: number;
+  system?: string;
+  provider: ProviderId;
+};
+
+/**
+ * Build the AI client for a named task (an "AI node"). The task's provider and
+ * model come from ./config.ts (the one place to tune them). The key is the user's
+ * own profile key for that provider if set, otherwise the deployment env key.
+ */
+export async function aiForTask(
+  ctx: RunQueryCtx,
+  taskId: TaskId,
+  userId?: string | null,
+): Promise<TaskClient> {
+  const task = TASKS[taskId];
+  if (!task) throw new Error(`Unknown AI task: ${taskId}`);
+  const prov = PROVIDERS[task.provider];
+
+  const key = await resolveKey(ctx, task.provider, userId);
+  if (!key && !prov.keyOptional) {
+    throw new Error(
+      `No API key for provider "${task.provider}" (task "${taskId}"). Set ${prov.keyEnv} in the Convex env, or save your own key in Settings.`,
+    );
+  }
+
+  const client = new OpenAI({
+    apiKey: key ?? "local-no-key",
+    baseURL: prov.baseURL,
+    defaultHeaders: prov.defaultHeaders,
+  });
+  return { client, model: task.model, temperature: task.temperature, system: task.system, provider: task.provider };
+}
+
+// ---------------------------------------------------------------------------
+// Back-compat: the old global, key-only client. Prefer aiForTask going forward.
+// ---------------------------------------------------------------------------
 export function aiClient(): { client: OpenAI; provider: AiProvider } {
   const orKey = process.env.OPENROUTER_API_KEY;
   if (orKey) {
     return {
       client: new OpenAI({
         apiKey: orKey,
-        baseURL: "https://openrouter.ai/api/v1",
-        defaultHeaders: { "HTTP-Referer": "https://lifeguide.app", "X-Title": "LifeGuide" },
+        baseURL: PROVIDERS.openrouter.baseURL,
+        defaultHeaders: PROVIDERS.openrouter.defaultHeaders,
       }),
       provider: "openrouter",
     };

@@ -6,19 +6,25 @@ The AI layer is server-only. It lives entirely inside Convex actions; no key, pr
 
 ---
 
-## Providers: OpenRouter preferred, OpenAI fallback
+## One file holds every AI node
 
-One client, provider-flexible (`convex/ai/openai.ts`). The same OpenAI SDK talks to either provider; only the `baseURL` and the model namespace differ.
+The whole AI surface is defined in one place: [`../../convex/ai/config.ts`](../../convex/ai/config.ts) (see also [`../../convex/ai/README.md`](../../convex/ai/README.md)). It has two tables, and they are the only dials:
 
-- **OpenRouter is preferred and LIVE today.** The dev deployment has `OPENROUTER_API_KEY` set, so `aiClient()` returns an OpenRouter client (custom `baseURL` `https://openrouter.ai/api/v1`, LifeGuide referer headers).
-- **OpenAI is the automatic fallback.** If no OpenRouter key is present but `OPENAI_API_KEY` is, the same SDK runs against OpenAI-direct with no code change. With neither key, `aiClient()` throws with the exact `npx convex env set` command to fix it.
-- **Swappable models.** Canonical model ids are OpenRouter-namespaced (`openai/gpt-4o-mini`, the default in `convex/ai/config.ts`). `resolveModel(id, provider)` strips the `openai/` prefix when running OpenAI-direct, so one config id works against either provider. Pointing a role at a different model (an Anthropic or open-weights model on OpenRouter) is a one-line change in `config.ts`.
+- **`PROVIDERS`** = where a model runs. Each is a `baseURL` plus the Convex env var holding its key. Three ship: `openrouter` (preferred), `openai` (direct fallback), and `local` (any OpenAI-compatible local server, pointed at by `LOCAL_AI_BASE_URL`, key optional).
+- **`TASKS`** = every AI node in the app, each naming a `provider` + `model` (+ temperature, + optional system prompt). This is what makes "a different model for different tasks" trivial: `distill` can run on OpenRouter while `coachReply` runs on a local Llama, by editing two fields.
 
-`convex/ai/config.ts` is the single hub for models, params, and prompts. Tune AI behavior there, not in the actions.
+Because everything is OpenAI-compatible, the same SDK reaches all three providers; only the `baseURL` and key differ. Moving a task to a local model is: set its `provider` to `local`, set its `model` to whatever the local server serves, and `npx convex env set LOCAL_AI_BASE_URL http://localhost:1234/v1`. Pointing a task at a stronger hosted model (an Anthropic or open-weights model on OpenRouter) is a one-line model change.
 
-### Server-only keys
+`aiForTask(ctx, taskId, userId)` in `convex/ai/openai.ts` builds the client for a task: it reads the provider + model from `config.ts`, resolves the key (per-profile then env, below), and returns `{ client, model, temperature, system }`. Live call sites: `distill.ts` (`distill`) and `coach.ts` (`coachReply`). The `curate` and `journalPrompts` nodes are defined and visible in Settings but not yet called. A secret-free `aiNodeSummary()` feeds the Settings list so every node is visible in the app.
 
-Keys live in Convex env (`OPENROUTER_API_KEY` / `OPENAI_API_KEY`), read via `process.env` inside actions. AI work runs in `internalAction`s scheduled by mutations (see distillation below), so the model call and its key stay on the server. The client never sees either.
+### Keys: deployment env and per-profile
+
+A task resolves its key in this order:
+
+1. **The user's own key** for that provider, if they saved one in Settings. Stored per profile in the `apiKeys` table (see [`data-model.md`](data-model.md)), gated by `userId`, **server-only**: the key is never returned to the client (the UI reads back only "set or not" plus the last four). So a person can bring their own OpenRouter key and their calls run on it.
+2. **The deployment env key** (`PROVIDERS[provider].keyEnv`, e.g. `OPENROUTER_API_KEY`), the shared fallback. OpenRouter is LIVE on the dev deployment today; OpenAI is the automatic fallback when only `OPENAI_API_KEY` is present.
+
+All resolution and the model call happen inside Convex actions (`internalAction`s for scheduled work like distillation), so neither key nor prompt reaches the client. Hardening note: per-profile keys are stored as-is and gated by `userId`; encryption at rest is tracked in [`security-privacy.md`](security-privacy.md).
 
 ---
 

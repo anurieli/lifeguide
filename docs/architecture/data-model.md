@@ -19,7 +19,7 @@ Every table is multi-tenant: every row carries `userId` and every query/mutation
 | The Core | `mirror` | live |
 | The Coach | `threads`, `messages` | live (reserved, lightly used) |
 | Mirror / Context Bus | `interactions` + the assembler | live |
-| (system) | `profiles`, `settings`, `authTables` | live |
+| (system) | `profiles`, `settings`, `apiKeys`, `authTables` | live |
 
 Ownership is stark: no element stores a copy of another's data. Cross-element needs are met by **drawing** through the Context Bus at act-time, never by holding (see [`context-bus.md`](context-bus.md)).
 
@@ -47,6 +47,9 @@ Cross-cutting typed tags (NOT containers). `{ userId, name, description?, weight
 
 ### settings
 Per-user app settings. `{ userId, onboardedAt?, morningCheckin, eveningCheckin, dailyExercise: intention|gratitude|free, coachTone: gentle|balanced|direct, reachingOut: leave|earned|often, northStar?, updatedAt }`.
+
+### apiKeys
+Per-profile AI provider keys. `{ userId, provider: openrouter|openai|local, key, last4, createdAt, updatedAt }`, indexed `by_user_provider`. A user's own key wins over the deployment env key for that provider when their AI tasks run (see [`ai-layer.md`](ai-layer.md)). Server-only: `key` is never returned to the client (`convex/aiKeys.ts` exposes only status plus `last4`, and an `internalQuery` for server use). Encryption at rest is a tracked hardening step (see [`security-privacy.md`](security-privacy.md)).
 
 ### mirror (the Core's store)
 The evolving text layer behind the human. `{ userId, summary, structured{ values[], themes[] }, version, takenAt }`, indexed `by_user` over `takenAt` (versioned history). This is what the Core **owns** and the Coach **curates**. The `structured` shape grows as the Core fills the Blueprint backbone (see Proposed: the Core backbone).

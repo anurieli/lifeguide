@@ -92,3 +92,65 @@ This concept validates the Foundation Blueprint and adds emphasis:
 - The **interaction principles** above are the design contract for every surface — calm, talk-first, progressive.
 
 The soul in one line: **LifeGuide is the space that keeps a man tethered to who he's becoming — and a Coach who makes sure today's life still points at it.**
+
+---
+
+## The evolved system (2026-06-03)
+
+This section captures the fuller architecture worked out in conversation. It extends, and in places sharpens, everything above, and it is the current source of truth for what LifeGuide is.
+
+### Two context streams
+
+LifeGuide runs on two kinds of context, different in kind, both feeding the Mirror but held separately:
+
+1. **The core (who you are).** The enduring identity layer: the vision board plus the deep questions and sections about your vision. Slow changing. This is the inner person, and it is what the Coach reaches into when it relates to *you*, not your day. It is the heart of the Mirror.
+2. **The sessions (your days).** The daily self-sessions, a morning beat and a night beat. Time and day aware, ordered, and scrollable back through history. Fast, recurring. Its own surface (the Journal). Each session feeds the core.
+
+The Coach and the Context Bus hold these as two distinct streams: "here is who they are" and "here is where they have been lately." Assembling context means drawing from both, weighted by what the moment needs.
+
+### The journal is adaptive prompts, not a diary
+
+The Journal is not a blank page. It is a feed of relevant prompts whose job is to (1) draw out the background that makes a person who they are, and (2) keep checking they are still on track toward their goals and surface what is drifting. Some prompts are daily (the morning and night beats); some are triggered by what the Mirror notices. Answers can be typed or spoken (a verbal interview session counts). The signal is what matters, not the format.
+
+### The Coach as core-curator
+
+The core is never static. The Coach continuously internalizes everything (board, journal, sessions) and runs it through a hard filter that repackages the signal to strengthen or reshape the core. Two rules govern it:
+
+- It does not silently overwrite. When new data conflicts with what it already holds, it brings the contradiction to the person, and the person decides.
+- The aim is the real thing: a true vision and an actual plan for life, kept aligned as the person changes.
+
+This is the alignment engine made concrete: detect drift from the north star, surface it gently, hand back the next small move.
+
+### Pillars: making a human solid
+
+Pillars are the domains that hold a person up, and the framework for becoming whole across all of them, not just one:
+
+- **Physical / body** (the backbone, support and backup),
+- **Professional** (stability, income),
+- **Social presence**,
+- and more, defined per person.
+
+Each pillar is something to strengthen. The pillars are how the app helps a person decide who they are across every part of life.
+
+### Future Self (its own data model)
+
+A distinct surface and data model from the vision board. Where the board holds ideas and inspiration, the Future Self holds *you as aspiration*: images, attires, and scenes of who you want to be and the life you want to live. Its purpose is to remind you, vividly, where you are going.
+
+### The surfaces
+
+- **Home / Dashboard.** Greets you by who you are (drawn from the core and the vision board), is aware of the time and day, and walks you into the right session. This is an identity aware calm home, not a metrics dashboard, so it stays consistent with "one thing per screen" (the rule forbids dumping data, not a welcoming home).
+- **Journal (self-sessions).** Its own surface. A chronological feed of morning and night sessions, prompt driven, scrollable back, each feeding the Mirror.
+- **Board (vision).** The vision board, the core identity context.
+- **Future Self.** The aspiration gallery.
+- **Guide.** The synthesized you: Mirror, north star, pillars.
+- **Coach.** Reads both streams and curates the core.
+
+### Build order
+
+Foundation first, then surfaces:
+
+1. The two-stream context and the Coach's core-curation loop (the spine).
+2. The Journal (self-sessions with history and time awareness) and the identity Dashboard.
+3. The Future Self surface and data model.
+
+The soul, restated: LifeGuide builds and steers one thing, a person's true self and the plan for their life, through a core that the Coach keeps honest, daily sessions that keep the pulse, pillars that make the person solid, and a vivid Future Self that keeps the direction in view.

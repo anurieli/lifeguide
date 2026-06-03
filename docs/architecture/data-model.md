@@ -28,6 +28,11 @@ captures      { userId, source, rawType, rawText?, rawUrl?, rawFileId?,
 
 pillars       { userId, name, description?, weight, source, createdAt }    // source: default|preset|custom; v1 seeds "Lifestyle"
 
+settings      { userId, onboardedAt?, morningCheckin, eveningCheckin, dailyExercise, coachTone, reachingOut, northStar?, updatedAt }
+              // one row/user (seeded by bootstrap): onboarding state + daily rhythm + Coach behavior + the north star
+              // dailyExercise: intention|gratitude|free ; coachTone: gentle|balanced|direct ; reachingOut: leave|earned|often
+              // index: by_user[userId]
+
 mirror        { userId, summary, structured{values[],themes[]}, version, takenAt }   // grows: people, goals, north-star candidates
               // index: by_user[userId,takenAt]
 

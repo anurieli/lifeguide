@@ -1,6 +1,9 @@
 # LifeGuide
 
-**The space for the individual.** An AI-first, context-aware personal life platform that helps a person — primarily young men who feel lost — reflect, set goals that matter to them, and stay aligned with who they're becoming. A spatial **Whiteboard** and a conversational **Coach** share one evolving brain (the **Mirror**).
+> # VERSION TWO OVERHAUL
+> This is the **V2 vision**: a full overhaul and rebuild of the original LifeGuide (the Next.js + Supabase Life Blueprint app). It is a different codebase (Next.js + **Convex**) and a sharpened vision: one **Core** kept honest by the **Coach**, two context streams (the Core and daily **Sessions**), a **Journal** of adaptive prompts, **Pillars & Goals**, a **Vision Board**, and **Future Self**. The original app is the seed and working model. Start at [`docs/README.md`](docs/README.md) and [`docs/product/concept-and-soul.md`](docs/product/concept-and-soul.md) ("the evolved system").
+
+**The space for the individual.** An AI-first, context-aware personal life platform that helps a person, primarily young men who feel lost, reflect, set goals that matter to them, and stay aligned with who they're becoming. Two surfaces, the spatial **Vision Board** and the conversational **Coach**, share one evolving brain (the **Mirror**).
 
 ## Orientation
 - **Rules for working here:** [`CLAUDE.md`](CLAUDE.md) — docs-as-source-of-truth + changelog discipline. Read it first.

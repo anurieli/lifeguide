@@ -7,6 +7,7 @@ const node_type = v.union(
   v.literal("quote"),
   v.literal("image"),
   v.literal("link"),
+  v.literal("file"),
   v.literal("generated_image"),
 );
 
@@ -32,11 +33,13 @@ export default defineSchema({
     userId: v.id("users"),
     surfaceId: v.id("surfaces"),
     captureId: v.optional(v.id("captures")),
-    type: node_type, // text | quote | image | link | generated_image
+    type: node_type, // text | quote | image | link | file | generated_image
     title: v.optional(v.string()),
     text: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     fileId: v.optional(v.id("_storage")),
+    fileName: v.optional(v.string()), // original name of an uploaded document (file nodes)
+    mimeType: v.optional(v.string()), // content type of an uploaded document (file nodes)
     attribution: v.optional(v.string()),
     position: v.object({ x: v.number(), y: v.number(), z: v.number() }),
     dimensions: v.object({ width: v.number(), height: v.number() }),

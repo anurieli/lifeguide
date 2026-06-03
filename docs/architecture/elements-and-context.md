@@ -59,7 +59,7 @@ Recurring draws:
 
 ## Element notes (to expand into full feature docs)
 
-- **Vision Board.** The life and world you want. A classic board: write text, import things, drop images. The signature move is co-building with the Coach: a chat on the board where you talk and it crafts the board with you, laying down nodes and filling image blocks asynchronously (pre-generated prompts populate the blocks the AI places). You talk the vision into existence.
+- **Vision Board.** The life and world you want. A classic board: write text, import things, drag photos and documents straight onto the canvas (images land as image cards; PDFs/docs land as file cards you can open or download; both upload to Convex storage). The signature move is co-building with the Coach: a chat on the board where you talk and it crafts the board with you, laying down nodes and filling image blocks asynchronously (pre-generated prompts populate the blocks the AI places). You talk the vision into existence.
 - **Future Self.** How you envision yourself: how you dress, how you want to be perceived, the crowds you want to attract, who you are becoming. Generative and personal: upload your own photos, try outfits and hairstyles, generate stills and (later) video of you living it. Mostly visual, but it still emits the text behind the visuals into the Core.
 - **Journal / Sessions.** A morning beat and a night beat, adaptive prompts (typed or spoken), timestamped and scrollable. Each session feeds the Sessions stream and, through the Coach, the Core.
 - **Pillars & Goals.** The domains that make a human solid (health and body, profession, social presence, and more per person) and the commitments inside each. Goals live inside pillars.

@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LifeGuide — Full Prototype</title>
+<style>
+  :root{
+    --paper:#FAF8F2; --paper-2:#F3EFE5; --ink:#1A1D24; --ink-soft:#444B58; --ink-mute:#8A8F9C;
+    --card:#FFFFFF; --line:#E7E1D4; --line-2:#EFEADE;
+    --accent:#1E3A5F; --gold:#B8945A; --green:#4F7A4A; --blue:#3A5C86; --violet:#5B4B7A; --teal:#2F6E6A;
+    --coach:#1E232E; --coach-soft:#2A303C; --coach-ink:#E9E6DD; --coach-mute:#9AA0AD;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;overflow:hidden}
+  button{font-family:inherit}
+  .screen{position:fixed;inset:0;display:none}
+  .screen.on{display:block}
+
+  /* ============ SPLASH ============ */
+  #splash{display:flex;align-items:center;justify-content:center;background:
+    radial-gradient(1200px 600px at 50% -10%, #FFFDF7, var(--paper))}
+  #splash .box{text-align:center}
+  #splash .mark{font-size:62px;font-weight:700;letter-spacing:-.03em}
+  #splash .dot{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--gold);margin-left:4px;vertical-align:middle}
+  #splash .tag{font-size:20px;color:var(--ink-soft);margin-top:10px}
+  #splash .sub{font-size:15px;color:var(--ink-mute);margin-top:6px}
+  .btn{background:var(--ink);color:#fff;border:none;border-radius:12px;padding:13px 26px;font-size:15px;cursor:pointer;margin-top:30px}
+  .btn:hover{background:#2a2f3a}
+  .btn.ghost{background:transparent;color:var(--ink-mute);border:1px solid var(--line)}
+  .btn.ghost:hover{color:var(--ink);background:var(--card)}
+  .btn.gold{background:var(--gold);color:#231a08}
+  .btn.gold:hover{background:#a8854e}
+
+  /* ============ ONBOARDING ============ */
+  #onboarding{background:radial-gradient(1000px 500px at 50% -10%, #FFFDF7, var(--paper));display:flex;flex-direction:column}
+  .onb-top{padding:22px 26px;display:flex;justify-content:space-between;align-items:center}
+  .onb-brand{font-weight:700;font-size:17px}
+  .onb-skip{font-size:13px;color:var(--ink-mute);cursor:pointer;background:none;border:none}
+  .onb-skip:hover{color:var(--ink)}
+  .dots{display:flex;gap:7px;justify-content:center;margin-top:4px}
+  .dots i{width:7px;height:7px;border-radius:50%;background:var(--line);transition:.2s}
+  .dots i.on{background:var(--gold);width:22px;border-radius:4px}
+  .onb-stage{flex:1;display:flex;align-items:center;justify-content:center;padding:20px}
+  .onb-card{max-width:560px;width:100%;text-align:center}
+  .onb-step{display:none;animation:fade .4s both}
+  .onb-step.on{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .onb-eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:14px}
+  .onb-card h1{font-size:34px;line-height:1.2;letter-spacing:-.02em;margin-bottom:14px}
+  .onb-card p{font-size:17px;color:var(--ink-soft);line-height:1.5;max-width:460px;margin:0 auto 8px}
+  .onb-input{width:100%;max-width:440px;margin:24px auto 0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;font-size:15px;outline:none;resize:none;display:block}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+  .chip-s{font-size:13px;padding:8px 14px;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--ink-soft);cursor:pointer}
+  .chip-s:hover{border-color:var(--gold);color:var(--ink)}
+  .opts{display:flex;flex-direction:column;gap:10px;max-width:420px;margin:24px auto 0;text-align:left}
+  .opt{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 17px;cursor:pointer;display:flex;align-items:center;gap:13px}
+  .opt:hover{border-color:var(--gold)}
+  .opt.sel{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+  .opt .ic{font-size:22px}
+  .opt .ti{font-weight:600;font-size:15px}
+  .opt .de{font-size:13px;color:var(--ink-mute)}
+  .slider{max-width:420px;margin:22px auto 0}
+  .slider .lab{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-mute);margin-bottom:8px}
+  input[type=range]{width:100%;accent-color:var(--gold)}
+  .coach-intro{display:flex;gap:14px;align-items:flex-start;max-width:460px;margin:22px auto 0;text-align:left;background:var(--coach);border-radius:16px;padding:20px;color:var(--coach-ink)}
+  .coach-intro .a{width:40px;height:40px;border-radius:50%;background:linear-gradient(140deg,var(--gold),#8A6A2E);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .coach-intro p{color:var(--coach-ink);font-size:15px;margin:0;max-width:none}
+  .onb-foot{padding:24px;display:flex;justify-content:center;gap:12px}
+
+  /* ============ APP SHELL ============ */
+  #app{display:flex}
+  .rail{width:84px;height:100vh;background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:18px 0;z-index:50;flex-shrink:0}
+  .rail .logo{font-weight:800;font-size:20px;color:var(--ink);margin-bottom:26px}
+  .rail .nav{display:flex;flex-direction:column;gap:6px;flex:1}
+  .rail .item{width:60px;height:58px;border-radius:14px;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--ink-mute);font-size:10.5px}
+  .rail .item svg{width:21px;height:21px}
+  .rail .item:hover{background:var(--paper-2);color:var(--ink-soft)}
+  .rail .item.on{background:var(--accent);color:#fff}
+  .rail .me{width:36px;height:36px;border-radius:50%;background:linear-gradient(140deg,#2A3344,#4A5670);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:14px}
+  .main{flex:1;position:relative;height:100vh;overflow:hidden}
+  .surface{position:absolute;inset:0;display:none;overflow:auto}
+  .surface.on{display:block}
+
+  /* shared surface header */
+  .shead{padding:30px 40px 0;max-width:760px;margin:0 auto}
+  .shead .eg{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:8px}
+  .shead h2{font-size:30px;letter-spacing:-.02em}
+
+  /* ============ TODAY ============ */
+  #s-today{background:radial-gradient(900px 480px at 70% -10%, #FFFDF7, var(--paper))}
+  .today-wrap{max-width:620px;margin:0 auto;padding:64px 32px}
+  .ritual-toggle{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:30px}
+  .ritual-toggle button{border:none;background:transparent;padding:7px 16px;border-radius:999px;font-size:13px;color:var(--ink-mute);cursor:pointer}
+  .ritual-toggle button.on{background:var(--accent);color:#fff}
+  .greet{font-size:30px;font-weight:600;letter-spacing:-.02em;margin-bottom:6px}
+  .greet-sub{color:var(--ink-mute);margin-bottom:28px}
+  .direction{background:var(--card);border:1px solid var(--gold);border-radius:18px;padding:22px;box-shadow:0 0 0 1px var(--gold);margin-bottom:18px}
+  .direction .k{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#8A6A2E;margin-bottom:8px}
+  .direction .v{font-size:21px;font-weight:600;line-height:1.3}
+  .focus{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:18px}
+  .focus .k{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:10px}
+  .focus .q{font-size:17px;color:var(--ink);margin-bottom:14px}
+  .focus textarea{width:100%;border:1px solid var(--line-2);border-radius:12px;padding:13px;font-size:14.5px;resize:none;outline:none;background:var(--paper)}
+  .focus .save{margin-top:12px}
+  .coach-whisper{display:flex;gap:12px;align-items:flex-start;color:var(--ink-soft);font-size:15px;padding:6px 4px}
+  .coach-whisper .a{width:30px;height:30px;border-radius:50%;background:var(--coach);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+
+  /* ============ BOARD (canvas) ============ */
+  #viewport{position:absolute;inset:0;cursor:grab;
+    background-image:radial-gradient(var(--line) 1.2px, transparent 1.2px);background-size:26px 26px}
+  #viewport.panning{cursor:grabbing}
+  #world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+  .edges{position:absolute;left:0;top:0;width:0;height:0;overflow:visible;pointer-events:none}
+  .edges line{stroke:#B6AE9D;stroke-width:1.6}
+  .edges .lbl{fill:var(--ink-mute);font-size:11px;font-style:italic}
+  .node{position:absolute;background:var(--card);border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 1px 2px rgba(20,20,20,.04),0 8px 24px rgba(20,20,20,.05);padding:14px 15px;cursor:grab;user-select:none;
+    transition:box-shadow .15s;animation:pop .4s cubic-bezier(.2,.9,.3,1.2) both}
+  @keyframes pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+  .node:hover{box-shadow:0 2px 4px rgba(20,20,20,.06),0 14px 34px rgba(20,20,20,.09)}
+  .node.dragging{cursor:grabbing;box-shadow:0 18px 44px rgba(20,20,20,.16);z-index:30}
+  .node .accent{position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:3px}
+  .node .kind{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:6px}
+  .node .body{font-size:14.5px;line-height:1.45}
+  .node.quote .body{font-style:italic;color:var(--ink-soft)}
+  .node.quote .attr{font-size:12px;color:var(--ink-mute);margin-top:8px}
+  .node.image{padding:0;overflow:hidden;border:none}
+  .node.image .img{width:100%;height:100%;position:relative;color:#fff}
+  .node.image .img .em{position:absolute;top:10px;left:12px;font-size:28px}
+  .node.image .img .cap{position:absolute;bottom:12px;left:14px;font-size:13.5px;font-weight:600;text-shadow:0 1px 6px rgba(0,0,0,.4)}
+  .node.star{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 14px 34px rgba(184,148,90,.18)}
+  .node.star .kind{color:#8A6A2E}
+  .node .handle{position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);width:14px;height:14px;border-radius:50%;background:var(--blue);border:2px solid var(--paper);opacity:0;cursor:crosshair;transition:.15s}
+  .node:hover .handle{opacity:1}
+  .node .del{position:absolute;top:-8px;right:-8px;width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fff;border:none;font-size:12px;opacity:0;cursor:pointer;transition:.15s}
+  .node:hover .del{opacity:.85}
+  .toolbar{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:7px;display:flex;gap:3px;box-shadow:0 10px 30px rgba(20,20,20,.1);z-index:20}
+  .toolbar button{border:none;background:transparent;padding:9px 15px;border-radius:999px;font-size:13.5px;color:var(--ink-soft);cursor:pointer;display:flex;align-items:center;gap:7px}
+  .toolbar button:hover{background:var(--paper-2);color:var(--ink)}
+  .toolbar .mic{background:var(--accent);color:#fff}
+  .inbox{position:absolute;top:20px;right:20px;width:290px;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(20,20,20,.08);z-index:20;overflow:hidden}
+  .inbox .h{padding:12px 14px;border-bottom:1px solid var(--line-2);font-size:13px;font-weight:600;display:flex;justify-content:space-between}
+  .inbox .h .c{font-size:11px;color:var(--ink-mute);font-weight:500}
+  .cap{padding:13px 14px;border-bottom:1px solid var(--line-2)}.cap:last-child{border-bottom:none}
+  .cap .src{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:5px}
+  .cap .ttl{font-size:14px;font-weight:600;margin-bottom:3px}.cap .ess{font-size:12.5px;color:var(--ink-soft);line-height:1.4}
+  .cap .acts{margin-top:9px;display:flex;gap:12px}.cap .acts button{border:none;background:none;font-size:12.5px;cursor:pointer;padding:0}
+  .cap .place{color:var(--accent);font-weight:600}.cap .dismiss{color:var(--ink-mute)}
+  .board-hint{position:absolute;bottom:88px;left:20px;font-size:12px;color:var(--ink-mute);z-index:15;max-width:230px;line-height:1.5}
+
+  /* ============ GUIDE ============ */
+  #s-guide{background:var(--paper)}
+  .guide-wrap{max-width:720px;margin:0 auto;padding:44px 40px 80px}
+  .guide-ns{background:var(--card);border:1px solid var(--gold);box-shadow:0 0 0 1px var(--gold);border-radius:18px;padding:26px;margin:18px 0 28px}
+  .guide-ns .k{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#8A6A2E;margin-bottom:10px}
+  .guide-ns .v{font-size:24px;font-weight:600;line-height:1.3}
+  .guide-ns .e{font-size:14px;color:var(--ink-mute);margin-top:10px;font-style:italic}
+  .mirror{background:var(--coach);color:var(--coach-ink);border-radius:18px;padding:24px;margin-bottom:28px}
+  .mirror .k{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
+  .mirror .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .mirror .tag{background:var(--coach-soft);padding:6px 12px;border-radius:999px;font-size:13px}
+  .mirror p{color:var(--coach-mute);font-size:14px;line-height:1.6}
+  .pillar-block{border-top:1px solid var(--line);padding:22px 0}
+  .pillar-block .ph{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .pillar-block .ph i{width:10px;height:10px;border-radius:50%}
+  .pillar-block .ph h3{font-size:18px}
+  .pillar-block .ph .cnt{font-size:12px;color:var(--ink-mute);margin-left:auto}
+  .pillar-block .truth{font-size:15px;color:var(--ink-soft);padding:7px 0;display:flex;gap:10px}
+  .pillar-block .truth::before{content:"—";color:var(--ink-mute)}
+  .goal{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:8px;font-size:14px;display:flex;align-items:center;gap:10px}
+  .goal .g{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);flex-shrink:0}
+
+  /* ============ SETTINGS ============ */
+  #s-settings{background:var(--paper)}
+  .set-wrap{max-width:640px;margin:0 auto;padding:44px 40px 80px}
+  .set-group{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:8px 20px;margin-bottom:18px}
+  .set-row{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--line-2)}
+  .set-row:last-child{border-bottom:none}
+  .set-row .l .t{font-size:15px;font-weight:500}.set-row .l .d{font-size:13px;color:var(--ink-mute);margin-top:2px}
+  .set-group .gl{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-mute);padding:14px 0 2px}
+  .toggle{width:44px;height:26px;border-radius:999px;background:var(--line);border:none;cursor:pointer;position:relative;transition:.2s}
+  .toggle.on{background:var(--green)}
+  .toggle::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s}
+  .toggle.on::after{left:21px}
+  .seg{display:inline-flex;background:var(--paper-2);border-radius:10px;padding:3px}
+  .seg button{border:none;background:transparent;padding:6px 12px;border-radius:8px;font-size:13px;color:var(--ink-mute);cursor:pointer}
+  .seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .pill-row{display:flex;align-items:center;gap:8px;padding:14px 0;flex-wrap:wrap}
+  .pchip{font-size:13px;padding:6px 13px;border-radius:999px;border:1px solid var(--line);display:flex;align-items:center;gap:7px}
+  .pchip i{width:8px;height:8px;border-radius:50%}
+  .pchip.add{border-style:dashed;color:var(--ink-mute);cursor:pointer}
+  .pchip.add:hover{color:var(--ink);border-color:var(--ink-mute)}
+
+  /* ============ COACH (global) ============ */
+  .fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:var(--coach);color:#fff;border:none;cursor:pointer;z-index:60;box-shadow:0 10px 30px rgba(20,20,20,.22);display:flex;align-items:center;justify-content:center}
+  .fab .ring{position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--gold);opacity:.5;animation:pulse 2.6s ease-out infinite}
+  @keyframes pulse{0%{transform:scale(1);opacity:.5}70%{transform:scale(1.25);opacity:0}100%{opacity:0}}
+  .coachp{position:fixed;bottom:92px;right:24px;width:380px;max-width:calc(100vw - 48px);height:72vh;max-height:660px;background:var(--coach);border-radius:18px;z-index:61;box-shadow:0 24px 60px rgba(20,20,20,.32);display:flex;flex-direction:column;overflow:hidden;transform:translateY(16px) scale(.98);opacity:0;pointer-events:none;transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .22s}
+  .coachp.open{transform:none;opacity:1;pointer-events:auto}
+  .coachp .ch{padding:16px 18px;border-bottom:1px solid var(--coach-soft);display:flex;align-items:center;gap:10px}
+  .coachp .ch .a{width:32px;height:32px;border-radius:50%;background:linear-gradient(140deg,var(--gold),#8A6A2E);display:flex;align-items:center;justify-content:center;font-size:14px}
+  .coachp .ch .t{color:var(--coach-ink);font-weight:600;font-size:15px}.coachp .ch .s{color:var(--coach-mute);font-size:11.5px}
+  .coachp .body{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px}
+  .msg{max-width:86%;padding:11px 14px;border-radius:14px;font-size:14px;line-height:1.5}
+  .msg.coach-m{background:var(--coach-soft);color:var(--coach-ink);align-self:flex-start;border-bottom-left-radius:4px}
+  .msg.me{background:var(--gold);color:#231a08;align-self:flex-end;border-bottom-right-radius:4px;font-weight:500}
+  .msg .act{display:block;margin-top:8px;font-size:12px;color:var(--coach-mute);font-style:italic}
+  .coachp .foot{padding:14px;border-top:1px solid var(--coach-soft);display:flex;gap:8px}
+  .coachp .foot input{flex:1;background:var(--coach-soft);border:none;border-radius:12px;padding:11px 13px;color:var(--coach-ink);font-size:14px;outline:none}
+  .coachp .foot input::placeholder{color:var(--coach-mute)}
+  .coachp .foot button{background:var(--gold);border:none;color:#231a08;border-radius:12px;padding:0 15px;font-weight:600;cursor:pointer}
+  .typing{align-self:flex-start;color:var(--coach-mute);font-size:13px;font-style:italic;padding:4px 6px}
+
+  /* pillar modal */
+  .overlay{position:fixed;inset:0;background:rgba(20,20,20,.4);z-index:70;display:none;align-items:center;justify-content:center}
+  .overlay.on{display:flex}
+  .modal{background:var(--card);border-radius:18px;padding:26px;width:420px;max-width:90vw}
+  .modal h3{font-size:20px;margin-bottom:4px}.modal .ms{font-size:14px;color:var(--ink-mute);margin-bottom:18px}
+  .preset{display:flex;align-items:center;gap:12px;padding:13px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;cursor:pointer}
+  .preset:hover{border-color:var(--gold)}.preset i{width:10px;height:10px;border-radius:50%}
+  .preset .pt{font-weight:500;font-size:14.5px}
+</style>
+</head>
+<body>
+
+<!-- ===================== SPLASH ===================== -->
+<div class="screen on" id="splash">
+  <div class="box">
+    <div class="mark">LifeGuide<span class="dot"></span></div>
+    <div class="tag">Your space.</div>
+    <div class="sub">for when you feel lost.</div>
+    <button class="btn" onclick="startOnboarding()">Enter</button>
+  </div>
+</div>
+
+<!-- ===================== ONBOARDING ===================== -->
+<div class="screen" id="onboarding">
+  <div class="onb-top">
+    <div class="onb-brand">LifeGuide</div>
+    <div class="dots" id="onbDots"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+    <button class="onb-skip" onclick="enterApp()">skip →</button>
+  </div>
+  <div class="onb-stage">
+    <div class="onb-card">
+      <!-- step 1 -->
+      <div class="onb-step on" id="onb1">
+        <div class="onb-eyebrow">Welcome</div>
+        <h1>You're not lost.<br>You just haven't said where you're going out loud yet.</h1>
+        <p>This is your space to figure it out — slowly, one piece at a time. No setup, no homework. We start where you are.</p>
+        <div class="onb-foot" style="padding-bottom:0"><button class="btn" onclick="onbGo(2)">Begin</button></div>
+      </div>
+      <!-- step 2 -->
+      <div class="onb-step" id="onb2">
+        <div class="onb-eyebrow">First thing</div>
+        <h1>Show me something that pulls at you.</h1>
+        <p>A line you can't shake. A photo. A life you saw and wanted. Anything. I'll take it from here.</p>
+        <textarea class="onb-input" id="onbFirst" rows="2" placeholder="Paste or type anything…"></textarea>
+        <div class="chips">
+          <span class="chip-s" onclick="pick(this)">A quiet life by the ocean</span>
+          <span class="chip-s" onclick="pick(this)">Build something that's mine</span>
+          <span class="chip-s" onclick="pick(this)">Be the man my father wasn't</span>
+        </div>
+        <div class="onb-foot" style="padding-bottom:0"><button class="btn" onclick="onbGo(3)">Continue</button></div>
+      </div>
+      <!-- step 3 -->
+      <div class="onb-step" id="onb3">
+        <div class="onb-eyebrow">How should I show up?</div>
+        <h1>Pick your rhythm.</h1>
+        <p>Most men check in twice — once when they wake, once before bed. Two minutes each. You can change this anytime.</p>
+        <div class="opts">
+          <div class="opt sel" onclick="selOpt(this)"><div class="ic">🌅</div><div><div class="ti">Morning + evening</div><div class="de">A direction to wake to, a moment to reflect at night</div></div></div>
+          <div class="opt" onclick="selOpt(this)"><div class="ic">☀️</div><div><div class="ti">Mornings only</div><div class="de">Just set the day</div></div></div>
+          <div class="opt" onclick="selOpt(this)"><div class="ic">🌙</div><div><div class="ti">Evenings only</div><div class="de">Just reflect</div></div></div>
+        </div>
+        <div class="slider">
+          <div class="lab"><span>gentle</span><span>Coach tone</span><span>direct</span></div>
+          <input type="range" min="0" max="100" value="65">
+        </div>
+        <div class="onb-foot" style="padding-bottom:0"><button class="btn" onclick="onbGo(4)">Continue</button></div>
+      </div>
+      <!-- step 4 -->
+      <div class="onb-step" id="onb4">
+        <div class="onb-eyebrow">Meet your Coach</div>
+        <h1>I'll be here the whole way.</h1>
+        <div class="coach-intro">
+          <div class="a">🧭</div>
+          <p>I keep what you tell me. I notice the patterns you can't see from the inside. I'll never spam you or guilt you with streaks. Two check-ins a day — that's the rhythm. The rest of the time, I'm just here when you need me.</p>
+        </div>
+        <div class="onb-foot" style="padding-bottom:0"><button class="btn" onclick="onbGo(5)">Continue</button></div>
+      </div>
+      <!-- step 5 -->
+      <div class="onb-step" id="onb5">
+        <div class="onb-eyebrow">Ready</div>
+        <h1>Your space is ready.</h1>
+        <p>I've already started a board from what you gave me. Add to it whenever something pulls at you. It grows as you do.</p>
+        <div class="onb-foot" style="padding-bottom:0"><button class="btn gold" onclick="enterApp()">Enter your space →</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div class="screen" id="app">
+  <div class="rail">
+    <div class="logo">L</div>
+    <div class="nav">
+      <button class="item on" data-s="today" onclick="nav('today')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>Today</button>
+      <button class="item" data-s="board" onclick="nav('board')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>Board</button>
+      <button class="item" data-s="guide" onclick="nav('guide')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Guide</button>
+      <button class="item" data-s="settings" onclick="nav('settings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H1a2 2 0 0 1 0-4h.1A1.6 1.6 0 0 0 2.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 7 2.6h.1A1.6 1.6 0 0 0 9 1.1V1a2 2 0 0 1 4 0v.1A1.6 1.6 0 0 0 17 2.6a1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V7a1.6 1.6 0 0 0 1.5 1H23a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>Settings</button>
+    </div>
+    <div class="me">A</div>
+  </div>
+
+  <div class="main">
+    <!-- TODAY -->
+    <div class="surface on" id="s-today">
+      <div class="today-wrap">
+        <div class="ritual-toggle"><button class="on" id="rtAM" onclick="ritual('am')">☀️ Morning</button><button id="rtPM" onclick="ritual('pm')">🌙 Evening</button></div>
+        <div id="todayAM">
+          <div class="greet">Good morning, Ariel.</div>
+          <div class="greet-sub">Before the day pulls you anywhere — here's where you're headed.</div>
+          <div class="direction"><div class="k">Your direction</div><div class="v">Build a life that's mine — work I own, quiet mornings, the ocean close.</div></div>
+          <div class="focus"><div class="k">Today's one move</div><div class="q">What's one small thing today that points at it?</div><textarea rows="2" placeholder="It can be tiny. That's the point."></textarea><button class="btn focus save" onclick="this.textContent='Saved ✓'">Save</button></div>
+          <div class="coach-whisper"><div class="a">🧭</div><div>You've kept three things about the ocean this month. Not a daydream anymore — want to make it real in your Guide?</div></div>
+        </div>
+        <div id="todayPM" style="display:none">
+          <div class="greet">Before bed.</div>
+          <div class="greet-sub">No score. No streak. Just a moment to set it down.</div>
+          <div class="focus"><div class="k">Tonight</div><div class="q">What pulled at you today?</div><textarea rows="3" placeholder="Say it however it comes out…"></textarea><button class="btn focus save" onclick="this.textContent='Saved ✓'">Save &amp; rest</button></div>
+          <div class="coach-whisper"><div class="a">🧭</div><div>I'll fold this into what I know about you overnight. Tomorrow I'll know you a little better.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOARD -->
+    <div class="surface" id="s-board">
+      <div id="viewport"><div id="world"><svg class="edges" id="edges"></svg></div></div>
+      <div class="inbox" id="inbox">
+        <div class="h">Inbox <span class="c" id="inboxCount">1 to place</span></div>
+        <div id="inboxList">
+          <div class="cap" data-title="Make things with your hands" data-pillar="lifestyle">
+            <div class="src">▶ shared reel</div><div class="ttl">Make things with your hands</div>
+            <div class="ess">A guy quit his job to build furniture. Independence; something real that's yours.</div>
+            <div class="acts"><button class="place" onclick="placeCap(this)">Place on board</button><button class="dismiss" onclick="dismissCap(this)">Dismiss</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button onclick="addNode('text')">＋ Text</button><button onclick="addNode('quote')">❝ Quote</button>
+        <button onclick="addNode('image')">◳ Image</button><button class="mic" onclick="micDemo()">🎙 Talk</button>
+      </div>
+      <div class="board-hint"><b>Drag</b> cards · <b>pan</b> empty space · hover the blue dot to <b>connect</b> · <b>Talk</b> to dump by voice</div>
+    </div>
+
+    <!-- GUIDE -->
+    <div class="surface" id="s-guide">
+      <div class="guide-wrap">
+        <div class="shead" style="padding:0 0 4px"><div class="eg">Your Guide · a draft</div><h2>Who you're becoming</h2></div>
+        <p style="color:var(--ink-mute);font-size:15px;margin:6px 0 0">This isn't fixed. It's what I've pieced together from everything you've put in. Edit anything — or just read yourself back.</p>
+
+        <div class="guide-ns"><div class="k">★ Your north star</div><div class="v">Build a life that's mine — work I own, quiet mornings, the ocean close.</div><div class="e">co-written with you · 2 weeks ago · evolving</div></div>
+
+        <div class="mirror">
+          <div class="k">The Mirror · what I've noticed</div>
+          <div class="row"><span class="tag">freedom</span><span class="tag">the outdoors</span><span class="tag">building things</span><span class="tag">discipline</span><span class="tag">quiet</span></div>
+          <p>You light up around independence and making things. You keep returning to water and open space. The thing you fight is scatter — too many directions at once. When you narrow, you move.</p>
+        </div>
+
+        <div class="pillar-block">
+          <div class="ph"><i style="background:var(--gold)"></i><h3>Lifestyle</h3><span class="cnt">7 things</span></div>
+          <div class="truth">You want mornings that are yours, not borrowed</div>
+          <div class="truth">A quieter place, near water, keeps coming up</div>
+          <div class="goal"><span class="g"></span>Spend one weekend near the coast this season</div>
+        </div>
+        <div class="pillar-block">
+          <div class="ph"><i style="background:var(--green)"></i><h3>Health &amp; Fitness</h3><span class="cnt">3 things</span></div>
+          <div class="truth">A strong body is tied, for you, to a clear mind</div>
+          <div class="goal"><span class="g"></span>Morning runs, three days a week</div>
+        </div>
+        <div class="pillar-block">
+          <div class="ph"><i style="background:var(--blue)"></i><h3>Financial</h3><span class="cnt">4 things</span></div>
+          <div class="truth">Freedom, to you, means owning your time — not a number</div>
+          <div class="goal"><span class="g"></span>Build one thing that's mine by 35</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="surface" id="s-settings">
+      <div class="set-wrap">
+        <div class="shead" style="padding:0 0 14px"><div class="eg">Settings</div><h2>How I treat you</h2></div>
+
+        <div class="set-group">
+          <div class="gl">Daily rhythm</div>
+          <div class="set-row"><div class="l"><div class="t">Morning check-in</div><div class="d">A direction to wake to</div></div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+          <div class="set-row"><div class="l"><div class="t">Evening check-out</div><div class="d">A moment to reflect</div></div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+          <div class="set-row"><div class="l"><div class="t">Daily exercise</div><div class="d">What the check-in asks you</div></div><div class="seg"><button class="on">Intention</button><button>Gratitude</button><button>Free</button></div></div>
+        </div>
+
+        <div class="set-group">
+          <div class="gl">The Coach</div>
+          <div class="set-row"><div class="l"><div class="t">Tone</div><div class="d">How direct I am with you</div></div><div class="seg"><button>Gentle</button><button class="on">Balanced</button><button>Direct</button></div></div>
+          <div class="set-row"><div class="l"><div class="t">Reaching out</div><div class="d">How often I check on you unprompted</div></div><div class="seg"><button>Leave me</button><button class="on">Earned</button><button>Often</button></div></div>
+          <div class="set-row"><div class="l"><div class="t">Quiet hours</div><div class="d">When I never reach out</div></div><div class="d" style="color:var(--ink-soft)">10pm – 7am</div></div>
+        </div>
+
+        <div class="set-group">
+          <div class="gl">Your pillars</div>
+          <div class="pill-row">
+            <span class="pchip"><i style="background:var(--gold)"></i>Lifestyle</span>
+            <span class="pchip"><i style="background:var(--green)"></i>Health &amp; Fitness</span>
+            <span class="pchip"><i style="background:var(--blue)"></i>Financial</span>
+            <span class="pchip add" onclick="openPillars()">+ add pillar</span>
+          </div>
+        </div>
+
+        <div class="set-group">
+          <div class="gl">Yours alone</div>
+          <div class="set-row"><div class="l"><div class="t">Your data is yours</div><div class="d">Private by default. Export everything, anytime.</div></div><button class="btn ghost" style="margin:0;padding:9px 16px" onclick="alert('Exports a full copy of everything — your board, your Guide, your Mirror — as clean JSON. No lock-in.')">Export</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COACH (global) -->
+  <button class="fab" id="fab" onclick="toggleCoach()"><span class="ring"></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+  <div class="coachp" id="coachp">
+    <div class="ch"><div class="a">🧭</div><div><div class="t">Coach</div><div class="s" id="coachCtx">sees your board · knows you</div></div></div>
+    <div class="body" id="coachBody">
+      <div class="msg coach-m">I'm here. I can see whatever surface you're on, and I know what we've built so far. Ask me anything — or tell me to put something on your board.<span class="act">context-aware, wherever you are</span></div>
+    </div>
+    <div class="foot"><input id="coachInput" placeholder="Talk to your Coach…" onkeydown="if(event.key==='Enter')sendCoach()"><button onclick="sendCoach()">➤</button></div>
+  </div>
+</div>
+
+<!-- pillar modal -->
+<div class="overlay" id="pillarModal" onclick="if(event.target===this)closePillars()">
+  <div class="modal">
+    <h3>Add a pillar</h3><div class="ms">A facet of your life. Pick one, or make your own.</div>
+    <div class="preset" onclick="addPillar(this,'Family & Relationships')"><i style="background:var(--violet)"></i><span class="pt">Family &amp; Relationships</span></div>
+    <div class="preset" onclick="addPillar(this,'Growth & Mind')"><i style="background:var(--teal)"></i><span class="pt">Growth &amp; Mind</span></div>
+    <div class="preset" onclick="addPillar(this,'Money & Freedom')"><i style="background:var(--gold)"></i><span class="pt">Money &amp; Freedom</span></div>
+    <div class="preset" onclick="addPillar(this,'Spirit & Meaning')"><i style="background:var(--accent)"></i><span class="pt">Spirit &amp; Meaning</span></div>
+    <button class="btn ghost" style="width:100%;margin-top:6px" onclick="closePillars()">Close</button>
+  </div>
+</div>
+
+<script>
+  // ---------- screen routing ----------
+  function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById(id).classList.add('on');}
+  function startOnboarding(){show('onboarding');onbGo(1);}
+  function enterApp(){show('app');nav('today');}
+
+  // ---------- onboarding ----------
+  let onbN=1;
+  function onbGo(n){
+    onbN=n;
+    for(let i=1;i<=5;i++)document.getElementById('onb'+i).classList.toggle('on',i===n);
+    document.querySelectorAll('#onbDots i').forEach((d,i)=>d.classList.toggle('on',i===n-1));
+  }
+  function pick(el){document.getElementById('onbFirst').value=el.textContent;}
+  function selOpt(el){el.parentElement.querySelectorAll('.opt').forEach(o=>o.classList.remove('sel'));el.classList.add('sel');}
+
+  // ---------- app nav ----------
+  function nav(s){
+    document.querySelectorAll('.rail .item').forEach(i=>i.classList.toggle('on',i.dataset.s===s));
+    document.querySelectorAll('.surface').forEach(su=>su.classList.remove('on'));
+    document.getElementById('s-'+s).classList.add('on');
+    const ctx={today:'sees today · knows you',board:'sees your board · knows you',guide:'sees your Guide · knows you',settings:'knows you'};
+    document.getElementById('coachCtx').textContent=ctx[s]||'knows you';
+    if(s==='board'){ setTimeout(()=>{initBoard();renderEdges();},30); }
+  }
+  function ritual(w){
+    document.getElementById('rtAM').classList.toggle('on',w==='am');
+    document.getElementById('rtPM').classList.toggle('on',w==='pm');
+    document.getElementById('todayAM').style.display=w==='am'?'block':'none';
+    document.getElementById('todayPM').style.display=w==='pm'?'block':'none';
+  }
+
+  // ---------- pillar modal ----------
+  function openPillars(){document.getElementById('pillarModal').classList.add('on');}
+  function closePillars(){document.getElementById('pillarModal').classList.remove('on');}
+  function addPillar(el,name){
+    const row=document.querySelector('#s-settings .pill-row');const add=row.querySelector('.add');
+    const span=document.createElement('span');span.className='pchip';
+    span.innerHTML='<i style="background:'+el.querySelector('i').style.background+'"></i>'+name;
+    row.insertBefore(span,add);closePillars();
+  }
+
+  // ===================== BOARD CANVAS =====================
+  let boardReady=false, world, viewport, edgesSvg, pan={x:120,y:80}, scale=1, uid=0;
+  const PILLAR_COLORS={lifestyle:'var(--gold)',health:'var(--green)',financial:'var(--blue)',relationships:'var(--violet)',growth:'var(--teal)'};
+  const seed=[
+    {id:'n1',type:'text',x:60,y:40,w:210,pillar:'lifestyle',star:true,kind:'emerging direction',body:'A life that’s mine'},
+    {id:'n2',type:'text',x:330,y:30,w:190,pillar:'lifestyle',body:'Wake up without dread'},
+    {id:'n3',type:'image',x:560,y:90,w:230,h:150,pillar:'lifestyle',grad:'linear-gradient(150deg,#3b6ea5,#1e3a5f)',emoji:'🌊',body:'Live near the ocean'},
+    {id:'n4',type:'text',x:90,y:250,pillar:'financial',body:'Build something that’s mine'},
+    {id:'n5',type:'quote',x:360,y:230,w:250,pillar:'growth',body:'Discipline is choosing between what you want now and what you want most.',attr:'— a note I kept'},
+    {id:'n6',type:'image',x:640,y:300,w:200,h:140,pillar:'health',grad:'linear-gradient(150deg,#5a8a52,#2f5a2c)',emoji:'🏃',body:'Morning runs'},
+    {id:'n7',type:'text',x:120,y:430,pillar:'financial',body:'Financial freedom by 35'}
+  ];
+  const edges=[{from:'n4',to:'n7',label:'funds'},{from:'n4',to:'n1',label:'serves'},{from:'n2',to:'n1',label:''},{from:'n3',to:'n1',label:''}];
+
+  function initBoard(){
+    if(boardReady) return;
+    world=document.getElementById('world');viewport=document.getElementById('viewport');edgesSvg=document.getElementById('edges');
+    applyWorld(); seed.forEach(nodeHTML); wirePan(); boardReady=true;
+  }
+  function applyWorld(){world.style.transform=`translate(${pan.x}px,${pan.y}px) scale(${scale})`;viewport.style.backgroundPosition=`${pan.x}px ${pan.y}px`;}
+  function vpRect(){return viewport.getBoundingClientRect();}
+
+  function nodeHTML(n){
+    const w=n.w||200,h=n.h||null;
+    const el=document.createElement('div');el.className='node '+n.type+(n.star?' star':'');el.id=n.id;
+    el.style.left=n.x+'px';el.style.top=n.y+'px';el.style.width=w+'px';if(h)el.style.height=h+'px';
+    let inner='';
+    if(n.type==='image'){inner=`<div class="img" style="background:${n.grad}"><span class="em">${n.emoji||''}</span><span class="cap">${n.body}</span></div>`;}
+    else if(n.type==='quote'){inner=`<div class="accent" style="background:${PILLAR_COLORS[n.pillar]||'var(--gold)'}"></div><div class="kind">${n.kind||'quote'}</div><div class="body">${n.body}</div>${n.attr?`<div class="attr">${n.attr}</div>`:''}`;}
+    else{inner=`<div class="accent" style="background:${PILLAR_COLORS[n.pillar]||'var(--gold)'}"></div><div class="kind">${n.kind||(n.pillar||'idea')}</div><div class="body">${n.body}</div>`;}
+    el.innerHTML=inner+`<div class="handle" title="drag to connect"></div><button class="del">×</button>`;
+    world.appendChild(el);wireNode(el);return el;
+  }
+  function center(el){return {x:el.offsetLeft+el.offsetWidth/2,y:el.offsetTop+el.offsetHeight/2};}
+  function renderEdges(){
+    if(!edgesSvg)return; edgesSvg.innerHTML='';
+    edges.forEach(e=>{const a=document.getElementById(e.from),b=document.getElementById(e.to);if(!a||!b)return;
+      const p=center(a),q=center(b);
+      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1',p.x);line.setAttribute('y1',p.y);line.setAttribute('x2',q.x);line.setAttribute('y2',q.y);edgesSvg.appendChild(line);
+      if(e.label){const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',(p.x+q.x)/2);t.setAttribute('y',(p.y+q.y)/2-4);t.setAttribute('text-anchor','middle');t.setAttribute('class','lbl');t.textContent=e.label;edgesSvg.appendChild(t);}
+    });
+  }
+  let linkFrom=null;
+  function wireNode(el){
+    el.addEventListener('mousedown',(e)=>{
+      if(e.target.classList.contains('del')){removeNode(el);e.stopPropagation();return;}
+      if(e.target.classList.contains('handle')){linkFrom=el.id;e.stopPropagation();e.preventDefault();return;}
+      e.stopPropagation();
+      const sx=e.clientX,sy=e.clientY,ox=el.offsetLeft,oy=el.offsetTop;el.classList.add('dragging');
+      function mv(ev){el.style.left=(ox+(ev.clientX-sx)/scale)+'px';el.style.top=(oy+(ev.clientY-sy)/scale)+'px';renderEdges();}
+      function up(){el.classList.remove('dragging');document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);}
+      document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+    });
+    el.addEventListener('mouseup',()=>{if(linkFrom&&linkFrom!==el.id){edges.push({from:linkFrom,to:el.id,label:''});renderEdges();}linkFrom=null;});
+  }
+  function removeNode(el){for(let i=edges.length-1;i>=0;i--)if(edges[i].from===el.id||edges[i].to===el.id)edges.splice(i,1);el.remove();renderEdges();}
+
+  let panning=null;
+  function wirePan(){
+    viewport.addEventListener('mousedown',(e)=>{if(e.target!==viewport&&e.target!==world&&e.target!==edgesSvg)return;panning={mx:e.clientX,my:e.clientY,px:pan.x,py:pan.y};viewport.classList.add('panning');});
+    document.addEventListener('mousemove',(e)=>{if(!panning)return;pan.x=panning.px+(e.clientX-panning.mx);pan.y=panning.py+(e.clientY-panning.my);applyWorld();});
+    document.addEventListener('mouseup',()=>{panning=null;if(viewport)viewport.classList.remove('panning');});
+    viewport.addEventListener('wheel',(e)=>{e.preventDefault();const r=vpRect();const cx=e.clientX-r.left,cy=e.clientY-r.top;const f=e.deltaY<0?1.06:0.94;const ns=Math.max(.45,Math.min(1.8,scale*f));const k=ns/scale;pan.x=cx-(cx-pan.x)*k;pan.y=cy-(cy-pan.y)*k;scale=ns;applyWorld();},{passive:false});
+  }
+  function addNode(type){
+    const r=vpRect();const cx=(r.width/2-pan.x)/scale-100,cy=(r.height/2-pan.y)/scale-60;uid++;
+    const d={id:'u'+uid,type,x:cx,y:cy,w:type==='image'?220:200,pillar:'lifestyle'};
+    if(type==='image'){d.h=140;d.grad='linear-gradient(150deg,#7a6aa0,#42345a)';d.emoji='🖼';d.body='New image';}
+    if(type==='quote'){d.body='A line worth keeping…';}
+    if(type==='text'){d.body='New idea';}
+    nodeHTML(d);renderEdges();
+  }
+  function micDemo(){
+    toggleCoach(true);addCoach("I'm listening. Talk, and I'll lay it on the board.");
+    ['Tired of working for someone else','Mornings that are mine','Somewhere quieter'].forEach((t,i)=>{
+      setTimeout(()=>{const r=vpRect();uid++;nodeHTML({id:'u'+uid,type:'text',x:(r.width/2-pan.x)/scale-100+i*30,y:(r.height/2-pan.y)/scale-40+i*72,w:200,pillar:'lifestyle',body:t});renderEdges();},600+i*600);
+    });
+    setTimeout(()=>addCoach("Three on the board. They all point away from a life that isn't yours. Right?"),2600);
+  }
+  function placeCap(btn){const c=btn.closest('.cap');const r=vpRect();uid++;nodeHTML({id:'u'+uid,type:'text',x:(r.width/2-pan.x)/scale-100,y:(r.height/2-pan.y)/scale-60,w:210,pillar:c.dataset.pillar,kind:'from your inbox',body:c.dataset.title});renderEdges();c.remove();updInbox();}
+  function dismissCap(btn){btn.closest('.cap').remove();updInbox();}
+  function updInbox(){const n=document.querySelectorAll('#inboxList .cap').length;document.getElementById('inboxCount').textContent=n+' to place';if(n===0)document.getElementById('inbox').style.display='none';}
+
+  // ---------- coach ----------
+  const coachp=()=>document.getElementById('coachp');let coachOpen=false;
+  function toggleCoach(force){coachOpen=force===true?true:(force===false?false:!coachOpen);coachp().classList.toggle('open',coachOpen);}
+  function addMsg(t,cls,act){const b=document.getElementById('coachBody');const d=document.createElement('div');d.className='msg '+cls;d.innerHTML=t+(act?`<span class="act">${act}</span>`:'');b.appendChild(d);b.scrollTop=b.scrollHeight;}
+  function addCoach(t,a){addMsg(t,'coach-m',a);}
+  function sendCoach(){const inp=document.getElementById('coachInput');const v=inp.value.trim();if(!v)return;addMsg(v,'me');inp.value='';
+    const b=document.getElementById('coachBody');const ty=document.createElement('div');ty.className='typing';ty.textContent='Coach is thinking…';b.appendChild(ty);b.scrollTop=b.scrollHeight;
+    setTimeout(()=>{ty.remove();addCoach(reply(v));},850);}
+  function reply(v){const t=v.toLowerCase();
+    if(t.includes('name')||t.includes('north')||t.includes('vision'))return "Then let's name it. From what's up there: <em>“Build a life that's mine — work I own, quiet mornings, the ocean close.”</em> Your words — what would you change?";
+    if(t.includes('lost')||t.includes('stuck'))return "You're not actually lost — your board already leans one way. You just haven't said it out loud. Want me to show you the pattern?";
+    if(t.includes('ocean')||t.includes('move')||t.includes('quiet'))return "It keeps coming up — three cards touch it. That's a signal now, not a daydream. Make it a real direction in your Guide?";
+    if(t.includes('add')||t.includes('board')||t.includes('put'))return "Tell me what, and I'll place it where it fits and connect it to what it relates to. I can see the whole board from here.";
+    return "I hear you. That fits the thread already forming — the pull toward something that's actually yours. Put it on the board, or sit with it?";
+  }
+  (function(){const h=new Date().getHours();const g=document.querySelector('.greet');if(g)g.textContent=(h<12?'Good morning':h<18?'Good afternoon':'Good evening')+', Ariel.';})();
+</script>
+</body>
+</html>

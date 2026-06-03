@@ -1,12 +1,13 @@
 "use client";
 
-import { Sun, LayoutGrid, Compass, Settings as SettingsIcon } from "lucide-react";
+import { Sun, Gem, LayoutGrid, Compass, Settings as SettingsIcon } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 
-export type View = "today" | "board" | "guide" | "settings";
+export type View = "today" | "core" | "board" | "guide" | "settings";
 
 const ITEMS: { key: View; label: string; Icon: typeof Sun }[] = [
   { key: "today", label: "Today", Icon: Sun },
+  { key: "core", label: "Core", Icon: Gem },
   { key: "board", label: "Board", Icon: LayoutGrid },
   { key: "guide", label: "Guide", Icon: Compass },
   { key: "settings", label: "Settings", Icon: SettingsIcon },

@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LifeGuide · VoiceField — clickable sketch</title>
+<style>
+  :root{
+    --paper:#FAF8F2; --paper-2:#F3EFE5; --ink:#1A1D24; --ink-soft:#444B58; --ink-mute:#8A8F9C;
+    --card:#FFFFFF; --line:#E7E1D4; --line-2:#EFEADE;
+    --accent:#1E3A5F; --gold:#B8945A; --gold-2:#8A6A2E; --green:#4F7A4A;
+    --coach:#1E232E; --coach-soft:#2A303C; --coach-ink:#E9E6DD; --coach-mute:#9AA0AD;
+  }
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);
+    background:radial-gradient(1100px 600px at 70% -8%,#FFFDF7,var(--paper));margin:0;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:44px 28px 90px}
+  h1{font-size:26px;font-weight:700;letter-spacing:-.02em;margin:0 0 4px}
+  .lede{color:var(--ink-mute);font-size:15px;margin:0 0 30px;max-width:680px;line-height:1.5}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px}
+  .panel.full{grid-column:1/-1}
+  .ptitle{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-2);margin-bottom:4px;font-weight:600}
+  .pdesc{font-size:13px;color:var(--ink-mute);margin-bottom:18px;line-height:1.5}
+
+  /* ---- the field shell (modular metadata) ---- */
+  .field{border:1px solid var(--line);border-radius:18px;padding:18px;background:var(--card);transition:border-color .25s}
+  .field .q-eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:8px}
+  .field .q{font-size:17px;font-weight:600;line-height:1.35;margin-bottom:5px}
+  .field .q-desc{font-size:13.5px;color:var(--ink-mute);line-height:1.5;margin-bottom:14px}
+
+  /* ---- VoiceField component ---- */
+  .vf{position:relative}
+  .vf-input{width:100%;border:1px solid var(--line-2);border-radius:14px;padding:13px 48px 13px 14px;
+    font-size:14.5px;line-height:1.55;background:var(--paper);color:var(--ink);min-height:74px;resize:none;outline:none;
+    font-family:inherit;transition:box-shadow .2s}
+  .vf-input::placeholder{color:var(--ink-mute)}
+  .vf-input:focus{box-shadow:0 0 0 3px rgba(184,148,90,.18)}
+
+  /* mic button */
+  .mic{position:absolute;right:10px;bottom:10px;width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;
+    background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;transition:transform .15s, background .2s}
+  .mic:hover{transform:scale(1.07)}
+  .mic svg{width:16px;height:16px}
+  .mic .ring{position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--gold);opacity:.45;animation:ping 2.4s ease-out infinite}
+  @keyframes ping{0%{transform:scale(.85);opacity:.5}70%{transform:scale(1.35);opacity:0}100%{opacity:0}}
+
+  /* ---- recording surface (replaces the field) ---- */
+  .rec{display:none;border:1px solid var(--gold);border-radius:16px;padding:14px 16px;background:linear-gradient(180deg,#FFFDF7,#FBF6EC);
+    box-shadow:0 8px 26px -16px rgba(138,106,46,.5)}
+  .rec.on{display:block;animation:rise .28s ease}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .rec-top{display:flex;align-items:center;gap:14px}
+  .wave{flex:1;display:flex;align-items:center;gap:3px;height:38px}
+  .wave i{flex:1;max-width:5px;border-radius:3px;background:linear-gradient(180deg,var(--gold),var(--gold-2));height:18%;
+    animation:bounce 1s ease-in-out infinite;transform-origin:center}
+  .rec.paused .wave i{animation-play-state:paused;height:14% !important}
+  @keyframes bounce{0%,100%{height:14%}50%{height:var(--h,70%)}}
+  .stop{width:40px;height:40px;border-radius:12px;border:none;cursor:pointer;background:var(--ink);color:#fff;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .stop:hover{background:#2a2f3a}
+  .stop .sq{width:13px;height:13px;border-radius:3px;background:#fff}
+  .rec-meta{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+  .timer{font-size:12px;color:var(--gold-2);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+  .listening{font-size:11.5px;color:var(--ink-mute);display:flex;align-items:center;gap:6px}
+  .listening .dot{width:7px;height:7px;border-radius:50%;background:#d9534f;animation:blink 1.1s infinite}
+  @keyframes blink{50%{opacity:.25}}
+
+  /* live transcript */
+  .live{margin-top:12px;font-size:14.5px;line-height:1.6;color:var(--ink-soft);min-height:24px}
+  .live .w{opacity:0;animation:wordin .25s forwards}
+  @keyframes wordin{to{opacity:1}}
+  .live .caret{display:inline-block;width:2px;height:1.05em;background:var(--gold-2);vertical-align:-2px;margin-left:1px;animation:blink .9s step-end infinite}
+
+  /* prompt mode */
+  .prompts{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px}
+  .prompts .lab{flex-basis:100%;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-2);
+    display:flex;align-items:center;gap:6px;margin-bottom:2px}
+  .prompts .lab .spark{font-size:12px}
+  .chip{font-size:12.5px;color:var(--ink-soft);background:rgba(184,148,90,.1);border:1px solid rgba(184,148,90,.32);
+    border-radius:999px;padding:6px 12px;opacity:0;transform:translateY(4px);animation:chipin .4s forwards;cursor:default}
+  @keyframes chipin{to{opacity:1;transform:none}}
+
+  /* analyzing */
+  .analyzing{display:none;margin-top:12px;align-items:center;gap:9px;font-size:13px;color:var(--gold-2)}
+  .analyzing.on{display:flex}
+  .shimmer{width:140px;height:9px;border-radius:5px;background:linear-gradient(90deg,#eee2cc 25%,#f7eed9 50%,#eee2cc 75%);
+    background-size:200% 100%;animation:sh 1.1s infinite}
+  @keyframes sh{to{background-position:-200% 0}}
+  .spin{width:14px;height:14px;border:2px solid rgba(184,148,90,.35);border-top-color:var(--gold-2);border-radius:50%;animation:rot .7s linear infinite}
+  @keyframes rot{to{transform:rotate(360deg)}}
+
+  /* done / cleaned result */
+  .done-tag{display:none;margin-top:10px;align-items:center;gap:7px;font-size:12px;color:var(--green)}
+  .done-tag.on{display:flex}
+  .done-tag .raw{margin-left:auto;font-size:11.5px;color:var(--ink-mute);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+
+  /* compact (coach) variant */
+  .coach-skin{background:var(--coach);border-radius:18px;padding:16px}
+  .coach-skin .ptitle{color:var(--gold)}
+  .coach-skin .pdesc{color:var(--coach-mute)}
+  .coach-row{display:flex;gap:9px;align-items:flex-end}
+  .coach-row .vf{flex:1}
+  .coach-skin .vf-input{background:var(--coach-soft);border-color:transparent;color:var(--coach-ink);min-height:46px;padding:12px 14px}
+  .coach-skin .vf-input::placeholder{color:var(--coach-mute)}
+  .coach-skin .mic{position:static;background:var(--gold);color:#231a08}
+  .coach-send{width:46px;height:46px;border-radius:12px;background:var(--gold);color:#231a08;border:none;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .coach-skin .rec{background:var(--coach-soft);border-color:var(--gold)}
+  .coach-skin .live{color:var(--coach-ink)}
+  .coach-skin .timer{color:var(--gold)}
+
+  /* state stepper for anatomy panel */
+  .stepper{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+  .stepper button{font-size:12px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);
+    border-radius:999px;padding:6px 13px;cursor:pointer}
+  .stepper button.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .legend{font-size:12.5px;color:var(--ink-mute);line-height:1.6;margin-top:16px;border-top:1px dashed var(--line);padding-top:14px}
+  .legend b{color:var(--ink-soft);font-weight:600}
+  .flow{font-size:12px;color:var(--ink-mute);margin-top:6px}
+  .flow code{background:var(--paper-2);padding:2px 6px;border-radius:5px;color:var(--gold-2);font-size:11.5px}
+  .hint{font-size:11.5px;color:var(--ink-mute);margin-top:10px;font-style:italic}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>VoiceField — a modular voice input for any LifeGuide field</h1>
+  <p class="lede">One component. It wraps any field, carries the field's metadata (question, descriptor, prompts), and runs the same five-state arc everywhere:
+    <b>idle → listening → (prompt mode) → analyzing → done</b>. Click the mic on any field below to watch it. This is a thin sketch — transcription and cleanup are scripted, not real.</p>
+
+  <!-- ============ ANATOMY / STATE MACHINE ============ -->
+  <div class="panel full" style="margin-bottom:24px">
+    <div class="ptitle">Panel A · Anatomy &amp; state machine</div>
+    <div class="pdesc">The element alone. Step through the states, or click the mic to run the live arc.</div>
+    <div class="stepper" id="stepper">
+      <button data-s="idle" class="active">1 · Idle</button>
+      <button data-s="listening">2 · Listening + prompt mode</button>
+      <button data-s="analyzing">3 · Analyzing</button>
+      <button data-s="done">4 · Done (cleaned)</button>
+    </div>
+    <div style="max-width:560px">
+      <div class="field" id="anatomyField"></div>
+    </div>
+    <div class="legend">
+      <div class="flow"><b>Idle:</b> a text field with a pulsing mic. Type or click to speak. Field metadata is just props.</div>
+      <div class="flow"><b>Listening:</b> the field morphs into an elongated bar with live audio waves; words stream in minimally; <b>Prompt Mode</b> floats contextual "say this next" chips drawn from the question + the core.</div>
+      <div class="flow"><b>Analyzing:</b> on stop, the raw transcript is sent to a cleanup/intent pass that fixes speech, trims filler, and shapes it to what the field is asking.</div>
+      <div class="flow"><b>Done:</b> the cleaned text lands in the field, marked <code>polished</code>, with a one-tap <code>show raw</code> to revert. Nothing is silently overwritten.</div>
+    </div>
+  </div>
+
+  <!-- ============ IN CONTEXT ============ -->
+  <div class="grid">
+    <div class="panel">
+      <div class="ptitle">Panel B · Today — the one move</div>
+      <div class="pdesc">Short reflective field. Spoken just as easily as typed.</div>
+      <div class="field" id="todayField"></div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle">Panel C · Onboarding — a deep question</div>
+      <div class="pdesc">Carries an eyebrow, a question, and a descriptor. Prompt Mode leans on all three.</div>
+      <div class="field" id="deepField"></div>
+    </div>
+
+    <div class="panel full">
+      <div class="ptitle">Panel D · The Coach dock — compact skin</div>
+      <div class="pdesc">Same component, compact variant. Mic sits inline; recording bar expands in place.</div>
+      <div class="coach-skin">
+        <div class="coach-row">
+          <div class="field" id="coachField" style="border:none;padding:0;background:transparent"></div>
+          <button class="coach-send" title="send">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const MIC_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4"/></svg>';
+
+// Each field is the SAME component with different modular metadata.
+function VoiceField(host, cfg){
+  const compact = !!cfg.compact;
+  host.innerHTML = `
+    ${cfg.eyebrow ? `<div class="q-eyebrow">${cfg.eyebrow}</div>`:''}
+    ${cfg.question ? `<div class="q">${cfg.question}</div>`:''}
+    ${cfg.desc ? `<div class="q-desc">${cfg.desc}</div>`:''}
+    <div class="vf">
+      <div class="vf-idle">
+        <textarea class="vf-input" placeholder="${cfg.placeholder||'Type, or tap the mic to speak…'}" rows="${compact?1:2}"></textarea>
+        <button class="mic" title="Speak">${compact?'':'<span class="ring"></span>'}${MIC_SVG}</button>
+      </div>
+      <div class="rec">
+        <div class="rec-top">
+          <div class="wave"></div>
+          <button class="stop" title="Stop"><span class="sq"></span></button>
+        </div>
+        <div class="rec-meta">
+          <span class="listening"><span class="dot"></span> Listening…</span>
+          <span class="timer">0:00</span>
+        </div>
+        <div class="live"></div>
+        <div class="prompts"></div>
+        <div class="analyzing"><span class="spin"></span> <span>Understanding what you mean</span> <span class="shimmer"></span></div>
+        <div class="done-tag"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg> Polished by Coach <span class="raw">show raw</span></div>
+      </div>
+    </div>`;
+
+  const el = {
+    idle: host.querySelector('.vf-idle'),
+    rec: host.querySelector('.rec'),
+    wave: host.querySelector('.wave'),
+    live: host.querySelector('.live'),
+    prompts: host.querySelector('.prompts'),
+    analyzing: host.querySelector('.analyzing'),
+    doneTag: host.querySelector('.done-tag'),
+    timer: host.querySelector('.timer'),
+    listening: host.querySelector('.listening'),
+    input: host.querySelector('.vf-input'),
+    mic: host.querySelector('.mic'),
+    stop: host.querySelector('.stop'),
+    raw: host.querySelector('.raw'),
+  };
+
+  // build wave bars
+  const N = compact ? 22 : 34;
+  for(let i=0;i<N;i++){ const b=document.createElement('i'); el.wave.appendChild(b); }
+  const bars = [...el.wave.children];
+
+  let waveTimer, wordTimer, promptTimer, clock, seconds=0;
+  function animateWave(){
+    waveTimer = setInterval(()=>{
+      bars.forEach(b=> b.style.setProperty('--h', (20+Math.random()*78).toFixed(0)+'%'));
+    },170);
+    bars.forEach((b,i)=> b.style.animationDelay = (i*0.045)+'s');
+  }
+
+  function reset(){
+    clearInterval(waveTimer);clearInterval(wordTimer);clearInterval(promptTimer);clearInterval(clock);
+    el.live.innerHTML='';el.prompts.innerHTML='';seconds=0;el.timer.textContent='0:00';
+    el.analyzing.classList.remove('on');el.doneTag.classList.remove('on');el.listening.style.display='';
+  }
+
+  function toIdle(){ reset(); el.rec.classList.remove('on'); el.idle.style.display=''; }
+  function toListening(){
+    reset();
+    el.idle.style.display='none'; el.rec.classList.add('on');
+    animateWave();
+    clock = setInterval(()=>{ seconds++; el.timer.textContent='0:'+String(seconds).padStart(2,'0'); },1000);
+    // stream words
+    const words = cfg.raw.split(' '); let i=0;
+    el.live.innerHTML='<span class="caret"></span>';
+    wordTimer = setInterval(()=>{
+      if(i>=words.length){ clearInterval(wordTimer); return; }
+      const s=document.createElement('span'); s.className='w'; s.textContent=words[i]+' ';
+      el.live.querySelector('.caret').before(s); i++;
+    }, 240);
+    // prompt mode chips
+    el.prompts.innerHTML='<span class="lab"><span class="spark">✦</span> Prompt mode · you could go here next</span>';
+    let p=0;
+    const addChip=()=>{ if(p>=cfg.prompts.length)return; const c=document.createElement('span');
+      c.className='chip'; c.textContent=cfg.prompts[p]; c.style.animationDelay=(p*0.05)+'s'; el.prompts.appendChild(c); p++; };
+    addChip();
+    promptTimer=setInterval(addChip, 1400);
+  }
+  function toAnalyzing(){
+    clearInterval(waveTimer);clearInterval(wordTimer);clearInterval(promptTimer);clearInterval(clock);
+    el.rec.classList.add('on'); el.idle.style.display='none';
+    el.rec.classList.add('paused'); el.listening.style.display='none';
+    el.prompts.innerHTML=''; el.analyzing.classList.add('on');
+  }
+  function toDone(){
+    el.rec.classList.remove('paused'); el.analyzing.classList.remove('on');
+    el.live.innerHTML=''; const s=document.createElement('span'); s.className='w'; s.style.opacity=1;
+    s.textContent=cfg.cleaned; el.live.appendChild(s);
+    el.doneTag.classList.add('on');
+    el.wave.parentElement.style.display='none';
+  }
+  function showState(st){
+    el.wave.parentElement.style.display='';
+    if(st==='idle') toIdle();
+    if(st==='listening') toListening();
+    if(st==='analyzing'){ toListening(); setTimeout(toAnalyzing,30); }
+    if(st==='done'){ toListening(); toDone(); }
+  }
+
+  // interactions
+  el.mic.onclick=()=> toListening();
+  el.stop.onclick=()=>{ toAnalyzing(); setTimeout(()=>{ toDone(); }, 1700); };
+  el.raw.onclick=()=>{ el.live.innerHTML=''; const s=document.createElement('span'); s.className='w'; s.style.opacity=1;
+    s.style.color='var(--ink-mute)'; s.textContent=cfg.raw; el.live.appendChild(s);
+    el.doneTag.querySelector('.raw').textContent='show polished';
+    el.doneTag.querySelector('.raw').onclick=()=>toDone(); };
+
+  return { showState };
+}
+
+// ---- mount the four contexts, each with its own metadata ----
+const anatomy = VoiceField(document.getElementById('anatomyField'), {
+  eyebrow:'The element', question:'What’s on your mind?',
+  raw:'um so i guess like i want to be more consistent with the gym but i keep skipping mondays and then the whole week kind of falls apart you know',
+  cleaned:'I want to stay consistent with the gym. Mondays are my weak point, and when I skip them the rest of the week unravels.',
+  prompts:['What gets in the way on Mondays?','How does it feel when the week holds?','What would week one look like?']
+});
+
+VoiceField(document.getElementById('todayField'), {
+  eyebrow:"Today’s one move", question:"What’s one small thing today that points at it?",
+  placeholder:"It can be tiny. That’s the point.",
+  raw:'i think today i just want to like text my brother back because i keep leaving him on read and it makes me feel like a bad family member honestly',
+  cleaned:'Text my brother back today. I keep leaving him on read, and closing that loop matters to me.',
+  prompts:['Why does this one matter today?','What’s the smallest version of it?','When today will you do it?']
+});
+
+VoiceField(document.getElementById('deepField'), {
+  eyebrow:'Core · identity', question:'Who do you want to be in five years?',
+  desc:'No right answer. Speak it the way it actually lives in your head — we’ll shape it together.',
+  raw:'honestly i picture someone who isnt anxious all the time, who runs his own thing, has like a real circle of friends and is in good shape, someone people kind of look up to',
+  cleaned:'A calmer version of myself: running my own thing, physically strong, surrounded by a real circle of friends, the kind of person others look up to.',
+  prompts:['Which part feels furthest away?','Who in your life already lives this?','What’s the first pillar to build?']
+});
+
+VoiceField(document.getElementById('coachField'), {
+  compact:true, placeholder:'Talk to your Coach…',
+  raw:'hey can you look at my board and tell me if my goals even make sense together or if im kind of all over the place',
+  cleaned:'Look at my board and tell me whether my goals hang together, or if I’m too scattered.',
+  prompts:['Ask about alignment','Ask what to drop','Ask for one next move']
+});
+
+// stepper drives the anatomy panel
+document.querySelectorAll('#stepper button').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('#stepper button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    anatomy.showState(b.dataset.s);
+  };
+});
+</script>
+</body>
+</html>

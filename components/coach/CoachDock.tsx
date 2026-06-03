@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { View } from "@/components/shell/Rail";
 import { MessageCircle, Send } from "lucide-react";
 
-type Msg = { role: "user" | "coach"; content: string };
+const WELCOME =
+  "I'm here. I can see whatever surface you're on, and I know what we've built so far. Ask me anything, or tell me what's on your mind.";
 
 const CTX: Record<View, string> = {
   today: "sees today · knows you",
+  core: "sees your Core · knows you",
   board: "sees your board · knows you",
   guide: "sees your Guide · knows you",
   settings: "knows you",
@@ -18,37 +20,34 @@ const CTX: Record<View, string> = {
 
 export function CoachDock({ view, surfaceId }: { view: View; surfaceId: Id<"surfaces"> }) {
   const ask = useAction(api.coach.ask);
+  // Persisted, reactive history. The user turn appears the instant the action commits it,
+  // and the reply follows when the model returns. A static welcome shows before any chat exists.
+  const stored = useQuery(api.messages.list, {});
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>([
-    {
-      role: "coach",
-      content:
-        "I'm here. I can see whatever surface you're on, and I know what we've built so far. Ask me anything, or tell me what's on your mind.",
-    },
-  ]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
+  const [errored, setErrored] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
+
+  const messages =
+    stored && stored.length > 0
+      ? stored.map((m) => ({ role: m.role, content: m.content }))
+      : [{ role: "coach" as const, content: WELCOME }];
 
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
-  }, [messages, thinking, open]);
+  }, [stored, thinking, open]);
 
   const send = async () => {
     const text = input.trim();
     if (!text || thinking) return;
-    const history = messages.slice(-8);
-    setMessages((m) => [...m, { role: "user", content: text }]);
     setInput("");
     setThinking(true);
+    setErrored(false);
     try {
-      const reply = await ask({ message: text, history, surfaceId });
-      setMessages((m) => [...m, { role: "coach", content: reply }]);
+      await ask({ message: text, surfaceId });
     } catch {
-      setMessages((m) => [
-        ...m,
-        { role: "coach", content: "I hit a snag reaching my thoughts just now. Try me again in a moment." },
-      ]);
+      setErrored(true);
     } finally {
       setThinking(false);
     }
@@ -89,6 +88,11 @@ export function CoachDock({ view, surfaceId }: { view: View; surfaceId: Id<"surf
           {thinking && (
             <div className="self-start text-coach-mute text-[13px] italic px-1.5 py-1">
               Coach is thinking…
+            </div>
+          )}
+          {errored && (
+            <div className="self-start text-coach-mute text-[13px] italic px-1.5 py-1">
+              I hit a snag reaching my thoughts just now. Try me again in a moment.
             </div>
           )}
         </div>

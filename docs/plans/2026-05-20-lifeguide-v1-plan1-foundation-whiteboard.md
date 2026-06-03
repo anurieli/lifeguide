@@ -16,6 +16,8 @@
 
 **Spec:** `LifeGuide/docs/product/prd.md` · **Concept:** `LifeGuide/docs/product/concept-and-soul.md`
 
+> **Progress (2026-05-20):** Task 0 (frontend scaffold) and Task 2 (geometry helpers) are ✅ built and verified (`npm test` 4/4, `npm run build` clean). Because the `LifeGuide/` folder already held docs/mockup, Task 0 was hand-written rather than via `create-next-app`, and `@convex-dev/auth`/`openai`/`convex-test` installs were deferred. **Tasks 1, 3–8 are Convex-dependent and gated on provisioning** — they run once a one-time `npx convex dev` login is done and `OPENAI_API_KEY` is set.
+
 ---
 
 ## File Structure (Plan 1)

@@ -16,14 +16,36 @@ The previous docs described an earlier direction (a Whiteboard plus Coach build,
 | Core idea | Life Blueprint (guided reflection) | rebuilding to the evolved vision |
 | Role | the model and seed | the live build |
 
-## Rebuilt so far
-- [`architecture/elements-and-context.md`](architecture/elements-and-context.md): the foundation. The large elements, what each owns, the two streams (Core and Sessions), owns-vs-draws, text as the shared currency, and gap-awareness.
-- [`product/blueprint/the-life-blueprint.md`](product/blueprint/the-life-blueprint.md): the recovered Life Blueprint, the Core's backbone (3 sections, 18 questions).
+## The map (rebuilt 2026-06-03)
 
-## To be rebuilt (deliberately, not restored)
-- The spec (product requirements) for the evolved vision.
-- The data model for the new components (sessions, prompts, future self) alongside what already exists in `convex/schema.ts`.
-- One doc per component (the units) and the shared Context Bus contract.
-- Architecture, design, decisions, and roadmap, written fresh to the current direction.
+The rebuild is complete. The set below is written fresh to the evolved vision; nothing was restored from the old docs.
+
+**Foundation (read first)**
+- [`architecture/elements-and-context.md`](architecture/elements-and-context.md): the large elements, what each owns, the two streams (Core and Sessions), owns-vs-draws, text as the shared currency, gap-awareness.
+- [`architecture/context-bus.md`](architecture/context-bus.md): the spine. How context is held, published, and assembled (the two streams, owns vs draws, the assembler, gap-awareness).
+- [`architecture/data-model.md`](architecture/data-model.md): the data shape. Live tables plus the proposed ones (sessions, prompts, futureSelf, goals, the Core backbone).
+
+**Product**
+- [`product/prd.md`](product/prd.md): the v1 requirements, the index that ties the feature docs together.
+- [`product/concept-and-soul.md`](product/concept-and-soul.md): the why (seed 1; the "evolved system" section is the source of truth).
+- [`product/blueprint/the-life-blueprint.md`](product/blueprint/the-life-blueprint.md): the recovered Blueprint, the Core's backbone (3 sections, 18 questions).
+- [`product/features/`](product/features/README.md): one doc per element (Vision Board, Future Self, Journal, Pillars & Goals, Core, Coach, Guide, Dashboard, Settings).
+
+**Architecture**
+- [`architecture/ai-layer.md`](architecture/ai-layer.md): the AI roles and providers (OpenRouter preferred, OpenAI fallback).
+- [`architecture/stack.md`](architecture/stack.md): Next.js + Convex + OpenRouter, and why.
+- [`architecture/security-privacy.md`](architecture/security-privacy.md): the trust contract (multi-tenant isolation, server-only keys, likeness-photo handling).
+
+**Design**
+- [`design/interaction-principles.md`](design/interaction-principles.md), [`design/design-system.md`](design/design-system.md), [`design/screens.md`](design/screens.md).
+
+**Decisions**
+- [`decisions/`](decisions/README.md): the evolved-vision pivot and docs reset, Future Self as its own element, OpenRouter.
+
+**Sequence**
+- [`roadmap.md`](roadmap.md): the spine-first build order.
+
+## The two seeds (kept)
+The rebuild was grown from two seeds, both still canonical: the soul and evolved vision in [`product/concept-and-soul.md`](product/concept-and-soul.md), and the recovered Life Blueprint from the original app at `~/lifeguide`.
 
 The operating rules (docs change in the same step as code; keep the CHANGELOG) still hold: see [`../CLAUDE.md`](../CLAUDE.md).

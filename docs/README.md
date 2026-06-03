@@ -16,6 +16,10 @@ The previous docs described an earlier direction (a Whiteboard plus Coach build,
 | Core idea | Life Blueprint (guided reflection) | rebuilding to the evolved vision |
 | Role | the model and seed | the live build |
 
+## Rebuilt so far
+- [`architecture/elements-and-context.md`](architecture/elements-and-context.md): the foundation. The large elements, what each owns, the two streams (Core and Sessions), owns-vs-draws, text as the shared currency, and gap-awareness.
+- [`product/blueprint/the-life-blueprint.md`](product/blueprint/the-life-blueprint.md): the recovered Life Blueprint, the Core's backbone (3 sections, 18 questions).
+
 ## To be rebuilt (deliberately, not restored)
 - The spec (product requirements) for the evolved vision.
 - The data model for the new components (sessions, prompts, future self) alongside what already exists in `convex/schema.ts`.

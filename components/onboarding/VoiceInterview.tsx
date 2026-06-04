@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { QrHandoff } from "./QrHandoff";
 
 type MicState = "idle" | "connecting" | "live" | "error";
 
@@ -168,6 +169,9 @@ export function VoiceInterview({
         <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${micStateDot[micState]}`} />
         <span className="text-[13px] text-ink-mute tracking-wide">{micStateLabel[micState]}</span>
       </div>
+
+      {/* Continue on your phone — QR handoff */}
+      <QrHandoff sessionId={sessionId} />
 
       {/* Transcript */}
       <div className="flex-1 overflow-y-auto rounded-[14px] bg-card border border-line p-4 flex flex-col gap-3 min-h-0">

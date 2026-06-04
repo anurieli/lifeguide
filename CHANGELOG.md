@@ -7,7 +7,19 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
-## 2026-06-03 · Fix + redesign: voice interview ("Talk it through") — OpenAI Realtime GA, real-time conversation UI
+## 2026-06-03 · Merge Guide into Home (Today); account menu replaces the sign-out avatar
+
+`f74d9fe` — Today and the Guide were two separate surfaces saying overlapping things. Made Home one cohesive thing and tidied the rail's account affordance.
+
+- **One home surface.** `components/today/Today.tsx` now hosts, top to bottom: a time-aware greeting, a Core progress chip, the **north star compass** (a gold card with a compass mark, editable inline — the one write this surface issues, `settings.update({ northStar })`), the Morning/Evening ritual (unchanged, still logs `checkin_morning` / `checkin_evening`), the Coach whisper, then a "Who you're becoming" section with the **Mirror** and the **pillars** folded in from the Guide. The compass is editable here, so Today no longer routes elsewhere to name a direction.
+- **Guide removed.** `components/guide/Guide.tsx` deleted; the `guide` view dropped from `Rail` `View`, `AppShell` (`VIEWS`, render, import), and the `CoachDock` `CTX` record. Its content (renders + the single north-star write) is unchanged, just rehosted.
+- **Account menu.** `components/shell/Rail.tsx`: primary tabs are now Today / Core / Board. The bottom avatar no longer signs you out on click — it toggles a popup menu (**Settings · Account · Sign out**) with click-outside-to-close. Settings and Account both open the Settings surface for now (Account is not yet its own page); Sign out calls `signOut`.
+
+`tsc --noEmit` clean; dev server compiles and serves `/` 200. Live mic and the account-popup positioning still want a manual browser glance.
+
+**Docs touched:** `docs/design/screens.md` (Home rewritten, Guide marked merged, rail + Settings + at-a-glance updated), `docs/product/features/dashboard.md` (compass + folded-in Guide, actions, dynamics, states, data), `docs/product/features/guide.md` (merge banner + status: merged), `docs/product/features/settings.md` (north star edited on Home; Settings reached via account menu), `docs/product/features/README.md` (status table + surfaces note).
+
+
 
 "Talk it through" was broken by three retired/incorrect OpenAI Realtime Beta details, and the screen was cluttered. Fixed the whole chain and rebuilt the live view in the blueprint's visual language.
 

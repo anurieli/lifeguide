@@ -81,7 +81,10 @@ export function Settings() {
   const settings = useQuery(api.settings.get, {});
   const pillars = useQuery(api.pillars.list, {});
   const presets = useQuery(api.pillars.presets, {});
+  const owner = useQuery(api.owner.amOwner);
   const update = useMutation(api.settings.update);
+  // The /admin entry shows in local dev (any session) or, in prod, only the owner.
+  const showAdmin = process.env.NODE_ENV !== "production" || owner?.isOwner === true;
   const addPillar = useMutation(api.pillars.add);
   const aiNodes = useQuery(api.aiKeys.nodes, {});
   const keyStatus = useQuery(api.aiKeys.status, {});
@@ -249,8 +252,8 @@ export function Settings() {
               Sign out
             </button>
           </Row>
-          {process.env.NODE_ENV !== "production" && (
-            <Row title="Developer" desc="Admin tools: reset onboarding, seed/clear the Core, inspect sessions.">
+          {showAdmin && (
+            <Row title="Admin" desc="Feedback inbox, plus dev tools: reset onboarding, seed/clear the Core, inspect sessions.">
               <a
                 href="/admin"
                 className="border border-line rounded-lg px-4 py-2 text-sm text-ink-soft hover:bg-paper-2 transition"

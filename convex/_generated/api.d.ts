@@ -33,6 +33,7 @@ import type * as interview from "../interview.js";
 import type * as messages from "../messages.js";
 import type * as mirror from "../mirror.js";
 import type * as nodes from "../nodes.js";
+import type * as owner from "../owner.js";
 import type * as pillars from "../pillars.js";
 import type * as placement from "../placement.js";
 import type * as settings from "../settings.js";
@@ -72,6 +73,7 @@ declare const fullApi: ApiFromModules<{
   messages: typeof messages;
   mirror: typeof mirror;
   nodes: typeof nodes;
+  owner: typeof owner;
   pillars: typeof pillars;
   placement: typeof placement;
   settings: typeof settings;

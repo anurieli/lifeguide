@@ -6,22 +6,26 @@
 // an optional html2canvas snapshot (uploaded via files.generateUploadUrl). The
 // /admin dev panel reads `listAll` (reactive) and flips status via resolve/reopen.
 //
-// Self-scoped, like the rest of /admin: every function only ever touches rows owned
-// by the authed identity. This is the single-builder feedback loop, not cross-user
-// moderation (that would need a real isAdmin role).
+// Access model: the OWNER (see convex/owner.ts) sees and triages EVERY user's
+// feedback — this is the support inbox. Everyone else is self-scoped: they only
+// ever see/act on their own rows. The split is enforced server-side here, so it
+// holds regardless of which surface (dev or prod) is calling.
 // ============================================================================
 
 import { mutation, query, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
+import { isOwner } from "./owner";
 
 const TYPE = v.union(v.literal("bug"), v.literal("feature"), v.literal("other"));
 
-// Load a feedback row and assert it belongs to the current user. Throws otherwise.
-async function ownRow(ctx: MutationCtx, userId: Id<"users">, id: Id<"feedback">) {
+// Load a feedback row the caller may act on: their own, or — for the owner — any
+// row (triage). Throws otherwise.
+async function actableRow(ctx: MutationCtx, userId: Id<"users">, id: Id<"feedback">) {
   const row = await ctx.db.get(id);
-  if (!row || row.userId !== userId) throw new Error("Not found");
+  if (!row) throw new Error("Not found");
+  if (row.userId !== userId && !(await isOwner(ctx))) throw new Error("Not found");
   return row;
 }
 
@@ -52,23 +56,38 @@ export const submit = mutation({
   },
 });
 
-// All of the user's feedback, newest first, each with its snapshot URL resolved.
-// Reactive: the /admin queue updates live as new feedback arrives.
+// Feedback for the /admin queue, newest first, each with its snapshot URL and the
+// submitter's identity resolved. The OWNER gets EVERY user's feedback (support
+// inbox); everyone else gets only their own. Reactive: the queue updates live.
 export const listAll = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
-    const rows = await ctx.db
-      .query("feedback")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .order("desc")
-      .collect();
+    const owner = await isOwner(ctx);
+    const rows = owner
+      ? // Owner: all feedback across users, newest first (full scan, low volume).
+        await ctx.db.query("feedback").order("desc").collect()
+      : // Everyone else: only their own.
+        await ctx.db
+          .query("feedback")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .order("desc")
+          .collect();
     return await Promise.all(
-      rows.map(async (r) => ({
-        ...r,
-        shotUrl: r.shotId ? await ctx.storage.getUrl(r.shotId) : null,
-      })),
+      rows.map(async (r) => {
+        const u = await ctx.db.get(r.userId);
+        return {
+          ...r,
+          shotUrl: r.shotId ? await ctx.storage.getUrl(r.shotId) : null,
+          // Identity to show + reply to in the queue. Anonymous users have no email.
+          submitter: {
+            name: u?.name ?? null,
+            email: u?.email ?? null,
+            isAnonymous: !u?.email,
+          },
+        };
+      }),
     );
   },
 });
@@ -79,7 +98,7 @@ export const resolve = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
-    await ownRow(ctx, userId, args.id);
+    await actableRow(ctx, userId, args.id);
     await ctx.db.patch(args.id, { status: "dealt_with", resolvedAt: Date.now() });
   },
 });
@@ -90,7 +109,7 @@ export const reopen = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
-    await ownRow(ctx, userId, args.id);
+    await actableRow(ctx, userId, args.id);
     await ctx.db.patch(args.id, { status: "open", resolvedAt: undefined });
   },
 });

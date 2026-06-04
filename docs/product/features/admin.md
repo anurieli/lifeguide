@@ -1,14 +1,19 @@
 # Feature: Admin / Dev Panel
 
-**Status:** Built (branch `admin-panel`). Dev-only.
-**Route:** `/admin` (standalone, no rail). Entry point: a dev-only "Developer" row in Settings.
-**Backend:** `convex/admin.ts`. **Frontend:** `app/admin/page.tsx`.
+**Status:** Built. **Access: open in local dev, OWNER-ONLY in production.**
+**Route:** `/admin` (standalone, no rail). Entry point: an "Admin" row in Settings (shown in dev, or to the owner in prod).
+**Backend:** `convex/admin.ts`, `convex/feedback.ts`, `convex/owner.ts`. **Frontend:** `app/admin/page.tsx`.
 
 ## Purpose
 
-A self-service maintenance panel for the **current identity**. Its first job is the one the product otherwise can't do: **put yourself back in front of the Door** so onboarding can be re-run and tested without minting a new anonymous user. It also seeds/clears the Core and lets you inspect your interview sessions.
+Two jobs in one panel:
 
-Because LifeGuide auth is anonymous and cookie-bound, there is no cross-user administration here. "Admin" means "operate on my own account." Cross-user admin (an `isAdmin` role, user lookup, impersonation) is explicitly **out of scope** and would be a separate feature.
+1. **Self-service maintenance for the current identity** — put yourself back in front of the Door (reset onboarding) so it can be re-tested without minting a new anonymous user; seed/clear the Core; inspect your interview sessions. These tools only ever touch the caller's own data.
+2. **The feedback support inbox** — the owner triages every user's feedback and replies to submitters (see the Feedback / Escalations queue below).
+
+## Access model
+
+`/admin` is **open in local dev** (any localhost session) and **owner-only in production** (gated on the owner's email — see [`0006-owner-gated-admin.md`](../../decisions/0006-owner-gated-admin.md) and `convex/owner.ts`). The page resolves `owner.amOwner` and renders "Not authorized" to non-owners in prod. This client gate is UX; the real boundary is server-side: the cross-user feedback queries enforce owner-only in `convex/feedback.ts`. The self-scoped dev tools (reset/seed/wipe) stay self-scoped (only the caller's own data) and so carry no cross-user risk.
 
 ## Why it exists
 
@@ -25,7 +30,7 @@ Onboarding is gated by `settings.onboardedAt`. Once `completeOnboarding` stamps 
   - **Clear Core answers** (danger) — deletes all `coreResponses` → status `unstarted`.
   - **Wipe test data** (danger) — deletes `coreResponses` + `interviewSessions` + `experienceEvents` and resets onboarding. Keeps rhythm/tone preferences.
 - **Interview sessions** list: the user's sessions, newest first (experience, status, turn count, started time).
-- **Feedback / Escalations** queue: the user's in-app feedback, newest first and live (Convex-reactive). Each row shows the type, route/view, time, the note, an error count + expandable error log, and the page snapshot thumbnail. Open items carry a red alert dot and the header shows an open-count badge; **Dealt with** resolves a row (greys it, clears the alert), **Reopen** restores it. Backed by `convex/feedback.ts` (`listAll`/`resolve`/`reopen`); submissions come from the [Feedback Widget](feedback-widget.md).
+- **Feedback / Escalations** queue: in-app feedback, newest first and live (Convex-reactive). For the **owner** this is **every user's** feedback (the support inbox); for anyone else it is only their own. Each row shows the type, route/view, time, the **submitter** (name + email, or "anonymous"), the note, an error count + expandable error log, and the page snapshot thumbnail. Open items carry a red alert dot and the header shows an open-count badge; **Dealt with** resolves a row (greys it, clears the alert), **Reopen** restores it. A **Reply** button (when the submitter has an email) opens a `mailto:` in your own mail client, pre-addressed and quoting their note — replies go from your real email, no provider needed. Backed by `convex/feedback.ts` (`listAll`/`resolve`/`reopen`, owner-aware); submissions come from the [Feedback Widget](feedback-widget.md).
 - **Back to app** link.
 
 In a production build the page renders only "The admin panel is only available in development." and runs no queries (`useQuery(..., "skip")`). The Settings entry point is hidden in production (`process.env.NODE_ENV !== "production"`).

@@ -4,13 +4,15 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { filledCount } from "@/lib/levels";
-import { AlertCircle, CheckCircle2, Image as ImageIcon } from "lucide-react";
+import { AlertCircle, CheckCircle2, Image as ImageIcon, Mail } from "lucide-react";
 
 const TYPE_LABEL: Record<string, string> = { bug: "Bug", feature: "Feature", other: "Other" };
 
-// Self-scoped dev/admin panel. Standalone route (no rail). Every action below
-// only touches the CURRENT anonymous identity's own data. Dev-gated: in a
-// production build this renders a notice instead of the tools.
+// Admin panel. Standalone route (no rail). Access: open in local dev (any
+// session), OWNER-ONLY in production (gated on the owner's email — see
+// convex/owner.ts). The self-scoped dev tools (reset/seed/wipe) only ever touch
+// the caller's own data; the Feedback queue is the owner's cross-user support
+// inbox, enforced server-side in convex/feedback.ts.
 
 type ActionKey = "reset" | "clearCore" | "seedCore" | "wipe";
 
@@ -22,12 +24,18 @@ const ACTIONS: { key: ActionKey; label: string; desc: string; danger?: boolean }
 ];
 
 export default function AdminPage() {
-  const isProd = process.env.NODE_ENV === "production";
+  const isDev = process.env.NODE_ENV !== "production";
 
-  const settings = useQuery(api.settings.get, isProd ? "skip" : {});
-  const coreMap = useQuery(api.core.get, isProd ? "skip" : {});
-  const sessions = useQuery(api.admin.listSessions, isProd ? "skip" : {});
-  const feedback = useQuery(api.feedback.listAll, isProd ? "skip" : {});
+  // In prod, only the owner may see this page. In dev it's open (localhost).
+  const owner = useQuery(api.owner.amOwner);
+  const isOwner = owner?.isOwner === true;
+  const canAccess = isDev || isOwner;
+  const gate = canAccess ? {} : ("skip" as const);
+
+  const settings = useQuery(api.settings.get, gate);
+  const coreMap = useQuery(api.core.get, gate);
+  const sessions = useQuery(api.admin.listSessions, gate);
+  const feedback = useQuery(api.feedback.listAll, gate);
 
   const resetOnboarding = useMutation(api.admin.resetOnboarding);
   const clearCore = useMutation(api.admin.clearCore);
@@ -40,12 +48,25 @@ export default function AdminPage() {
   const [busy, setBusy] = useState<ActionKey | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
-  if (isProd) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-paper text-ink-mute">
-        The admin panel is only available in development.
-      </div>
-    );
+  // Production access wall: resolve ownership before rendering anything.
+  if (!isDev) {
+    if (owner === undefined) {
+      return (
+        <div className="h-screen flex items-center justify-center bg-paper text-ink-mute">
+          Checking access…
+        </div>
+      );
+    }
+    if (!isOwner) {
+      return (
+        <div className="h-screen flex flex-col items-center justify-center bg-paper text-ink-mute gap-2">
+          <div className="text-ink text-[15px]">Not authorized.</div>
+          <a href="/" className="text-[13px] underline hover:text-ink transition">
+            ← Back to app
+          </a>
+        </div>
+      );
+    }
   }
 
   const run = async (key: ActionKey) => {
@@ -180,6 +201,14 @@ export default function AdminPage() {
           ) : (
             feedback.map((f) => {
               const open = f.status === "open";
+              const who = f.submitter?.name || f.submitter?.email || "anonymous";
+              const replyHref = f.submitter?.email
+                ? `mailto:${f.submitter.email}?subject=${encodeURIComponent(
+                    "Re: your LifeGuide feedback",
+                  )}&body=${encodeURIComponent(
+                    `\n\n———\nIn reply to your ${TYPE_LABEL[f.type] ?? f.type} note:\n"${f.text}"`,
+                  )}`
+                : null;
               return (
                 <div key={f._id} className={`p-4 flex gap-3 ${open ? "" : "opacity-60"}`}>
                   <div className="pt-0.5 flex-shrink-0">
@@ -199,6 +228,15 @@ export default function AdminPage() {
                       <span>· {new Date(f.createdAt).toLocaleString()}</span>
                       {f.errors.length > 0 && (
                         <span className="text-[#9B2C2C]">· {f.errors.length} error{f.errors.length > 1 ? "s" : ""}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[12px] mb-1.5">
+                      <span className="text-ink-mute">from</span>
+                      <span className={`font-medium ${f.submitter?.isAnonymous ? "text-ink-mute italic" : "text-ink-soft"}`}>
+                        {who}
+                      </span>
+                      {f.submitter?.email && f.submitter?.name && (
+                        <span className="text-ink-mute">· {f.submitter.email}</span>
                       )}
                     </div>
                     <div className="text-[14px] text-ink whitespace-pre-wrap break-words">{f.text}</div>
@@ -228,6 +266,17 @@ export default function AdminPage() {
                         <span className="inline-flex items-center gap-1 text-[12px] text-ink-mute">
                           <ImageIcon className="w-3.5 h-3.5" /> no snapshot
                         </span>
+                      )}
+                      {replyHref ? (
+                        <a
+                          href={replyHref}
+                          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] border border-line text-ink-soft hover:bg-paper-2 transition"
+                          title={`Reply to ${f.submitter?.email}`}
+                        >
+                          <Mail className="w-3.5 h-3.5" /> Reply
+                        </a>
+                      ) : (
+                        <span className="text-[12px] text-ink-mute italic">no email to reply to</span>
                       )}
                       {open ? (
                         <button

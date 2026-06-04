@@ -7,6 +7,15 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-03 · Task 0.2: Interview question-selection policy (branch `onboarding-rebuild`) commit `73c1b48`
+
+Created `lib/interview/policy.ts` with the `nextQuestion` function and `InterviewState` type. The policy selects questions in canonical blueprint order, defers skipped keys until all fresh keys are exhausted, circles back to each skipped key exactly once, and returns null when nothing remains. Verified via TDD: 4 vitest tests written first, confirmed failing, then implementation written to pass.
+
+**Files changed:** `lib/interview/policy.ts`, `tests/interview-policy.test.ts`
+**Docs touched:** none (pure logic module, no product behavior or schema change).
+
+---
+
 ## 2026-06-03 · Build: AI config hub + per-profile keys + per-task models (branch `spec-rebuild`) ✅ typecheck + tests
 Implemented three requested capabilities on the `spec-rebuild` branch. (1) **One AI config file** (`convex/ai/config.ts`, now a `PROVIDERS` + `TASKS` registry with a `convex/ai/README.md`): every AI node is visible and tunable in one place, with `openrouter`, `openai`, and `local` providers (point `LOCAL_AI_BASE_URL` at LM Studio / Ollama / vLLM, key optional). (2) **Different models per task**: each task names its own `provider` + `model`; `aiForTask(ctx, taskId, userId)` (`convex/ai/openai.ts`) builds the client per task; `distill` and `coachReply` are wired to it, `curate` and `journalPrompts` are defined and visible but not yet called. (3) **Per-profile keys** (`apiKeys` table + `convex/aiKeys.ts`): a user can save their own OpenRouter key in Settings; it wins over the deployment env key for their calls, is server-only (never returned to the client, only status + last4), via an `internalQuery` for server use. Added a Settings "AI models & keys" section listing every node and its model and letting the user save/remove their key. Login was already wired (`auth.ts`: Anonymous + Google; Google needs OAuth creds). Verified: `tsc --noEmit` clean, 23/23 unit tests pass (added `tests/ai-config.test.ts`). Not live-deployed: the shared dev deployment is in active use by the `app-shell` session, so this awaits merge.
 **Docs touched:** `docs/architecture/ai-layer.md` (one-file config, local provider, per-task models, per-profile keys), `docs/architecture/data-model.md` (`apiKeys` table + ownership map), `docs/architecture/security-privacy.md` (Google login wired; per-profile key handling), `convex/ai/README.md` (new).

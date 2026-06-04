@@ -48,6 +48,12 @@
 **One thing:** read yourself back, top to bottom, only as deep as you've filled in (rule 5). The north star is the single editable focus.
 **Status:** built. [`components/guide/Guide.tsx`](../../components/guide/Guide.tsx). Pillar truths and goals are partial (counts live; truths/goals lists are thin vs. the mockup).
 
+## The rail (navigation)
+**Purpose:** the always-present left rail that switches surfaces. One quiet column of icons; the work fills the rest.
+**On it:** an icon per surface (Today / Core / Board / Guide / Settings), the current one highlighted. The Board stays mounted across nav so its canvas state survives. The active tab is **remembered across refreshes** (persisted per-device in `localStorage` under `lifeguide.activeView`), so a reload returns you to where you were instead of snapping back to Today.
+**One thing:** move between surfaces without losing your place.
+**Status:** built. [`components/shell/Rail.tsx`](../../components/shell/Rail.tsx), [`components/shell/AppShell.tsx`](../../components/shell/AppShell.tsx).
+
 ## The docked Coach
 **Purpose:** talk-first interaction on every surface (rules 3, 4). One presence, context-aware, acts from far away.
 **On it:** a round gold-ringed FAB that opens a dark panel: header with the per-surface context line ("sees your board · knows you"), a message thread (gold user bubbles, dark coach bubbles), and an input. Present on every app surface, scoped to the current one.

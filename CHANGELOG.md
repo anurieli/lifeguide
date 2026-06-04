@@ -7,6 +7,15 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-03 · Full-app QA pass + branch backend deploy
+
+Rigorous QA of the whole app via headless browser + deployment probes. **Critical finding:** the entire `onboarding-rebuild` Convex backend (`interview`, `aiKeys`, `voice`, `synthesizeInterview`, voice realtime, schema changes) was never deployed to `gregarious-boar-475` — `convex dev` was not running, so the deployment was still at ~`main`. Both onboarding paths threw `Could not find function 'interview:start'`; only "skip" worked. Fixed by running `npx convex dev --once` (clean deploy, 2.79s) with approval. Re-QA confirmed: text interview loads + advances, voice + QR handoff render, phone route degrades gracefully, Settings AI keys live. Verified working pre/post: anonymous auth, all 5 rail views + nav state, Today check-in save, Coach AI end-to-end, Core text save, Guide north-star write, 65/65 unit tests, zero console errors on deployed surfaces. Secondary notes: vitest double-counts tests from `.claude/worktrees/`; Core placeholders contain personal-sounding example text.
+
+**Docs touched:**
+- `docs/qa/qa-2026-06-03.md` (new — full QA sheet: verdict, test matrix, impact map, re-QA results, recommendations)
+
+---
+
 ## 2026-06-03 · Onboarding rebuild: Door, interview, voice, QR, synthesis, levels (branch `onboarding-rebuild`)
 
 **Commits:** `a92c830` (levels), `8b3486e` (experiences), `73c1b48` (policy), `cb8b0e1` (interview CRUD), `7ab0e5a` (schema), `2cbb180` (settings recompute), `50010a7` (Door), `2974668` (text interview), `91d9438` (voice provider), `db143f9` (voice WebRTC UI), `aaf5397` (QR join token + phone route), `95cf473` (synthesis + status surfacing), `64e58da` (orchestrator + gate wiring)

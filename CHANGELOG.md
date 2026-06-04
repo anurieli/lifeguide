@@ -7,6 +7,15 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-03 · Admin / dev panel — reset onboarding + Core tools (branch `admin-panel`)
+
+Added a self-scoped dev panel at `/admin` so you can re-run onboarding without a new identity. Backend `convex/admin.ts` (all operate only on the current authed identity): `resetOnboarding` (clears `onboardedAt`/`blueprintStatus`/`level` → the Door reappears on reload), `seedCore` (fills all 18 blueprint boxes → complete / Level 1), `clearCore` (deletes the user's `coreResponses` → unstarted), `listSessions` (the user's interview sessions), and `clearTestData` (wipes Core + sessions + telemetry and resets onboarding, keeping rhythm/tone). Frontend `app/admin/page.tsx`: a calm panel with a live identity/status card, two-click-confirm actions (danger ones in red, no native dialogs), and a session list; dev-gated (renders a notice + skips queries in production). A dev-only "Developer → Open /admin" row added to Settings. Not cross-user admin (anonymous auth) — an `isAdmin` role is left as future work. TDD: 5 convex-test cases (reset, clearCore, seedCore, listSessions, wipe), full suite 71/71, tsc clean. Verified live: reset → status flips to "no (will see the Door)" → reload shows the Door → "I don't know" reveals the reassurance + Begin.
+
+**Docs touched:**
+- `docs/product/features/admin.md` (new, complete feature doc)
+
+---
+
 ## 2026-06-03 · Full-app QA pass + branch backend deploy
 
 Rigorous QA of the whole app via headless browser + deployment probes. **Critical finding:** the entire `onboarding-rebuild` Convex backend (`interview`, `aiKeys`, `voice`, `synthesizeInterview`, voice realtime, schema changes) was never deployed to `gregarious-boar-475` — `convex dev` was not running, so the deployment was still at ~`main`. Both onboarding paths threw `Could not find function 'interview:start'`; only "skip" worked. Fixed by running `npx convex dev --once` (clean deploy, 2.79s) with approval. Re-QA confirmed: text interview loads + advances, voice + QR handoff render, phone route degrades gracefully, Settings AI keys live. Verified working pre/post: anonymous auth, all 5 rail views + nav state, Today check-in save, Coach AI end-to-end, Core text save, Guide north-star write, 65/65 unit tests, zero console errors on deployed surfaces. Secondary notes: vitest double-counts tests from `.claude/worktrees/`; Core placeholders contain personal-sounding example text.

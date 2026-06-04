@@ -249,6 +249,16 @@ export function Settings() {
               Sign out
             </button>
           </Row>
+          {process.env.NODE_ENV !== "production" && (
+            <Row title="Developer" desc="Admin tools: reset onboarding, seed/clear the Core, inspect sessions.">
+              <a
+                href="/admin"
+                className="border border-line rounded-lg px-4 py-2 text-sm text-ink-soft hover:bg-paper-2 transition"
+              >
+                Open /admin →
+              </a>
+            </Row>
+          )}
         </Group>
       </div>
 

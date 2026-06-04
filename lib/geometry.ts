@@ -12,6 +12,16 @@ export function rectsOverlap(a: Rect, b: Rect): boolean {
   return !(a.x + a.w < b.x || a.x > b.x + b.w || a.y + a.h < b.y || a.y > b.y + b.h);
 }
 
+/** True when `inner` is fully swallowed by `outer` (edges may touch). */
+export function rectContainsRect(outer: Rect, inner: Rect): boolean {
+  return (
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.w <= outer.x + outer.w &&
+    inner.y + inner.h <= outer.y + outer.h
+  );
+}
+
 /** Outward spiral of candidate offsets for non-overlapping placement. */
 export function spiralOffsets(): Point[] {
   const out: Point[] = [{ x: 0, y: 0 }];

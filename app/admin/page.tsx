@@ -4,6 +4,9 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { filledCount } from "@/lib/levels";
+import { AlertCircle, CheckCircle2, Image as ImageIcon } from "lucide-react";
+
+const TYPE_LABEL: Record<string, string> = { bug: "Bug", feature: "Feature", other: "Other" };
 
 // Self-scoped dev/admin panel. Standalone route (no rail). Every action below
 // only touches the CURRENT anonymous identity's own data. Dev-gated: in a
@@ -24,11 +27,14 @@ export default function AdminPage() {
   const settings = useQuery(api.settings.get, isProd ? "skip" : {});
   const coreMap = useQuery(api.core.get, isProd ? "skip" : {});
   const sessions = useQuery(api.admin.listSessions, isProd ? "skip" : {});
+  const feedback = useQuery(api.feedback.listAll, isProd ? "skip" : {});
 
   const resetOnboarding = useMutation(api.admin.resetOnboarding);
   const clearCore = useMutation(api.admin.clearCore);
   const seedCore = useMutation(api.admin.seedCore);
   const clearTestData = useMutation(api.admin.clearTestData);
+  const resolveFeedback = useMutation(api.feedback.resolve);
+  const reopenFeedback = useMutation(api.feedback.reopen);
 
   const [confirming, setConfirming] = useState<ActionKey | null>(null);
   const [busy, setBusy] = useState<ActionKey | null>(null);
@@ -154,6 +160,95 @@ export default function AdminPage() {
                 <span className="text-ink-mute">{new Date(s.startedAt).toLocaleString()}</span>
               </div>
             ))
+          )}
+        </div>
+
+        {/* Feedback / Escalations — live ticketing queue */}
+        <div className="flex items-center gap-2 mt-8 mb-3">
+          <span className="text-ink-mute text-[12px] uppercase tracking-[0.14em]">Feedback / Escalations</span>
+          {feedback && feedback.filter((f) => f.status === "open").length > 0 && (
+            <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#9B2C2C] text-white text-[11px] font-semibold">
+              {feedback.filter((f) => f.status === "open").length}
+            </span>
+          )}
+        </div>
+        <div className="bg-card border border-line rounded-2xl divide-y divide-line">
+          {feedback === undefined ? (
+            <div className="p-4 text-ink-mute text-[14px]">Loading…</div>
+          ) : feedback.length === 0 ? (
+            <div className="p-4 text-ink-mute text-[14px]">No feedback yet.</div>
+          ) : (
+            feedback.map((f) => {
+              const open = f.status === "open";
+              return (
+                <div key={f._id} className={`p-4 flex gap-3 ${open ? "" : "opacity-60"}`}>
+                  <div className="pt-0.5 flex-shrink-0">
+                    {open ? (
+                      <AlertCircle className="w-[18px] h-[18px] text-[#9B2C2C]" />
+                    ) : (
+                      <CheckCircle2 className="w-[18px] h-[18px] text-green" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap text-[12px] text-ink-mute mb-1">
+                      <span className="px-2 py-0.5 rounded-full bg-paper-2 text-ink-soft font-medium">
+                        {TYPE_LABEL[f.type] ?? f.type}
+                      </span>
+                      <span className="font-mono">{f.route}</span>
+                      <span>· {f.view}</span>
+                      <span>· {new Date(f.createdAt).toLocaleString()}</span>
+                      {f.errors.length > 0 && (
+                        <span className="text-[#9B2C2C]">· {f.errors.length} error{f.errors.length > 1 ? "s" : ""}</span>
+                      )}
+                    </div>
+                    <div className="text-[14px] text-ink whitespace-pre-wrap break-words">{f.text}</div>
+                    {f.errors.length > 0 && (
+                      <details className="mt-1.5">
+                        <summary className="text-[12px] text-ink-mute cursor-pointer hover:text-ink-soft">
+                          error log
+                        </summary>
+                        <pre className="mt-1 text-[11px] text-ink-soft bg-paper-2 rounded-lg p-2 overflow-x-auto whitespace-pre-wrap">
+                          {f.errors.map((e) => e.message).join("\n")}
+                        </pre>
+                      </details>
+                    )}
+                    <div className="mt-2 flex items-center gap-3">
+                      {f.shotUrl ? (
+                        <a
+                          href={f.shotUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block w-[88px] h-[56px] rounded-md border border-line overflow-hidden bg-paper-2 flex-shrink-0"
+                          title="Open snapshot"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={f.shotUrl} alt="page snapshot" className="w-full h-full object-cover" />
+                        </a>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[12px] text-ink-mute">
+                          <ImageIcon className="w-3.5 h-3.5" /> no snapshot
+                        </span>
+                      )}
+                      {open ? (
+                        <button
+                          onClick={() => void resolveFeedback({ id: f._id })}
+                          className="rounded-lg px-3 py-1.5 text-[13px] bg-ink text-white hover:opacity-90 transition"
+                        >
+                          Dealt with
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => void reopenFeedback({ id: f._id })}
+                          className="rounded-lg px-3 py-1.5 text-[13px] border border-line text-ink-mute hover:bg-paper-2 transition"
+                        >
+                          Reopen
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       </div>

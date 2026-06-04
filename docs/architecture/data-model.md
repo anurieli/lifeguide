@@ -19,6 +19,7 @@ Every table is multi-tenant: every row carries `userId` and every query/mutation
 | The Core | `coreResponses` (raw Blueprint answers) + `mirror` (synthesized) | live |
 | The Coach | `threads`, `messages` | live (reserved, lightly used) |
 | Mirror / Context Bus | `interactions` + the assembler | live |
+| Feedback Widget | `feedback` | live |
 | (system) | `profiles`, `settings`, `apiKeys`, `authTables` | live |
 
 Ownership is stark: no element stores a copy of another's data. Cross-element needs are met by **drawing** through the Context Bus at act-time, never by holding (see [`context-bus.md`](context-bus.md)).
@@ -115,6 +116,9 @@ The evolving text layer behind the human. `{ userId, summary, structured{ values
 
 ### threads / messages (the Coach)
 `threads { userId, title, createdAt }`. `messages { userId, threadId, role: user|coach, content, toolCalls?[{tool,args,result?}], createdAt }`. `toolCalls` is how the Coach records acting from far away (board edits, goal changes).
+
+### feedback (the Feedback Widget)
+`feedback { userId, type: bug|feature|other, text, route, view, title, viewport {w,h}, userAgent, errors[{message, stack?, at}], shotId?: _storage, status: open|dealt_with, createdAt, resolvedAt? }`. Indexes: `by_user [userId, createdAt]`, `by_status [status, createdAt]`. A user's in-app feedback, each captured with the page context at submit time (route, metadata, the page's recent JS/console errors, and an optional `html2canvas` snapshot in `_storage`). Surfaced as a live ticketing queue in `/admin`; self-scoped like the rest of that panel. See [`../product/features/feedback-widget.md`](../product/features/feedback-widget.md).
 
 ---
 

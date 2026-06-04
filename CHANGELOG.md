@@ -7,6 +7,21 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-03 · Feedback widget + `/admin` ticketing queue
+
+A lightweight, always-available feedback channel for any authenticated user, plus a live ticket queue to triage what comes in.
+
+- **The widget** (`components/feedback/FeedbackWidget.tsx`, mounted in `AppShell` beside `CoachDock`): a slim **"Feedback?"** tab docked to the right edge. Drag it vertically to reposition — its position and last-used type persist to `localStorage`. Tapping it opens a composer with a type selector (**Bug · Feature · Other**), a textarea, and a mic. Dictation reuses the existing `useSpeechRecognition` hook (on-device Web Speech). A tap (<4px) opens; a drag repositions.
+- **Context capture.** A passive error buffer (`lib/errorBuffer.ts`, installed once in `app/providers.tsx`) keeps a ring of the last ~25 `window.onerror` / `unhandledrejection` / `console.error` entries. On submit the widget attaches that buffer plus route, app view, title, viewport, userAgent, and a `html2canvas` PNG snapshot of the visible page (the widget excludes itself via `data-feedback-ignore`). Snapshot is best-effort — if it throws, the submission still goes through imageless. `html2canvas` is dynamically imported, so it's code-split out of the main bundle.
+- **Backend** (`convex/feedback.ts`, new `feedback` table): `submit` (auth-checked, always `open`), `listAll` (self-scoped, newest-first, resolves each snapshot to a URL — reactive, so the admin queue self-updates), `resolve`/`reopen` (ownership-checked status flips). Snapshot upload reuses `files.generateUploadUrl`.
+- **Admin queue.** `app/admin/page.tsx` gains a **Feedback / Escalations** section: live rows with type chip, route/view, time, the note, an error count + expandable log, and the snapshot thumbnail. Open items carry a red alert dot with an open-count badge; **Dealt with** resolves, **Reopen** restores. Self-scoped + dev-gated like the rest of `/admin`.
+
+`tsc` clean; production build clean (incl. Next type-check); `tests/convex/feedback.test.ts` (5) covers submit/list/resolve/reopen + unauth + cross-user-ownership rejection; full suite green (55). Backend pushed to the shared deployment (`gregarious-boar-475`) — additive schema, no migration. Spec at `docs/superpowers/specs/2026-06-03-feedback-widget-design.md`. The onboarded-session interactions (drag-persist, voice dictation, html2canvas fidelity, the alert→dealt-with→reopen cycle in `/admin`) still want a manual browser pass in a real signed-in session — they can't be exercised headlessly without completing onboarding.
+
+**Docs touched:** `docs/product/features/feedback-widget.md` (new, full feature doc), `docs/product/features/admin.md` (Feedback/Escalations queue), `docs/product/features/README.md` (status table row), `docs/architecture/data-model.md` (`feedback` table + ownership map), `docs/superpowers/specs/2026-06-03-feedback-widget-design.md` (design spec).
+
+---
+
 ## 2026-06-03 · Merge Guide into Home (Today); account menu replaces the sign-out avatar
 
 `f74d9fe` — Today and the Guide were two separate surfaces saying overlapping things. Made Home one cohesive thing and tidied the rail's account affordance.

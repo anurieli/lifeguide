@@ -8,6 +8,7 @@ import { Core } from "@/components/core/Core";
 import { Whiteboard } from "@/components/whiteboard/Whiteboard";
 import { Settings } from "@/components/settings/Settings";
 import { CoachDock } from "@/components/coach/CoachDock";
+import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
 
 const VIEW_STORAGE_KEY = "lifeguide.activeView";
 const VIEWS: View[] = ["today", "core", "board", "settings"];
@@ -41,6 +42,7 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
         {view === "settings" && <Settings />}
       </main>
       <CoachDock view={view} surfaceId={surfaceId} />
+      <FeedbackWidget view={view} />
     </div>
   );
 }

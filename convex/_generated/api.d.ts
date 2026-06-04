@@ -25,6 +25,7 @@ import type * as context_assemble from "../context/assemble.js";
 import type * as context_types from "../context/types.js";
 import type * as core from "../core.js";
 import type * as edges from "../edges.js";
+import type * as feedback from "../feedback.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as interactions from "../interactions.js";
@@ -63,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   "context/types": typeof context_types;
   core: typeof core;
   edges: typeof edges;
+  feedback: typeof feedback;
   files: typeof files;
   http: typeof http;
   interactions: typeof interactions;

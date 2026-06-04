@@ -223,4 +223,28 @@ export default defineSchema({
     ),
     createdAt: v.number(),
   }).index("by_thread", ["threadId", "createdAt"]),
+
+  // In-app feedback: a quick note from a user, captured with page context (route,
+  // metadata, the page's recent JS/console errors, and an optional visual snapshot).
+  // Surfaced in the /admin dev panel as a live ticketing queue. Self-scoped like the
+  // rest of /admin: each user only ever writes/reads their own rows.
+  feedback: defineTable({
+    userId: v.id("users"),
+    type: v.union(v.literal("bug"), v.literal("feature"), v.literal("other")),
+    text: v.string(),
+    route: v.string(), // window.location.pathname at submit
+    view: v.string(), // app view: today | core | board | settings
+    title: v.string(), // document.title
+    viewport: v.object({ w: v.number(), h: v.number() }),
+    userAgent: v.string(),
+    errors: v.array(
+      v.object({ message: v.string(), stack: v.optional(v.string()), at: v.number() }),
+    ),
+    shotId: v.optional(v.id("_storage")), // page snapshot (html2canvas), optional
+    status: v.union(v.literal("open"), v.literal("dealt_with")),
+    createdAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId", "createdAt"])
+    .index("by_status", ["status", "createdAt"]),
 });

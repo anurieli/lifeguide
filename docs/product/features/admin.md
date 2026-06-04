@@ -25,6 +25,7 @@ Onboarding is gated by `settings.onboardedAt`. Once `completeOnboarding` stamps 
   - **Clear Core answers** (danger) — deletes all `coreResponses` → status `unstarted`.
   - **Wipe test data** (danger) — deletes `coreResponses` + `interviewSessions` + `experienceEvents` and resets onboarding. Keeps rhythm/tone preferences.
 - **Interview sessions** list: the user's sessions, newest first (experience, status, turn count, started time).
+- **Feedback / Escalations** queue: the user's in-app feedback, newest first and live (Convex-reactive). Each row shows the type, route/view, time, the note, an error count + expandable error log, and the page snapshot thumbnail. Open items carry a red alert dot and the header shows an open-count badge; **Dealt with** resolves a row (greys it, clears the alert), **Reopen** restores it. Backed by `convex/feedback.ts` (`listAll`/`resolve`/`reopen`); submissions come from the [Feedback Widget](feedback-widget.md).
 - **Back to app** link.
 
 In a production build the page renders only "The admin panel is only available in development." and runs no queries (`useQuery(..., "skip")`). The Settings entry point is hidden in production (`process.env.NODE_ENV !== "production"`).

@@ -107,6 +107,24 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
     temperature: 0.6,
     wired: false,
   },
+
+  // OpenAI Realtime API session for voice-based onboarding interview. Live.
+  voice: {
+    label: "Voice interview (realtime)",
+    provider: "openai",
+    model: "gpt-4o-mini-realtime-preview",
+    temperature: 0.7,
+    wired: true,
+  },
+
+  // Synthesize completed voice interview transcript into blueprint answers. Live.
+  synthesis: {
+    label: "Interview synthesis",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.3,
+    wired: true,
+  },
 };
 
 export type TaskId = string;

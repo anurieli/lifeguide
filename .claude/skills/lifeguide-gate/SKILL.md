@@ -41,6 +41,6 @@ Use the `AskUserQuestion` tool with two options: **Commit now** / **Park in Line
 - **Park in Linear →** create an issue in the **LifeGuide** project. See [references/linear-upload.md](references/linear-upload.md) for the exact call and field conventions. Then reply with the issue URL and stop — do not start the work.
 
 ## Notes
-- The Linear project is **private to Ariel**. Project: `LifeGuide` (id `e0af6c94-da8e-4ac3-8fd7-415f9c9cd2f8`), currently under the `Agents & Skills` team. If it has moved to a dedicated `LifeGuide` team, resolve the team from the project rather than hardcoding.
+- The Linear project is **private to Ariel**. Project: `LifeGuide` (id `e0af6c94-da8e-4ac3-8fd7-415f9c9cd2f8`), under the `Personal` team (key `ARI`) as of 2026-06-03. If it moves again, resolve the team from the project (`get_project`) rather than hardcoding.
 - Default load threshold for "you already have a lot going on": **2+ active loops**. Below that, still run the gate but lead lighter — the choice is always the user's.
 - Never park silently and never start silently. The whole point is a deliberate, visible decision.

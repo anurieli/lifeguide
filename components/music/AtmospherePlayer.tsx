@@ -158,8 +158,14 @@ export function AtmospherePlayer() {
   const dragStart = useRef<{ x: number; y: number; left: number; bottom: number } | null>(null);
   const movedRef = useRef(false);
   // Inline correction so the panel hugs the orb but never spills past a viewport
-  // edge. Defaults to the CSS anchor (left:0, bottom:58 — floating above the orb).
-  const [panelFix, setPanelFix] = useState<{ left: number; bottom: number }>({ left: 0, bottom: 58 });
+  // edge. It always sits just ABOVE the orb (never over it) and caps its height
+  // to the room available, so a tall mood list scrolls instead of overlapping.
+  const PANEL_GAP = ORB_WRAP_H + 8; // panel bottom = just above the orb-wrap
+  const [panelFix, setPanelFix] = useState<{ left: number; bottom: number; maxH: number }>({
+    left: 0,
+    bottom: PANEL_GAP,
+    maxH: 9999,
+  });
 
   // Restore the saved position (or fall back to the default) after mount, so the
   // server and first client render agree. Re-clamp on resize so it can't strand
@@ -207,24 +213,22 @@ export function AtmospherePlayer() {
     };
   }, [open]);
 
-  // Keep the panel hugging the orb but fully on-screen: align its left to the
-  // orb, then clamp within the viewport; nudge it down if it would clip the top.
+  // Keep the panel hugging the orb but fully on-screen. It always floats just
+  // ABOVE the orb (never over it); we only clamp its left into the viewport and
+  // cap its height to the space above, so a tall list scrolls rather than
+  // growing down onto the orb.
   useEffect(() => {
     if (!pos) return;
     const panel = panelRef.current;
     if (!panel) return;
     const margin = 10;
     const W = panel.offsetWidth || 312;
-    const H = panel.offsetHeight || 0;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const targetLeft = Math.min(Math.max(margin, pos.left), vw - W - margin);
-    let bottom = 58;
-    const topVp = vh - (pos.bottom + bottom) - H;
-    if (topVp < margin) bottom = vh - margin - H - pos.bottom; // would clip top -> lower it
-    if (pos.bottom + bottom < margin) bottom = margin - pos.bottom; // keep its base on-screen
-    setPanelFix({ left: targetLeft - pos.left, bottom });
-  }, [pos, open, m.moodKey]);
+    const maxH = Math.max(160, vh - (pos.bottom + PANEL_GAP) - margin);
+    setPanelFix({ left: targetLeft - pos.left, bottom: PANEL_GAP, maxH });
+  }, [pos, open, m.moodKey, PANEL_GAP]);
 
   if (!m.enabled) return null;
 
@@ -332,7 +336,7 @@ export function AtmospherePlayer() {
       <div
         ref={panelRef}
         className={`atmo-panel ${open ? "open" : ""}`}
-        style={{ left: panelFix.left, bottom: panelFix.bottom }}
+        style={{ left: panelFix.left, bottom: panelFix.bottom, maxHeight: panelFix.maxH }}
         role="dialog"
         aria-label="Atmosphere"
       >

@@ -7,6 +7,14 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-04 · Atmosphere: real audio waveform (Web Audio AnalyserNode)
+
+Replaced the fake CSS equalizer with a **real visualizer**. Playback now runs through the Web Audio API: each `<audio>` element is wired `MediaElementSource -> GainNode -> destination` (gain handles volume + the gapless crossfade) plus a `MediaElementSource -> AnalyserNode` tap. A new `AtmoWave` canvas reads `getByteTimeDomainData` every frame and draws the live, linear time-domain waveform, so both the panel wave and the orb's mini-wave now move with the actual music. The graph builds lazily on first play and resumes the `AudioContext` on a user gesture (autoplay policy); a flat idle line shows when paused; falls back to `element.volume` if `AudioContext` is unavailable. `tsc` + `next build` clean. (Audio-engine rewrite verified by build only — runtime playback needs a human ear, since it can't be exercised headlessly.)
+
+Files: `components/music/MusicProvider.tsx` (Web Audio graph, gain-based volume/crossfade, `getActiveAnalyser`), `components/music/AtmospherePlayer.tsx` (`AtmoWave` canvas in orb + panel), `app/globals.css` (`.atmo-wave`, `.atmo-orb-wave`).
+
+**Docs touched:** `docs/product/features/atmosphere.md` (§2 behavior, §6 reduced motion, §8 audio engine).
+
 ## 2026-06-04 · Atmosphere: two new neoclassical piano moods (Reflection, Stillness)
 
 Added two contemplative solo-piano instrumentals (generated on Suno: soft felt piano, slow, thought-provoking, no percussion) as new Atmosphere moods, bringing the meter to six: **Reflection** (Stillwater, indigo) and **Stillness** (Still Water, teal-green). Shipped as static assets in `public/audio` and added to the track registry, so the live meter renders them automatically and the orb tints to their colors. No schema change: the Settings default-mood picker still offers the original four; all six are selectable in the player and the choice persists to `localStorage`. `tsc` + `next build` clean. (The tracks are from a free Suno account, so the non-commercial licensing caveat still applies before any paid/public launch.)

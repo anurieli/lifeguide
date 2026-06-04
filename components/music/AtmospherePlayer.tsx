@@ -21,6 +21,76 @@ function PlayIcon({ playing }: { playing: boolean }) {
   );
 }
 
+// A REAL waveform: reads the live audio off the AnalyserNode each frame and
+// draws the time-domain signal as a linear wave. Idle/paused shows a flat line.
+// `variant` picks size + color (white inside the mood-colored orb; the mood
+// color in the panel, read from the inherited --mood CSS var).
+function AtmoWave({ variant }: { variant: "orb" | "panel" }) {
+  const m = useMusic();
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const mRef = useRef(m);
+  mRef.current = m;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const c = canvas.getContext("2d");
+    if (!c) return;
+    const W = canvas.width;
+    const H = canvas.height;
+    const points = variant === "orb" ? 28 : 150;
+    let raf = 0;
+
+    const draw = () => {
+      raf = requestAnimationFrame(draw);
+      const mm = mRef.current;
+      const an = mm.getActiveAnalyser();
+      c.clearRect(0, 0, W, H);
+      const color =
+        variant === "orb"
+          ? "#ffffff"
+          : getComputedStyle(canvas).getPropertyValue("--mood").trim() || "#8A8F9C";
+      c.lineWidth = variant === "orb" ? 1.6 : 2;
+      c.lineJoin = "round";
+      c.lineCap = "round";
+      c.strokeStyle = color;
+
+      if (!an || !mm.playing) {
+        c.globalAlpha = 0.35;
+        c.beginPath();
+        c.moveTo(0, H / 2);
+        c.lineTo(W, H / 2);
+        c.stroke();
+        c.globalAlpha = 1;
+        return;
+      }
+
+      const N = an.fftSize;
+      const buf = new Uint8Array(N);
+      an.getByteTimeDomainData(buf);
+      c.globalAlpha = 1;
+      c.beginPath();
+      for (let i = 0; i < points; i++) {
+        const idx = Math.floor((i * N) / points);
+        const v = (buf[idx] - 128) / 128; // -1..1
+        const x = (i / (points - 1)) * W;
+        const y = H / 2 + v * (H / 2) * 0.92;
+        if (i === 0) c.moveTo(x, y);
+        else c.lineTo(x, y);
+      }
+      c.stroke();
+    };
+    draw();
+    return () => cancelAnimationFrame(raf);
+  }, [variant]);
+
+  return variant === "orb" ? (
+    <canvas ref={canvasRef} className="atmo-orb-wave" width={26} height={16} aria-hidden />
+  ) : (
+    <canvas ref={canvasRef} className="atmo-wave" width={240} height={24} aria-hidden />
+  );
+}
+
 export function AtmospherePlayer() {
   const m = useMusic();
   const [open, setOpen] = useState(false);
@@ -69,16 +139,7 @@ export function AtmospherePlayer() {
           aria-label={`Atmosphere — ${cur.mood}${m.playing ? ", playing" : ", paused"}`}
           aria-expanded={open}
         >
-          {m.playing ? (
-            <span className="atmo-orb-eq" aria-hidden>
-              <i />
-              <i />
-              <i />
-              <i />
-            </span>
-          ) : (
-            <span className="dot" />
-          )}
+          {m.playing ? <AtmoWave variant="orb" /> : <span className="dot" />}
         </button>
         <span className="atmo-orb-label">{cur.mood}</span>
       </div>
@@ -116,11 +177,7 @@ export function AtmospherePlayer() {
             >
               <PlayIcon playing={m.playing} />
             </button>
-            <div className="atmo-eq" aria-hidden>
-              {Array.from({ length: 12 }).map((_, i) => (
-                <i key={i} />
-              ))}
-            </div>
+            <AtmoWave variant="panel" />
             <span className="atmo-loop" aria-hidden>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path d="M17 2l4 4-4 4" />

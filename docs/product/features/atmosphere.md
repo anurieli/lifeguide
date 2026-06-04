@@ -12,7 +12,7 @@ The soul calls LifeGuide "a calm room he returns to." A room has an atmosphere. 
 
 A small orb sits at the bottom-left of the app, just clear of the rail. At rest it shows a still dot on white; while music plays it fills with the current mood's color, runs a live soundwave, pulses a soft halo, and names the mood in small text beneath it, so the orb itself signals what is playing. Clicking it scales open (from the orb's own origin) into the **Atmosphere** panel:
 
-- A **now-playing** block: the current mood, the track name, a one-line description, a play/pause button, a live equalizer while playing, and a loop glyph (every track loops seamlessly).
+- A **now-playing** block: the current mood, the track name, a one-line description, a play/pause button, a **real waveform** while playing (a live oscilloscope drawn from the actual audio, not a canned animation), and a loop glyph (every track loops seamlessly). The orb's soundwave is the same real signal, in miniature.
 - A **mood meter**: the four moods as a color-coded list. Picking one crossfades to it (gapless) and tints the whole panel to that mood's color.
 - An **AUTO** toggle: when on, Atmosphere matches the mood to the time of day and drifts as the day moves (a v1 stand-in for the Context Bus). Any manual mood pick turns AUTO off.
 - A **volume** slider and a **Close** action.
@@ -61,7 +61,7 @@ The intended future tie: when **AUTO** graduates from a clock heuristic to real 
 - **No settings row yet.** New users may have no `settings` row (it is created on first mutation). Absent/`null`/`undefined` all read as enabled-on, autoplay-on, default mood `inspiration` (overridden by the last chosen mood in `localStorage`, if any).
 - **Master switch off mid-play.** Flipping Music off immediately pauses both audio elements and hides the orb.
 - **Missing/blocked asset.** If a track fails to load or play, the promise rejects and is swallowed; the UI returns to paused rather than hanging.
-- **Reduced motion.** `prefers-reduced-motion` stops the orb halo, the orb soundwave, and the panel equalizer; crossfades and tints (opacity/color) remain, as they are not motion.
+- **Reduced motion.** `prefers-reduced-motion` stops the orb halo pulse; crossfades and tints (opacity/color) remain. The waveform is an audio-reactive readout (a live representation of the signal, not decorative motion), so it keeps tracking the music.
 - **Rapid mood switches.** Crossfade uses two fixed elements and swaps the active pointer; a new pick simply retargets the next crossfade. (Volume ramps are rAF loops, not interruptible mid-flight; harmless overlap settles to the latest target.)
 
 ## 7. AI involvement
@@ -78,7 +78,9 @@ None at runtime in v1. The four tracks were generated once with Suno (an authori
 
 **Drawn:** none.
 
-Code: `components/music/MusicProvider.tsx` (engine + context), `components/music/AtmospherePlayer.tsx` (orb + panel), `components/music/tracks.ts` (the four moods + `moodForHour`), styles in `app/globals.css` (`.atmo-*`).
+Code: `components/music/MusicProvider.tsx` (engine + context + Web Audio graph), `components/music/AtmospherePlayer.tsx` (orb + panel + `AtmoWave` canvas visualizer), `components/music/tracks.ts` (the six moods + `moodForHour`), styles in `app/globals.css` (`.atmo-*`).
+
+**Audio engine.** Playback runs through the Web Audio API: each of the two `<audio>` elements is wired `MediaElementSource -> GainNode -> destination` (the gain does volume and the gapless crossfade) plus `MediaElementSource -> AnalyserNode` as a tap. The `AtmoWave` canvas reads `analyser.getByteTimeDomainData` each animation frame and draws the live waveform, so the visualizer reflects the real signal. The graph is built lazily on first play and the `AudioContext` is resumed on a user gesture (autoplay policy). If `AudioContext` is unavailable, playback falls back to `element.volume` and the wave shows a flat idle line.
 
 ## 9. Open questions
 

@@ -107,6 +107,26 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
     temperature: 0.6,
     wired: false,
   },
+
+  // VoiceField: clean a raw spoken transcript into what the field is asking for. Live.
+  // (Transcription itself is client-side Web Speech — see components/voice. This is the
+  // server "shape" pass only.) System prompt is built per-call from the field metadata.
+  voiceShape: {
+    label: "Voice · shape transcript",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.3,
+    wired: true,
+  },
+
+  // VoiceField Prompt Mode: contextual "say this next" nudges for the field being spoken into. Live.
+  voicePrompts: {
+    label: "Voice · prompt mode",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.7,
+    wired: true,
+  },
 };
 
 export type TaskId = string;

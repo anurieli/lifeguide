@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { VoiceField } from "@/components/voice/VoiceField";
 
 const CHIPS = [
   "A quiet life by the ocean",
@@ -105,12 +106,19 @@ export function Onboarding() {
               <Eyebrow>First thing</Eyebrow>
               <H>Show me something that pulls at you.</H>
               <P>A line you can&apos;t shake. A life you saw and wanted. Anything. I&apos;ll take it from here.</P>
-              <textarea
+              <VoiceField
+                meta={{
+                  id: "onboarding.first",
+                  question: "Show me something that pulls at you.",
+                  descriptor: "A line you can't shake. A life you saw and wanted. Anything.",
+                  placeholder: "Paste, type, or speak anything…",
+                  intent: "capture what pulls at them — an aspiration, a line, an image — in their own words",
+                }}
                 value={first}
-                onChange={(e) => setFirst(e.target.value)}
+                onChange={setFirst}
                 rows={2}
-                placeholder="Paste or type anything…"
-                className="w-full max-w-[440px] mx-auto mt-6 bg-card border border-line rounded-[14px] p-4 text-[15px] outline-none resize-none block text-ink"
+                className="max-w-[440px] mx-auto mt-6"
+                inputClassName="w-full bg-card border border-line rounded-[14px] p-4 pr-12 text-[15px] outline-none resize-none block text-ink focus:border-gold transition placeholder:text-ink-mute"
               />
               <div className="flex gap-2 flex-wrap justify-center mt-3.5">
                 {CHIPS.map((c) => (

@@ -22,3 +22,184 @@ body {
 ::-moz-selection {
   background: rgba(184, 148, 90, 0.32);
 }
+
+/* ===========================================================================
+   VoiceField — motion + the recording canvas. Kept here so the component stays
+   markup-only and the animation lives in one place. Transform/opacity only
+   (GPU), strong ease-out curves, blur to mask state swaps. See
+   docs/product/features/voice-field.md and components/voice/README.md.
+   =========================================================================== */
+:root {
+  --vf-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --vf-gold: #b8945a;
+  --vf-gold-2: #8a6a2e;
+  --vf-ghost: #c7beac;
+}
+
+/* idle → recording crossfade */
+.vf-rise {
+  animation: vf-rise 0.42s var(--vf-ease-out);
+}
+@keyframes vf-rise {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+
+/* the live waveform — each bar lerps toward a JS-set scaleY target */
+.vf-wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 34px;
+  cursor: pointer;
+}
+.vf-wave i {
+  width: 3px;
+  border-radius: 3px;
+  background: var(--vf-gold);
+  height: 34px;
+  transform: scaleY(0.12);
+  transform-origin: center;
+  transition: transform 0.18s var(--vf-ease-out), background 0.3s;
+}
+.vf-wave.vf-settling i {
+  transform: scaleY(0.08) !important;
+  background: var(--vf-ghost);
+}
+
+/* live transcript words fade in one by one */
+.vf-word {
+  opacity: 0;
+  animation: vf-word 0.3s var(--vf-ease-out) forwards;
+}
+@keyframes vf-word {
+  to {
+    opacity: 1;
+  }
+}
+.vf-interim {
+  color: var(--vf-ghost);
+}
+.vf-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  background: var(--vf-gold-2);
+  vertical-align: -2px;
+  margin-left: 2px;
+  animation: vf-blink 0.9s step-end infinite;
+}
+@keyframes vf-blink {
+  50% {
+    opacity: 0;
+  }
+}
+.vf-script {
+  transition: filter 0.4s var(--vf-ease-out), opacity 0.4s var(--vf-ease-out);
+}
+.vf-script.vf-blurring {
+  filter: blur(7px);
+  opacity: 0.5;
+}
+.vf-final {
+  animation: vf-resolve 0.55s var(--vf-ease-out);
+}
+@keyframes vf-resolve {
+  from {
+    filter: blur(8px);
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    filter: blur(0);
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ambient Prompt Mode — suggestions surface around the field, drift, dissolve */
+.vf-prompt {
+  opacity: 0;
+  filter: blur(5px);
+  transform: translateY(6px);
+}
+.vf-prompt.vf-show {
+  animation: vf-prompt-in 0.7s var(--vf-ease-out) forwards;
+}
+.vf-prompt.vf-hide {
+  animation: vf-prompt-out 0.6s var(--vf-ease-out) forwards;
+}
+@keyframes vf-prompt-in {
+  to {
+    opacity: 0.8;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+@keyframes vf-prompt-out {
+  from {
+    opacity: 0.8;
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    filter: blur(5px);
+    transform: translateY(-8px);
+  }
+}
+
+/* the only status chrome: a single breathing dot */
+.vf-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--vf-gold);
+  animation: vf-breathe 2.2s var(--vf-ease-out) infinite;
+}
+@keyframes vf-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+/* mic press feedback */
+.vf-mic {
+  transition: color 0.2s var(--vf-ease-out), transform 0.14s var(--vf-ease-out),
+    background 0.2s var(--vf-ease-out);
+}
+.vf-mic:active {
+  transform: scale(0.94);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vf-rise,
+  .vf-final,
+  .vf-prompt.vf-show,
+  .vf-prompt.vf-hide,
+  .vf-pulse,
+  .vf-word {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  .vf-prompt {
+    transform: none !important;
+    filter: none !important;
+  }
+  .vf-wave i {
+    transition-duration: 0.001ms !important;
+  }
+}

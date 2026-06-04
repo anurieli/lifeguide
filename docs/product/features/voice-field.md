@@ -10,11 +10,11 @@ LifeGuide's soul is "talk, don't operate." Typing is friction, especially for th
 
 ## 2. User-facing behavior
 
-A field starts as an ordinary text box with a quiet mic in the corner (the mic appears only if the browser supports speech recognition; otherwise the field is just a normal textarea).
+A field starts as an ordinary text box with a quiet mic in the corner (the mic appears if the browser can either record audio or do on-device speech recognition; with neither, the field is just a normal textarea).
 
 Happy path:
-1. The person taps the mic. The field morphs into a recording surface: a live, reactive waveform and a single breathing dot. No timer, no buttons.
-2. As they speak, words stream in live (committed words solid, in-flight words ghosted). Inside the surface, **Prompt Mode** shows **one** short, contextual suggestion at a time of what they could say next — drawn from the question and what the app knows about them, refreshed as they talk and rotated gently so only a single nudge is ever on screen.
+1. The person taps the mic. The field morphs into a recording surface: a live, reactive waveform and a single breathing dot. No timer, no buttons. Two transcribers start together: the browser's **Web Speech API** for the instant on-screen caption, and a **chunked Whisper** recorder that ships ~4-second audio segments to the server as they speak.
+2. As they speak, words stream in live (committed words solid, in-flight words ghosted — from Web Speech, or from Whisper segments where Web Speech is unavailable). Inside the surface, **Prompt Mode** shows **one** short, contextual suggestion at a time of what they could say next — drawn from the question and what the app knows about them, refreshed as they talk and rotated gently so only a single nudge is ever on screen.
 3. When they're done, they **tap the waveform** (or the explicit finish button beside it). The surface shows a brief "understanding what you mean…" while the transcript is shaped.
 4. The cleaned answer lands back in the field as **plain, regular text** — editable and saved through the field's normal save path, with no special "shaped" state or chrome. The mic returns to the corner of the (auto-grown) textarea and the box is refocused for typing.
 
@@ -27,10 +27,11 @@ Manual and Coach paths: VoiceField is the **manual** voice path (the person driv
 | Action | Trigger | What it does | Manual / Coach | Data touched |
 |---|---|---|---|---|
 | Type | Person types in the idle field | Standard controlled input; calls `onChange`, persists via host `onCommit` on blur | Manual | host field's store |
-| Begin speaking | Tap the mic | Starts client-side Web Speech recognition; switches to the recording surface | Manual | none (audio stays on device) |
-| Live transcribe | Speaking | `useSpeechRecognition` streams committed + interim words into the UI | Manual | none |
+| Begin speaking | Tap the mic | Starts both transcribers (Web Speech caption + chunked Whisper recorder); switches to the recording surface | Manual | mic audio → server (transient) |
+| Live caption | Speaking | `useSpeechRecognition` streams committed + interim words into the UI (instant). Where Web Speech is absent, the Whisper transcript shows as segments confirm | Manual | none (Web Speech is on-device) |
+| Chunk transcribe | Every ~4s while speaking | `useWhisperRecorder` stops+restarts the recorder to cut a self-contained segment and calls `voice.transcribe` (Whisper) per segment; results are reassembled in order | Manual (AI) | audio bytes → `voice.transcribe` (not stored) |
 | Prompt Mode | On start, then ~2.5s after each pause | `voice.prompts` generates contextual suggestions from field metadata + Mirror; the UI shows one at a time, rotating | Manual (AI-assisted) | reads Mirror via Context Bus |
-| Finish | Tap the waveform or the finish (■) button | Stops recognition, captures the full raw transcript | Manual | none |
+| Finish | Tap the waveform or the finish (■) button | Stops both transcribers, flushes the final Whisper segment; the raw transcript is Whisper's (the on-device transcript if Whisper produced nothing) | Manual | none |
 | Shape | After finish | `voice.shape` cleans the raw transcript to fit the field's `intent`; result written via `onChange`/`onCommit` | Manual (AI-assisted) | host field's store |
 | Cancel | Backspace / Escape while listening | Discards the audio + transcript, keeps the text that was already there, returns focus to the textarea | Manual | none |
 
@@ -59,9 +60,10 @@ The **rainbow comet halo** (`.vf-halo` in `globals.css`) is a reusable, strokele
 
 ## 6. Edge cases
 
-- **Unsupported browser** (no Web Speech): the mic is not rendered; the field is a plain, fully functional textarea. Nothing breaks.
+- **Unsupported browser** (no `MediaRecorder` *and* no Web Speech): the mic is not rendered; the field is a plain, fully functional textarea. Nothing breaks. With only one of the two, the mic still works (Whisper-only loses the instant caption; Web-Speech-only loses server-grade accuracy).
 - **Mic permission denied** (`not-allowed`): listening stops and the status line reads "I can't hear the mic — check the browser's mic permission." The person can still type.
-- **Engine idle timeout:** Web Speech ends sessions periodically; the hook auto-restarts while the person still intends to listen, so long pauses don't drop the session.
+- **Whisper chunk drops / transcribe fails:** each failed segment costs only itself; the remaining segments still assemble. If Whisper produced nothing at all (every chunk failed, no key, offline), the finish falls back to the on-device Web Speech transcript — the answer is never lost.
+- **Engine idle timeout:** Web Speech ends sessions periodically; the hook auto-restarts while the person still intends to listen, so long pauses don't drop the caption.
 - **Shape pass fails / offline:** `voice.shape` falls back to the raw transcript — the answer is never lost.
 - **Prompt pass fails:** `voice.prompts` returns `[]`; Prompt Mode simply shows nothing (ambient, never blocking, never an error toast).
 - **Existing text in the field:** a voice take is **appended** (newline-joined) to whatever was already there, never destructive.
@@ -70,20 +72,21 @@ The **rainbow comet halo** (`.vf-halo` in `globals.css`) is a reusable, strokele
 
 ## 7. AI involvement
 
-Two live server tasks (`convex/ai/config.ts`), both via `aiForTask` and routed through OpenRouter (per-profile key if set, else env), defined in `convex/voice.ts`:
+Three live server tasks (`convex/ai/config.ts`), all defined in `convex/voice.ts` and keyed via `aiForTask` (per-profile key if set, else env):
+- **`voiceTranscribe`** (Whisper `whisper-1`, **openai-direct** — OpenRouter has no audio endpoint) — one short audio segment → text. Called per ~4s chunk by `useWhisperRecorder`; a too-small/near-silent segment returns `""`. Because Whisper needs `Buffer`/`toFile`, `convex/voice.ts` is a `"use node"` module (shape/prompts run there too — functionally identical).
 - **`voiceShape`** (temp 0.3) — raw transcript + field `question`/`descriptor`/`intent` → cleaned, intent-fitted text. Framed as a *silent text editor* (not a chatbot) with a strict output contract + one-shot example: returns ONLY the rewritten first-person answer, never a preamble/greeting/meta sentence, never adds ideas the person didn't say, returns the input unchanged if empty/unintelligible.
 - **`voicePrompts`** (temp 0.7, JSON mode) — field metadata + Mirror → up to 3 short next-thought nudges.
 
-**Transcription is not server AI** — it is the browser's on-device Web Speech API (no audio leaves the device, no cost). See [`../../architecture/ai-layer.md`](../../architecture/ai-layer.md) role 6.
+**Transcription is now server AI** (Whisper), with the browser's on-device Web Speech API as the live caption and the disconnect fallback. Audio leaves the device in transient chunks (sent to `voice.transcribe`, never stored); the Web Speech layer stays on-device. See [`../../architecture/ai-layer.md`](../../architecture/ai-layer.md) role 6 and [`../../decisions/0005-voicefield-chunked-whisper.md`](../../decisions/0005-voicefield-chunked-whisper.md).
 
 ## 8. Data touched
 
-VoiceField owns no tables. It reads the **Mirror** (`mirror.assemble`) for Prompt Mode context, and writes only through the host field's callbacks into that field's existing store (`interactions`, `coreResponses`, or onboarding-local → `captures`). See [`../../architecture/data-model.md`](../../architecture/data-model.md). No schema change was needed for v1.
+VoiceField owns no tables. It reads the **Mirror** (`mirror.assemble`) for Prompt Mode context, and writes only through the host field's callbacks into that field's existing store (`interactions`, `coreResponses`, or onboarding-local → `captures`). See [`../../architecture/data-model.md`](../../architecture/data-model.md). Audio chunks are passed to `voice.transcribe` as transient `bytes` and never persisted. No schema change was needed.
 
 ## 9. Open questions
 
 1. **Prompt Mode cadence** — refresh-on-pause (current) vs. a steadier cycle; tune against real latency/cost once observed.
 2. **Multi-take semantics** — appending successive voice takes is safe but can get long; a future "replace vs. add" choice may be warranted on short fields.
 3. **Language** — fixed `en-US` in v1; field- or settings-driven locale later.
-4. **Whisper upgrade path** — when cross-browser fidelity matters, add a server `voiceTranscribe` task (record → Whisper) behind the same component, selected per `config.ts`. Component contract is already medium-agnostic.
+4. ~~**Whisper upgrade path**~~ — **done.** `voiceTranscribe` (chunked Whisper) is now the primary transcriber, with Web Speech as the live caption + fallback. See §7 and ADR 0005. Remaining tuning: segment length (currently 4s) vs. latency, and whether to merge partial Whisper output with the local transcript on a mid-take disconnect (today it prefers whichever is non-empty whole).
 5. **Compact (Coach dock) variant** — implemented in the component but not yet wired into `CoachDock`; do when voice-to-Coach is prioritized.

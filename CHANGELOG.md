@@ -7,6 +7,21 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-04 · VoiceField transcription upgraded to chunked Whisper (Web Speech becomes the fallback)
+
+VoiceField transcribed entirely on-device (Web Speech), which Firefox/Safari don't support and which is weaker than Whisper on accents and noise. Upgraded transcription to server-side Whisper, streamed in chunks, with Web Speech kept as the instant caption and the disconnect fallback so an answer is never lost.
+
+- **`voice.transcribe` (new action, `convex/voice.ts`):** one short audio segment → text via Whisper `whisper-1`. Keyed through the AI hub (`aiForTask`); pinned **openai-direct** because OpenRouter has no audio endpoint. Too-small/near-silent segments return `""`; a thrown error is non-fatal to the take. `convex/voice.ts` is now a `"use node"` module (Whisper needs `Buffer`/`toFile`); `shape`/`prompts` run there too, functionally unchanged.
+- **`useWhisperRecorder` (new hook, `lib/useWhisperRecorder.ts`):** records the mic in ~4s segments by **stop+restart** (so each segment is an independently-decodable file, unlike a single timesliced recorder), ships each to `voice.transcribe`, and reassembles results in monotonic order. A dropped chunk costs only itself.
+- **`components/voice/VoiceField.tsx`:** runs both transcribers while listening — Web Speech for the instant caption + fallback, Whisper for the authoritative transcript. On finish, the raw transcript is Whisper's (the on-device transcript if Whisper produced nothing); then `voiceShape` runs as before. The mic now shows if **either** layer is available, so Whisper-only browsers get voice too.
+- **`convex/ai/config.ts`:** new `voiceTranscribe` task (openai / whisper-1, wired), visible in the Settings AI-nodes list like every other node.
+
+`tsc --noEmit` clean; `next build` clean (incl. lint + type-check); `tests/voice-config.test.ts` extended (3, green) to pin the `voiceTranscribe` task to the openai provider + a whisper model. Backend **not yet deployed** to the shared deployment (`gregarious-boar-475`) — left to the normal merge pipeline to avoid regressing `main`'s prod auth fix that isn't on this branch. Runtime mic-to-Whisper transcription needs a manual pass with a real microphone (can't be exercised headlessly); noted in `TO-CHECK.md`.
+
+**Docs touched:** `docs/product/features/voice-field.md` (§2 behavior, §3 functions table, §6 edge cases, §7 AI involvement, §8 data, §9 Open Q #4 resolved), `docs/decisions/0005-voicefield-chunked-whisper.md` (new ADR), `CHANGELOG.md`, `TO-CHECK.md`.
+
+---
+
 ## 2026-06-03 · Feedback widget + `/admin` ticketing queue
 
 A lightweight, always-available feedback channel for any authenticated user, plus a live ticket queue to triage what comes in.

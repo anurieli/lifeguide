@@ -7,6 +7,52 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-03 · Merge Guide into Home (Today); account menu replaces the sign-out avatar
+
+`f74d9fe` — Today and the Guide were two separate surfaces saying overlapping things. Made Home one cohesive thing and tidied the rail's account affordance.
+
+- **One home surface.** `components/today/Today.tsx` now hosts, top to bottom: a time-aware greeting, a Core progress chip, the **north star compass** (a gold card with a compass mark, editable inline — the one write this surface issues, `settings.update({ northStar })`), the Morning/Evening ritual (unchanged, still logs `checkin_morning` / `checkin_evening`), the Coach whisper, then a "Who you're becoming" section with the **Mirror** and the **pillars** folded in from the Guide. The compass is editable here, so Today no longer routes elsewhere to name a direction.
+- **Guide removed.** `components/guide/Guide.tsx` deleted; the `guide` view dropped from `Rail` `View`, `AppShell` (`VIEWS`, render, import), and the `CoachDock` `CTX` record. Its content (renders + the single north-star write) is unchanged, just rehosted.
+- **Account menu.** `components/shell/Rail.tsx`: primary tabs are now Today / Core / Board. The bottom avatar no longer signs you out on click — it toggles a popup menu (**Settings · Account · Sign out**) with click-outside-to-close. Settings and Account both open the Settings surface for now (Account is not yet its own page); Sign out calls `signOut`.
+
+`tsc --noEmit` clean; dev server compiles and serves `/` 200. Live mic and the account-popup positioning still want a manual browser glance.
+
+**Docs touched:** `docs/design/screens.md` (Home rewritten, Guide marked merged, rail + Settings + at-a-glance updated), `docs/product/features/dashboard.md` (compass + folded-in Guide, actions, dynamics, states, data), `docs/product/features/guide.md` (merge banner + status: merged), `docs/product/features/settings.md` (north star edited on Home; Settings reached via account menu), `docs/product/features/README.md` (status table + surfaces note).
+
+
+
+"Talk it through" was broken by three retired/incorrect OpenAI Realtime Beta details, and the screen was cluttered. Fixed the whole chain and rebuilt the live view in the blueprint's visual language.
+
+- **Mint endpoint (server):** retired `POST /v1/realtime/sessions` (+ `OpenAI-Beta: realtime=v1`) → 404. Updated `convex/ai/voice/openaiRealtime.ts` to GA `POST /v1/realtime/client_secrets` with the nested `session` config; ephemeral key parsed from `value` / `expires_at`.
+- **SDP exchange (client):** Beta `/v1/realtime?model=…` was retired 2026-05-12 → the live 400. Switched to GA `POST /v1/realtime/calls` (model bound to the ephemeral key); the status + body are now surfaced in the on-screen error.
+- **Model:** `gpt-4o-mini-realtime-preview` (retired Beta name) → `model_not_found` 404 at the call. Repointed `TASKS.voice.model` → `gpt-realtime-mini` (GA; confirmed in the account's model list).
+- **Human transcription:** mint now enables `session.audio.input.transcription = { model: "gpt-realtime-whisper" }` — without it the `conversation.item.input_audio_transcription.*` events never fire, so only the coach was transcribed.
+- **Real-time conversation UI:** `VoiceInterview.tsx` live view now adopts the blueprint VoiceField language — conversation bubbles (coach left / user right), the active turn streaming in **word-by-word** from the delta events (`response.audio_transcript.delta`, `conversation.item.input_audio_transcription.delta`) as a ghosted bubble with a `vf-caret`, a living `vf-wave` waveform at the foot, a single `vf-pulse` "Listening" dot, and auto-scroll. Container-filling (max-w 760px) so it also fits a modal. Pre-start is the minimalist QR-hero + "Start"; errors show the real reason + "Try again" / "Type it out instead".
+
+Verified against the live OpenAI API with the deployment key: GA mint 200 (incl. input-transcription config), `/v1/realtime/calls` accepts the ephemeral key, `gpt-realtime-mini` valid. `tsc` clean; `tests/voice-mint.test.ts` pins the mint contract; full suite green. (Live mic/WebRTC + real-time transcription still need a manual browser test — can't drive a mic headlessly.) Also added `next.config.mjs` `allowedDevOrigins` for tunneled dev (ngrok) so the phone/QR handoff can reach the dev server.
+
+**Docs touched:**
+- `docs/product/features/interview.md` (GA mint + SDP endpoints, model, input transcription, delta events, live view)
+- `docs/decisions/0004-voice-stack-and-levels.md` (adapter endpoint)
+- `docs/design/onboarding.md` (Screen 3b: pre-start hero / real-time conversation / error)
+
+---
+
+## 2026-06-03 · Admin / dev panel — reset onboarding + Core tools (branch `admin-panel`)
+
+Added a self-scoped dev panel at `/admin` so you can re-run onboarding without a new identity. Backend `convex/admin.ts` (all operate only on the current authed identity): `resetOnboarding` (clears `onboardedAt`/`blueprintStatus`/`level` → the Door reappears on reload), `seedCore` (fills all 18 blueprint boxes → complete / Level 1), `clearCore` (deletes the user's `coreResponses` → unstarted), `listSessions` (the user's interview sessions), and `clearTestData` (wipes Core + sessions + telemetry and resets onboarding, keeping rhythm/tone). Frontend `app/admin/page.tsx`: a calm panel with a live identity/status card, two-click-confirm actions (danger ones in red, no native dialogs), and a session list; dev-gated (renders a notice + skips queries in production). A dev-only "Developer → Open /admin" row added to Settings. Not cross-user admin (anonymous auth) — an `isAdmin` role is left as future work. TDD: 5 convex-test cases (reset, clearCore, seedCore, listSessions, wipe), full suite 71/71, tsc clean. Verified live: reset → status flips to "no (will see the Door)" → reload shows the Door → "I don't know" reveals the reassurance + Begin.
+
+**Docs touched:**
+- `docs/product/features/admin.md` (new, complete feature doc)
+
+---
+
+## 2026-06-03 · Full-app QA pass + branch backend deploy
+
+Rigorous QA of the whole app via headless browser + deployment probes. **Critical finding:** the entire `onboarding-rebuild` Convex backend (`interview`, `aiKeys`, `voice`, `synthesizeInterview`, voice realtime, schema changes) was never deployed to `gregarious-boar-475` — `convex dev` was not running, so the deployment was still at ~`main`. Both onboarding paths threw `Could not find function 'interview:start'`; only "skip" worked. Fixed by running `npx convex dev --once` (clean deploy, 2.79s) with approval. Re-QA confirmed: text interview loads + advances, voice + QR handoff render, phone route degrades gracefully, Settings AI keys live. Verified working pre/post: anonymous auth, all 5 rail views + nav state, Today check-in save, Coach AI end-to-end, Core text save, Guide north-star write, 65/65 unit tests, zero console errors on deployed surfaces. Secondary notes: vitest double-counts tests from `.claude/worktrees/`; Core placeholders contain personal-sounding example text.
+
+**Docs touched:**
+- `docs/qa/qa-2026-06-03.md` (new — full QA sheet: verdict, test matrix, impact map, re-QA results, recommendations)
 ## 2026-06-04 · VoiceField post-speech behavior: plain text, anchored mic, backspace-to-cancel (branch `voice-field`) ✅ typecheck
 Three fixes from live testing. (1) **Mic landed in the wrong spot** after speaking — it was anchored to the whole wrapper, which had grown to include the "shaped" line. Restructured so the mic anchors to the textarea itself (inner relative div), always in its corner. (2) **Removed the special "shaped" state** — the cleaned text now lands as plain, regular, editable text (no "✓ shaped from what you said · show raw" chrome, no toggle); the box is refocused for typing. (3) **Backspace/Escape mid-recording now cancels** — discards the audio + transcript, keeps whatever text was already in the box, and returns the cursor there to keep typing (window keydown listener active only while listening; status line hints "backspace to cancel"). Voice takes still append non-destructively to existing text. Verified: `tsc` clean; dev server recompiled clean.
 **Docs touched:** `docs/product/features/voice-field.md` (behavior, functions table, states, edge cases updated: plain-text result + cancel). Code: `components/voice/VoiceField.tsx`.

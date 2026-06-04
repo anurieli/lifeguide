@@ -1,8 +1,8 @@
-# Home / Dashboard
+# Home / Dashboard (Today)
 
-**Status:** partial · **Element of:** view-only surface (no stream of its own) · **Owns:** nothing (the "Today" ritual it hosts writes to `interactions`)
+**Status:** partial · **Element of:** view-only surface (no stream of its own) · **Owns:** nothing (the "Today" ritual it hosts writes to `interactions`; the one north-star edit writes `settings`)
 
-> The door, not the room. An identity-aware, time-aware calm home that greets you by who you are and walks you into the right self-session.
+> The door **and** the front room. An identity-aware, time-aware calm home that greets you by who you are, points you at your north star (the compass), walks you into the day's beat, and — below the fold — renders the synthesized you back (the former [Guide](guide.md), merged in 2026-06-03).
 
 ## 1. Purpose
 
@@ -12,7 +12,7 @@ The Dashboard is the first thing a person sees when they check in. Its one job i
 
 A person opens LifeGuide. The Dashboard greets him by name and by identity, aware of the time and day. In the morning it shows his direction (the north star) and offers one small move that points at it; in the evening it offers one reflective prompt. It does not present tabs of charts, lists, or stats. The single dominant action is to begin the session that fits the moment, the morning beat when he wakes, the night beat before he sleeps. Stepping into a session hands him to the [Journal](journal.md), which owns the session itself.
 
-The seed of this surface is the current "Today" ritual screen ([`../../../components/today/Today.tsx`](../../../components/today/Today.tsx)): a time-based morning/evening toggle, a greeting, the north star card, a one-move or reflection prompt, and a Coach line. The proposed evolution makes it identity-aware (greet by who you are, not just the clock) and makes the prompt-and-capture body proper Journal sessions rather than inline textareas that log directly.
+This surface is the current "Today" ritual screen ([`../../../components/today/Today.tsx`](../../../components/today/Today.tsx)): a time-aware greeting, a Core progress chip, the **north star compass** (now editable inline — the one write this surface issues), a time-based morning/evening toggle with the day's one prompt, a Coach line, and then the folded-in [Guide](guide.md) content (the Mirror + the pillars) under a "Who you're becoming" divider. The proposed evolution makes the greeting identity-aware (greet by who you are, not just the clock) and makes the prompt-and-capture body proper Journal sessions rather than inline textareas that log directly.
 
 Manual and Coach paths are both first-class. Manually, he reads the greeting and clicks into the session. Via the Coach, the docked presence can greet him in context, summarize where he left off, and offer to start the beat, all without him operating anything.
 
@@ -21,7 +21,9 @@ Manual and Coach paths are both first-class. Manually, he reads the greeting and
 | Action | Trigger | What it does | Manual / Coach | Data touched |
 |---|---|---|---|---|
 | Greet by identity | Surface load | Renders a time-aware greeting plus who-you-are-becoming, drawn from Core + Vision Board | Both | draws `mirror`, `nodes` (read) |
-| Show direction | Surface load (morning) | Displays the north star; if unset, routes to the [Guide](guide.md) to name it | Manual | draws `settings.northStar`, `mirror` (read) |
+| Show direction (compass) | Surface load | Displays the north star in a gold compass card; if unset, shows a calm "not named yet" invitation right here | Manual | draws `settings.northStar` (read) |
+| Edit north star | tap "edit" / "write it", Save | The one write this surface issues — `settings.update({ northStar })`. Folded in from the former Guide | manual (Coach may also set it from far away) | writes `settings.northStar` |
+| Render Mirror + pillars | Surface load | Below the day's beat, renders the Mirror (summary + value/theme tags) and each pillar with its tagged-thing count — the folded-in [Guide](guide.md) | Both | draws `mirror`, `pillars`, `nodes` (read) |
 | Pick the beat | Surface load | Chooses morning vs night session based on time of day; offers the matching entry | Both | draws current `sessions` state (read) |
 | Enter session | User clicks the primary action | Routes into the [Journal](journal.md), opening or resuming the right session | Both | hands off to Journal (which writes `sessions`, `prompts`) |
 | Resume in progress | Surface load, open session exists | Surfaces "pick up where you left off" instead of starting fresh | Both | draws open `sessions` (read) |
@@ -36,18 +38,18 @@ The Dashboard **owns nothing** and is **draw-only** (per [`../../architecture/co
 - **Draws from the [Vision Board](vision-board.md)** for the becoming-self framing (the life you are pointed at).
 - **Draws current [Journal](journal.md) session state** to decide which beat to open and whether to resume.
 - **Routes into the [Journal](journal.md):** the Dashboard is the door, the Journal is the room. The Journal owns `sessions` and `prompts`; the Dashboard only opens it.
-- **Routes into the [Guide](guide.md)** when the north star is unnamed.
+- **Hosts the former [Guide](guide.md):** the north star (compass), the Mirror, and the pillars render in the lower half of this surface. The Guide's draw-only contract is unchanged; only its host moved. The single north-star write lands on `settings`, not on a table of this surface's own.
 - **The seed's inline ritual** publishes `checkin_morning` / `checkin_evening` to `interactions`; once the Journal element ships, those writes move to `sessions` and the Dashboard stops writing entirely.
 
 It publishes nothing of its own to the streams. What flows into shared context comes from the session the Dashboard hands off to, not from the Dashboard.
 
 ## 5. States
 
-- **First load / not onboarded:** greeting with no north star; the direction card invites naming it in the [Guide](guide.md). Calm, not empty-feeling.
+- **First load / not onboarded:** greeting with no north star; the compass card invites naming it inline ("write it"). Calm, not empty-feeling.
 - **Morning, no session yet:** shows direction + the one-move entry; primary action begins the morning beat.
 - **Evening:** shows the single reflective entry; primary action begins the night beat.
 - **Session in progress:** offers "resume" rather than "begin."
-- **Session complete for this beat:** acknowledges quietly (no streak, no score) and offers the next surface (board, Guide) without pressure.
+- **Session complete for this beat:** acknowledges quietly (no streak, no score); the "Who you're becoming" half below remains a calm place to read yourself back without pressure.
 - **Identity thin (sparse Core/Board):** greeting falls back to time-of-day only; still warm, never error-shaped.
 
 ## 6. Edge cases
@@ -67,8 +69,8 @@ The Dashboard does no distillation or generation of its own. The model touches i
 
 Per [`../../architecture/data-model.md`](../../architecture/data-model.md). All **drawn (read-only)**; **owns none**.
 
-- **Draws:** `mirror` (greeting, north star, identity), `settings.northStar` and rhythm fields, `nodes` (Vision Board becoming-self), `sessions` (which beat / resume state).
-- **Writes (seed only, transitional):** `interactions` (`checkin_morning`, `checkin_evening`) from the current "Today" screen. This write moves to `sessions` once the [Journal](journal.md) element owns the ritual; the proposed Dashboard writes nothing.
+- **Draws:** `mirror` (greeting, identity, Mirror card), `settings.northStar` and rhythm fields, `pillars` (the pillar blocks), `nodes` (per-pillar counts + Vision Board becoming-self), `sessions` (which beat / resume state).
+- **Writes:** `settings.northStar` via `settings.update` (the one north-star edit, folded in from the Guide); and `interactions` (`checkin_morning`, `checkin_evening`) from the ritual. The `interactions` write moves to `sessions` once the [Journal](journal.md) element owns the ritual; the north-star write is a Settings/Core write, not a table of this surface's own.
 
 ## 9. Open questions
 

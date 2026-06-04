@@ -19,7 +19,7 @@ The onboarding rebuild (spec: `docs/superpowers/specs/2026-06-03-onboarding-rebu
 
 ### 1. Provider-abstracted voice with OpenAI Realtime "mini" as the first adapter
 
-The voice stack lives in `convex/ai/voice/` and exports a `VoiceProvider` interface with a single `mint(instructions)` method. The first and only adapter is `OpenAIRealtimeAdapter`, which calls `POST /v1/realtime/sessions` with `gpt-4o-mini-realtime-preview` (pinned in `convex/ai/config.ts` under the `"voice"` task key).
+The voice stack lives in `convex/ai/voice/` and exports a `VoiceProvider` interface with a single `mint(instructions)` method. The first and only adapter is `OpenAIRealtimeAdapter`, which mints an ephemeral client secret at `POST /v1/realtime/client_secrets` (the GA Realtime endpoint; a nested `session` config carries the model + instructions) with `gpt-4o-mini-realtime-preview` (pinned in `convex/ai/config.ts` under the `"voice"` task key). Note: the original pre-GA `POST /v1/realtime/sessions` endpoint was retired by OpenAI and now 404s; the mint contract is pinned by `tests/voice-mint.test.ts`.
 
 The model id is controlled by `TASKS.voice.model` in `config.ts`, the same mechanism used for all other AI tasks. Swapping to a different realtime provider requires:
 - A new class implementing `VoiceProvider`.

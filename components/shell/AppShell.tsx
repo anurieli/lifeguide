@@ -6,12 +6,11 @@ import { Rail, View } from "./Rail";
 import { Today } from "@/components/today/Today";
 import { Core } from "@/components/core/Core";
 import { Whiteboard } from "@/components/whiteboard/Whiteboard";
-import { Guide } from "@/components/guide/Guide";
 import { Settings } from "@/components/settings/Settings";
 import { CoachDock } from "@/components/coach/CoachDock";
 
 const VIEW_STORAGE_KEY = "lifeguide.activeView";
-const VIEWS: View[] = ["today", "core", "board", "guide", "settings"];
+const VIEWS: View[] = ["today", "core", "board", "settings"];
 
 export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   const [view, setView] = useState<View>("today");
@@ -39,7 +38,6 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
         </div>
         {view === "today" && <Today onNavigate={setView} />}
         {view === "core" && <Core />}
-        {view === "guide" && <Guide />}
         {view === "settings" && <Settings />}
       </main>
       <CoachDock view={view} surfaceId={surfaceId} />

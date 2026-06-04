@@ -14,8 +14,8 @@ The element model these hang off is [`../../architecture/elements-and-context.md
 | [Pillars & Goals](pillars-and-goals.md) | `pillars, goals` | Core, Sessions | partial (pillars built; goals proposed) |
 | [The Core](core.md) | `mirror` | is the Core | partial |
 | [The Coach](coach.md) | `threads, messages` | reads all | partial (thin single-turn) |
-| [The Guide](guide.md) | view-only | renders Core | partial |
-| [Home / Dashboard](dashboard.md) | view-only | draws Core + Sessions | partial (Today seed) |
-| [Settings & Onboarding](settings.md) | `settings` | system | built |
+| [The Guide](guide.md) | view-only | renders Core | merged into Home |
+| [Home (Today)](dashboard.md) | view-only | draws Core + Sessions | partial (hosts the merged Guide) |
+| [Settings & Onboarding](settings.md) | `settings` | system | built (reached via the account menu) |
 
-The **Guide** and **Dashboard** are surfaces that own no data; they render and route. Everything else owns its tables and publishes distilled text to the two streams.
+**Home (Today)** is the one home surface: it owns no data, renders and routes, and now hosts the former **Guide** (north star compass, Mirror, pillars) folded in. Everything else owns its tables and publishes distilled text to the two streams. Settings is reached from the account menu at the bottom of the rail, not a primary rail tab.

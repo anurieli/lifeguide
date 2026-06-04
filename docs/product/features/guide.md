@@ -1,6 +1,8 @@
 # The Guide
 
-**Status:** partial · **Element of:** the Core (a read-only window onto it) · **Owns:** view-only
+**Status:** merged into [Home (Today)](dashboard.md) · **Element of:** the Core (a read-only window onto it) · **Owns:** view-only
+
+> **Merged 2026-06-03.** The Guide is no longer a standalone surface or rail tab. Its three parts — the editable north star (now framed as the **compass**), the Mirror, and the pillars — were folded into the lower half of the [Home (Today)](dashboard.md) surface under "Who you're becoming." The component `components/guide/Guide.tsx` was removed; the behavior lives in `components/today/Today.tsx`. This doc is kept as the canonical description of that *content* (the renders, the one north-star write, the draw-only contract), which is unchanged by the move. The only delta is the host: read "the Guide" below as "the lower half of Home." See [`../../design/screens.md`](../../design/screens.md).
 
 > The Guide is the one calm place that renders the synthesized you back to you: your north star, the Mirror, and your pillars. It owns no data; it draws the Core. See [`../../architecture/elements-and-context.md`](../../architecture/elements-and-context.md).
 

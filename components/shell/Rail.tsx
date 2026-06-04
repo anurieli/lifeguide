@@ -5,7 +5,7 @@ import {
   Sun,
   Gem,
   LayoutGrid,
-  MessageCircle,
+  Mic,
   Settings as SettingsIcon,
   User,
   LogOut,
@@ -75,13 +75,11 @@ function MenuItem({
 export function Rail({
   view,
   onNav,
-  coachOpen,
-  onCoach,
+  onSpeak,
 }: {
   view: View;
   onNav: (v: View) => void;
-  coachOpen: boolean;
-  onCoach: () => void;
+  onSpeak: () => void;
 }) {
   const { signOut } = useAuthActions();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -112,15 +110,10 @@ export function Rail({
             onClick={() => onNav(key)}
           />
         ))}
-        {/* Coach lives in the bottom bar on mobile — chat is one tap from anywhere.
-            On desktop the Coach has its own floating dock, so this tab is hidden. */}
+        {/* Talk lives in the bottom bar on mobile — the Listener is one tap from anywhere.
+            On desktop the talk button is the floating dock's primary action, so this is hidden. */}
         <div className="md:hidden flex-1 flex">
-          <NavButton
-            Icon={MessageCircle}
-            label="Coach"
-            active={coachOpen}
-            onClick={onCoach}
-          />
+          <NavButton Icon={Mic} label="Talk" active={false} onClick={onSpeak} />
         </div>
       </div>
 

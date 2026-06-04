@@ -8,6 +8,7 @@ import { Core } from "@/components/core/Core";
 import { Whiteboard } from "@/components/whiteboard/Whiteboard";
 import { Settings } from "@/components/settings/Settings";
 import { CoachDock } from "@/components/coach/CoachDock";
+import { SpeakSurface } from "@/components/voice/SpeakSurface";
 import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
 import { MusicProvider } from "@/components/music/MusicProvider";
 import { AtmospherePlayer } from "@/components/music/AtmospherePlayer";
@@ -17,9 +18,10 @@ const VIEWS: View[] = ["today", "core", "board", "settings"];
 
 export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   const [view, setView] = useState<View>("today");
-  // Coach open state lives here so the mobile bottom-bar tab and the desktop
-  // floating dock share one source of truth.
+  // Coach text dock open state (desktop secondary). The Listener voice call is the
+  // primary way in — it opens as a full-screen surface.
   const [coachOpen, setCoachOpen] = useState(false);
+  const [speakOpen, setSpeakOpen] = useState(false);
 
   // Restore the last-viewed tab after mount. Done in an effect (not a lazy
   // useState initializer) so server and first client render agree — reading
@@ -37,12 +39,7 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   return (
     <MusicProvider>
       <div className="flex h-[100dvh] bg-paper overflow-hidden">
-        <Rail
-          view={view}
-          onNav={setView}
-          coachOpen={coachOpen}
-          onCoach={() => setCoachOpen((o) => !o)}
-        />
+        <Rail view={view} onNav={setView} onSpeak={() => setSpeakOpen(true)} />
         {/* Leave room for the fixed bottom bar on mobile; full height on desktop. */}
         <main className="flex-1 relative h-[calc(100dvh-64px)] md:h-screen overflow-hidden">
           {/* Board stays mounted so canvas state (viewport, in-flight edits) survives nav. */}
@@ -58,10 +55,13 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
           surfaceId={surfaceId}
           open={coachOpen}
           onToggle={() => setCoachOpen((o) => !o)}
+          onSpeak={() => setSpeakOpen(true)}
         />
         <FeedbackWidget view={view} />
         {/* Atmosphere: ambient music, always at the ready across the app. */}
         <AtmospherePlayer />
+        {/* The Listener: always-available voice. Opens full-screen over everything. */}
+        {speakOpen && <SpeakSurface onClose={() => setSpeakOpen(false)} />}
       </div>
     </MusicProvider>
   );

@@ -4,10 +4,11 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { toFile } from "openai";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { aiForTask } from "./ai/openai";
 import { assembleContext } from "./context/assemble";
 import { ContextFragment } from "./context/types";
+import { Id } from "./_generated/dataModel";
 
 // ============================================================================
 // VoiceField server passes. Three actions turn speech into something useful:
@@ -159,5 +160,52 @@ Return ONLY a JSON object: {"prompts": ["...", "...", "..."]}.
     } catch {
       return []; // ambient feature — never surface an error into the UI
     }
+  },
+});
+
+/**
+ * Brain dump: turn a free-form spoken transcript into one or more captures on
+ * the board. Flow:
+ *   1. AI "split" pass (brainDumpSplit) segments the transcript into distinct thoughts.
+ *   2. One `captures.create` mutation per segment (each auto-schedules distillCapture).
+ *   3. Returns the array of capture IDs the client uses to poll distill completion
+ *      and then call placement.placeCapture for each.
+ *
+ * Single-thought dumps gracefully produce a one-element array.
+ * Any AI failure falls back to treating the whole transcript as one capture.
+ */
+export const brainDump = action({
+  args: {
+    transcript: v.string(),
+    surfaceId: v.id("surfaces"),
+  },
+  handler: async (ctx, args): Promise<Id<"captures">[]> => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const transcript = args.transcript.trim();
+    if (!transcript) return [];
+
+    // Step 1: split the dump into distinct thoughts (server-side, key never reaches client).
+    const segments: string[] = await ctx.runAction(internal.ai.splitDump.splitDump, {
+      transcript,
+      userId,
+    });
+
+    if (segments.length === 0) return [];
+
+    // Step 2: create a capture for every segment. Each capture.create auto-schedules
+    // distillCapture, so distillation begins immediately for all segments in parallel.
+    const captureIds: Id<"captures">[] = [];
+    for (const seg of segments) {
+      const id = await ctx.runMutation(api.captures.create, {
+        source: "audio",
+        rawType: "text",
+        rawText: seg,
+      });
+      captureIds.push(id);
+    }
+
+    return captureIds;
   },
 });

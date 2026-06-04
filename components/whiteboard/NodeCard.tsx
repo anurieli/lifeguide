@@ -1,16 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { NodeDoc } from "@/lib/types";
-import { ImagePlus, FileText, Download } from "lucide-react";
+import { SelectionMods } from "@/lib/selection";
+import { ImagePlus, FileText } from "lucide-react";
+import { DocPreview } from "./DocPreview";
 
 type Props = {
   node: NodeDoc;
   scale: number;
   autoFocus: boolean;
-  onMoveCommit: (x: number, y: number) => void;
+  selected: boolean;
+  /**
+   * Parent-controlled render position. When provided it overrides node.position
+   * — used for the live drag offset and for optimistic post-commit placement so
+   * grouped cards move together without flicker. null → render at node.position.
+   */
+  posOverride?: { x: number; y: number } | null;
+  /** Pointer-down on the card. The Whiteboard decides selection + drag group. */
+  onPointerDownNode: (mods: SelectionMods) => void;
+  /** World-space delta during a drag (parent applies it to the whole group). */
+  onDragDelta: (dx: number, dy: number) => void;
+  /** Drag finished; `moved` is false for a plain click. */
+  onDragEnd: (moved: boolean) => void;
+  /** Called when the user drags the resize handle (debounced 300ms before persisting). */
+  onResize?: (w: number, h: number) => void;
   onText: (t: string) => void;
   onDelete: () => void;
   onStartLink: () => void;
@@ -20,13 +36,27 @@ type Props = {
   linking: boolean;
 };
 
+// A drag is only a "move" once the pointer travels past this screen-space
+// threshold; below it the gesture is treated as a click (so selection sticks).
+const DRAG_THRESHOLD_PX = 3;
+
+const modsFrom = (e: React.PointerEvent): SelectionMods => ({
+  shift: e.shiftKey,
+  meta: e.metaKey || e.ctrlKey,
+});
+
 const URL_RE = /^https?:\/\/\S+$/i;
 
 export function NodeCard({
   node,
   scale,
   autoFocus,
-  onMoveCommit,
+  selected,
+  posOverride,
+  onPointerDownNode,
+  onDragDelta,
+  onDragEnd,
+  onResize,
   onText,
   onDelete,
   onStartLink,
@@ -35,20 +65,43 @@ export function NodeCard({
   onMorphLink,
   linking,
 }: Props) {
-  const drag = useRef<{ mx: number; my: number; ix: number; iy: number; moved: boolean } | null>(
-    null,
-  );
+  // Drag is driven here (pointer capture lives on the card) but the resulting
+  // position is owned by the Whiteboard so a whole selection moves together.
+  const drag = useRef<{ mx: number; my: number; moved: boolean; isText: boolean } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [localPos, setLocalPos] = useState<{ x: number; y: number } | null>(null);
-  const pos = localPos ?? node.position;
+  const pos = posOverride ?? node.position;
 
+  // Optimistic local dimensions for the resize handle in DocPreview.
+  // Debounces the persist call so we don't fire a mutation on every pointer move.
+  const [localDims, setLocalDims] = useState<{ width: number; height: number } | null>(null);
+  const dims = localDims ?? node.dimensions;
+  const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleResize = useCallback(
+    (w: number, h: number) => {
+      setLocalDims({ width: w, height: h });
+      if (!onResize) return; // no-op when the integrator hasn't wired up persist yet
+      if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+      resizeTimerRef.current = setTimeout(() => {
+        onResize(w, h);
+        resizeTimerRef.current = null;
+      }, 300);
+    },
+    [onResize],
+  );
+
+  // Keep localDims in sync once the persisted value catches up.
   useEffect(() => {
-    if (localPos && node.position.x === localPos.x && node.position.y === localPos.y) {
-      setLocalPos(null);
+    if (
+      localDims &&
+      node.dimensions.width === localDims.width &&
+      node.dimensions.height === localDims.height
+    ) {
+      setLocalDims(null);
     }
-  }, [node.position.x, node.position.y, localPos]);
+  }, [node.dimensions.width, node.dimensions.height, localDims]);
 
   useEffect(() => {
     if (autoFocus) taRef.current?.focus();
@@ -61,29 +114,34 @@ export function NodeCard({
   const img = node.imageUrl ?? fileUrl ?? undefined;
 
   const down = (e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).tagName === "TEXTAREA") return;
+    const isText = (e.target as HTMLElement).tagName === "TEXTAREA";
+    // Always tell the board about the click (selection is harmless while editing),
+    // but never let the gesture fall through to the background marquee/pan.
+    onPointerDownNode(modsFrom(e));
+    e.stopPropagation();
+    // A text card edits on first click; once selected its whole body drags.
+    // Non-text cards (image/file/link) always drag from the body.
+    if (isText && !selected) return; // let the textarea own the caret
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setDragging(true);
-    drag.current = {
-      mx: e.clientX,
-      my: e.clientY,
-      ix: node.position.x,
-      iy: node.position.y,
-      moved: false,
-    };
-    e.stopPropagation();
+    drag.current = { mx: e.clientX, my: e.clientY, moved: false, isText };
   };
   const move = (e: React.PointerEvent) => {
     if (!dragging || !drag.current) return;
+    const dx = e.clientX - drag.current.mx;
+    const dy = e.clientY - drag.current.my;
+    if (!drag.current.moved && Math.abs(dx) + Math.abs(dy) < DRAG_THRESHOLD_PX) return;
     drag.current.moved = true;
-    setLocalPos({
-      x: drag.current.ix + (e.clientX - drag.current.mx) / scale,
-      y: drag.current.iy + (e.clientY - drag.current.my) / scale,
-    });
+    onDragDelta(dx / scale, dy / scale); // world-space delta for the whole group
   };
   const up = (e: React.PointerEvent) => {
-    if (dragging && drag.current?.moved && localPos) onMoveCommit(localPos.x, localPos.y);
     (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+    if (dragging) {
+      const moved = drag.current?.moved ?? false;
+      onDragEnd(moved);
+      // A click (no move) on a selected text card drops into editing.
+      if (!moved && drag.current?.isText) taRef.current?.focus();
+    }
     setDragging(false);
     drag.current = null;
   };
@@ -124,12 +182,12 @@ export function NodeCard({
     <div
       className={`absolute group rounded-xl bg-card shadow-sm transition-shadow hover:shadow-md ${
         isQuote ? "border-l-[3px] border-l-gold border-y border-r border-line" : "border border-line"
-      }`}
+      } ${selected ? "ring-2 ring-[#3b82f6] ring-offset-1 ring-offset-paper" : ""}`}
       style={{
         left: pos.x,
         top: pos.y,
-        width: node.dimensions.width,
-        height: node.dimensions.height,
+        width: dims.width,
+        height: dims.height,
         cursor: dragging ? "grabbing" : "grab",
       }}
       onPointerDown={down}
@@ -179,7 +237,24 @@ export function NodeCard({
         </a>
       )}
 
-      {node.type === "file" && (
+      {node.type === "file" && fileUrl && (
+        // DocPreview handles all mime types: rich previews for PDF/HTML,
+        // a download fallback for everything else. The resize handle inside
+        // DocPreview calls handleResize which debounces to onResize (persist).
+        <DocPreview
+          fileUrl={fileUrl}
+          fileName={node.fileName}
+          mimeType={node.mimeType}
+          width={dims.width}
+          height={dims.height}
+          scale={scale}
+          onResize={handleResize}
+        />
+      )}
+
+      {node.type === "file" && !fileUrl && (
+        // URL not yet resolved (Convex query in flight): show the compact
+        // icon-and-name placeholder. Transitions to DocPreview once fileUrl lands.
         <div className="flex items-center gap-2.5 p-3 h-full overflow-hidden">
           <FileText className="w-7 h-7 shrink-0 text-accent" />
           <div className="min-w-0 flex-1">
@@ -190,19 +265,6 @@ export function NodeCard({
               {node.mimeType ?? "file"}
             </div>
           </div>
-          {fileUrl && (
-            <a
-              href={fileUrl}
-              target="_blank"
-              rel="noreferrer"
-              download={node.fileName}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="shrink-0 w-7 h-7 rounded-md text-ink-mute hover:text-ink hover:bg-paper-2 flex items-center justify-center"
-              title="Open / download"
-            >
-              <Download className="w-4 h-4" />
-            </a>
-          )}
         </div>
       )}
 

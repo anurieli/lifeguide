@@ -83,6 +83,25 @@ Three live server tasks (`convex/ai/config.ts`), all defined in `convex/voice.ts
 
 VoiceField owns no tables. It reads the **Mirror** (`mirror.assemble`) for Prompt Mode context, and writes only through the host field's callbacks into that field's existing store (`interactions`, `coreResponses`, or onboarding-local → `captures`). See [`../../architecture/data-model.md`](../../architecture/data-model.md). Audio chunks are passed to `voice.transcribe` as transient `bytes` and never persisted. No schema change was needed.
 
+## Brain dump (Vision Board spoken entry)
+
+A voice-first on-ramp to the Vision Board, built on VoiceField's recorder hooks (`useWhisperRecorder` + `useSpeechRecognition`) without modifying `VoiceField.tsx`. Lives in `components/voice/BrainDump.tsx`; mounted from the board toolbar (mic icon). See [`vision-board.md`](vision-board.md).
+
+**Purpose.** Let the person speak a free-form stream of consciousness that becomes *multiple* captures (and therefore multiple nodes) without typing or manual segmentation.
+
+**Flow.** speak → transcribe → split → distill → place.
+1. The person taps the mic and speaks; dual-layer transcription runs (Whisper server-side, chunked, accurate; Web Speech for the instant live caption + fallback).
+2. On stop, the transcript goes to the `voice.brainDump` action, which calls the new `brainDumpSplit` AI task (`convex/ai/splitDump.ts`; gpt-4o-mini via OpenRouter, temp 0.3, JSON `{"segments":[...]}`) to break the dump into distinct thoughts. A single-thought dump yields one segment; very short fragments are merged.
+3. Each segment becomes a `captures.create` (`source: "audio"`), which auto-schedules the existing `distillCapture` pipeline in parallel.
+4. The client watches the batch reactively via the new `captures.getMany` query and spiral-places each node (`placement.placeCapture`) the moment its `distilled` field lands. A ~28s timeout force-places any stragglers with raw text.
+5. A brief success state, then auto-close.
+
+**Phase machine.** `idle → recording → processing (split) → placing (watch distill, place as ready) → done`; plus `error` (retryable).
+
+**Graceful degradation.** Split AI fails → whole transcript becomes one capture. Whisper unavailable → Web Speech transcript. Distill stalls → place raw text after timeout. Mic denied → "mic not available" rather than a crash.
+
+**Data.** No new schema fields or tables. Captures use the existing `source: "audio"` / `rawType: "text"`.
+
 ## 9. Open questions
 
 1. **Prompt Mode cadence** — refresh-on-pause (current) vs. a steadier cycle; tune against real latency/cost once observed.

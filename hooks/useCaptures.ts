@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 export function useCaptures() {
@@ -10,5 +10,7 @@ export function useCaptures() {
     softDelete: useMutation(api.captures.softDelete),
     place: useMutation(api.placement.placeCapture),
     generateUploadUrl: useMutation(api.files.generateUploadUrl),
+    /** Brain-dump: transcribe a spoken dump, split into thoughts, create captures, return IDs. */
+    brainDump: useAction(api.voice.brainDump),
   };
 }

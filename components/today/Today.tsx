@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { View } from "@/components/shell/Rail";
+import { filledCount } from "@/lib/levels";
 
 function greeting() {
   const h = new Date().getHours();
@@ -12,6 +13,7 @@ function greeting() {
 
 export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
   const settings = useQuery(api.settings.get, {});
+  const coreMap = useQuery(api.core.get, {});
   const log = useMutation(api.interactions.log);
   const [mode, setMode] = useState<"am" | "pm">(new Date().getHours() < 17 ? "am" : "pm");
   const [amText, setAmText] = useState("");
@@ -20,6 +22,9 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [pmSaved, setPmSaved] = useState(false);
 
   const northStar = settings?.northStar;
+  const bpCount =
+    coreMap && typeof coreMap === "object" ? filledCount(coreMap as Record<string, string>) : 0;
+  const bpComplete = settings?.blueprintStatus === "complete";
 
   const tab = (active: boolean) =>
     `px-4 py-[7px] rounded-full text-[13px] transition ${active ? "bg-accent text-white" : "text-ink-mute"}`;
@@ -30,6 +35,17 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
       style={{ background: "radial-gradient(900px 480px at 70% -10%, #FFFDF7, #FAF8F2)" }}
     >
       <div className="max-w-[620px] mx-auto px-8 py-16">
+        {!bpComplete && settings !== undefined && (
+          <div className="mb-6 flex items-center gap-2 text-[13px] text-ink-mute">
+            <span>Your blueprint isn&apos;t finished &mdash; {bpCount}/18.</span>
+            <button
+              onClick={() => onNavigate("core")}
+              className="text-accent hover:underline"
+            >
+              Continue &rarr;
+            </button>
+          </div>
+        )}
         <div className="inline-flex bg-card border border-line rounded-full p-1 mb-8">
           <button className={tab(mode === "am")} onClick={() => setMode("am")}>
             ☀️ Morning

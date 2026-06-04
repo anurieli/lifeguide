@@ -48,7 +48,7 @@ Relationship to the **onboarding voice interview**: separate mechanism (realtime
 ## 5. States
 
 - **idle** — text box + mic. Empty or holding a value.
-- **listening** — recording surface: waveform + finish button, live transcript, breathing dot, and one Prompt Mode suggestion at a time inside the surface.
+- **listening** — a borderless, centered surface (no box): a minimalist waveform you can tap to finish (plus a quiet finish button with a "Tap to finish" tooltip), live transcript, a breathing dot, and one Prompt Mode suggestion at a time. The idle mic is a glowing call-to-action — a rotating rainbow ring + orbiting dot + hover tooltip — to invite the first tap. The idle text box auto-grows to fit its content (no inner scrollbar).
 - **analyzing** — waveform settles to a flat ghost line, transcript blurs, spinner + "understanding what you mean…".
 - **shaped (back to idle)** — field holds the cleaned text; the "shaped · show raw" affordance is present.
 - **shaped→raw** — same as above, field showing the exact raw words; toggle reads "show shaped".
@@ -67,7 +67,7 @@ Relationship to the **onboarding voice interview**: separate mechanism (realtime
 ## 7. AI involvement
 
 Two live server tasks (`convex/ai/config.ts`), both via `aiForTask` and routed through OpenRouter (per-profile key if set, else env), defined in `convex/voice.ts`:
-- **`voiceShape`** (temp 0.3) — raw transcript + field `question`/`descriptor`/`intent` → cleaned, intent-fitted text. Keeps meaning, strips filler, fixes obvious speech-to-text errors, returns only the answer.
+- **`voiceShape`** (temp 0.3) — raw transcript + field `question`/`descriptor`/`intent` → cleaned, intent-fitted text. Framed as a *silent text editor* (not a chatbot) with a strict output contract + one-shot example: returns ONLY the rewritten first-person answer, never a preamble/greeting/meta sentence, never adds ideas the person didn't say, returns the input unchanged if empty/unintelligible.
 - **`voicePrompts`** (temp 0.7, JSON mode) — field metadata + Mirror → up to 3 short next-thought nudges.
 
 **Transcription is not server AI** — it is the browser's on-device Web Speech API (no audio leaves the device, no cost). See [`../../architecture/ai-layer.md`](../../architecture/ai-layer.md) role 6.

@@ -9,7 +9,7 @@ import type { FieldMeta } from "@/lib/voiceField";
 
 type Phase = "idle" | "listening" | "analyzing";
 
-const BAR_COUNT = { default: 28, compact: 20 } as const;
+const BAR_COUNT = { default: 11, compact: 9 } as const;
 const PROMPT_ROTATE_MS = 3800; // how long each single prompt holds before the next one fades in
 
 /**
@@ -59,6 +59,19 @@ export function VoiceField({
 
   const barsRef = useRef<(HTMLSpanElement | null)[]>([]);
   const baseRef = useRef(""); // value present before this voice take (so voice appends, never destroys)
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Auto-grow the idle textarea to fit its content (no inner scrollbar). Runs whenever
+  // the value changes (typed or filled by voice) and on mount.
+  const autosize = useCallback(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
+  }, []);
+  useEffect(() => {
+    if (phase === "idle") autosize();
+  }, [value, phase, autosize]);
 
   const isCompact = variant === "compact";
   const aiMeta = { question: meta.question, intent: meta.intent, descriptor: meta.descriptor };
@@ -156,31 +169,38 @@ export function VoiceField({
     return (
       <div className={`relative ${className}`}>
         <textarea
+          ref={taRef}
           value={value}
           onChange={(e) => {
             onChange(e.target.value);
+            autosize(); // grow to fit as they type (no inner scrollbar)
             if (shaped) setShaped(null); // a manual edit ends the "shaped" relationship
           }}
           onBlur={() => onCommit?.(value)}
           rows={rows}
           placeholder={meta.placeholder ?? "Type, or tap the mic to speak…"}
-          className={
+          className={`overflow-hidden ${
             inputClassName ||
             `w-full bg-paper border border-line-2 rounded-xl p-3 pr-12 text-[14.5px] leading-relaxed text-ink resize-none outline-none focus:border-gold transition placeholder:text-ink-mute ${
               isCompact ? "min-h-[44px]" : ""
             }`
-          }
+          }`}
         />
         {speech.supported && (
-          <button
-            type="button"
-            onClick={begin}
-            title="Speak your answer"
-            aria-label="Speak your answer"
-            className="vf-mic absolute right-2.5 bottom-2.5 w-8 h-8 rounded-full grid place-items-center text-ink-mute hover:text-gold"
-          >
-            <Mic className="w-[18px] h-[18px]" />
-          </button>
+          <span className="vf-tipwrap absolute right-2.5 bottom-2.5">
+            <button
+              type="button"
+              onClick={begin}
+              aria-label="Speak your answer"
+              className="vf-mic vf-cta w-9 h-9 rounded-full grid place-items-center text-ink hover:text-gold"
+            >
+              <span className="vf-dot">
+                <i />
+              </span>
+              <Mic className="w-[17px] h-[17px]" />
+            </button>
+            <span className="vf-tip">Speak it — I&apos;ll shape it</span>
+          </span>
         )}
         {shaped && (
           <div className="mt-1.5 flex items-center gap-2 text-[11.5px] text-ink-mute">
@@ -195,17 +215,16 @@ export function VoiceField({
   }
 
   // -------------------------------------------------- listening / analyzing view
+  // No box, no border — just an open, centered, minimal column. Feels like stepping
+  // onto a different path rather than typing in a field.
   const barCount = BAR_COUNT[variant];
   const analyzing = phase === "analyzing";
   return (
-    <div
-      className={`vf-rise relative border border-gold rounded-[14px] px-4 py-3.5 ${className}`}
-      style={{ background: "linear-gradient(180deg,#FFFDF7,#FBF6EC)" }}
-    >
-      {/* waveform (tap anywhere on it to finish) + an explicit, obvious finish button */}
-      <div className="flex items-center gap-3">
+    <div className={`vf-rise flex flex-col items-center gap-3 py-3 ${className}`}>
+      {/* minimalist waveform (tap it to finish) + a quiet finish button with a tooltip */}
+      <div className="flex items-center gap-3.5">
         <div
-          className={`vf-wave flex-1 justify-center ${analyzing ? "vf-settling" : ""}`}
+          className={`vf-wave justify-center ${analyzing ? "vf-settling" : ""}`}
           onClick={() => !analyzing && void finish()}
           role="button"
           title="Tap to finish"
@@ -219,33 +238,35 @@ export function VoiceField({
             />
           ))}
         </div>
-        <button
-          type="button"
-          onClick={() => !analyzing && void finish()}
-          disabled={analyzing}
-          title="Finish"
-          aria-label="Finish"
-          className="vf-mic w-9 h-9 rounded-full grid place-items-center bg-gold text-[#231a08] shrink-0 shadow-sm hover:brightness-105"
-        >
-          {analyzing ? (
-            <span className="w-3.5 h-3.5 rounded-full border-2 border-[#231a08]/30 border-t-[#231a08] animate-spin" />
-          ) : (
-            <Square className="w-3.5 h-3.5" fill="currentColor" strokeWidth={0} />
-          )}
-        </button>
+        <span className="vf-tipwrap relative">
+          <button
+            type="button"
+            onClick={() => !analyzing && void finish()}
+            disabled={analyzing}
+            aria-label="Finish"
+            className="vf-mic w-8 h-8 rounded-full grid place-items-center text-ink-mute hover:text-ink"
+          >
+            {analyzing ? (
+              <span className="w-3.5 h-3.5 rounded-full border-2 border-ink-mute/30 border-t-ink-mute animate-spin" />
+            ) : (
+              <Square className="w-3 h-3" fill="currentColor" strokeWidth={0} />
+            )}
+          </button>
+          {!analyzing && <span className="vf-tip">Tap to finish</span>}
+        </span>
       </div>
 
       {/* live transcript */}
       <div
-        className={`vf-script mt-3 text-center text-[15px] leading-relaxed text-ink-soft ${analyzing ? "vf-blurring" : ""}`}
+        className={`vf-script text-center text-[15px] leading-relaxed text-ink-soft max-w-[460px] ${analyzing ? "vf-blurring" : ""}`}
       >
         {speech.finalText || (!speech.interim && <span className="text-ink-mute">listening…</span>)}
         {speech.interim && <span className="vf-interim"> {speech.interim}</span>}
         {!analyzing && <span className="vf-caret" />}
       </div>
 
-      {/* Prompt Mode — exactly ONE suggestion at a time, inside the surface, related to what's said */}
-      <div className="mt-2.5 h-5 flex items-center justify-center text-center">
+      {/* Prompt Mode — exactly ONE suggestion at a time, related to what's said */}
+      <div className="h-5 flex items-center justify-center text-center">
         {!analyzing && currentPrompt && (
           <span
             key={currentPrompt}
@@ -258,14 +279,14 @@ export function VoiceField({
       </div>
 
       {/* status line */}
-      <div className="mt-1 flex items-center justify-center gap-2 text-[11.5px] text-ink-mute">
+      <div className="flex items-center justify-center gap-2 text-[11.5px] text-ink-mute">
         {analyzing ? (
           <span className="text-[#8A6A2E]">understanding what you mean…</span>
         ) : speech.error === "not-allowed" ? (
           "I can't hear the mic — check the browser's mic permission."
         ) : (
           <>
-            <span className="vf-pulse" /> tap the wave or ■ to finish
+            <span className="vf-pulse" /> tap the wave when you&apos;re done
           </>
         )}
       </div>

@@ -6,6 +6,9 @@ import { HelpCircle, X } from "lucide-react";
 // Small, dismissable gesture legend. Calm by default — collapsed to a single
 // icon button; expands to the full cheat-sheet of board interactions.
 const ROWS: { keys: string; desc: string }[] = [
+  { keys: "Double-click", desc: "Add a text card" },
+  { keys: "Right-click", desc: "Add / generate menu" },
+  { keys: "/ then space", desc: "Generate image (in card)" },
   { keys: "Drag empty", desc: "Box-select cards" },
   { keys: "Click card", desc: "Select one" },
   { keys: "Shift-click", desc: "Add to selection" },

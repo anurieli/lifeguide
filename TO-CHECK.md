@@ -85,3 +85,13 @@ Features that are done but haven't been manually verified yet.
 - [ ] Zoom in, then group-move a selection — confirm the cards track the cursor 1:1 at that zoom and commit in place
 - [ ] ⌘-A selects every card; ⌫/Delete clears the whole selection from the board
 - [ ] Click into a card, type, and press Backspace/Delete — confirm it edits the text and does NOT delete the selected cards
+
+### Vision board AI image generation + add menu
+- [ ] Double-click empty canvas, confirm a blank text card appears at the cursor and is focused to type
+- [ ] Right-click empty canvas, confirm the menu opens at the cursor with Add text / Generate image with AI / Upload image; click outside (or Esc) closes it
+- [ ] Menu "Add text" drops a focused card where you right-clicked; "Upload image" opens a picker and drops the chosen image there
+- [ ] In an empty card type "/" then a space, confirm it switches to the purple "Generate with AI" prompt (the slash is gone)
+- [ ] Type an image prompt and press Enter, confirm the card turns into a spinner showing the prompt, then fills with a generated image a few seconds later
+- [ ] Menu "Generate image with AI" opens a new card already in AI mode at the click point
+- [ ] Force a failure (e.g. no OpenAI key) and confirm the card shows "Couldn't generate that image" with a working Try again, and the rest of the board stays interactive while a card is generating
+- [ ] Generated image cards drag, resize, connect, and delete like any other card

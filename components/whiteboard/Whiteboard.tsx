@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAction } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { SurfaceId } from "@/lib/types";
 import { Id } from "@/convex/_generated/dataModel";
 import { useViewport } from "@/hooks/useViewport";
@@ -14,6 +16,7 @@ import { Inbox } from "./Inbox";
 import { Minimap } from "./Minimap";
 import { SelectionLayer } from "./SelectionLayer";
 import { SelectionActions } from "./SelectionActions";
+import { CanvasMenu } from "./CanvasMenu";
 import { Legend } from "./Legend";
 import { BrainDump } from "@/components/voice/BrainDump";
 import { Rect, rectsOverlap } from "@/lib/geometry";
@@ -68,6 +71,16 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
   const [brainDumpOpen, setBrainDumpOpen] = useState(false);
   const dragDepth = useRef(0);
 
+  // AI image generation: the action, the card currently in "/" AI-prompt mode, and the
+  // right-click menu (world = where the click landed, so new cards drop there).
+  const generateImage = useAction(api.ai.imageGen.generateInto);
+  const [aiModeId, setAiModeId] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; world: { x: number; y: number } } | null>(
+    null,
+  );
+  const menuFileRef = useRef<HTMLInputElement>(null);
+  const pendingWorld = useRef<{ x: number; y: number } | null>(null);
+
   const nodeById = new Map(nodes.map((n) => [n._id as string, n]));
 
   // Drop optimistic overrides once the server position matches (or the node is gone).
@@ -108,6 +121,7 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
         !!t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.isContentEditable);
       if (e.key === "Escape") {
         setLinkFrom(null);
+        setMenu(null);
         clear();
         return;
       }
@@ -194,6 +208,7 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
   // ---- Background gestures (this only fires on empty canvas; cards stop
   // propagation so a pointer-down on a card never starts a pan/marquee) -------
   const onDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return; // right/middle click never starts a pan/marquee
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     if (e.shiftKey) {
       // Shift-drag on empty space pans the board.
@@ -315,6 +330,73 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
     x: (clientX - vp.x) / vp.scale,
     y: (clientY - vp.y) / vp.scale,
   });
+
+  // Drop a blank text card centered on a world point. `ai` starts it in AI-prompt mode.
+  const addTextAt = async (world: { x: number; y: number }, ai = false) => {
+    const id = await create({
+      surfaceId,
+      type: "text",
+      text: "",
+      position: { x: world.x - 110, y: world.y - 65, z: 0 },
+      dimensions: { width: 220, height: 130 },
+    });
+    setFocusId(id as string);
+    if (ai) setAiModeId(id as string);
+    return id;
+  };
+
+  // Submit an AI image prompt for a card: morph it to a "generating" image (instant
+  // spinner via the reactive query), then run the action which files the result back.
+  const handleGenerateImage = async (nodeId: string, prompt: string) => {
+    const p = prompt.trim();
+    if (!p) return;
+    setAiModeId(null);
+    await morph({
+      nodeId: nodeId as Id<"nodes">,
+      type: "generated_image",
+      text: p,
+      attribution: "generating",
+      dimensions: { width: 280, height: 280 },
+    });
+    generateImage({ nodeId: nodeId as Id<"nodes">, prompt: p }).catch((err) => {
+      console.error("image generation failed", err);
+      void morph({ nodeId: nodeId as Id<"nodes">, type: "generated_image", attribution: "error" });
+    });
+  };
+
+  // Double-click empty canvas adds a text card where you clicked.
+  const onDoubleClick = (e: React.MouseEvent) => {
+    if (e.target !== e.currentTarget) return; // ignore dbl-clicks on cards / UI chrome
+    void addTextAt(screenToBoard(e.clientX, e.clientY));
+  };
+
+  // Right-click empty canvas opens the add menu at the cursor.
+  const onContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (e.target !== e.currentTarget) return; // only over bare canvas, not cards / UI
+    setMenu({ x: e.clientX, y: e.clientY, world: screenToBoard(e.clientX, e.clientY) });
+  };
+
+  // Menu "Upload image": remember where to drop it, then open the file picker.
+  const promptMenuUpload = (world: { x: number; y: number }) => {
+    pendingWorld.current = world;
+    menuFileRef.current?.click();
+  };
+  const onMenuFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    const w = pendingWorld.current;
+    e.target.value = "";
+    pendingWorld.current = null;
+    if (!f || !w) return;
+    const fileId = await uploadFile(f);
+    await create({
+      surfaceId,
+      type: "image",
+      fileId,
+      position: { x: w.x - 120, y: w.y - 90, z: 0 },
+      dimensions: { width: 240, height: 180 },
+    });
+  };
 
   // Drop files from the desktop straight onto the board where they land.
   // Images become image cards; everything else becomes a file card.
@@ -493,6 +575,8 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
       onPointerMove={onMove}
       onPointerUp={onUp}
       onWheel={onWheel}
+      onDoubleClick={onDoubleClick}
+      onContextMenu={onContextMenu}
       onDragOver={onDragOver}
       onDragEnter={onDragEnter}
       onDragLeave={onDragLeave}
@@ -514,6 +598,9 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
             onPointerDownNode={(mods) => handleNodeDown(n._id as string, mods)}
             onDragDelta={handleNodeDragDelta}
             onDragEnd={handleNodeDragEnd}
+            startAiMode={aiModeId === (n._id as string)}
+            onClearAiMode={() => setAiModeId(null)}
+            onGenerateImage={(prompt) => void handleGenerateImage(n._id as string, prompt)}
             onResize={(w, h) => void resize({ nodeId: n._id, dimensions: { width: w, height: h } })}
             onText={(t) => void setText({ nodeId: n._id, text: t })}
             onDelete={() => void remove({ nodeId: n._id })}
@@ -546,6 +633,26 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
           </div>
         </div>
       )}
+
+      {menu && (
+        <CanvasMenu
+          x={menu.x}
+          y={menu.y}
+          onAddText={() => void addTextAt(menu.world)}
+          onGenerate={() => void addTextAt(menu.world, true)}
+          onUpload={() => promptMenuUpload(menu.world)}
+          onClose={() => setMenu(null)}
+        />
+      )}
+
+      {/* hidden picker for the menu's "Upload image" action */}
+      <input
+        ref={menuFileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => void onMenuFile(e)}
+      />
 
       <SelectionLayer rect={marqueeRect} />
 

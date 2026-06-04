@@ -7,6 +7,26 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-04 · Atmosphere polish: playing-aware orb, remembered controls, autoplay on by default
+
+Three refinements to the music system from live testing. (1) **The orb now shows it's playing**: while music runs it fills with the current mood's color, runs a live soundwave, pulses a soft halo, and names the mood in small text beneath it; paused it's a quiet dot on white. (2) **Controls are remembered as config**: the chosen mood now persists to `localStorage` (`lifeguide.music.mood`) alongside volume and AUTO, and the last chosen mood wins over the Convex default on load. (3) **Autoplay is on by default** (`musicAutoplay` absent now reads as `true`, in both the provider and the Settings toggle); still gesture-gated, so it starts on the first interaction if the browser blocks autosound. tsc + `next build` clean.
+
+Files: `components/music/MusicProvider.tsx`, `components/music/AtmospherePlayer.tsx`, `components/settings/Settings.tsx`, `app/globals.css`.
+
+**Docs touched:** `docs/product/features/atmosphere.md` (§2 behavior, §3 pick-mood + autoplay rows, §5 states, §6 edge cases, §8 data).
+
+## 2026-06-04 · Voice onboarding ("Talk it through") — Coach leads, real two-color waveform, pause/mute/stop, centered layout
+Reworked the `VoiceInterview` realtime experience from five pieces of usage feedback:
+- **The Coach now starts the conversation.** On the data channel `open` event the client sends a `response.create` event instructing the model to greet the person and ask the first question, instead of sitting silent until the user speaks.
+- **Live transcript reliability.** Added the GA event names (`response.output_audio_transcript.delta`/`.done`) alongside the pre-GA names so the Coach's words always stream in word-by-word as it talks (the GA rename was why the transcript could appear blank).
+- **The waveform is real and reactive.** Replaced the random-motion bars with two Web Audio `AnalyserNode`s — one on the mic, one on the Coach's remote audio. A `requestAnimationFrame` loop shapes the bars to whoever is louder, in their color: **gold** for the Coach, **blue** for you, ghost-grey for silence. One line, both parties, each reacting to its own audio.
+- **Pause / Mute / Stop.** Added a control cluster under the waveform: **Mute** toggles the mic track (Coach keeps talking), **Pause** holds everything (mic off + Coach audio paused + AudioContext suspended so the wave freezes) with **Resume**, and **End** stops and finalizes. Status chip reads Listening / Muted / Paused.
+- **Centered, padded layout.** The live view now has breathing room on every edge (`px-5 sm:px-8 py-5 sm:py-8`, max-width 680px) so it reads well on phone and desktop instead of hugging the borders.
+
+Typecheck clean. Single file changed: `components/onboarding/VoiceInterview.tsx`.
+
+**Docs touched:** `CHANGELOG.md`; `docs/product/features/interview.md` (rewrote the §6 "Client-side: VoiceInterview component" steps and the Live-view paragraph for the lead-in `response.create`, dual transcript event names, the real two-color analyser-driven waveform, the pause/mute/end controls, and the centered/padded layout).
+
 ## 2026-06-04 · Prod incident: auth down from stale Convex backend — fixed + auto-deploy wired
 Prod (`mylifesguide.com`) was stuck at "Entering…" — anonymous and Google auth both failed with `Auth provider discovery of strong-wildebeest-896 failed`. **Root cause:** the prod frontend (Vercel project `lifeguide`) points at Convex deployment **`strong-wildebeest-896`**, but the whole rebuild had only ever been deployed to the **dev** deployment (`gregarious-boar-475`) via `convex dev`. Vercel prod had **no `CONVEX_DEPLOY_KEY`**, so its builds never deployed the backend either — prod's functions/schema were stale against a freshly-shipped frontend, breaking the auth handshake. (Confirmed read-only: prod's `SITE_URL`, `CONVEX_SITE_URL`, JWKS, discovery endpoint were all correct/healthy; the gap was purely undeployed code.)
 - **Fix:** `npx convex deploy` pushed the current functions + (additive) schema to `strong-wildebeest-896`. Verified live in-browser: anonymous entry now authenticates and loads the app; Zen + Conversational modes confirmed working on prod.

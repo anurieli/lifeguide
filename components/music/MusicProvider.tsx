@@ -18,11 +18,12 @@ import { MoodKey, TRACK_BY_KEY, DEFAULT_MOOD, moodForHour } from "./tracks";
 // MusicProvider — the Atmosphere engine.
 //
 // Durable preferences (enabled, autoplay, default mood) live in Convex settings.
-// Live playback (which mood is sounding now, volume, AUTO) is ephemeral: kept in
-// React state, with volume + AUTO mirrored to localStorage so they survive a
-// reload. Two <audio> elements give a gapless crossfade between moods. Browsers
-// block audio until a gesture, so autoplay attempts once and, if blocked, starts
-// on the first interaction anywhere. See docs/product/features/atmosphere.md.
+// Live playback is kept in React state, with the chosen mood, volume, and AUTO
+// each mirrored to localStorage so the controls are remembered across reloads
+// (last-chosen mood wins over the Convex default). Two <audio> elements give a
+// gapless crossfade between moods. Autoplay is ON by default; browsers block
+// audio until a gesture, so it attempts once and, if blocked, starts on the
+// first interaction anywhere. See docs/product/features/atmosphere.md.
 // ---------------------------------------------------------------------------
 
 type MusicCtx = {
@@ -47,6 +48,7 @@ export function useMusic() {
 
 const VOL_KEY = "lifeguide.music.volume";
 const AUTO_KEY = "lifeguide.music.auto";
+const MOOD_KEY = "lifeguide.music.mood"; // last mood the user chose — remembered across sessions
 const DEFAULT_VOLUME = 0.62;
 
 // linear volume ramp on rAF — used for fade-in and crossfade
@@ -174,14 +176,19 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     if (interactedRef.current) return;
 
     const autoOn = window.localStorage.getItem(AUTO_KEY) === "1";
+    const savedMood = window.localStorage.getItem(MOOD_KEY) as MoodKey | null;
+    // Priority: AUTO (clock) > last chosen mood (config) > Convex default > built-in default.
     const initial: MoodKey = autoOn
       ? moodForHour(new Date().getHours())
-      : ((settings?.musicDefaultMood as MoodKey) ?? DEFAULT_MOOD);
+      : savedMood && TRACK_BY_KEY[savedMood]
+        ? savedMood
+        : ((settings?.musicDefaultMood as MoodKey) ?? DEFAULT_MOOD);
     setMoodKey(initial);
     const a = getActive();
     if (a) a.src = TRACK_BY_KEY[initial].src;
 
-    if (enabled && settings?.musicAutoplay) {
+    // Autoplay is ON by default (undefined => true); only an explicit false disables it.
+    if (enabled && (settings?.musicAutoplay ?? true)) {
       a?.play()
         .then(() => {
           setPlaying(true);
@@ -235,6 +242,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const pickMood = useCallback(
     (key: MoodKey) => {
       interactedRef.current = true;
+      window.localStorage.setItem(MOOD_KEY, key); // remember the choice as config
       if (auto) {
         setAutoState(false);
         window.localStorage.setItem(AUTO_KEY, "0");

@@ -59,16 +59,29 @@ export function AtmospherePlayer() {
 
   return (
     <div className="atmo-root" style={{ ["--mood" as string]: cur.color } as React.CSSProperties}>
-      {/* collapsed orb */}
-      <button
-        type="button"
-        className={`atmo-orb ${m.playing ? "playing" : ""} ${open ? "expanded" : ""}`}
-        onClick={() => setOpen(true)}
-        aria-label="Atmosphere music"
-        aria-expanded={open}
-      >
-        <span className="dot" />
-      </button>
+      {/* collapsed orb: mood-colored when playing, with a live soundwave and the
+          mood name beneath. Clicking opens the controls. */}
+      <div className={`atmo-orb-wrap ${open ? "expanded" : ""}`}>
+        <button
+          type="button"
+          className={`atmo-orb ${m.playing ? "playing" : ""}`}
+          onClick={() => setOpen(true)}
+          aria-label={`Atmosphere — ${cur.mood}${m.playing ? ", playing" : ", paused"}`}
+          aria-expanded={open}
+        >
+          {m.playing ? (
+            <span className="atmo-orb-eq" aria-hidden>
+              <i />
+              <i />
+              <i />
+              <i />
+            </span>
+          ) : (
+            <span className="dot" />
+          )}
+        </button>
+        <span className="atmo-orb-label">{cur.mood}</span>
+      </div>
 
       {/* panel */}
       <div className={`atmo-panel ${open ? "open" : ""}`} role="dialog" aria-label="Atmosphere">

@@ -10,7 +10,7 @@ The soul calls LifeGuide "a calm room he returns to." A room has an atmosphere. 
 
 ## 2. User-facing behavior
 
-A small orb sits at the bottom-left of the app, just clear of the rail. At rest it is a still dot; while music plays it breathes. Clicking it scales open (from the orb's own origin) into the **Atmosphere** panel:
+A small orb sits at the bottom-left of the app, just clear of the rail. At rest it shows a still dot on white; while music plays it fills with the current mood's color, runs a live soundwave, pulses a soft halo, and names the mood in small text beneath it, so the orb itself signals what is playing. Clicking it scales open (from the orb's own origin) into the **Atmosphere** panel:
 
 - A **now-playing** block: the current mood, the track name, a one-line description, a play/pause button, a live equalizer while playing, and a loop glyph (every track loops seamlessly).
 - A **mood meter**: the four moods as a color-coded list. Picking one crossfades to it (gapless) and tints the whole panel to that mood's color.
@@ -19,7 +19,7 @@ A small orb sits at the bottom-left of the app, just clear of the rail. At rest 
 
 The four moods: **Inspiration** (First Light, gold), **Creative Deep Thinking** (Wander, violet), **Super Focus** (Flow State, teal), **Calm Reset** (After Hours, blue).
 
-Durable preferences live in **Settings → Atmosphere**: turn music off entirely, autoplay on open, and the default mood each session starts in. Live choices (what is sounding right now, the volume, AUTO) are remembered for the session/browser but are not "settings."
+Durable preferences live in **Settings → Atmosphere**: turn music off entirely, autoplay on open (**on by default**), and the default mood. Live choices (the chosen mood, the volume, AUTO) are remembered across reloads in the browser, with the **last chosen mood winning over the Convex default**; they are per-browser config, not cross-device "settings."
 
 Coach path: not wired in v1. The hooks (`pickMood`, `togglePlay`, `setAuto`) are deliberately a small imperative surface so the Coach can "act from far away" (set the mood for a focus session it just scheduled) when act-from-far-away lands. See Open questions.
 
@@ -29,13 +29,13 @@ Coach path: not wired in v1. The hooks (`pickMood`, `togglePlay`, `setAuto`) are
 |---|---|---|---|---|
 | Open / close panel | Click orb / Close / Esc | Scales the panel open from the orb origin, or back | Manual | none (local UI) |
 | Play / pause | Play button | Starts the active mood (fades in) or pauses it | Manual (Coach-ready) | none (ephemeral) |
-| Pick mood | Mood row | Gapless crossfade to that mood; tints the player; turns AUTO off | Manual (Coach-ready) | none (ephemeral `moodKey`) |
+| Pick mood | Mood row | Gapless crossfade to that mood; tints the player; turns AUTO off; remembered | Manual (Coach-ready) | `localStorage` (`lifeguide.music.mood`) |
 | Toggle AUTO | AUTO chip | Mood follows the clock and drifts every ~10 min | Manual | `localStorage` (`lifeguide.music.auto`) |
 | Set volume | Volume slider | Sets and ramps playback volume | Manual | `localStorage` (`lifeguide.music.volume`) |
 | Turn music on/off | Settings → Atmosphere → Music | Master switch; off hides the orb and silences audio | Manual | `settings.musicEnabled` |
 | Toggle autoplay | Settings → Atmosphere → Autoplay | Start playing on app load (gesture permitting) | Manual | `settings.musicAutoplay` |
 | Set default mood | Settings → Atmosphere → Default mood | The mood each new session starts in | Manual | `settings.musicDefaultMood` |
-| Autoplay on load | App mount (if enabled + autoplay) | Attempts to play; if the browser blocks it, starts on the first click/keypress anywhere | Automatic | reads `settings`, `localStorage` |
+| Autoplay on load | App mount (enabled + autoplay, which is on by default) | Attempts to play; if the browser blocks it, starts on the first click/keypress anywhere | Automatic | reads `settings`, `localStorage` |
 
 ## 4. Dynamics and interactions with other elements
 
@@ -48,8 +48,8 @@ The intended future tie: when **AUTO** graduates from a clock heuristic to real 
 ## 5. States
 
 - **Disabled** (`musicEnabled === false`): no orb, no audio. Nothing renders.
-- **Idle** (enabled, paused): still orb dot, panel available, active track preloaded but silent.
-- **Playing**: orb breathes, equalizer animates, volume at the set level.
+- **Idle** (enabled, paused): white orb with a still mood-colored dot, the mood name beneath, panel available, active track preloaded but silent.
+- **Playing**: orb fills with the mood color, the soundwave and halo animate, the mood name shows beneath, volume at the set level.
 - **Crossfading**: two tracks overlap for ~650ms while one ramps up and the other down; the now-playing text blurs briefly to mask the swap.
 - **AUTO**: mood is clock-derived and re-evaluated on an interval; a manual pick exits this state.
 - **Autoplay-pending**: enabled + autoplay but the browser blocked sound; armed to start on the first user gesture.
@@ -58,10 +58,10 @@ The intended future tie: when **AUTO** graduates from a clock heuristic to real 
 
 - **Autoplay policy.** Browsers refuse audio before a user gesture. Autoplay attempts once and, if rejected, attaches a one-time `pointerdown`/`keydown` listener that starts playback on the first interaction. It never retries in a loop and never throws.
 - **SSR.** `new Audio()` is browser-only; the two elements are created in a mount effect, never during render. Volume/AUTO are restored in an effect (not a render-time `localStorage` read) to avoid hydration mismatch.
-- **No settings row yet.** New users may have no `settings` row (it is created on first mutation). Absent/`null`/`undefined` all read as enabled-on, autoplay-off, default mood `inspiration`.
+- **No settings row yet.** New users may have no `settings` row (it is created on first mutation). Absent/`null`/`undefined` all read as enabled-on, autoplay-on, default mood `inspiration` (overridden by the last chosen mood in `localStorage`, if any).
 - **Master switch off mid-play.** Flipping Music off immediately pauses both audio elements and hides the orb.
 - **Missing/blocked asset.** If a track fails to load or play, the promise rejects and is swallowed; the UI returns to paused rather than hanging.
-- **Reduced motion.** `prefers-reduced-motion` stops the orb breathing and the equalizer; crossfades and tints (opacity/color) remain, as they are not motion.
+- **Reduced motion.** `prefers-reduced-motion` stops the orb halo, the orb soundwave, and the panel equalizer; crossfades and tints (opacity/color) remain, as they are not motion.
 - **Rapid mood switches.** Crossfade uses two fixed elements and swaps the active pointer; a new pick simply retargets the next crossfade. (Volume ramps are rAF loops, not interruptible mid-flight; harmless overlap settles to the latest target.)
 
 ## 7. AI involvement
@@ -74,7 +74,7 @@ None at runtime in v1. The four tracks were generated once with Suno (an authori
 
 **Owned (assets):** `/public/audio/{inspiration,deep-thinking,focus,calm-reset}.mp3`.
 
-**Ephemeral (not in any table):** current `moodKey`, `playing`, `volume`, `auto`. Held in `MusicProvider` React state; `volume` and `auto` mirrored to `localStorage` (`lifeguide.music.volume`, `lifeguide.music.auto`).
+**Per-browser config (not in any table):** current `moodKey`, `playing`, `volume`, `auto`. Held in `MusicProvider` React state; the chosen `moodKey`, `volume`, and `auto` are mirrored to `localStorage` (`lifeguide.music.mood`, `lifeguide.music.volume`, `lifeguide.music.auto`) so the controls are remembered across reloads. `playing` is not persisted.
 
 **Drawn:** none.
 

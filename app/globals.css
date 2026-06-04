@@ -376,12 +376,26 @@ body {
   --mood: #b8945a;
 }
 
-.atmo-orb {
+/* the collapsed control: orb on top, mood name beneath, anchored bottom-left */
+.atmo-orb-wrap {
   position: absolute;
   left: 0;
   bottom: 0;
-  width: 38px;
-  height: 38px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  transition: opacity 0.2s var(--vf-ease-out), transform 0.2s var(--vf-ease-out);
+}
+.atmo-orb-wrap.expanded {
+  opacity: 0;
+  transform: scale(0.9);
+  pointer-events: none;
+}
+
+.atmo-orb {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: #fff;
   border: 1px solid #e7e1d4;
@@ -390,7 +404,8 @@ body {
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 6px 16px -8px rgba(26, 29, 36, 0.5);
-  transition: transform 0.16s var(--vf-ease-out), opacity 0.2s var(--vf-ease-out);
+  transition: transform 0.16s var(--vf-ease-out), background 0.5s var(--vf-ease-out),
+    border-color 0.3s var(--vf-ease-out);
 }
 .atmo-orb:hover {
   transform: scale(1.06);
@@ -398,6 +413,7 @@ body {
 .atmo-orb:active {
   transform: scale(0.95);
 }
+/* paused: a quiet dot in the mood color on white */
 .atmo-orb .dot {
   width: 9px;
   height: 9px;
@@ -405,23 +421,54 @@ body {
   background: var(--mood);
   transition: background 0.5s var(--vf-ease-out);
 }
-.atmo-orb.playing .dot {
-  animation: atmo-breathe 2.4s var(--vf-ease-out) infinite;
+/* playing: fill with the mood color, soft pulsing halo, white soundwave inside */
+.atmo-orb.playing {
+  background: var(--mood);
+  border-color: transparent;
+  animation: atmo-orb-halo 2.8s var(--vf-ease-out) infinite;
 }
-@keyframes atmo-breathe {
+@keyframes atmo-orb-halo {
   0%,
   100% {
-    opacity: 0.45;
-    transform: scale(0.8);
+    box-shadow: 0 6px 16px -8px rgba(26, 29, 36, 0.5),
+      0 0 0 0 color-mix(in srgb, var(--mood) 50%, transparent);
   }
   50% {
-    opacity: 1;
-    transform: scale(1.25);
+    box-shadow: 0 6px 16px -8px rgba(26, 29, 36, 0.5),
+      0 0 0 8px color-mix(in srgb, var(--mood) 0%, transparent);
   }
 }
-.atmo-orb.expanded {
-  opacity: 0;
-  pointer-events: none;
+.atmo-orb-eq {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 16px;
+}
+.atmo-orb-eq i {
+  width: 2.5px;
+  border-radius: 2px;
+  background: #fff;
+  height: 100%;
+  transform: scaleY(0.3);
+  transform-origin: center;
+  animation: atmo-bounce 1s var(--vf-ease-out) infinite;
+}
+.atmo-orb-eq i:nth-child(1) { animation-delay: -0.8s; }
+.atmo-orb-eq i:nth-child(2) { animation-delay: -0.3s; }
+.atmo-orb-eq i:nth-child(3) { animation-delay: -0.6s; }
+.atmo-orb-eq i:nth-child(4) { animation-delay: -0.1s; }
+
+/* the mood name beneath the orb */
+.atmo-orb-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--mood);
+  white-space: nowrap;
+  padding-left: 2px;
+  user-select: none;
+  transition: color 0.5s var(--vf-ease-out);
 }
 
 .atmo-panel {
@@ -733,8 +780,12 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .atmo-orb.playing .dot,
+  .atmo-orb.playing,
+  .atmo-orb-eq i,
   .atmo-now.playing .atmo-eq i {
     animation: none !important;
+  }
+  .atmo-orb-eq i {
+    transform: scaleY(0.6);
   }
 }

@@ -166,8 +166,8 @@ export function Settings() {
           </Row>
           <Row title="Autoplay" desc="Start playing when you open the app">
             <Toggle
-              on={s?.musicAutoplay ?? false}
-              onClick={() => update({ musicAutoplay: !(s?.musicAutoplay ?? false) })}
+              on={s?.musicAutoplay ?? true}
+              onClick={() => update({ musicAutoplay: !(s?.musicAutoplay ?? true) })}
             />
           </Row>
           <Row title="Default mood" desc="What plays first each session">

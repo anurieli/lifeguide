@@ -1,5 +1,31 @@
 import { mutation, query } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { DEFAULT_PILLARS } from "./pillars";
+
+// Insert any canonical pillars the user is missing (by name). Idempotent — safe to call
+// on every bootstrap, so older accounts get topped up to the full skeleton.
+async function seedDefaultPillars(ctx: MutationCtx, userId: Id<"users">) {
+  const have = await ctx.db
+    .query("pillars")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
+  const haveNames = new Set(have.map((p) => p.name.trim().toLowerCase()));
+  const now = Date.now();
+  for (const p of DEFAULT_PILLARS) {
+    if (haveNames.has(p.name.trim().toLowerCase())) continue;
+    await ctx.db.insert("pillars", {
+      userId,
+      name: p.name,
+      about: p.about,
+      composition: p.composition,
+      weight: 1,
+      source: "default",
+      createdAt: now,
+    });
+  }
+}
 
 export const current = query({
   args: {},
@@ -47,6 +73,10 @@ export const bootstrap = mutation({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
     if (existing) {
+      // Heal accounts seeded before the skeleton existed (only the lone "Lifestyle" pillar):
+      // top them up to the full canonical set of pillars-with-metadata, idempotently.
+      await seedDefaultPillars(ctx, userId);
+
       const s = await ctx.db
         .query("surfaces")
         .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -63,13 +93,7 @@ export const bootstrap = mutation({
 
     const now = Date.now();
     await ctx.db.insert("profiles", { userId, bootstrappedAt: now });
-    await ctx.db.insert("pillars", {
-      userId,
-      name: "Lifestyle",
-      weight: 1,
-      source: "default",
-      createdAt: now,
-    });
+    await seedDefaultPillars(ctx, userId);
     await ctx.db.insert("mirror", {
       userId,
       summary: "",

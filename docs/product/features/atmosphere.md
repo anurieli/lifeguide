@@ -10,9 +10,11 @@ The soul calls LifeGuide "a calm room he returns to." A room has an atmosphere. 
 
 ## 2. User-facing behavior
 
-A small orb sits at the bottom-left of the app, just clear of the rail (on mobile, where the rail becomes a bottom bar, the orb lifts via a media query to sit clear of that bar instead). At rest it shows a still dot on white; while music plays it fills with the current mood's color, runs a live soundwave, pulses a soft halo, and names the mood in small text beneath it, so the orb itself signals what is playing. Clicking it scales open (from the orb's own origin) into the **Atmosphere** panel:
+A small orb sits in the side rail just above the account ("name") item by default. **It is draggable anywhere on screen** (the spot is remembered per-browser and re-clamped on resize so it can never strand off-screen); on mobile, where the rail becomes a bottom bar, the default lifts clear of that bar. At rest it shows a still dot on white; while music plays it fills with the current mood's color, runs a live soundwave, pulses a soft halo, and names the mood in small text beneath it, so the orb itself signals what is playing. On hover, a **play/pause affordance** fades in over the orb (a play glyph when paused, pause when playing).
 
-- A **now-playing** block: the current mood, the track name, a one-line description, a play/pause button, a **real waveform** while playing (a live oscilloscope drawn from the actual audio, not a canned animation), and a loop glyph (every track loops seamlessly). The orb's soundwave is the same real signal, in miniature.
+The orb is both the drag handle and the quick play/pause control: a **tap** toggles play/pause, while a press that travels past a small threshold becomes a drag (so moving it never toggles). **Hovering** the widget opens the **Atmosphere** panel, which floats just above the orb and collapses again on mouse-leave, click-outside, or Esc. The orb stays put and on top of the panel so it is always a one-click play/pause, and the panel is clamped to the viewport (and height-capped, with the mood list scrolling) so it never spills past an edge or lands on the orb.
+
+- A **now-playing** block: the current mood, the track name, a one-line description, a play/pause button, a **calm waveform** while playing (a slow, eased two-band reading of the live audio: low energy swells, high energy ripples, so it breathes rather than jitters and reads distinctly per mood), and a loop glyph (every track loops seamlessly). The orb's soundwave is the same signal, in miniature.
 - A **mood meter**: the four moods as a color-coded list. Picking one crossfades to it (gapless) and tints the whole panel to that mood's color.
 - An **AUTO** toggle: when on, Atmosphere matches the mood to the time of day and drifts as the day moves (a v1 stand-in for the Context Bus). Any manual mood pick turns AUTO off.
 - A **volume** slider and a **Close** action.
@@ -27,8 +29,9 @@ Coach path: not wired in v1. The hooks (`pickMood`, `togglePlay`, `setAuto`) are
 
 | Action | Trigger | What it does | Manual / Coach | Data touched |
 |---|---|---|---|---|
-| Open / close panel | Click orb / Close / Esc | Scales the panel open from the orb origin, or back | Manual | none (local UI) |
-| Play / pause | Play button | Starts the active mood (fades in) or pauses it | Manual (Coach-ready) | none (ephemeral) |
+| Open / close panel | Hover widget / mouse-leave / click-outside / Esc | Opens the panel above the orb, or collapses it | Manual | none (local UI) |
+| Play / pause | Tap the orb, or the panel play button | Starts the active mood (fades in) or pauses it | Manual (Coach-ready) | none (ephemeral) |
+| Drag widget | Press + move the orb past a threshold | Repositions the whole widget; clamps on-screen; remembered | Manual | `localStorage` (`lifeguide.atmo.pos`) |
 | Pick mood | Mood row | Gapless crossfade to that mood; tints the player; turns AUTO off; remembered | Manual (Coach-ready) | `localStorage` (`lifeguide.music.mood`) |
 | Toggle AUTO | AUTO chip | Mood follows the clock and drifts every ~10 min | Manual | `localStorage` (`lifeguide.music.auto`) |
 | Set volume | Volume slider | Sets and ramps playback volume | Manual | `localStorage` (`lifeguide.music.volume`) |
@@ -74,13 +77,13 @@ None at runtime in v1. The four tracks were generated once with Suno (an authori
 
 **Owned (assets):** `/public/audio/{inspiration,deep-thinking,focus,calm-reset}.mp3`.
 
-**Per-browser config (not in any table):** current `moodKey`, `playing`, `volume`, `auto`. Held in `MusicProvider` React state; the chosen `moodKey`, `volume`, and `auto` are mirrored to `localStorage` (`lifeguide.music.mood`, `lifeguide.music.volume`, `lifeguide.music.auto`) so the controls are remembered across reloads. `playing` is not persisted.
+**Per-browser config (not in any table):** current `moodKey`, `playing`, `volume`, `auto`, plus the orb's dragged position. Held in `MusicProvider` / `AtmospherePlayer` React state; the chosen `moodKey`, `volume`, `auto`, and the orb position are mirrored to `localStorage` (`lifeguide.music.mood`, `lifeguide.music.volume`, `lifeguide.music.auto`, `lifeguide.atmo.pos`) so the controls and placement are remembered across reloads. `playing` is not persisted.
 
 **Drawn:** none.
 
 Code: `components/music/MusicProvider.tsx` (engine + context + Web Audio graph), `components/music/AtmospherePlayer.tsx` (orb + panel + `AtmoWave` canvas visualizer), `components/music/tracks.ts` (the six moods + `moodForHour`), styles in `app/globals.css` (`.atmo-*`).
 
-**Audio engine.** Playback runs through the Web Audio API: each of the two `<audio>` elements is wired `MediaElementSource -> GainNode -> destination` (the gain does volume and the gapless crossfade) plus `MediaElementSource -> AnalyserNode` as a tap. The `AtmoWave` canvas reads `analyser.getByteTimeDomainData` each animation frame and draws the live waveform, so the visualizer reflects the real signal. The graph is built lazily on first play and the `AudioContext` is resumed on a user gesture (autoplay policy). If `AudioContext` is unavailable, playback falls back to `element.volume` and the wave shows a flat idle line.
+**Audio engine.** Playback runs through the Web Audio API: each of the two `<audio>` elements is wired `MediaElementSource -> GainNode -> destination` (the gain does volume and the gapless crossfade) plus `MediaElementSource -> AnalyserNode` as a tap. The `AtmoWave` canvas reads `analyser.getByteFrequencyData` each animation frame, splits it into a low and a high band, and eases two sines toward those energies (a slow, passive wave that breathes rather than jitters and differs per mood), so the visualizer reflects the real signal without the staticky look of a raw oscilloscope. The graph is built lazily on first play and the `AudioContext` is resumed on a user gesture (autoplay policy). If `AudioContext` is unavailable, playback falls back to `element.volume` and the wave shows a flat idle line.
 
 ## 9. Open questions
 

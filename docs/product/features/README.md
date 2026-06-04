@@ -12,8 +12,11 @@ The element model these hang off is [`../../architecture/elements-and-context.md
 | [Future Self](future-self.md) | `futureSelf` | Core | proposed |
 | [Journal / Sessions](journal.md) | `sessions, prompts` | Sessions | proposed (Today ritual is the seed) |
 | [Pillars & Goals](pillars-and-goals.md) | `pillars, goals` | Core, Sessions | partial (pillars built; goals proposed) |
+| [File system on the human](file-system-on-the-human.md) | `pillars` (folders), `coreFiles` (files) | Core | partial (store + seed built; person-map UI proposed) |
 | [The Core](core.md) | `mirror` | is the Core | partial |
 | [The Coach](coach.md) | `threads, messages` | reads all | partial (thin single-turn) |
+| [The Listener](listener.md) | view-only (reuses `interviewSessions`) | Core (via the Center) | built (v1) |
+| [The Center](the-center.md) | orchestrator (writes `coreFiles`) | curates the Core | built (v1 filing) |
 | [The Guide](guide.md) | view-only | renders Core | merged into Home |
 | [Home (Today)](dashboard.md) | view-only | draws Core + Sessions | partial (hosts the merged Guide) |
 | [Settings & Onboarding](settings.md) | `settings` | system | built (reached via the account menu) |

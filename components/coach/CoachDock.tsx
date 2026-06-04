@@ -5,7 +5,7 @@ import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { View } from "@/components/shell/Rail";
-import { MessageCircle, Send } from "lucide-react";
+import { MessageCircle, Mic, Send } from "lucide-react";
 
 const WELCOME =
   "I'm here. I can see whatever surface you're on, and I know what we've built so far. Ask me anything, or tell me what's on your mind.";
@@ -22,11 +22,13 @@ export function CoachDock({
   surfaceId,
   open,
   onToggle,
+  onSpeak,
 }: {
   view: View;
   surfaceId: Id<"surfaces">;
   open: boolean;
   onToggle: () => void;
+  onSpeak: () => void;
 }) {
   const ask = useAction(api.coach.ask);
   // Persisted, reactive history. The user turn appears the instant the action commits it,
@@ -124,15 +126,23 @@ export function CoachDock({
         </div>
       </div>
 
+      {/* Primary: Talk. The Listener is the headline way to reach the Coach. */}
+      <button
+        onClick={onSpeak}
+        className="hidden md:flex fixed bottom-6 right-6 w-14 h-14 rounded-full bg-coach text-white z-[60] shadow-xl items-center justify-center hover:scale-105 transition"
+        title="Talk to your Coach"
+      >
+        <span className="absolute -inset-1 rounded-full border-2 border-gold opacity-50 animate-ping" />
+        <Mic className="w-[22px] h-[22px]" />
+      </button>
+
+      {/* Secondary: type instead. A small affordance above the talk button. */}
       <button
         onClick={onToggle}
-        className="hidden md:flex fixed bottom-6 right-6 w-14 h-14 rounded-full bg-coach text-white z-[60] shadow-xl items-center justify-center hover:scale-105 transition"
-        title="Coach"
+        className="hidden md:flex fixed bottom-[88px] right-[18px] w-9 h-9 rounded-full bg-card border border-line text-ink-soft z-[60] shadow-md items-center justify-center hover:border-gold transition"
+        title={open ? "Close chat" : "Type instead"}
       >
-        {!open && (
-          <span className="absolute -inset-1 rounded-full border-2 border-gold opacity-50 animate-ping" />
-        )}
-        <MessageCircle className="w-[22px] h-[22px]" />
+        <MessageCircle className="w-[17px] h-[17px]" />
       </button>
     </>
   );

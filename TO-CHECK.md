@@ -2,6 +2,14 @@
 
 Features that are done but haven't been manually verified yet.
 
+### Vision Board batch 1 — navigation, document preview, brain dump (ARI-3/6/8)
+- [ ] **Brain dump end-to-end (needs a mic):** open the board, tap the mic toolbar button, speak 3–5 sentences across clearly different topics (e.g. "I want to run a marathon. I should call my dad. I've been thinking about quitting coffee."). Confirm it transcribes, splits into **distinct** thoughts, and each lands as its own card with a distilled title — no-overlap placement. Then speak one sentence and confirm exactly **one** card. Decline the mic and confirm "mic not available" instead of a crash.
+- [ ] **Document preview — PDF (needs a file drop):** drag a `.pdf` onto the board. Confirm it embeds and scrolls inline, the header download link works, and the bottom-right drag handle resizes it and the size **persists across reload**. Test in Chrome, Safari, Firefox (Firefox without a PDF viewer should show the download fallback).
+- [ ] **Document preview — HTML (sandbox):** drop an `.html` file containing a `<script>` tag. Confirm it renders and scrolls internally but the **script does not execute** and it cannot touch the parent page. Drop a `.txt`/`.docx` and confirm the icon + "download to open" fallback.
+- [ ] **Center on nearest:** pan far from your cards, tap the crosshair button, confirm the viewport animates to the nearest card's center.
+- [ ] **Minimap accuracy on a large/zoomed board:** with many cards spread out, confirm the minimap rects and the dashed viewport indicator track reality as you pan/zoom, and that clicking the minimap pans to that region.
+- [ ] **Toolbar clearance across widths:** confirm the four toolbar buttons (gather / add / center / mic) sit clear of the bottom nav rail and are all clickable at mobile (~414px) and desktop widths.
+
 ### Voice transcript cleanup — semantic VAD + Coach-restart de-dup
 - [ ] **Model accepts semantic_vad:** start a voice interview and confirm the session connects (no mint/SDP error). If it errors on `turn_detection`, the pinned model rejects `semantic_vad` — fall back to `server_vad` with a long `silence_duration_ms` (~1000ms) in `convex/ai/voice/openaiRealtime.ts`.
 - [ ] **No more fragmentation:** speak one answer with natural mid-thought pauses ("Oh… this is, um, like… I guess… when I'm taking charge of something big"). Confirm it lands as **one** user bubble, not several.

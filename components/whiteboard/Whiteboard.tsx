@@ -11,12 +11,18 @@ import { NodeCard } from "./NodeCard";
 import { EdgeLayer } from "./EdgeLayer";
 import { Toolbar } from "./Toolbar";
 import { Inbox } from "./Inbox";
+import { Minimap } from "./Minimap";
+import { BrainDump } from "@/components/voice/BrainDump";
+import { rectsOverlap } from "@/lib/geometry";
 
 const VIDEO_HOSTS = /(youtube\.com|youtu\.be|tiktok\.com|instagram\.com|vimeo\.com)/i;
 
+// Gap added between cards during a Gather layout (world px).
+const GATHER_GAP = 20;
+
 export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
-  const { vp, pan, zoomAt } = useViewport();
-  const { nodes, create, move, setText, remove, morph } = useNodes(surfaceId);
+  const { vp, pan, zoomAt, panTo } = useViewport();
+  const { nodes, create, move, resize, setText, remove, morph } = useNodes(surfaceId);
   const { edges, connect, remove: removeEdge } = useEdges(surfaceId);
   const { inbox, create: createCapture, softDelete, place, generateUploadUrl } = useCaptures();
 
@@ -25,6 +31,8 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
   const [linkFrom, setLinkFrom] = useState<string | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [isDropping, setIsDropping] = useState(false);
+  const [gathering, setGathering] = useState(false);
+  const [brainDumpOpen, setBrainDumpOpen] = useState(false);
   const dragDepth = useRef(0);
 
   useEffect(() => {
@@ -171,7 +179,7 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
             fileName: file.name,
             mimeType: file.type || undefined,
             position: { x: at.x - 110 + offset, y: at.y - 44 + offset, z: 0 },
-            dimensions: { width: 220, height: 88 },
+            dimensions: { width: 280, height: 360 },
           });
         }
       }),
@@ -191,6 +199,119 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
     dragDepth.current = Math.max(0, dragDepth.current - 1);
     if (dragDepth.current === 0) setIsDropping(false);
   };
+
+  // ---- Gather -----------------------------------------------------------
+  // Repack all nodes into a compact, no-overlap grid starting near the world
+  // origin. Uses the same rectsOverlap util as the server placement code.
+  // Keeps relative creation order (array order) so nothing feels arbitrary.
+  //
+  // Algorithm: place each node into the first row slot that does not overlap
+  // previously placed nodes. When a row fills beyond MAX_ROW_W, start a new row.
+  // This gives a tidy left-to-right, top-to-bottom layout with consistent gaps.
+  const handleGather = useCallback(async () => {
+    if (nodes.length === 0 || gathering) return;
+    setGathering(true);
+
+    // Sort by original creation time (stable order).
+    const sorted = [...nodes].sort((a, b) => a.createdAt - b.createdAt);
+
+    // Max row width before wrapping (world px). Aim for roughly 4 standard cards.
+    const MAX_ROW_W = 4 * (240 + GATHER_GAP);
+
+    type Placed = { x: number; y: number; w: number; h: number };
+    const placed: Placed[] = [];
+    const positions: { id: string; x: number; y: number }[] = [];
+
+    let rowX = 0;
+    let rowY = 0;
+    let rowHeight = 0; // tallest card in the current row
+
+    for (const node of sorted) {
+      const nw = node.dimensions.width;
+      const nh = node.dimensions.height;
+
+      // If adding this card would exceed the row width, wrap.
+      if (placed.length > 0 && rowX + nw > MAX_ROW_W) {
+        rowY += rowHeight + GATHER_GAP;
+        rowX = 0;
+        rowHeight = 0;
+      }
+
+      // Scan for horizontal clearance within this row in case a taller earlier
+      // card extends into this row's vertical band. Nudge right until clear.
+      let cx = rowX;
+      let attempts = 0;
+      while (attempts < 200) {
+        const cand = { x: cx, y: rowY, w: nw, h: nh };
+        const clash = placed.some((p) => rectsOverlap(cand, p));
+        if (!clash) break;
+        cx += 8;
+        attempts++;
+      }
+
+      placed.push({ x: cx, y: rowY, w: nw, h: nh });
+      positions.push({ id: node._id, x: cx, y: rowY });
+
+      rowX = cx + nw + GATHER_GAP;
+      rowHeight = Math.max(rowHeight, nh);
+    }
+
+    // Fire all moves in parallel; each move is one Convex mutation.
+    await Promise.all(
+      positions.map(({ id, x, y }) =>
+        move({ nodeId: id as Id<"nodes">, position: { x, y, z: 0 } }),
+      ),
+    );
+
+    // Pan the viewport to the center of the new layout.
+    if (positions.length > 0) {
+      const xs = positions.map((p) => p.x);
+      const ys = positions.map((p) => p.y);
+      const midX = (Math.min(...xs) + Math.max(...xs)) / 2;
+      const midY = (Math.min(...ys) + Math.max(...ys)) / 2;
+      panTo(midX, midY, window.innerWidth, window.innerHeight);
+    }
+
+    setGathering(false);
+  }, [nodes, gathering, move, panTo]);
+
+  // ---- Center on nearest ------------------------------------------------
+  // Find the node whose center is closest (Euclidean, world space) to the
+  // current viewport center, then animate the viewport to that node.
+  const handleCenterNearest = useCallback(() => {
+    if (nodes.length === 0) return;
+    const sw = window.innerWidth;
+    const sh = window.innerHeight;
+    // Current viewport center in world coordinates.
+    const vcx = (sw / 2 - vp.x) / vp.scale;
+    const vcy = (sh / 2 - vp.y) / vp.scale;
+
+    let nearest = nodes[0];
+    let bestDist = Infinity;
+    for (const n of nodes) {
+      const nx = n.position.x + n.dimensions.width / 2;
+      const ny = n.position.y + n.dimensions.height / 2;
+      const dist = Math.hypot(nx - vcx, ny - vcy);
+      if (dist < bestDist) {
+        bestDist = dist;
+        nearest = n;
+      }
+    }
+
+    const cx = nearest.position.x + nearest.dimensions.width / 2;
+    const cy = nearest.position.y + nearest.dimensions.height / 2;
+    panTo(cx, cy, sw, sh);
+  }, [nodes, vp, panTo]);
+
+  // ---- Minimap pan callback --------------------------------------------
+  // When the user clicks the minimap, pan the viewport so that world point
+  // (wx, wy) lands at the screen center.
+  const handleMinimapPan = useCallback(
+    (wx: number, wy: number) => {
+      panTo(wx, wy, window.innerWidth, window.innerHeight);
+    },
+    [panTo],
+  );
 
   return (
     <div
@@ -222,6 +343,7 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
             scale={vp.scale}
             autoFocus={n._id === focusId}
             onMoveCommit={(x, y) => void move({ nodeId: n._id, position: { x, y, z: n.position.z } })}
+            onResize={(w, h) => void resize({ nodeId: n._id, dimensions: { width: w, height: h } })}
             onText={(t) => void setText({ nodeId: n._id, text: t })}
             onDelete={() => void remove({ nodeId: n._id })}
             onUploadImage={(file) => void morphToImage(n._id, file)}
@@ -260,7 +382,22 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
         onDismiss={(c) => void softDelete({ captureId: c._id })}
       />
 
-      <Toolbar onAdd={() => void addCard()} />
+      {/* Minimap: only visible when there are nodes on the board */}
+      <Minimap nodes={nodes} vp={vp} onPan={handleMinimapPan} />
+
+      <Toolbar
+        onAdd={() => void addCard()}
+        onGather={() => void handleGather()}
+        onCenterNearest={handleCenterNearest}
+        onBrainDump={() => setBrainDumpOpen(true)}
+        gathering={gathering}
+      />
+
+      <BrainDump
+        open={brainDumpOpen}
+        surfaceId={surfaceId}
+        onClose={() => setBrainDumpOpen(false)}
+      />
     </div>
   );
 }

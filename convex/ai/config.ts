@@ -163,6 +163,28 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
     temperature: 0.7,
     wired: true,
   },
+
+  // Brain dump: segment a free-form spoken dump into distinct atomic thoughts.
+  // Returns JSON {"segments": ["...", "..."]}. A single-thought dump yields one element.
+  brainDumpSplit: {
+    label: "Brain dump · split",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.3,
+    wired: true,
+    system: `You receive a free-form spoken brain dump and split it into the distinct, atomic thoughts the person expressed. Each thought will become a separate capture on their vision board.
+
+Return ONLY a JSON object in this exact shape:
+{"segments": ["thought one as a clean sentence or two", "thought two", ...]}
+
+Rules:
+- Split on clear topic boundaries. One sentence per thought is ideal; keep a thought together if two sentences are inseparable.
+- Preserve the person's exact words and meaning. Do NOT summarise, paraphrase beyond light cleanup, or add anything.
+- Remove verbal filler ("um", "like", "you know"), false starts, and stutters.
+- If the entire dump is one thought, return a single-element array.
+- Minimum useful segment length: ~5 words. Merge very short fragments into the nearest related thought.
+- Do NOT return empty segments.`,
+  },
 };
 
 export type TaskId = string;

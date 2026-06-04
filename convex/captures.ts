@@ -39,6 +39,21 @@ export const getByIdInternal = internalQuery({
   handler: async (ctx, args) => await ctx.db.get(args.captureId),
 });
 
+// Client-readable: fetch multiple captures by ID (the caller must own them).
+// Used by BrainDump to poll distillation status for a batch of captures.
+export const getMany = query({
+  args: { captureIds: v.array(v.id("captures")) },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+    const results = await Promise.all(args.captureIds.map((id) => ctx.db.get(id)));
+    // Return only captures owned by the authenticated user; filter narrows to non-null.
+    return results.filter(
+      (c): c is NonNullable<typeof c> => c !== null && c.userId === userId,
+    );
+  },
+});
+
 export const create = mutation({
   args: {
     source: SOURCE,

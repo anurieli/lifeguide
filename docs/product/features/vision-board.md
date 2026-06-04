@@ -16,6 +16,12 @@ The board is an infinite spatial surface of cards. The person works two ways, bo
 
 **Manual (built today).** He opens the board and adds anything: a blank card starts as text, and morphs into an image, link, or quote when he pastes into it. He can paste text, paste or upload an image, paste a URL (including a video link), or drop a quote with an attribution. Each add becomes a **capture**, an immutable event of inspiration. Captures distill asynchronously (a short title, an essence line, suggested pillar tags) and then drop onto the board, placed automatically along an outward spiral so nothing overlaps. Unplaced captures wait in an **inbox tray** until placed. He drags cards around, resizes them, edits their text, retags their pillars, draws labeled directional edges between cards to show how ideas relate ("leads to", "because of"), and dismisses cards he no longer wants. Dismissed cards and captures soft-delete (the row stays so the Mirror can still learn from what was let go).
 
+**Navigation and overview (built).** As a board grows, the person is never lost in it. A **minimap** anchored to the bottom-right renders every node at scale with a live dashed indicator of the current viewport; clicking anywhere on it animates the viewport to that region. A **Gather** control (toolbar, layers icon) repacks every card into a compact, no-overlap grid — sorted by creation time, wrapping at roughly four standard cards wide, using the same `rectsOverlap` geometry as the server spiral placement — then animates to the new layout's center. A **Center on nearest** control (toolbar, crosshair icon) animates the viewport to the node whose center is closest to the current view center. All viewport animation shares one `panTo` primitive (260ms cubic ease-out) in `useViewport`.
+
+**Brain dump (built).** A **brain-dump** control (toolbar, mic icon) opens a voice-first modal: the person speaks freely and their stream of thought becomes multiple cards. The transcript is segmented by an AI split pass into distinct thoughts, each becoming a capture that distills and spiral-places onto the board as it finishes. See [`voice-field.md`](voice-field.md) §Brain dump.
+
+**Document preview (built).** A document (`type: file`) node renders a rich preview rather than a bare download button: PDFs embed inline via `<embed>` (scrollable, native viewer); HTML renders in a **sandboxed** `<iframe>` (`sandbox="allow-forms"`, no scripts, no same-origin) and scrolls internally; anything else falls back to an icon plus a download link. Every document card keeps a header with filename and download. PDF and HTML previews are **resizable** via a bottom-right drag handle (in board coordinates, accounting for zoom), persisting to `node.dimensions` via the existing `nodes.resize` mutation, debounced. Dropped files default to a preview-friendly size.
+
 **Coach co-build (proposed, the signature move).** Instead of building alone, he talks. A chat scoped to this board lets him describe the life he wants in plain language, and the Coach crafts the board *with* him: laying down nodes, wiring edges, and filling image blocks. Because image generation is slow, the Coach places `generated_image` nodes immediately with pre-written prompts, and the pictures populate asynchronously as they render. He watches the board assemble itself from the conversation, then takes over manually at any point. The board is the same data either way; the Coach is a power tool over it, never a gate (see [`coach.md`](coach.md)).
 
 ## 3. Functions / actions
@@ -29,6 +35,12 @@ The board is an infinite spatial surface of cards. The person works two ways, bo
 | Add node directly | Blank card, or Coach lays one down | Creates a `node` (text by default) | Manual / Coach | `nodes` (create) |
 | Morph card | Paste into a blank card | Changes a card's type and content in place (text → image/link/quote) | Manual | `nodes` (patch) |
 | Move / resize | Drag / drag handle | Updates `position` / `dimensions` | Manual / Coach | `nodes` (patch) |
+| Gather | Toolbar (layers) | Repacks all nodes into a compact no-overlap grid; animates to center | Manual | `nodes.position` (one `move` per node) |
+| Center on nearest | Toolbar (crosshair) | Animates viewport to the node nearest the view center | Manual | none (viewport only) |
+| Minimap pan | Click the minimap | Animates viewport so the clicked world point is centered | Manual | none (viewport only) |
+| Brain dump | Toolbar (mic) | Opens the voice modal; spoken thoughts become captures that distill and place | Manual + AI | `captures` (create), `nodes` (create) |
+| Preview document | A `file` node renders | Inline PDF embed / sandboxed HTML iframe / icon fallback by mime type | Manual | reads `files.getUrl` |
+| Resize document preview | Drag handle on a `file` node | Resizes PDF/HTML preview; persists to dimensions (debounced) | Manual | `nodes.resize` |
 | Edit text | Inline edit | Sets a node's text | Manual / Coach | `nodes.text` |
 | Retag pillars | Pillar control on card | Sets a node's pillar tags | Manual / Coach | `nodes.pillars` |
 | Connect | Drag edge between cards | Creates a labeled directed edge; rejects cycles and self-edges; dedupes | Manual / Coach | `edges` (create) |
@@ -68,6 +80,10 @@ Per [`../../architecture/context-bus.md`](../../architecture/context-bus.md), th
 - **Cross-surface edge.** Connecting nodes that belong to different surfaces is rejected; edges are within one board only.
 - **Already-placed capture.** Re-placing a placed capture is a no-op and returns the existing node.
 - **Ownership gate.** Every query and mutation gates on `getAuthUserId`; a surface, node, capture, or edge owned by another user is invisible and unwritable.
+- **Empty / single-node navigation.** Minimap is hidden on an empty board; Gather and Center-on-nearest are no-ops with zero nodes and trivially correct with one.
+- **Untrusted document HTML.** HTML previews never execute scripts or touch the parent origin (sandboxed); a malformed or huge HTML file renders best-effort and may stutter on slow devices.
+- **PDF without a browser viewer.** Browsers lacking a built-in PDF viewer render the embed blank; the always-present download link in the card header is the fallback.
+- **Brain dump with no/garbled speech.** An empty or unusable transcript returns the modal to idle without creating captures; a single-thought dump yields exactly one node; if the AI split pass fails, the whole transcript becomes one capture; if distillation stalls, captures place with raw text after a timeout.
 - **Generated image fails (proposed).** A `generated_image` node whose render fails stays as a placeholder the person can retry or convert to text; co-build continues regardless, since image fills are asynchronous and non-blocking.
 - **Co-build conflict (proposed).** The Coach does not silently overwrite the person's board; when its suggestion conflicts with what is there, it proposes and the person decides, consistent with the Coach's core-curation rule (see [`coach.md`](coach.md)).
 

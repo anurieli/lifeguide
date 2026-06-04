@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { NodeDoc } from "@/lib/types";
-import { ImagePlus, FileText, Download } from "lucide-react";
+import { ImagePlus, FileText } from "lucide-react";
+import { DocPreview } from "./DocPreview";
 
 type Props = {
   node: NodeDoc;
   scale: number;
   autoFocus: boolean;
   onMoveCommit: (x: number, y: number) => void;
+  /** Called when the user drags the resize handle (debounced 300ms before persisting). */
+  onResize?: (w: number, h: number) => void;
   onText: (t: string) => void;
   onDelete: () => void;
   onStartLink: () => void;
@@ -27,6 +30,7 @@ export function NodeCard({
   scale,
   autoFocus,
   onMoveCommit,
+  onResize,
   onText,
   onDelete,
   onStartLink,
@@ -35,6 +39,9 @@ export function NodeCard({
   onMorphLink,
   linking,
 }: Props) {
+  // NOTE FOR INTEGRATOR: Whiteboard.tsx does not yet pass onResize. Wire it up
+  // by adding: onResize={(w, h) => void resize({ nodeId: n._id, dimensions: { width: w, height: h } })}
+  // to the <NodeCard> render in Whiteboard.tsx. The resize mutation already exists in convex/nodes.ts.
   const drag = useRef<{ mx: number; my: number; ix: number; iy: number; moved: boolean } | null>(
     null,
   );
@@ -43,6 +50,36 @@ export function NodeCard({
   const [dragging, setDragging] = useState(false);
   const [localPos, setLocalPos] = useState<{ x: number; y: number } | null>(null);
   const pos = localPos ?? node.position;
+
+  // Optimistic local dimensions for the resize handle in DocPreview.
+  // Debounces the persist call so we don't fire a mutation on every pointer move.
+  const [localDims, setLocalDims] = useState<{ width: number; height: number } | null>(null);
+  const dims = localDims ?? node.dimensions;
+  const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleResize = useCallback(
+    (w: number, h: number) => {
+      setLocalDims({ width: w, height: h });
+      if (!onResize) return; // no-op when the integrator hasn't wired up persist yet
+      if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+      resizeTimerRef.current = setTimeout(() => {
+        onResize(w, h);
+        resizeTimerRef.current = null;
+      }, 300);
+    },
+    [onResize],
+  );
+
+  // Keep localDims in sync once the persisted value catches up.
+  useEffect(() => {
+    if (
+      localDims &&
+      node.dimensions.width === localDims.width &&
+      node.dimensions.height === localDims.height
+    ) {
+      setLocalDims(null);
+    }
+  }, [node.dimensions.width, node.dimensions.height, localDims]);
 
   useEffect(() => {
     if (localPos && node.position.x === localPos.x && node.position.y === localPos.y) {
@@ -128,8 +165,8 @@ export function NodeCard({
       style={{
         left: pos.x,
         top: pos.y,
-        width: node.dimensions.width,
-        height: node.dimensions.height,
+        width: dims.width,
+        height: dims.height,
         cursor: dragging ? "grabbing" : "grab",
       }}
       onPointerDown={down}
@@ -179,7 +216,24 @@ export function NodeCard({
         </a>
       )}
 
-      {node.type === "file" && (
+      {node.type === "file" && fileUrl && (
+        // DocPreview handles all mime types: rich previews for PDF/HTML,
+        // a download fallback for everything else. The resize handle inside
+        // DocPreview calls handleResize which debounces to onResize (persist).
+        <DocPreview
+          fileUrl={fileUrl}
+          fileName={node.fileName}
+          mimeType={node.mimeType}
+          width={dims.width}
+          height={dims.height}
+          scale={scale}
+          onResize={handleResize}
+        />
+      )}
+
+      {node.type === "file" && !fileUrl && (
+        // URL not yet resolved (Convex query in flight): show the compact
+        // icon-and-name placeholder. Transitions to DocPreview once fileUrl lands.
         <div className="flex items-center gap-2.5 p-3 h-full overflow-hidden">
           <FileText className="w-7 h-7 shrink-0 text-accent" />
           <div className="min-w-0 flex-1">
@@ -190,19 +244,6 @@ export function NodeCard({
               {node.mimeType ?? "file"}
             </div>
           </div>
-          {fileUrl && (
-            <a
-              href={fileUrl}
-              target="_blank"
-              rel="noreferrer"
-              download={node.fileName}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="shrink-0 w-7 h-7 rounded-md text-ink-mute hover:text-ink hover:bg-paper-2 flex items-center justify-center"
-              title="Open / download"
-            >
-              <Download className="w-4 h-4" />
-            </a>
-          )}
         </div>
       )}
 

@@ -57,15 +57,15 @@ body {
 .vf-wave {
   display: flex;
   align-items: center;
-  gap: 3px;
-  height: 34px;
+  gap: 4px;
+  height: 30px;
   cursor: pointer;
 }
 .vf-wave i {
-  width: 3px;
-  border-radius: 3px;
+  width: 2px;
+  border-radius: 2px;
   background: var(--vf-gold);
-  height: 34px;
+  height: 30px;
   transform: scaleY(0.12);
   transform-origin: center;
   transition: transform 0.18s var(--vf-ease-out), background 0.3s;
@@ -185,13 +185,117 @@ body {
   transform: scale(0.94);
 }
 
+/* ── Idle mic as a call-to-action: rotating rainbow ring + pulsing glow + orbiting dot ── */
+.vf-cta {
+  position: relative;
+  border-radius: 9999px;
+  animation: vf-cta-glow 2.6s ease-in-out infinite;
+}
+.vf-cta::before {
+  /* the rainbow ring */
+  content: "";
+  position: absolute;
+  inset: -2.5px;
+  border-radius: 9999px;
+  background: conic-gradient(
+    from 0deg,
+    #ff6b6b,
+    #feca57,
+    #48dbfb,
+    #1dd1a1,
+    #5f27cd,
+    #ff9ff3,
+    #ff6b6b
+  );
+  animation: vf-spin 3.4s linear infinite;
+  z-index: 0;
+}
+.vf-cta::after {
+  /* inner fill so the ring reads as a thin border, not a disc */
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 9999px;
+  background: var(--paper);
+  z-index: 0;
+}
+.vf-cta > * {
+  position: relative;
+  z-index: 2;
+}
+@keyframes vf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes vf-cta-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 150, 200, 0);
+  }
+  50% {
+    box-shadow: 0 0 16px 3px rgba(255, 150, 200, 0.5);
+  }
+}
+/* the rainbow dot that orbits the mic */
+.vf-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  z-index: 3;
+  pointer-events: none;
+  animation: vf-spin 2.8s linear infinite;
+}
+.vf-dot > i {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: #fff;
+  transform: translate(-50%, -50%) translateX(21px);
+  box-shadow: 0 0 8px 2px hsl(320 90% 65%);
+  animation: vf-hue 3s linear infinite;
+}
+@keyframes vf-hue {
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+
+/* small hover tooltip */
+.vf-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  white-space: nowrap;
+  background: var(--ink);
+  color: #fff;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s var(--vf-ease-out), transform 0.18s var(--vf-ease-out);
+}
+.vf-tipwrap:hover .vf-tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .vf-rise,
   .vf-final,
   .vf-prompt.vf-show,
   .vf-prompt.vf-hide,
   .vf-pulse,
-  .vf-word {
+  .vf-word,
+  .vf-cta,
+  .vf-cta::before,
+  .vf-dot,
+  .vf-dot > i {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
   }
@@ -201,5 +305,9 @@ body {
   }
   .vf-wave i {
     transition-duration: 0.001ms !important;
+  }
+  /* keep the ring visible but static for reduced motion */
+  .vf-dot {
+    display: none;
   }
 }

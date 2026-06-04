@@ -20,7 +20,7 @@ Lostness is made worse by tools that bombard. Settings & Onboarding exist to mak
 
 On finish (or "skip" at any point), `completeOnboarding` writes the rhythm and tone and stamps `onboardedAt`; if a first thing was entered, a [capture](vision-board.md) is created (`source: "paste"`) and distilled async into the board. The page swaps to the app reactively the moment `onboardedAt` is set.
 
-**Settings (any time).** A single calm surface (`components/settings/Settings.tsx`), titled "How I treat you," grouped into Daily rhythm, The Coach, Your pillars, and Yours alone. Every control writes immediately (no save button): toggles for morning/evening, segmented pickers for daily exercise, Coach tone, and reaching out; a pillar chip row with add (preset or custom); and sign-out. The north star is owned here but surfaced and edited through the [Guide](guide.md).
+**Settings (any time).** A single calm surface (`components/settings/Settings.tsx`), titled "How I treat you," grouped into Daily rhythm, The Coach, Atmosphere, Your pillars, AI models & keys, and Yours alone. Every control writes immediately (no save button): toggles for morning/evening, segmented pickers for daily exercise, Coach tone, and reaching out; the [Atmosphere](atmosphere.md) controls (music on/off, autoplay, default mood); a pillar chip row with add (preset or custom); and sign-out. The north star is owned here but surfaced and edited through the [Guide](guide.md).
 
 ## 3. Functions / actions
 
@@ -69,7 +69,7 @@ Settings is configuration, not a model surface, so the model is not in its write
 
 ## 8. Data touched
 
-Owns **`settings`** (see [`../../architecture/data-model.md`](../../architecture/data-model.md)): `{ userId, onboardedAt?, morningCheckin, eveningCheckin, dailyExercise: intention|gratitude|free, coachTone: gentle|balanced|direct, reachingOut: leave|earned|often, northStar?, updatedAt }`, indexed `by_user` (one row per user). Mutations in `convex/settings.ts` (`get`, `update`, `completeOnboarding`); seeded in `convex/users.ts` (`bootstrap`).
+Owns **`settings`** (see [`../../architecture/data-model.md`](../../architecture/data-model.md)): `{ userId, onboardedAt?, morningCheckin, eveningCheckin, dailyExercise: intention|gratitude|free, coachTone: gentle|balanced|direct, reachingOut: leave|earned|often, northStar?, musicEnabled?, musicAutoplay?, musicDefaultMood?, updatedAt }`, indexed `by_user` (one row per user). The three `music*` fields are owned by [Atmosphere](atmosphere.md), not the Settings flow itself. Mutations in `convex/settings.ts` (`get`, `update`, `completeOnboarding`); seeded in `convex/users.ts` (`bootstrap`).
 
 Draws (writes into, does not own): **`captures`** (onboarding's first thing) and **`pillars`** (Settings add).
 

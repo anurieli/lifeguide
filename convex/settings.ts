@@ -7,6 +7,12 @@ import { blueprintStatus, deriveLevel } from "../lib/levels";
 const EXERCISE = v.union(v.literal("intention"), v.literal("gratitude"), v.literal("free"));
 const TONE = v.union(v.literal("gentle"), v.literal("balanced"), v.literal("direct"));
 const REACH = v.union(v.literal("leave"), v.literal("earned"), v.literal("often"));
+const MOOD = v.union(
+  v.literal("inspiration"),
+  v.literal("deep-thinking"),
+  v.literal("focus"),
+  v.literal("calm-reset"),
+);
 
 async function getOrCreate(ctx: MutationCtx, userId: Id<"users">) {
   const existing = await ctx.db
@@ -46,6 +52,9 @@ export const update = mutation({
     coachTone: v.optional(TONE),
     reachingOut: v.optional(REACH),
     northStar: v.optional(v.string()),
+    musicEnabled: v.optional(v.boolean()),
+    musicAutoplay: v.optional(v.boolean()),
+    musicDefaultMood: v.optional(MOOD),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);

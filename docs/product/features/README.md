@@ -17,5 +17,6 @@ The element model these hang off is [`../../architecture/elements-and-context.md
 | [The Guide](guide.md) | view-only | renders Core | partial |
 | [Home / Dashboard](dashboard.md) | view-only | draws Core + Sessions | partial (Today seed) |
 | [Settings & Onboarding](settings.md) | `settings` | system | built |
+| [Atmosphere](atmosphere.md) | `settings.music*` + audio assets | none (ambient) | built (v1) |
 
 The **Guide** and **Dashboard** are surfaces that own no data; they render and route. Everything else owns its tables and publishes distilled text to the two streams.

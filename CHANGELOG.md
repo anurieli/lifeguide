@@ -7,6 +7,14 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-04 · Feature: Atmosphere — the ambient music system
+
+Built Atmosphere, LifeGuide's ambient music system: four looping instrumental moods (Inspiration, Creative Deep Thinking, Super Focus, Calm Reset) generated with Suno and shipped as static assets, played from a calm breathing orb that scales open into a mood panel. Gapless crossfade between moods (two `<audio>` elements), the whole player tints to the current mood, and a blur masks the text swap. Durable preferences (music on/off, autoplay, default mood) live in Convex `settings` and in Settings → Atmosphere; live state (mood, volume, AUTO) is ephemeral client state mirrored to `localStorage`. Autoplay is gesture-gated (starts on first interaction if the browser blocks it). An AUTO toggle maps the mood to the time of day as a v1 stand-in for the Context Bus. Mounted in `AppShell`, so it is present across every surface. Typecheck and `next build` both clean. Known follow-up: the free-Suno tracks need commercial licensing before public launch.
+
+Files: `convex/schema.ts`, `convex/settings.ts`, `components/music/{tracks.ts,MusicProvider.tsx,AtmospherePlayer.tsx}`, `components/shell/AppShell.tsx`, `components/settings/Settings.tsx`, `app/globals.css`, `public/audio/*.mp3`.
+
+**Docs touched:** created `docs/product/features/atmosphere.md`; updated `docs/architecture/data-model.md` (settings `music*` fields), `docs/product/features/settings.md` (Atmosphere group + settings shape), `docs/product/features/README.md` (element index).
+
 ## 2026-06-03 · Fix + redesign: voice interview ("Talk it through") — OpenAI Realtime GA, real-time conversation UI
 
 "Talk it through" was broken by three retired/incorrect OpenAI Realtime Beta details, and the screen was cluttered. Fixed the whole chain and rebuilt the live view in the blueprint's visual language.

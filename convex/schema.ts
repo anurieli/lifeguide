@@ -129,6 +129,19 @@ export default defineSchema({
       v.union(v.literal("unstarted"), v.literal("in_progress"), v.literal("complete")),
     ),
     level: v.optional(v.number()),
+    // Atmosphere (the ambient music system): durable preferences only. Live playback
+    // state (current mood this session, volume, AUTO) stays client-side. See
+    // docs/product/features/atmosphere.md.
+    musicEnabled: v.optional(v.boolean()), // master switch; false hides the orb and silences audio
+    musicAutoplay: v.optional(v.boolean()), // start on app load (first gesture permitting)
+    musicDefaultMood: v.optional(
+      v.union(
+        v.literal("inspiration"),
+        v.literal("deep-thinking"),
+        v.literal("focus"),
+        v.literal("calm-reset"),
+      ),
+    ),
   }).index("by_user", ["userId"]),
 
   // Per-profile AI provider keys. A user's own key (e.g. their OpenRouter key) is

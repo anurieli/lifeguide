@@ -15,17 +15,29 @@ export class OpenAIRealtimeAdapter implements VoiceProvider {
       );
     }
 
-    const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
+    // GA Realtime API: ephemeral client secrets are minted at /v1/realtime/client_secrets
+    // with a nested `session` config. (The old /v1/realtime/sessions + `OpenAI-Beta: realtime=v1`
+    // beta endpoint now 404s "Invalid URL".) The returned `value` is the short-lived key the
+    // browser uses as the Bearer for the WebRTC SDP exchange.
+    const response = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${key}`,
         "Content-Type": "application/json",
-        "OpenAI-Beta": "realtime=v1",
       },
       body: JSON.stringify({
-        model: this.model,
-        voice: "alloy",
-        instructions,
+        session: {
+          type: "realtime",
+          model: this.model,
+          instructions,
+          audio: {
+            // Enable streaming transcription of the user's speech (otherwise the
+            // `conversation.item.input_audio_transcription.*` events never fire and
+            // only the coach's side shows up in the transcript).
+            input: { transcription: { model: "gpt-realtime-whisper" } },
+            output: { voice: "alloy" },
+          },
+        },
       }),
     });
 
@@ -37,13 +49,12 @@ export class OpenAIRealtimeAdapter implements VoiceProvider {
     }
 
     const json = await response.json();
-    const clientSecret: string = json.client_secret?.value;
+    const clientSecret: string = json.value;
     if (!clientSecret) {
-      throw new Error("OpenAI Realtime response missing client_secret.value");
+      throw new Error("OpenAI Realtime response missing client secret value");
     }
 
-    const expiresAt: number =
-      (json.client_secret?.expires_at ?? Date.now() / 1000 + 60) * 1000;
+    const expiresAt: number = (json.expires_at ?? Date.now() / 1000 + 60) * 1000;
 
     return { clientSecret, model: this.model, expiresAt };
   }

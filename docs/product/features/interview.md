@@ -118,7 +118,7 @@ interface VoiceProvider {
 }
 ```
 
-**`OpenAIRealtimeAdapter.mint()`:** calls `POST https://api.openai.com/v1/realtime/sessions` with the configured model, voice `"alloy"`, and the interview instructions. Returns `client_secret.value` as `clientSecret` and derives `expiresAt` from `client_secret.expires_at`. Requires `OPENAI_API_KEY` in the Convex deployment environment.
+**`OpenAIRealtimeAdapter.mint()`:** calls `POST https://api.openai.com/v1/realtime/client_secrets` (the GA Realtime endpoint) with a nested `session` config: `{ type: "realtime", model, instructions, audio: { output: { voice: "alloy" } } }`. Returns the ephemeral key `value` as `clientSecret` and derives `expiresAt` from `expires_at`. Requires `OPENAI_API_KEY` in the Convex deployment environment. (The pre-GA `POST /v1/realtime/sessions` + `OpenAI-Beta: realtime=v1` endpoint now 404s "Invalid URL" — that change is what broke "Talk it through"; pinned by `tests/voice-mint.test.ts`.) The browser then POSTs its WebRTC SDP offer to `https://api.openai.com/v1/realtime/calls` using that ephemeral key (the model is bound to the key; the old Beta `/v1/realtime?model=…` SDP shape was retired 2026-05-12 and now 400s).
 
 **`getVoiceProvider()`:** reads `TASKS.voice.model` from `convex/ai/config.ts` and returns an `OpenAIRealtimeAdapter` for that model. Swapping to a different realtime provider = add a new adapter class and update `getVoiceProvider()`.
 
@@ -140,15 +140,18 @@ interface VoiceProvider {
 1. Calls `mintRealtimeSession` (via `useAction`) to get the ephemeral secret and model id.
 2. Calls `navigator.mediaDevices.getUserMedia({ audio: true })` to get the mic stream.
 3. Creates an `RTCPeerConnection`, adds the mic track, creates a data channel `"oai-events"`, and creates an SDP offer.
-4. Posts the SDP offer to `https://api.openai.com/v1/realtime?model=<model>` with `Authorization: Bearer <clientSecret>` and `Content-Type: application/sdp`.
+4. Posts the SDP offer to `https://api.openai.com/v1/realtime/calls` (GA WebRTC endpoint; model is bound to the ephemeral key) with `Authorization: Bearer <clientSecret>` and `Content-Type: application/sdp`. On a non-OK response the status + body are surfaced in the error message.
 5. Sets the SDP answer as the remote description.
-6. Listens for transcript events on the `"oai-events"` data channel:
-   - `"response.audio_transcript.done"`: the assistant's turn transcript. Calls `interview.appendTurn({ role: "coach", text })`.
-   - `"conversation.item.input_audio_transcription.completed"`: the user's speech transcript. Calls `interview.appendTurn({ role: "user", text })`.
+6. Listens for transcript events on the `"oai-events"` data channel — streaming **delta** events fill the in-progress turn live (word by word), **done/completed** events commit the full turn to the DB:
+   - `"response.audio_transcript.delta"` → appends to the live coach partial (`coachLive`).
+   - `"response.audio_transcript.done"` → `interview.appendTurn({ role: "coach", text })`, clears `coachLive`.
+   - `"conversation.item.input_audio_transcription.delta"` → appends to the live user partial (`userLive`).
+   - `"conversation.item.input_audio_transcription.completed"` → `interview.appendTurn({ role: "user", text })`, clears `userLive`.
+   User-speech transcription only fires because the mint enables it via `session.audio.input.transcription = { model: "gpt-realtime-whisper" }`; without that, only the coach side is transcribed.
 7. On "End interview", closes the peer connection, stops mic tracks, calls `interview.end({ status:"completed" })`, and calls `onComplete()`.
-8. On any connection or mic error, sets `micState = "error"` and renders a fallback link to the text interview.
+8. On any connection or mic error, sets `micState = "error"` and renders the actual error reason plus a fallback link to the text interview.
 
-**Note on transcript event names:** the event name `"conversation.item.input_audio_transcription.completed"` for the user-speech transcript has not been verified against a live OpenAI Realtime session in the current API version. This is a manual QA item (see `TO-CHECK.md`).
+**Live view (adopts the blueprint VoiceField language):** committed turns render as conversation bubbles (coach left `bg-coach`, user right ink/white); the active turn streams in as a ghosted bubble with a blinking `vf-caret`; a living `vf-wave` waveform sits at the foot; a single `vf-pulse` dot + "Listening" is the only status chrome. The view fills its container (`h-full`, max-width 760px, centered) so it works full-screen or inside a modal, and auto-scrolls as turns and live words arrive.
 
 ---
 

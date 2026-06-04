@@ -74,26 +74,19 @@ Onboarding is the first time the person has been asked what they want. The desig
 
 ## Screen 3b: Voice interview
 
-**Layout:** a vertically stacked column inside the main content area (not full-screen on its own; the outer Onboarding shell provides the background).
+**Layout:** the screen has three distinct states, each a calm composition centered in the main content area (the outer Onboarding shell provides the background). The screen is intentionally minimal — one focal action at a time.
 
-**Elements:**
-- Mic state indicator: a small dot (color-coded) and a label. States:
-  - `idle`: grey dot, "Ready to talk".
-  - `connecting`: gold pulsing dot, "Connecting…".
-  - `live`: green pulsing dot, "Live".
-  - `error`: red dot, "Error".
-- QR handoff widget (always visible in voice mode): the QR image (100px square, rounded) and caption "Continue on your phone."
-- Transcript panel (flex-1, scrollable): chat-bubble layout. Coach turns: light `bg-coach` background, left-aligned. User turns: ink background with white text, right-aligned. Empty state message when no turns yet.
-- Error box: shown when `micState === "error"`. Contains the error message and a "Type it out instead" link (calls `onFallback`, which routes to the text interview).
-- Action buttons:
-  - `idle`: "Start talking" (ink, primary).
-  - `connecting`: "Connecting…" (disabled).
-  - `live`: "End interview" (ink, primary). Ending closes the WebRTC connection, calls `interview.end`, and proceeds to synthesis.
-  - `error`: "Try again" (card border, hover gold).
+**Pre-start (`idle` / `connecting`):** a single vertically-centered column. The QR handoff is the hero: the QR image (100px square, rounded) with the caption "Continue on your phone." Beneath it, generously spaced, one calm action:
+- `idle`: a minimalist pill button labelled **"Start"** (card background, subtle shadow, border that warms to gold on hover). No mic-state row, no empty transcript box — just QR + Start.
+- `connecting`: the Start button is replaced by a gold pulsing dot + "Connecting…".
+
+**Live (`live`, or once any transcript exists):** adopts the blueprint VoiceField's visual language so the interview feels like one calm conversation. A slim header — a single breathing `vf-pulse` dot + "Listening" on the left, a quiet **"End"** pill on the right (closes the WebRTC connection, calls `interview.end`, proceeds to synthesis; no confirmation dialog). The conversation fills the space (flex-1, scrollable, auto-scrolls to newest, max-width ~760px, centered) as chat bubbles — coach left `bg-coach`, user right ink/white. Words appear **in real time**: the turn being spoken streams in as a ghosted bubble with a blinking `vf-caret` (from the realtime delta events), then resolves to a solid bubble when the turn completes. A living `vf-wave` waveform sits at the foot. The QR is not shown here (the handoff choice was made pre-start). The whole view is container-filling, so it also drops cleanly into a modal.
+
+**Error (`error`):** a centered, calm message showing the actual failure reason (`errorMsg`), with two actions side by side: **"Try again"** (ink pill — resets to `idle`) and **"Type it out instead"** (quiet underline link — calls `onFallback`, routing to the text interview).
 
 **Interaction notes:**
-- The browser mic permission prompt is triggered by clicking "Start talking", not on page load. This is intentional: the user has already chosen the voice experience and is ready.
-- No confirmation dialog is shown on "End interview". The action is immediate.
+- The browser mic permission prompt is triggered by clicking **"Start"**, not on page load. This is intentional: the user has already chosen the voice experience and is ready.
+- The error reason is surfaced verbatim (e.g. an OpenAI HTTP status + body) rather than a generic message, so failures are diagnosable.
 - The transcript auto-scrolls to the bottom as new turns arrive.
 
 ---

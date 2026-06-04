@@ -7,6 +7,25 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-03 · Fix + redesign: voice interview ("Talk it through") — OpenAI Realtime GA, real-time conversation UI
+
+"Talk it through" was broken by three retired/incorrect OpenAI Realtime Beta details, and the screen was cluttered. Fixed the whole chain and rebuilt the live view in the blueprint's visual language.
+
+- **Mint endpoint (server):** retired `POST /v1/realtime/sessions` (+ `OpenAI-Beta: realtime=v1`) → 404. Updated `convex/ai/voice/openaiRealtime.ts` to GA `POST /v1/realtime/client_secrets` with the nested `session` config; ephemeral key parsed from `value` / `expires_at`.
+- **SDP exchange (client):** Beta `/v1/realtime?model=…` was retired 2026-05-12 → the live 400. Switched to GA `POST /v1/realtime/calls` (model bound to the ephemeral key); the status + body are now surfaced in the on-screen error.
+- **Model:** `gpt-4o-mini-realtime-preview` (retired Beta name) → `model_not_found` 404 at the call. Repointed `TASKS.voice.model` → `gpt-realtime-mini` (GA; confirmed in the account's model list).
+- **Human transcription:** mint now enables `session.audio.input.transcription = { model: "gpt-realtime-whisper" }` — without it the `conversation.item.input_audio_transcription.*` events never fire, so only the coach was transcribed.
+- **Real-time conversation UI:** `VoiceInterview.tsx` live view now adopts the blueprint VoiceField language — conversation bubbles (coach left / user right), the active turn streaming in **word-by-word** from the delta events (`response.audio_transcript.delta`, `conversation.item.input_audio_transcription.delta`) as a ghosted bubble with a `vf-caret`, a living `vf-wave` waveform at the foot, a single `vf-pulse` "Listening" dot, and auto-scroll. Container-filling (max-w 760px) so it also fits a modal. Pre-start is the minimalist QR-hero + "Start"; errors show the real reason + "Try again" / "Type it out instead".
+
+Verified against the live OpenAI API with the deployment key: GA mint 200 (incl. input-transcription config), `/v1/realtime/calls` accepts the ephemeral key, `gpt-realtime-mini` valid. `tsc` clean; `tests/voice-mint.test.ts` pins the mint contract; full suite green. (Live mic/WebRTC + real-time transcription still need a manual browser test — can't drive a mic headlessly.) Also added `next.config.mjs` `allowedDevOrigins` for tunneled dev (ngrok) so the phone/QR handoff can reach the dev server.
+
+**Docs touched:**
+- `docs/product/features/interview.md` (GA mint + SDP endpoints, model, input transcription, delta events, live view)
+- `docs/decisions/0004-voice-stack-and-levels.md` (adapter endpoint)
+- `docs/design/onboarding.md` (Screen 3b: pre-start hero / real-time conversation / error)
+
+---
+
 ## 2026-06-03 · Admin / dev panel — reset onboarding + Core tools (branch `admin-panel`)
 
 Added a self-scoped dev panel at `/admin` so you can re-run onboarding without a new identity. Backend `convex/admin.ts` (all operate only on the current authed identity): `resetOnboarding` (clears `onboardedAt`/`blueprintStatus`/`level` → the Door reappears on reload), `seedCore` (fills all 18 blueprint boxes → complete / Level 1), `clearCore` (deletes the user's `coreResponses` → unstarted), `listSessions` (the user's interview sessions), and `clearTestData` (wipes Core + sessions + telemetry and resets onboarding, keeping rhythm/tone). Frontend `app/admin/page.tsx`: a calm panel with a live identity/status card, two-click-confirm actions (danger ones in red, no native dialogs), and a session list; dev-gated (renders a notice + skips queries in production). A dev-only "Developer → Open /admin" row added to Settings. Not cross-user admin (anonymous auth) — an `isAdmin` role is left as future work. TDD: 5 convex-test cases (reset, clearCore, seedCore, listSessions, wipe), full suite 71/71, tsc clean. Verified live: reset → status flips to "no (will see the Door)" → reload shows the Door → "I don't know" reveals the reassurance + Begin.

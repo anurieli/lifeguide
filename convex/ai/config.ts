@@ -109,10 +109,13 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
   },
 
   // OpenAI Realtime API session for voice-based onboarding interview. Live.
+  // GA realtime model id (the Beta `gpt-4o-mini-realtime-preview` was retired and now
+  // returns model_not_found at the /v1/realtime/calls SDP exchange). `gpt-realtime-mini`
+  // is the GA "mini" tier; swap to `gpt-realtime` for the stronger model.
   voice: {
     label: "Voice interview (realtime)",
     provider: "openai",
-    model: "gpt-4o-mini-realtime-preview",
+    model: "gpt-realtime-mini",
     temperature: 0.7,
     wired: true,
   },

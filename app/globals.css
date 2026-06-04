@@ -370,8 +370,8 @@ body {
    =========================================================================== */
 .atmo-root {
   position: fixed;
-  left: 76px; /* clears the rail */
-  bottom: 18px;
+  left: 22px; /* default: tucked into the rail, above the account item */
+  bottom: 70px;
   z-index: 60;
   --mood: #b8945a;
 }
@@ -385,24 +385,23 @@ body {
   }
 }
 
-/* the collapsed control: orb on top, mood name beneath, anchored bottom-left */
+/* the collapsed control: orb on top, mood name beneath, anchored bottom-left.
+   The orb stays put and on top of the panel so it's always a one-click
+   play/pause, even while the panel is open. */
 .atmo-orb-wrap {
   position: absolute;
   left: 0;
   bottom: 0;
+  z-index: 2; /* above the panel so the orb is never blocked */
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 6px;
   transition: opacity 0.2s var(--vf-ease-out), transform 0.2s var(--vf-ease-out);
 }
-.atmo-orb-wrap.expanded {
-  opacity: 0;
-  transform: scale(0.9);
-  pointer-events: none;
-}
 
 .atmo-orb {
+  position: relative;
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -411,10 +410,47 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none; /* let pointer-drag work on touch without scrolling */
   box-shadow: 0 6px 16px -8px rgba(26, 29, 36, 0.5);
   transition: transform 0.16s var(--vf-ease-out), background 0.5s var(--vf-ease-out),
     border-color 0.3s var(--vf-ease-out);
+}
+
+/* hover affordance: a play/pause icon fades in over the orb, dimming the wave
+   behind it. Play icon when paused, pause icon when playing (driven by props). */
+.atmo-orb-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  color: var(--mood);
+  transition: opacity 0.15s var(--vf-ease-out);
+  pointer-events: none;
+}
+.atmo-orb.playing .atmo-orb-hint {
+  color: #fff;
+}
+.atmo-orb-hint svg {
+  width: 15px;
+  height: 15px;
+}
+.atmo-orb:hover .atmo-orb-hint {
+  opacity: 1;
+}
+.atmo-orb:hover .atmo-orb-wave,
+.atmo-orb:hover .dot {
+  opacity: 0.2;
+  transition: opacity 0.15s var(--vf-ease-out);
+}
+.atmo-root.dragging .atmo-orb {
+  cursor: grabbing;
+}
+/* while dragging, don't animate the orb's position so it tracks the cursor 1:1 */
+.atmo-root.dragging {
+  transition: none;
 }
 .atmo-orb:hover {
   transform: scale(1.06);
@@ -483,7 +519,8 @@ body {
 .atmo-panel {
   position: absolute;
   left: 0;
-  bottom: 0;
+  bottom: 58px; /* float ABOVE the orb so it never covers the quick-pause icon */
+  z-index: 1;
   width: 312px;
   background: #fff;
   border: 1px solid #e7e1d4;

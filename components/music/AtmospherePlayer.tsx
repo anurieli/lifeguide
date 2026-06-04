@@ -21,8 +21,12 @@ function PlayIcon({ playing }: { playing: boolean }) {
   );
 }
 
-// A REAL waveform: reads the live audio off the AnalyserNode each frame and
-// draws the time-domain signal as a linear wave. Idle/paused shows a flat line.
+// A calm, passive waveform: reads the live frequency spectrum off the
+// AnalyserNode and renders it as a slow, undulating wave rather than the raw
+// (jittery) time-domain signal. Two bands — low and high energy — drive two
+// sines that EASE toward their target each frame, so the wave breathes instead
+// of flickering, and looks distinct per mood (bassy moods swell slowly; brighter
+// moods carry finer ripples). Idle/paused settles to a flat line.
 // `variant` picks size + color (white inside the mood-colored orb; the mood
 // color in the panel, read from the inherited --mood CSS var).
 function AtmoWave({ variant }: { variant: "orb" | "panel" }) {
@@ -38,8 +42,23 @@ function AtmoWave({ variant }: { variant: "orb" | "panel" }) {
     if (!c) return;
     const W = canvas.width;
     const H = canvas.height;
-    const points = variant === "orb" ? 28 : 150;
     let raf = 0;
+
+    // Persisted across frames: eased band amplitudes + a slowly advancing phase.
+    let loAmp = 0;
+    let hiAmp = 0;
+    let phase = 0;
+    const EASE = 0.045; // how fast the displayed wave chases the live signal (low = calm)
+    const SPEED = variant === "orb" ? 0.012 : 0.009; // phase advance per frame (slow drift)
+    const STEP = variant === "orb" ? 2 : 3; // px between sampled points
+    const lf = variant === "orb" ? 2.4 : 1.6; // low-band wavelength (cycles across width)
+    const hf = variant === "orb" ? 4.0 : 3.4; // high-band wavelength
+
+    const band = (buf: Uint8Array, from: number, to: number) => {
+      let sum = 0;
+      for (let i = from; i < to; i++) sum += buf[i];
+      return sum / ((to - from) * 255); // 0..1
+    };
 
     const draw = () => {
       raf = requestAnimationFrame(draw);
@@ -50,35 +69,44 @@ function AtmoWave({ variant }: { variant: "orb" | "panel" }) {
         variant === "orb"
           ? "#ffffff"
           : getComputedStyle(canvas).getPropertyValue("--mood").trim() || "#8A8F9C";
-      c.lineWidth = variant === "orb" ? 1.6 : 2;
+      c.lineWidth = variant === "orb" ? 1.4 : 1.8;
       c.lineJoin = "round";
       c.lineCap = "round";
       c.strokeStyle = color;
 
-      if (!an || !mm.playing) {
-        c.globalAlpha = 0.35;
-        c.beginPath();
-        c.moveTo(0, H / 2);
-        c.lineTo(W, H / 2);
-        c.stroke();
-        c.globalAlpha = 1;
-        return;
+      // Target band energies (0 when idle/paused, so the wave eases down to flat).
+      let loTarget = 0;
+      let hiTarget = 0;
+      if (an && mm.playing) {
+        const bins = an.frequencyBinCount;
+        const buf = new Uint8Array(bins);
+        an.getByteFrequencyData(buf);
+        loTarget = band(buf, 0, Math.floor(bins * 0.12)); // bass swell
+        hiTarget = band(buf, Math.floor(bins * 0.12), Math.floor(bins * 0.55)); // mids/air ripple
       }
+      loAmp += (loTarget - loAmp) * EASE;
+      hiAmp += (hiTarget - hiAmp) * EASE;
+      phase += SPEED;
 
-      const N = an.fftSize;
-      const buf = new Uint8Array(N);
-      an.getByteTimeDomainData(buf);
-      c.globalAlpha = 1;
+      // A gentle resting baseline so a paused wave isn't a dead-flat line.
+      const rest = 0.05;
+      const mid = H / 2;
+      const maxA = (H / 2) * 0.86;
+
+      c.globalAlpha = an && mm.playing ? 1 : 0.4;
       c.beginPath();
-      for (let i = 0; i < points; i++) {
-        const idx = Math.floor((i * N) / points);
-        const v = (buf[idx] - 128) / 128; // -1..1
-        const x = (i / (points - 1)) * W;
-        const y = H / 2 + v * (H / 2) * 0.92;
-        if (i === 0) c.moveTo(x, y);
+      for (let x = 0; x <= W; x += STEP) {
+        const t = x / W;
+        // Taper the ends so the wave fades in/out at the edges — softer, more passive.
+        const taper = Math.sin(Math.PI * t);
+        const lo = Math.sin(t * Math.PI * 2 * lf + phase) * (loAmp + rest);
+        const hi = Math.sin(t * Math.PI * 2 * hf + phase * 1.7) * hiAmp * 0.6;
+        const y = mid - (lo + hi) * maxA * taper;
+        if (x === 0) c.moveTo(x, y);
         else c.lineTo(x, y);
       }
       c.stroke();
+      c.globalAlpha = 1;
     };
     draw();
     return () => cancelAnimationFrame(raf);
@@ -91,12 +119,67 @@ function AtmoWave({ variant }: { variant: "orb" | "panel" }) {
   );
 }
 
+// Where the orb sits, anchored from the bottom-left of the viewport. Default is
+// tucked into the side rail just above the account ("name") item; the user can
+// drag it anywhere and the spot is remembered.
+const POS_KEY = "lifeguide.atmo.pos";
+type Pos = { left: number; bottom: number };
+const ORB_W = 40;
+const ORB_WRAP_H = 62; // orb + gap + label, roughly
+const DRAG_THRESHOLD = 4; // px of movement before a press becomes a drag (vs a tap)
+
+function defaultPos(): Pos {
+  const mobile = window.innerWidth < 768;
+  // Desktop: centered in the 84px rail, lifted above the bottom avatar.
+  // Mobile: clear of the 64px bottom bar.
+  return mobile ? { left: 14, bottom: 96 } : { left: 22, bottom: 70 };
+}
+
+function clampPos(p: Pos): Pos {
+  const maxLeft = Math.max(0, window.innerWidth - ORB_W);
+  const maxBottom = Math.max(0, window.innerHeight - ORB_WRAP_H);
+  return {
+    left: Math.min(Math.max(0, p.left), maxLeft),
+    bottom: Math.min(Math.max(0, p.bottom), maxBottom),
+  };
+}
+
 export function AtmospherePlayer() {
   const m = useMusic();
   const [open, setOpen] = useState(false);
   const [swapping, setSwapping] = useState(false);
+  const [pos, setPos] = useState<Pos | null>(null);
+  const [dragging, setDragging] = useState(false);
   const volBarRef = useRef<HTMLDivElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const swapTimer = useRef<number | null>(null);
+  const draggingRef = useRef(false);
+  const dragStart = useRef<{ x: number; y: number; left: number; bottom: number } | null>(null);
+  const movedRef = useRef(false);
+  // Inline correction so the panel hugs the orb but never spills past a viewport
+  // edge. Defaults to the CSS anchor (left:0, bottom:58 — floating above the orb).
+  const [panelFix, setPanelFix] = useState<{ left: number; bottom: number }>({ left: 0, bottom: 58 });
+
+  // Restore the saved position (or fall back to the default) after mount, so the
+  // server and first client render agree. Re-clamp on resize so it can't strand
+  // off-screen.
+  useEffect(() => {
+    const saved = window.localStorage.getItem(POS_KEY);
+    let next: Pos | null = null;
+    if (saved) {
+      try {
+        const p = JSON.parse(saved);
+        if (typeof p?.left === "number" && typeof p?.bottom === "number") next = p;
+      } catch {
+        /* ignore bad json */
+      }
+    }
+    setPos(clampPos(next ?? defaultPos()));
+    const onResize = () => setPos((p) => (p ? clampPos(p) : p));
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   // brief blur-mask whenever the mood text changes
   useEffect(() => {
@@ -108,13 +191,40 @@ export function AtmospherePlayer() {
     };
   }, [m.moodKey]);
 
-  // close on Escape when open
+  // close on Escape, and collapse when you click anywhere outside the player so
+  // the open panel never lingers and distracts from the orb.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onDown = (e: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onDown);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onDown);
+    };
   }, [open]);
+
+  // Keep the panel hugging the orb but fully on-screen: align its left to the
+  // orb, then clamp within the viewport; nudge it down if it would clip the top.
+  useEffect(() => {
+    if (!pos) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const margin = 10;
+    const W = panel.offsetWidth || 312;
+    const H = panel.offsetHeight || 0;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const targetLeft = Math.min(Math.max(margin, pos.left), vw - W - margin);
+    let bottom = 58;
+    const topVp = vh - (pos.bottom + bottom) - H;
+    if (topVp < margin) bottom = vh - margin - H - pos.bottom; // would clip top -> lower it
+    if (pos.bottom + bottom < margin) bottom = margin - pos.bottom; // keep its base on-screen
+    setPanelFix({ left: targetLeft - pos.left, bottom });
+  }, [pos, open, m.moodKey]);
 
   if (!m.enabled) return null;
 
@@ -127,25 +237,105 @@ export function AtmospherePlayer() {
     m.setVolume((e.clientX - r.left) / r.width);
   };
 
+  // The orb is both a drag handle AND the play/pause control. A press that
+  // doesn't move past the threshold is a tap (toggles play); anything more is a
+  // drag (repositions, and is remembered). Pointer capture keeps the move/up
+  // events flowing even if the cursor outruns the small orb.
+  const onOrbPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!pos) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragStart.current = { x: e.clientX, y: e.clientY, left: pos.left, bottom: pos.bottom };
+    movedRef.current = false;
+  };
+
+  const onOrbPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const s = dragStart.current;
+    if (!s) return;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    if (!movedRef.current && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+      movedRef.current = true;
+      draggingRef.current = true;
+      setDragging(true);
+      setOpen(false); // dragging shouldn't drag the open panel around
+    }
+    if (movedRef.current) {
+      setPos(clampPos({ left: s.left + dx, bottom: s.bottom - dy }));
+    }
+  };
+
+  const onOrbPointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const s = dragStart.current;
+    dragStart.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    if (movedRef.current) {
+      // was a drag: persist where it landed
+      setPos((p) => {
+        if (p) window.localStorage.setItem(POS_KEY, JSON.stringify(p));
+        return p;
+      });
+      draggingRef.current = false;
+      setDragging(false);
+    } else if (s) {
+      // was a tap: toggle play
+      m.togglePlay();
+    }
+  };
+
   return (
-    <div className="atmo-root" style={{ ["--mood" as string]: cur.color } as React.CSSProperties}>
+    <div
+      ref={rootRef}
+      className={`atmo-root ${dragging ? "dragging" : ""}`}
+      style={
+        {
+          ["--mood" as string]: cur.color,
+          ...(pos ? { left: `${pos.left}px`, bottom: `${pos.bottom}px`, top: "auto", right: "auto" } : null),
+        } as React.CSSProperties
+      }
+      onMouseEnter={() => !draggingRef.current && setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+    >
       {/* collapsed orb: mood-colored when playing, with a live soundwave and the
-          mood name beneath. Clicking opens the controls. */}
+          mood name beneath. Hovering the player opens the controls; a tap on the
+          orb toggles play/pause; dragging it repositions the whole widget. */}
       <div className={`atmo-orb-wrap ${open ? "expanded" : ""}`}>
         <button
           type="button"
           className={`atmo-orb ${m.playing ? "playing" : ""}`}
-          onClick={() => setOpen(true)}
-          aria-label={`Atmosphere — ${cur.mood}${m.playing ? ", playing" : ", paused"}`}
-          aria-expanded={open}
+          onPointerDown={onOrbPointerDown}
+          onPointerMove={onOrbPointerMove}
+          onPointerUp={onOrbPointerUp}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              m.togglePlay();
+            }
+          }}
+          aria-label={`${m.playing ? "Pause" : "Play"} atmosphere — ${cur.mood}. Drag to move.`}
+          aria-pressed={m.playing}
         >
           {m.playing ? <AtmoWave variant="orb" /> : <span className="dot" />}
+          {/* on hover, a clear play/pause affordance over the orb */}
+          <span className="atmo-orb-hint" aria-hidden>
+            <PlayIcon playing={m.playing} />
+          </span>
         </button>
         <span className="atmo-orb-label">{cur.mood}</span>
       </div>
 
       {/* panel */}
-      <div className={`atmo-panel ${open ? "open" : ""}`} role="dialog" aria-label="Atmosphere">
+      <div
+        ref={panelRef}
+        className={`atmo-panel ${open ? "open" : ""}`}
+        style={{ left: panelFix.left, bottom: panelFix.bottom }}
+        role="dialog"
+        aria-label="Atmosphere"
+      >
         <div className="atmo-head">
           <div className="name">
             <span className="pin" />

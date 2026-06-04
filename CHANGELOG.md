@@ -7,6 +7,15 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-03 · Task 0.6: `settings.recompute` — blueprint status + level (branch `onboarding-rebuild`) commit `2cbb180`
+
+Added `recompute` mutation to `convex/settings.ts`. It loads all `coreResponses` for the authed user, builds a `{ questionKey: content }` map, calls `blueprintStatus()` and `deriveLevel()` from `lib/levels`, and patches the user's settings row. The existing `getOrCreate` helper and `get` query were reused unchanged. Covered by TDD: test written first (`tests/convex/levels-settings.test.ts`), confirmed failing, implementation written to pass. Full suite: 83/83 pass, no regressions. Codegen ran to update `convex/_generated`.
+
+**Files changed:** `convex/settings.ts`, `tests/convex/levels-settings.test.ts`, `convex/_generated/`
+**Docs touched:** none (schema fields `blueprintStatus` + `level` already exist; no new product behavior added beyond wiring the compute).
+
+---
+
 ## 2026-06-03 · Task 0.2: Interview question-selection policy (branch `onboarding-rebuild`) commit `73c1b48`
 
 Created `lib/interview/policy.ts` with the `nextQuestion` function and `InterviewState` type. The policy selects questions in canonical blueprint order, defers skipped keys until all fresh keys are exhausted, circles back to each skipped key exactly once, and returns null when nothing remains. Verified via TDD: 4 vitest tests written first, confirmed failing, then implementation written to pass.

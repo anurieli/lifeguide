@@ -129,6 +129,17 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
     wired: true,
   },
 
+  // The Center: one isolated per-pillar synthesis that files a Listener transcript into
+  // the file system on the human. Runs once per pillar per session (always fans out), so
+  // a cheap-but-capable model is the right default here. Live. See convex/center.ts.
+  center: {
+    label: "Center · per-pillar filing",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.3,
+    wired: true,
+  },
+
   // VoiceField transcription: a short audio segment -> text, via Whisper. Live.
   // OpenRouter has no audio endpoint, so this pins the openai provider directly
   // (key = the user's saved OpenAI key, else the deployment's OPENAI_API_KEY). The

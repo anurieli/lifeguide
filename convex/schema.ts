@@ -104,15 +104,41 @@ export default defineSchema({
     .index("by_user", ["userId", "createdAt"])
     .index("by_user_unplaced", ["userId", "placedAt"]),
 
-  // Cross-cutting typed tags (NOT containers). v1 seeds a single default "Lifestyle".
+  // A pillar is a region of the "file system on the human" — a folder that holds the
+  // textual files making up one part of a person (see docs/product/features/file-system-on-the-human.md).
+  // `about` says what the pillar is; `composition` tells the Center how this pillar is
+  // built from its files, so each per-pillar synthesis knows what belongs here.
   pillars: defineTable({
     userId: v.id("users"),
     name: v.string(),
     description: v.optional(v.string()),
+    about: v.optional(v.string()), // what this region of the person is, in one or two sentences
+    composition: v.optional(v.string()), // how the Center should build this pillar from its files
     weight: v.number(),
     source: v.union(v.literal("default"), v.literal("preset"), v.literal("custom")),
     createdAt: v.number(),
   }).index("by_user", ["userId"]),
+
+  // The files on the human. Each file is one durable textual unit about a person, living
+  // inside a pillar (folder). The Listener captures talk; the Center files it here, one
+  // isolated synthesis per pillar. `kind` is the type of thing captured. `status` is
+  // "active" for held truth, or "pending" for a proposed change that CONTRADICTS an
+  // existing file and is waiting on the person to decide (never silently overwritten).
+  coreFiles: defineTable({
+    userId: v.id("users"),
+    pillarId: v.id("pillars"),
+    name: v.string(), // file name within the pillar folder, e.g. "What drives me"
+    content: v.string(),
+    kind: v.string(), // value | belief | fact | dream | fear | tension | pattern | state
+    status: v.union(v.literal("active"), v.literal("pending")),
+    note: v.optional(v.string()), // for pending: why this seems to contradict what's held
+    supersedes: v.optional(v.id("coreFiles")), // for pending: the active file it would replace
+    sourceSessionId: v.optional(v.id("interviewSessions")), // which session last touched this file
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_pillar", ["userId", "pillarId", "status"])
+    .index("by_session", ["sourceSessionId"]),
 
   // Per-user app settings: onboarding state, daily rhythm, Coach behavior, and the north star.
   settings: defineTable({

@@ -129,9 +129,24 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
     wired: true,
   },
 
+  // VoiceField transcription: a short audio segment -> text, via Whisper. Live.
+  // OpenRouter has no audio endpoint, so this pins the openai provider directly
+  // (key = the user's saved OpenAI key, else the deployment's OPENAI_API_KEY). The
+  // client records in ~4s chunks and calls convex/voice.transcribe per chunk; the
+  // on-device Web Speech transcript is the disconnect fallback. temperature is
+  // unused by the audio API but the TaskConfig shape requires it.
+  voiceTranscribe: {
+    label: "Voice · transcribe (Whisper)",
+    provider: "openai",
+    model: "whisper-1",
+    temperature: 0,
+    wired: true,
+  },
+
   // VoiceField: clean a raw spoken transcript into what the field is asking for. Live.
-  // (Transcription itself is client-side Web Speech — see components/voice. This is the
-  // server "shape" pass only.) System prompt is built per-call from the field metadata.
+  // (The raw transcript comes from voiceTranscribe/Whisper, with Web Speech as the
+  // live-display + fallback — see components/voice. This is the server "shape" pass only.)
+  // System prompt is built per-call from the field metadata.
   voiceShape: {
     label: "Voice · shape transcript",
     provider: "openrouter",

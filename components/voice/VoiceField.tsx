@@ -5,6 +5,7 @@ import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Mic, Square } from "lucide-react";
 import { useSpeechRecognition } from "@/lib/useSpeechRecognition";
+import { useWhisperRecorder } from "@/lib/useWhisperRecorder";
 import type { FieldMeta } from "@/lib/voiceField";
 
 type Phase = "idle" | "listening" | "analyzing";
@@ -16,10 +17,13 @@ const PROMPT_ROTATE_MS = 3800; // how long each single prompt holds before the n
  * VoiceField — one voice-capable input for any field in LifeGuide.
  *
  * Drop-in replacement for a controlled `<textarea>`: same `value` / `onChange`
- * contract, plus a mic that does live (Web Speech) transcription and an AI pass
- * that shapes the raw transcript into what the field is asking for. Prompt Mode
- * surfaces ONE AI-generated suggestion at a time, inside the recording surface,
- * related to what's being said (field metadata + the Mirror).
+ * contract, plus a mic. Transcription runs two layers at once: chunked server-side
+ * Whisper (the accurate, cross-browser transcript that becomes the answer) and the
+ * browser's Web Speech API (the instant live caption, and the fallback if Whisper
+ * is unavailable or its chunks drop). An AI pass then shapes the raw transcript into
+ * what the field is asking for. Prompt Mode surfaces ONE AI-generated suggestion at
+ * a time, inside the recording surface, related to what's being said (field metadata
+ * + the Mirror).
  *
  * The host still renders the field's label/question; `meta` carries that same
  * info to the AI so shaping + prompts are about THIS field. See
@@ -52,6 +56,15 @@ export function VoiceField({
   const shape = useAction(api.voice.shape);
   const fetchPrompts = useAction(api.voice.prompts);
   const speech = useSpeechRecognition();
+  const whisper = useWhisperRecorder();
+
+  // We can offer the mic if EITHER transcriber works: Whisper covers browsers with
+  // no Web Speech (Firefox/Safari), Web Speech covers the live caption + fallback.
+  const canSpeak = whisper.supported || speech.supported;
+  // Live caption source: Web Speech is instant; when it's absent, show Whisper's
+  // text as segments confirm (a few seconds behind, but real).
+  const liveFinal = speech.supported ? speech.finalText : whisper.text;
+  const liveInterim = speech.supported ? speech.interim : "";
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [prompts, setPrompts] = useState<string[]>([]);
@@ -109,9 +122,9 @@ export function VoiceField({
 
   useEffect(() => {
     if (phase !== "listening") return;
-    const t = window.setTimeout(() => loadPrompts(speech.finalText), speech.finalText ? 2500 : 0);
+    const t = window.setTimeout(() => loadPrompts(liveFinal), liveFinal ? 2500 : 0);
     return () => window.clearTimeout(t);
-  }, [phase, speech.finalText, loadPrompts]);
+  }, [phase, liveFinal, loadPrompts]);
 
   // Show exactly ONE prompt at a time; rotate through the set so it stays gentle.
   useEffect(() => {
@@ -127,13 +140,23 @@ export function VoiceField({
     setPrompts([]);
     setPIdx(0);
     speech.reset();
-    speech.start();
+    speech.start(); // instant live caption + fallback transcript
+    void whisper.start(); // chunked Whisper — the accurate transcript (no-op if unsupported)
     setPhase("listening");
   };
 
   const finish = async () => {
-    const raw = speech.stop();
+    const local = speech.stop(); // on-device transcript (instant, the fallback)
     setPhase("analyzing");
+    // Whisper is the source of truth; await its final segments. Fall back to the
+    // on-device transcript if Whisper produced nothing (unsupported, or every chunk dropped).
+    let raw = local;
+    try {
+      const w = (await whisper.stop()).trim();
+      if (w) raw = w;
+    } catch {
+      raw = local;
+    }
     let clean = raw;
     try {
       clean = (await shape({ raw, ...aiMeta })) || raw;
@@ -153,11 +176,13 @@ export function VoiceField({
   // already there, and put the cursor back in the box to keep typing.
   const cancel = useCallback(() => {
     speech.stop(); // discard the transcript
+    void whisper.stop().catch(() => {}); // release the mic; ignore the result
+    whisper.reset();
     setPrompts([]);
     setPIdx(0);
     setPhase("idle");
     requestAnimationFrame(() => taRef.current?.focus());
-  }, [speech]);
+  }, [speech, whisper]);
 
   useEffect(() => {
     if (phase !== "listening") return;
@@ -194,7 +219,7 @@ export function VoiceField({
               }`
             }`}
           />
-          {speech.supported && (
+          {canSpeak && (
             <span className="vf-tipwrap absolute right-2.5 bottom-2.5">
               <button
                 type="button"
@@ -258,8 +283,8 @@ export function VoiceField({
       <div
         className={`vf-script text-center text-[15px] leading-relaxed text-ink-soft max-w-[460px] ${analyzing ? "vf-blurring" : ""}`}
       >
-        {speech.finalText || (!speech.interim && <span className="text-ink-mute">listening…</span>)}
-        {speech.interim && <span className="vf-interim"> {speech.interim}</span>}
+        {liveFinal || (!liveInterim && <span className="text-ink-mute">listening…</span>)}
+        {liveInterim && <span className="vf-interim"> {liveInterim}</span>}
         {!analyzing && <span className="vf-caret" />}
       </div>
 
@@ -280,7 +305,7 @@ export function VoiceField({
       <div className="flex items-center justify-center gap-2 text-[11.5px] text-ink-mute">
         {analyzing ? (
           <span className="text-[#8A6A2E]">understanding what you mean…</span>
-        ) : speech.error === "not-allowed" ? (
+        ) : speech.error === "not-allowed" || whisper.error === "not-allowed" ? (
           "I can't hear the mic — check the browser's mic permission."
         ) : (
           <>

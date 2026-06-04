@@ -102,7 +102,7 @@ export function Settings() {
 
   return (
     <div className="h-full overflow-auto bg-paper">
-      <div className="max-w-[640px] mx-auto px-10 pt-11 pb-20">
+      <div className="max-w-[640px] mx-auto px-5 pt-8 pb-20 md:px-10 md:pt-11">
         <div className="text-[12px] tracking-[0.18em] uppercase text-ink-mute mb-2">Settings</div>
         <h2 className="text-[30px] tracking-tight text-ink mb-4">How I treat you</h2>
 

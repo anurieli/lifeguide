@@ -88,7 +88,7 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
       className="h-full overflow-auto"
       style={{ background: "radial-gradient(900px 480px at 70% -10%, #FFFDF7, #FAF8F2)" }}
     >
-      <div className="max-w-[680px] mx-auto px-8 py-14">
+      <div className="max-w-[680px] mx-auto px-5 py-8 md:px-8 md:py-14">
         {/* greeting */}
         <div className="text-[30px] font-semibold tracking-tight mb-1.5 text-ink">
           {mode === "am" ? `${greeting()}.` : "Before bed."}

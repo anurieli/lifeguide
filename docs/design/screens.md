@@ -49,12 +49,14 @@
 **Purpose:** the always-present left rail that switches surfaces. One quiet column of icons; the work fills the rest.
 **On it:** an icon per primary surface (Today / Core / Board), the current one highlighted, with an **account avatar pinned at the bottom**. Clicking the avatar no longer signs you out; it opens a small popup menu — **Settings · Account · Sign out**. Settings and Account both open the Settings surface for now (Account is not yet its own page); Sign out ends the session. The Board stays mounted across nav so its canvas state survives. The active tab is **remembered across refreshes** (persisted per-device in `localStorage` under `lifeguide.activeView`), so a reload returns you to where you were instead of snapping back to Today.
 **One thing:** move between surfaces without losing your place; account actions tucked into one bottom menu, not the main column.
+**Mobile (< `md`, 768px):** the rail folds down into a **fixed bottom tab bar** — the same icons spread horizontally (Today / Core / Board), plus a **Coach** tab and the account avatar. The "L" wordmark is hidden, the account popup opens upward, and the main surface gives up the bottom 64px so content is never trapped under the bar. Desktop (≥ `md`) is unchanged: the vertical left rail. Floating dev/ambient widgets adapt too — the Feedback tab is desktop-only, and the Atmosphere orb lifts clear of the bar on mobile.
 **Status:** built. [`components/shell/Rail.tsx`](../../components/shell/Rail.tsx), [`components/shell/AppShell.tsx`](../../components/shell/AppShell.tsx).
 
 ## The docked Coach
 **Purpose:** talk-first interaction on every surface (rules 3, 4). One presence, context-aware, acts from far away.
 **On it:** a round gold-ringed FAB that opens a dark panel: header with the per-surface context line ("sees your board · knows you"), a message thread (gold user bubbles, dark coach bubbles), and an input. Present on every app surface, scoped to the current one.
 **One thing:** the conversation. It sits beside the work, never over it.
+**Mobile (< `md`):** there is no FAB — the Coach is **embedded in the bottom bar** as its own tab. Tapping it slides up a full-width dark sheet that fills the screen above the bar; tapping again dismisses it. Open state is shared (lifted to `AppShell`) so the desktop FAB and the mobile tab drive the same panel.
 **Status:** built. [`components/coach/CoachDock.tsx`](../../components/coach/CoachDock.tsx). Acting "from far away" (Coach editing the board/goals directly) is partial-to-proposed.
 
 ## Settings

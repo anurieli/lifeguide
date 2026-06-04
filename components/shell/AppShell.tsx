@@ -17,6 +17,9 @@ const VIEWS: View[] = ["today", "core", "board", "settings"];
 
 export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   const [view, setView] = useState<View>("today");
+  // Coach open state lives here so the mobile bottom-bar tab and the desktop
+  // floating dock share one source of truth.
+  const [coachOpen, setCoachOpen] = useState(false);
 
   // Restore the last-viewed tab after mount. Done in an effect (not a lazy
   // useState initializer) so server and first client render agree — reading
@@ -33,9 +36,15 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
 
   return (
     <MusicProvider>
-      <div className="flex h-screen bg-paper overflow-hidden">
-        <Rail view={view} onNav={setView} />
-        <main className="flex-1 relative h-screen overflow-hidden">
+      <div className="flex h-[100dvh] bg-paper overflow-hidden">
+        <Rail
+          view={view}
+          onNav={setView}
+          coachOpen={coachOpen}
+          onCoach={() => setCoachOpen((o) => !o)}
+        />
+        {/* Leave room for the fixed bottom bar on mobile; full height on desktop. */}
+        <main className="flex-1 relative h-[calc(100dvh-64px)] md:h-screen overflow-hidden">
           {/* Board stays mounted so canvas state (viewport, in-flight edits) survives nav. */}
           <div className={view === "board" ? "absolute inset-0" : "hidden"}>
             <Whiteboard surfaceId={surfaceId} />
@@ -44,7 +53,12 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
           {view === "core" && <Core />}
           {view === "settings" && <Settings />}
         </main>
-        <CoachDock view={view} surfaceId={surfaceId} />
+        <CoachDock
+          view={view}
+          surfaceId={surfaceId}
+          open={coachOpen}
+          onToggle={() => setCoachOpen((o) => !o)}
+        />
         <FeedbackWidget view={view} />
         {/* Atmosphere: ambient music, always at the ready across the app. */}
         <AtmospherePlayer />

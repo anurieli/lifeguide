@@ -5,6 +5,7 @@ import {
   Sun,
   Gem,
   LayoutGrid,
+  MessageCircle,
   Settings as SettingsIcon,
   User,
   LogOut,
@@ -18,6 +19,34 @@ const ITEMS: { key: View; label: string; Icon: typeof Sun }[] = [
   { key: "core", label: "Core", Icon: Gem },
   { key: "board", label: "Board", Icon: LayoutGrid },
 ];
+
+// One nav target. Vertical pill on the desktop rail; an evenly-spread tab on the
+// mobile bottom bar (where it flexes to fill the row).
+function NavButton({
+  Icon,
+  label,
+  active,
+  onClick,
+}: {
+  Icon: typeof Sun;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-1 md:flex-none flex-col items-center justify-center gap-1 rounded-2xl text-[10.5px] transition h-[52px] md:w-[60px] md:h-[58px] ${
+        active
+          ? "bg-accent text-white"
+          : "text-ink-mute hover:bg-paper-2 hover:text-ink-soft"
+      }`}
+    >
+      <Icon className="w-[21px] h-[21px]" strokeWidth={2} />
+      {label}
+    </button>
+  );
+}
 
 function MenuItem({
   Icon,
@@ -43,7 +72,17 @@ function MenuItem({
   );
 }
 
-export function Rail({ view, onNav }: { view: View; onNav: (v: View) => void }) {
+export function Rail({
+  view,
+  onNav,
+  coachOpen,
+  onCoach,
+}: {
+  view: View;
+  onNav: (v: View) => void;
+  coachOpen: boolean;
+  onCoach: () => void;
+}) {
   const { signOut } = useAuthActions();
   const [menuOpen, setMenuOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -61,26 +100,31 @@ export function Rail({ view, onNav }: { view: View; onNav: (v: View) => void }) 
   }, [menuOpen]);
 
   return (
-    <div className="w-[84px] h-screen bg-card border-r border-line flex flex-col items-center py-[18px] z-50 flex-shrink-0">
-      <div className="font-extrabold text-xl text-ink mb-7">L</div>
-      <div className="flex flex-col gap-1.5 flex-1">
+    <div className="fixed bottom-0 inset-x-0 h-[64px] flex-row items-center px-2 border-t border-line z-50 md:static md:inset-auto md:w-[84px] md:h-screen md:flex-col md:items-center md:py-[18px] md:px-0 md:border-t-0 md:border-r md:flex-shrink-0 bg-card flex">
+      <div className="hidden md:block font-extrabold text-xl text-ink mb-7">L</div>
+      <div className="flex flex-1 flex-row md:flex-col gap-1 md:gap-1.5 items-center justify-around md:justify-start">
         {ITEMS.map(({ key, label, Icon }) => (
-          <button
+          <NavButton
             key={key}
+            Icon={Icon}
+            label={label}
+            active={view === key}
             onClick={() => onNav(key)}
-            className={`w-[60px] h-[58px] rounded-2xl flex flex-col items-center justify-center gap-1 text-[10.5px] transition ${
-              view === key
-                ? "bg-accent text-white"
-                : "text-ink-mute hover:bg-paper-2 hover:text-ink-soft"
-            }`}
-          >
-            <Icon className="w-[21px] h-[21px]" strokeWidth={2} />
-            {label}
-          </button>
+          />
         ))}
+        {/* Coach lives in the bottom bar on mobile — chat is one tap from anywhere.
+            On desktop the Coach has its own floating dock, so this tab is hidden. */}
+        <div className="md:hidden flex-1 flex">
+          <NavButton
+            Icon={MessageCircle}
+            label="Coach"
+            active={coachOpen}
+            onClick={onCoach}
+          />
+        </div>
       </div>
 
-      <div ref={anchorRef} className="relative">
+      <div ref={anchorRef} className="relative flex items-center">
         <button
           onClick={() => setMenuOpen((o) => !o)}
           title="Account"
@@ -92,7 +136,7 @@ export function Rail({ view, onNav }: { view: View; onNav: (v: View) => void }) 
         </button>
 
         {menuOpen && (
-          <div className="absolute left-[48px] bottom-0 w-44 bg-card border border-line rounded-xl shadow-xl py-1.5 z-[60]">
+          <div className="absolute right-0 bottom-[120%] md:left-[48px] md:right-auto md:bottom-0 w-44 bg-card border border-line rounded-xl shadow-xl py-1.5 z-[60]">
             <div className="px-3 pt-1 pb-1.5 text-[11px] tracking-[0.14em] uppercase text-ink-mute">
               You
             </div>

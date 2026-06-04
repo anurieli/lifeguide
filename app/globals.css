@@ -376,6 +376,15 @@ body {
   --mood: #b8945a;
 }
 
+/* On mobile the rail becomes a bottom bar (64px) and the left rail is gone, so
+   anchor the orb to the screen edge and lift it clear of the bar. */
+@media (max-width: 767px) {
+  .atmo-root {
+    left: 14px;
+    bottom: 96px; /* clears the 64px bottom bar with margin */
+  }
+}
+
 /* the collapsed control: orb on top, mood name beneath, anchored bottom-left */
 .atmo-orb-wrap {
   position: absolute;

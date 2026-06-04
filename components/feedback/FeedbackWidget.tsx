@@ -170,7 +170,9 @@ export function FeedbackWidget({ view }: { view: View }) {
   const panelTop = Math.max(12, Math.min(top - 40, window.innerHeight - 380));
 
   return (
-    <div data-feedback-ignore>
+    // Hidden on mobile: a draggable right-edge tab collides with the bottom-bar
+    // Coach sheet on small screens. Feedback stays a desktop affordance.
+    <div data-feedback-ignore className="hidden md:block">
       {/* Docked tab — the resting state. Drag vertically; tap to open. */}
       <button
         onPointerDown={onPointerDown}

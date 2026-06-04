@@ -17,12 +17,21 @@ const CTX: Record<View, string> = {
   settings: "knows you",
 };
 
-export function CoachDock({ view, surfaceId }: { view: View; surfaceId: Id<"surfaces"> }) {
+export function CoachDock({
+  view,
+  surfaceId,
+  open,
+  onToggle,
+}: {
+  view: View;
+  surfaceId: Id<"surfaces">;
+  open: boolean;
+  onToggle: () => void;
+}) {
   const ask = useAction(api.coach.ask);
   // Persisted, reactive history. The user turn appears the instant the action commits it,
   // and the reply follows when the model returns. A static welcome shows before any chat exists.
   const stored = useQuery(api.messages.list, {});
-  const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [errored, setErrored] = useState(false);
@@ -55,7 +64,7 @@ export function CoachDock({ view, surfaceId }: { view: View; surfaceId: Id<"surf
   return (
     <>
       <div
-        className={`fixed bottom-[92px] right-6 w-[380px] max-w-[calc(100vw-48px)] h-[72vh] max-h-[660px] bg-coach rounded-[18px] z-[61] shadow-2xl flex flex-col overflow-hidden transition-all duration-200 ${
+        className={`fixed z-[61] bg-coach shadow-2xl flex flex-col overflow-hidden transition-all duration-200 inset-x-0 bottom-[64px] h-[80dvh] rounded-t-[18px] md:inset-x-auto md:bottom-[92px] md:right-6 md:w-[380px] md:max-w-[calc(100vw-48px)] md:h-[72vh] md:max-h-[660px] md:rounded-[18px] ${
           open
             ? "opacity-100 translate-y-0 pointer-events-auto"
             : "opacity-0 translate-y-4 pointer-events-none"
@@ -116,8 +125,8 @@ export function CoachDock({ view, surfaceId }: { view: View; surfaceId: Id<"surf
       </div>
 
       <button
-        onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-coach text-white z-[60] shadow-xl flex items-center justify-center hover:scale-105 transition"
+        onClick={onToggle}
+        className="hidden md:flex fixed bottom-6 right-6 w-14 h-14 rounded-full bg-coach text-white z-[60] shadow-xl items-center justify-center hover:scale-105 transition"
         title="Coach"
       >
         {!open && (

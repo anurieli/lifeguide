@@ -120,7 +120,7 @@ export function Core() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-[760px] mx-auto px-8 py-10">
+      <div className="max-w-[760px] mx-auto px-5 py-8 md:px-8 md:py-10">
         <div className="flex items-start justify-between gap-4">
           <div className="text-[11px] tracking-[0.16em] uppercase text-gold mb-2">
             The Blueprint · who you are

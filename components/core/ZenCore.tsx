@@ -5,7 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { BLUEPRINT, type Malleability } from "@/lib/blueprint";
 import { ZenEditor, type ZenEditorHandle } from "./ZenEditor";
-import { LayoutGrid, Mic } from "lucide-react";
+import { LayoutGrid, Mic, ChevronLeft } from "lucide-react";
 
 const DOT: Record<Malleability, string> = { green: "#4F7A4A", yellow: "#B8945A", red: "#B5524A" };
 
@@ -200,6 +200,18 @@ export function ZenCore({ onExit }: { onExit: () => void }) {
         </button>
       </div>
 
+      {/* Subliminal exit — always faintly present in the corner; brightens on
+          hover. Hidden while the full header is showing, so the two never
+          double up. Calm, never bombarding. */}
+      <button
+        onClick={onExit}
+        className={`absolute top-4 right-6 z-20 text-[10.5px] tracking-[0.22em] uppercase text-ink-mute transition-all duration-500 hover:text-ink hover:opacity-100 ${
+          headerShown ? "opacity-0 pointer-events-none" : "opacity-30"
+        }`}
+      >
+        Exit Zen
+      </button>
+
       <div className="flex h-full">
         {/* Timeline rail → expands into the Core table of contents on hover */}
         <div
@@ -236,10 +248,24 @@ export function ZenCore({ onExit }: { onExit: () => void }) {
 
           {/* expanded TOC */}
           <div
-            className={`absolute inset-0 py-5 overflow-y-auto transition-opacity duration-200 ${
+            className={`absolute inset-0 flex flex-col transition-opacity duration-200 ${
               railOpen ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
           >
+            {/* rail header — the way back out of Zen */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-line flex-shrink-0">
+              <span className="text-ink font-semibold tracking-tight flex items-center gap-2 text-[14px]">
+                <span className="text-gold">◆</span> Core
+              </span>
+              <button
+                onClick={onExit}
+                className="text-[11.5px] text-ink-mute hover:text-ink flex items-center gap-1 transition"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" /> Exit Zen
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-4">
             {BLUEPRINT.map((s, si) => (
               <div key={s.title} className="mb-3">
                 <div className="text-[10.5px] tracking-[0.18em] uppercase text-ink-mute px-6 mb-1.5">
@@ -266,6 +292,7 @@ export function ZenCore({ onExit }: { onExit: () => void }) {
                 })}
               </div>
             ))}
+            </div>
           </div>
         </div>
 

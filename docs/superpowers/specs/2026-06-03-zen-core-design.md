@@ -45,6 +45,8 @@ A focused mode over the existing Core, reachable from the Core surface (a "Zen" 
 
 **Header on scroll-to-top.** Scrolling up past the first question reveals a slim header (`◆ Core` · answered count · the **Commit Core** control). Scrolling back down tucks it away.
 
+**Exit (built).** Three calm ways back to the grid, honoring "calm, never bombarding": (1) the expanded rail is topped by a **rail header** (`◆ Core` + an **Exit Zen** back control); (2) a **subliminal "Exit Zen"** label in the top-right corner, faint by default and brightening on hover, hidden while the scroll header is up so the affordances never double; (3) the scroll-to-top header above. All call `onExit()`. (As-built; the rail currently shows the Core TOC, not yet the full app nav described above.)
+
 **Navigation.** Wheel/trackpad scroll moves one question per gesture with a soft slide (snappy — short threshold + cooldown). Keyboard per Section 5. Clicking a TOC entry jumps there.
 
 **Themes.** Dark and light, following the app's theme setting.

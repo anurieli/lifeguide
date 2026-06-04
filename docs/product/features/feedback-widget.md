@@ -12,6 +12,8 @@ LifeGuide is in a single-builder, dogfooding phase. The fastest way to improve i
 
 A slim vertical tab labeled **"Feedback?"** rests against the right edge of the app on every authenticated surface. The user can drag it up or down to reposition it; it stays where they leave it (remembered per browser). Tapping it opens a small composer: pick a type (**Bug · Feature · Other**), type a note or tap the mic to dictate it (live transcription, on-device), and Submit. A brief "Thanks. Noted." confirms, and the composer collapses back to the docked tab.
 
+**Desktop-only.** The tab is rendered only at the `md` breakpoint and up; on mobile (< 768px) it is hidden, because a fixed right-edge tab collides with the full-width Coach sheet that opens from the bottom bar. Feedback stays a desktop affordance for now.
+
 On submit the widget silently attaches: the current route and app view, the page title, viewport size, the user agent, the page's recent JS/console errors, and a PNG snapshot of the visible page (the widget itself is excluded from the shot). Nothing about this is asked of the user.
 
 There is no Coach path: feedback is deliberately the user's raw words, with no AI rewrite.

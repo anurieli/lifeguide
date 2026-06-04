@@ -13,7 +13,7 @@ Made the app shell responsive. Below the `md` breakpoint (768px) the left **rail
 
 Files: `components/shell/Rail.tsx`, `components/shell/AppShell.tsx`, `components/coach/CoachDock.tsx`, `components/feedback/FeedbackWidget.tsx`, `components/today/Today.tsx`, `components/core/Core.tsx`, `components/settings/Settings.tsx`, `app/layout.tsx`, `app/globals.css`.
 
-**Docs touched:** `docs/design/screens.md` (§The rail — mobile bottom-bar behavior; §The docked Coach — embedded-tab behavior).
+**Docs touched:** `docs/design/screens.md` (§The rail — mobile bottom-bar behavior; §The docked Coach — embedded-tab behavior), `docs/product/features/coach.md` (§2 responsive presentation), `docs/product/features/feedback-widget.md` (§2 desktop-only on mobile), `docs/product/features/atmosphere.md` (§2 + §4 mobile orb position).
 
 ## 2026-06-04 · Voice transcript cleanup: semantic VAD + Coach-restart de-dup
 

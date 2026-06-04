@@ -10,7 +10,7 @@ The soul calls LifeGuide "a calm room he returns to." A room has an atmosphere. 
 
 ## 2. User-facing behavior
 
-A small orb sits at the bottom-left of the app, just clear of the rail. At rest it shows a still dot on white; while music plays it fills with the current mood's color, runs a live soundwave, pulses a soft halo, and names the mood in small text beneath it, so the orb itself signals what is playing. Clicking it scales open (from the orb's own origin) into the **Atmosphere** panel:
+A small orb sits at the bottom-left of the app, just clear of the rail (on mobile, where the rail becomes a bottom bar, the orb lifts via a media query to sit clear of that bar instead). At rest it shows a still dot on white; while music plays it fills with the current mood's color, runs a live soundwave, pulses a soft halo, and names the mood in small text beneath it, so the orb itself signals what is playing. Clicking it scales open (from the orb's own origin) into the **Atmosphere** panel:
 
 - A **now-playing** block: the current mood, the track name, a one-line description, a play/pause button, a **real waveform** while playing (a live oscilloscope drawn from the actual audio, not a canned animation), and a loop glyph (every track loops seamlessly). The orb's soundwave is the same real signal, in miniature.
 - A **mood meter**: the four moods as a color-coded list. Picking one crossfades to it (gapless) and tints the whole panel to that mood's color.
@@ -41,7 +41,7 @@ Coach path: not wired in v1. The hooks (`pickMood`, `togglePlay`, `setAuto`) are
 
 Atmosphere **owns** its three `settings` fields and the audio assets. It **draws** nothing from the streams in v1 and **publishes** nothing to the Mirror. It is an ambient surface, not a context source: a person's listening is not (yet) signal about who they are.
 
-It is mounted inside `AppShell` (wrapping the whole shell in `MusicProvider`), so it is present on every surface (Today, Core, Board, Guide, Settings) and survives navigation between them. It coexists with the **Coach dock** (right side) and the rail (left); the orb is positioned to clear both. It is intentionally decoupled from the Context Bus so it can be enabled, disabled, or removed without touching the spine.
+It is mounted inside `AppShell` (wrapping the whole shell in `MusicProvider`), so it is present on every surface (Today, Core, Board, Guide, Settings) and survives navigation between them. It coexists with the **Coach dock** (right side on desktop) and the rail (left on desktop, a bottom bar on mobile); the orb is positioned to clear both, lifting above the bottom bar at the mobile breakpoint. It is intentionally decoupled from the Context Bus so it can be enabled, disabled, or removed without touching the spine.
 
 The intended future tie: when **AUTO** graduates from a clock heuristic to real context, `moodForHour` is the single function that gets replaced by a read of the active session, the surface in view, and the person's energy. That is the one designed seam into the Context Bus.
 

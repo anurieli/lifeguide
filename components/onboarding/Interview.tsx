@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { nextQuestion } from "@/lib/interview/policy";
 import { filledCount } from "@/lib/levels";
+import { VoiceField } from "@/components/voice/VoiceField";
 
 // ─── Orientation helpers ──────────────────────────────────────────────────────
 
@@ -194,18 +195,20 @@ export function Interview({
             </div>
           )}
 
-          {/* Textarea */}
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={5}
-            placeholder="Write yours…"
-            className="w-full bg-card border border-line rounded-[14px] p-4 text-[15px] text-ink leading-relaxed outline-none resize-y focus:border-gold transition placeholder:text-ink-mute/70 mb-4"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                void handleSave();
-              }
+          {/* Textarea (voice-capable) */}
+          <VoiceField
+            meta={{
+              id: q.key,
+              question: q.title,
+              descriptor: q.description || undefined,
+              placeholder: "Write yours…",
+              intent: `a clear, honest, first-person answer about: ${q.title.toLowerCase()}`,
             }}
+            value={draft}
+            onChange={setDraft}
+            rows={5}
+            className="mb-4"
+            inputClassName="w-full bg-card border border-line rounded-[14px] p-4 pr-12 text-[15px] text-ink leading-relaxed outline-none resize-y focus:border-gold transition placeholder:text-ink-mute/70"
           />
 
           {/* Actions */}

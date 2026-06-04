@@ -138,20 +138,21 @@ interface VoiceProvider {
 ### Client-side: `VoiceInterview` component
 
 1. Calls `mintRealtimeSession` (via `useAction`) to get the ephemeral secret and model id.
-2. Calls `navigator.mediaDevices.getUserMedia({ audio: true })` to get the mic stream.
-3. Creates an `RTCPeerConnection`, adds the mic track, creates a data channel `"oai-events"`, and creates an SDP offer.
+2. Calls `navigator.mediaDevices.getUserMedia({ audio: true })` to get the mic stream, and taps it with a Web Audio `AnalyserNode` (the "you" half of the waveform).
+3. Creates an `RTCPeerConnection`, adds the mic track, creates a data channel `"oai-events"`, and creates an SDP offer. In `pc.ontrack`, the remote (Coach) audio stream is both attached to an `<audio>` element for playback **and** tapped with a second `AnalyserNode` (the "Coach" half of the waveform).
 4. Posts the SDP offer to `https://api.openai.com/v1/realtime/calls` (GA WebRTC endpoint; model is bound to the ephemeral key) with `Authorization: Bearer <clientSecret>` and `Content-Type: application/sdp`. On a non-OK response the status + body are surfaced in the error message.
 5. Sets the SDP answer as the remote description.
-6. Listens for transcript events on the `"oai-events"` data channel — streaming **delta** events fill the in-progress turn live (word by word), **done/completed** events commit the full turn to the DB:
-   - `"response.audio_transcript.delta"` → appends to the live coach partial (`coachLive`).
-   - `"response.audio_transcript.done"` → `interview.appendTurn({ role: "coach", text })`, clears `coachLive`.
+6. **The Coach leads.** On the data channel's `open` event the client sends a `{ type: "response.create", response: { instructions } }` event instructing the model to greet the person and ask the first question — so the conversation starts itself instead of waiting for the user to speak first.
+7. Listens for transcript events on the `"oai-events"` data channel — streaming **delta** events fill the in-progress turn live (word by word), **done/completed** events commit the full turn to the DB. Both the pre-GA and GA event names are handled so the Coach's words always stream in:
+   - `"response.audio_transcript.delta"` / `"response.output_audio_transcript.delta"` → appends to the live coach partial (`coachLive`).
+   - `"response.audio_transcript.done"` / `"response.output_audio_transcript.done"` → `interview.appendTurn({ role: "coach", text })`, clears `coachLive`.
    - `"conversation.item.input_audio_transcription.delta"` → appends to the live user partial (`userLive`).
    - `"conversation.item.input_audio_transcription.completed"` → `interview.appendTurn({ role: "user", text })`, clears `userLive`.
    User-speech transcription only fires because the mint enables it via `session.audio.input.transcription = { model: "gpt-realtime-whisper" }`; without that, only the coach side is transcribed.
-7. On "End interview", closes the peer connection, stops mic tracks, calls `interview.end({ status:"completed" })`, and calls `onComplete()`.
-8. On any connection or mic error, sets `micState = "error"` and renders the actual error reason plus a fallback link to the text interview.
+8. **Pause / Mute / End controls** sit under the waveform. **Mute** toggles `track.enabled` on the mic (the Coach keeps talking, it just can't hear you). **Pause** holds the whole exchange — disables the mic, pauses the Coach `<audio>`, and `suspend()`s the AudioContext so the waveform freezes — and **Resume** restores it (respecting the mute state). **End** closes the peer connection, stops mic tracks, tears down the audio graph, calls `interview.end({ status:"completed" })`, and calls `onComplete()`. The status chip reads `Listening` / `Muted` / `Paused` accordingly.
+9. On any connection or mic error, sets `micState = "error"` and renders the actual error reason plus a fallback link to the text interview.
 
-**Live view (adopts the blueprint VoiceField language):** committed turns render as conversation bubbles (coach left `bg-coach`, user right ink/white); the active turn streams in as a ghosted bubble with a blinking `vf-caret`; a living `vf-wave` waveform sits at the foot; a single `vf-pulse` dot + "Listening" is the only status chrome. The view fills its container (`h-full`, max-width 760px, centered) so it works full-screen or inside a modal, and auto-scrolls as turns and live words arrive.
+**Live view (adopts the blueprint VoiceField language):** committed turns render as conversation bubbles (coach left `bg-coach`, user right ink/white); the active turn streams in as a ghosted bubble with a blinking `vf-caret`; a single `vf-pulse` dot + status chip is the only status chrome. The **waveform is real and two-colored** — a `requestAnimationFrame` loop reads both analysers each frame, picks whoever is louder, and shapes the `vf-wave` bars to that party's frequency spectrum in their color (**gold `#B8945A`** = Coach, **blue `#3A5C86`** = you, ghost `#C7BEAC` = silence), so the line reacts to whoever is actually speaking. The view is centered with breathing room on every edge (`px-5 sm:px-8 py-5 sm:py-8`, max-width 680px) so it sits well on phone and desktop, and auto-scrolls as turns and live words arrive.
 
 ---
 

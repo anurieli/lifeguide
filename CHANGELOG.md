@@ -7,6 +7,12 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-04 · Voice onboarding rework: Coach leads, real two-color waveform, mute/pause controls
+
+The realtime voice interview (`VoiceInterview.tsx`) was reworked around three things. (1) **The Coach leads** — on the data channel's `open` event the client sends a `response.create` so the model greets the person and asks the first question instead of waiting for the user to speak. Both pre-GA and GA transcript event names are now handled so the Coach's words always stream in. (2) **The waveform is real and two-colored** — a `requestAnimationFrame` loop taps a Web Audio `AnalyserNode` on each side (your mic + the Coach's remote track), picks whoever is louder each frame, and shapes the bars to that party's spectrum in their color (gold `#B8945A` = Coach, blue `#3A5C86` = you, ghost = silence). (3) **Mute / Pause / End controls** sit under the wave: Mute toggles the mic track (Coach keeps talking), Pause holds the whole exchange (mic off, Coach audio paused, AudioContext suspended so the wave freezes), Resume restores it respecting mute, End tears down the audio graph and advances to synthesis. Layout centered with breathing room for phone + desktop.
+
+**Docs touched:** `docs/product/features/interview.md` (client-side `VoiceInterview` steps 2–9 + live-view description); `TO-CHECK.md` (new "Voice onboarding rework" QA section).
+
 ## 2026-06-04 · Fix: Backspace mid-recording no longer cancels the voice take
 
 **Root cause:** `VoiceField.tsx` registered a global `window` keydown listener during the `listening` phase that called `cancel()` (discarding the recording and transcript) on both `Backspace` and `Escape`. Pressing Backspace at any point while speaking silently threw away the entire take.

@@ -18,6 +18,13 @@ Features that are done but haven't been manually verified yet.
 - [ ] **(d) Level promotion:** fill all 18 Core boxes (via the text interview + manual edits if needed), run `settings.recompute` (or trigger it via synthesis), and confirm `blueprintStatus` becomes `"complete"`, `level` becomes `1`, and the Home banner is hidden.
 - [ ] **(e) Environment variable:** confirm `OPENAI_API_KEY` is present in the Convex deployment for voice (realtime sessions) and synthesis. Absent key produces a clean error in `VoiceInterview` ("Type it out instead" fallback shown) and a silent no-op in synthesis (user still proceeds to the app).
 
+### Voice onboarding rework — Coach leads, waveform, controls (2026-06-04)
+- [ ] **Coach leads:** start a voice interview and stay silent — confirm the Coach greets you and asks the first question on its own within a second or two (the `response.create` on data-channel open fired). If it waits for you to speak, check the console for whether the `dc` `open` event fired before the model was ready.
+- [ ] **Live coach transcript:** confirm the Coach's words stream into the ghosted bubble as it speaks (this depends on `response.output_audio_transcript.delta` — if the bubble stays empty while audio plays, log the actual event `type`s from the data channel and add them).
+- [ ] **Reactive two-color waveform:** when the Coach speaks the bars dance **gold** and react to its audio; when you speak they turn **blue** and react to your voice; in silence they settle to a low ghost line. Confirm the bars actually move with amplitude (not random).
+- [ ] **Controls:** **Mute** silences your mic while the Coach keeps talking (status → "Muted"); **Pause** freezes the wave + pauses the Coach + disables the mic (status → "Paused"), **Resume** restores it (and re-mutes if you were muted); **End** finalizes the session and advances to synthesis.
+- [ ] **Layout:** check on a phone viewport and desktop — the conversation is centered with comfortable padding on all edges (not hugging the borders).
+
 ---
 
 ### Drag photos and documents onto the Vision Board

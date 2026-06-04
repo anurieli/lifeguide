@@ -100,7 +100,7 @@ export const synthesizeInterview = action({
     // Build transcript text
     const transcriptText = buildTranscript(session.transcript);
 
-    let drafted: Record<string, string | null>;
+    let drafted: Record<string, string | null> | null = null;
     try {
       // Call synthesis model
       const { client, model, temperature } = await aiForTask(ctx, "synthesis", userId);
@@ -115,7 +115,15 @@ export const synthesizeInterview = action({
       });
       drafted = parseSynthesisJson(res.choices[0]?.message?.content ?? "{}");
     } catch {
-      // No API key or model unavailable — onboarding still proceeds
+      // No API key or model unavailable — synthesis skipped, but levels still recomputed below.
+    }
+
+    // Recompute levels regardless of whether synthesis succeeded — directly-written answers
+    // (from appendTurn) are already in coreResponses and must be reflected in blueprint status.
+    await ctx.runMutation(api.settings.recompute, {});
+
+    if (drafted === null) {
+      // Synthesis failed — return early with info about unfilled keys.
       return {
         filled: 0,
         conflicts: [],
@@ -138,9 +146,6 @@ export const synthesizeInterview = action({
       event: "synthesized",
       meta: JSON.stringify({ conflicts, filled: Object.keys(toWrite) }),
     });
-
-    // Recompute levels
-    await ctx.runMutation(api.settings.recompute, {});
 
     // Log completed event
     await ctx.runMutation(internal.interview.logEvent, {

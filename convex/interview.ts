@@ -97,6 +97,27 @@ export const start = mutation({
   },
 });
 
+/** Upsert a coreResponse row for a given user and questionKey. */
+async function upsertCoreResponse(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  questionKey: string,
+  content: string,
+) {
+  const trimmed = content.trim();
+  if (!trimmed) return;
+  const now = Date.now();
+  const existing = await ctx.db
+    .query("coreResponses")
+    .withIndex("by_user_question", (q) => q.eq("userId", userId).eq("questionKey", questionKey))
+    .first();
+  if (existing) {
+    await ctx.db.patch(existing._id, { content: trimmed, updatedAt: now });
+  } else {
+    await ctx.db.insert("coreResponses", { userId, questionKey, content: trimmed, updatedAt: now });
+  }
+}
+
 /** Append a coach or user turn to the session transcript. If role==="user", also logs an "answered" event. */
 export const appendTurn = mutation({
   args: {
@@ -123,6 +144,11 @@ export const appendTurn = mutation({
     });
 
     if (role === "user") {
+      // Persist directly to coreResponses so the text path is deterministic (no LLM dependency).
+      if (questionKey && text.trim()) {
+        await upsertCoreResponse(ctx, userId, questionKey, text);
+      }
+
       await ctx.db.insert("experienceEvents", {
         userId,
         sessionId,
@@ -202,14 +228,21 @@ export const get = query({
   },
 });
 
-/** PUBLIC — redeem a QR join token and return a safe view of the session (no sensitive fields). */
+/** PUBLIC — redeem a QR join token and return a safe view of the session (no sensitive fields).
+ *  Returns null on any validation failure (expired, missing, bad hash) so callers get a graceful state.
+ */
 export const joinWithToken = query({
   args: {
     sessionId: v.id("interviewSessions"),
     token: v.string(),
   },
   handler: async (ctx, { sessionId, token }) => {
-    const session = await requireValidToken(ctx, sessionId, token);
+    let session: Awaited<ReturnType<typeof requireValidToken>>;
+    try {
+      session = await requireValidToken(ctx, sessionId, token);
+    } catch {
+      return null;
+    }
     return {
       _id: session._id,
       experienceId: session.experienceId,
@@ -283,6 +316,11 @@ export const appendTurnByToken = mutation({
     });
 
     if (role === "user") {
+      // Persist directly to coreResponses so the text path is deterministic (no LLM dependency).
+      if (questionKey && text.trim()) {
+        await upsertCoreResponse(ctx, session.userId, questionKey, text);
+      }
+
       await ctx.db.insert("experienceEvents", {
         userId: session.userId,
         sessionId,

@@ -26,8 +26,7 @@ export function VoiceInterview({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mintSession = useAction((api as any).ai.voice.index.mintRealtimeSession);
+  const mintSession = useAction(api.ai.voice.index.mintRealtimeSession);
   const appendTurn = useMutation(api.interview.appendTurn);
   const endSession = useMutation(api.interview.end);
 

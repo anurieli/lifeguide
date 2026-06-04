@@ -14,12 +14,12 @@ describe("qr join token", () => {
     const joined = await t.query(api.interview.joinWithToken, { sessionId: id, token });
     expect(joined?.experienceId).toBe("voice-interview");
   });
-  it("rejects a bad token", async () => {
+  it("returns null for a bad token", async () => {
     const t = convexTest(schema);
     const userId = await t.run(async (ctx) => ctx.db.insert("users", {}));
     const asUser = t.withIdentity({ subject: userId });
     const id = await asUser.mutation(api.interview.start, { experienceId: "voice-interview", device: "desktop" });
     await asUser.mutation(api.interview.issueJoinToken, { sessionId: id });
-    await expect(t.query(api.interview.joinWithToken, { sessionId: id, token: "wrong" })).rejects.toThrow();
+    expect(await t.query(api.interview.joinWithToken, { sessionId: id, token: "wrong" })).toBeNull();
   });
 });

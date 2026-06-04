@@ -33,4 +33,18 @@ describe("interview sessions", () => {
     expect(s?.transcript.length).toBe(1);
     expect(s?.skipped).toContain("s1q1");
   });
+
+  it("persists user text answers directly to coreResponses", async () => {
+    const t = convexTest(schema);
+    const userId = await t.run(async (ctx) => ctx.db.insert("users", { name: "Test User" }));
+    const asUser = t.withIdentity({ subject: userId });
+    const id = await asUser.mutation(api.interview.start, {
+      experienceId: "text-interview", device: "desktop",
+    });
+    await asUser.mutation(api.interview.appendTurn, {
+      sessionId: id, role: "user", questionKey: "s1q0", text: "peace",
+    });
+    const core = await asUser.query(api.core.get, {});
+    expect(core).toMatchObject({ s1q0: "peace" });
+  });
 });

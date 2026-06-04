@@ -12,6 +12,7 @@ import type * as ai_config from "../ai/config.js";
 import type * as ai_distill from "../ai/distill.js";
 import type * as ai_openai from "../ai/openai.js";
 import type * as ai_parse from "../ai/parse.js";
+import type * as ai_synthesizeInterview from "../ai/synthesizeInterview.js";
 import type * as ai_voice_index from "../ai/voice/index.js";
 import type * as ai_voice_openaiRealtime from "../ai/voice/openaiRealtime.js";
 import type * as ai_voice_provider from "../ai/voice/provider.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   "ai/distill": typeof ai_distill;
   "ai/openai": typeof ai_openai;
   "ai/parse": typeof ai_parse;
+  "ai/synthesizeInterview": typeof ai_synthesizeInterview;
   "ai/voice/index": typeof ai_voice_index;
   "ai/voice/openaiRealtime": typeof ai_voice_openaiRealtime;
   "ai/voice/provider": typeof ai_voice_provider;

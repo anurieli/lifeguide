@@ -1,8 +1,8 @@
 # Atmosphere
 
-**Status:** built (v1) · **Element of:** spine (ambient surface, present across the app) · **Owns:** three `settings` fields (`musicEnabled`, `musicAutoplay`, `musicDefaultMood`) + four static audio assets in `/public/audio`
+**Status:** built (v1) · **Element of:** spine (ambient surface, present across the app) · **Owns:** three `settings` fields (`musicEnabled`, `musicAutoplay`, `musicDefaultMood`) + six static audio assets in `/public/audio`
 
-> Atmosphere is the app's ambient music system: four looping instrumental moods, always at the ready, controlled from a calm breathing orb. It gives the space a sound.
+> Atmosphere is the app's ambient music system: six looping instrumental moods, always at the ready, controlled from a calm breathing orb. It gives the space a sound.
 
 ## 1. Purpose
 
@@ -17,7 +17,7 @@ A small orb sits at the bottom-left of the app, just clear of the rail. At rest 
 - An **AUTO** toggle: when on, Atmosphere matches the mood to the time of day and drifts as the day moves (a v1 stand-in for the Context Bus). Any manual mood pick turns AUTO off.
 - A **volume** slider and a **Close** action.
 
-The four moods: **Inspiration** (First Light, gold), **Creative Deep Thinking** (Wander, violet), **Super Focus** (Flow State, teal), **Calm Reset** (After Hours, blue).
+The six moods: **Inspiration** (First Light, gold), **Creative Deep Thinking** (Wander, violet), **Super Focus** (Flow State, teal), **Calm Reset** (After Hours, blue), **Reflection** (Stillwater, indigo), and **Stillness** (Still Water, teal-green). The last two are neoclassical piano (Suno, contemplative). Only the original four are offered in the Settings default-mood picker; all six appear in the live meter.
 
 Durable preferences live in **Settings → Atmosphere**: turn music off entirely, autoplay on open (**on by default**), and the default mood. Live choices (the chosen mood, the volume, AUTO) are remembered across reloads in the browser, with the **last chosen mood winning over the Convex default**; they are per-browser config, not cross-device "settings."
 

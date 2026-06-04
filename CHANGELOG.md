@@ -7,6 +7,14 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-04 · Atmosphere: two new neoclassical piano moods (Reflection, Stillness)
+
+Added two contemplative solo-piano instrumentals (generated on Suno: soft felt piano, slow, thought-provoking, no percussion) as new Atmosphere moods, bringing the meter to six: **Reflection** (Stillwater, indigo) and **Stillness** (Still Water, teal-green). Shipped as static assets in `public/audio` and added to the track registry, so the live meter renders them automatically and the orb tints to their colors. No schema change: the Settings default-mood picker still offers the original four; all six are selectable in the player and the choice persists to `localStorage`. `tsc` + `next build` clean. (The tracks are from a free Suno account, so the non-commercial licensing caveat still applies before any paid/public launch.)
+
+Files: `components/music/tracks.ts`, `public/audio/{reflection,stillness}.mp3`.
+
+**Docs touched:** `docs/product/features/atmosphere.md` (mood list, asset count).
+
 ## 2026-06-04 · Voice onboarding rework: Coach leads, real two-color waveform, mute/pause controls
 
 The realtime voice interview (`VoiceInterview.tsx`) was reworked around three things. (1) **The Coach leads** — on the data channel's `open` event the client sends a `response.create` so the model greets the person and asks the first question instead of waiting for the user to speak. Both pre-GA and GA transcript event names are now handled so the Coach's words always stream in. (2) **The waveform is real and two-colored** — a `requestAnimationFrame` loop taps a Web Audio `AnalyserNode` on each side (your mic + the Coach's remote track), picks whoever is louder each frame, and shapes the bars to that party's spectrum in their color (gold `#B8945A` = Coach, blue `#3A5C86` = you, ghost = silence). (3) **Mute / Pause / End controls** sit under the wave: Mute toggles the mic track (Coach keeps talking), Pause holds the whole exchange (mic off, Coach audio paused, AudioContext suspended so the wave freezes), Resume restores it respecting mute, End tears down the audio graph and advances to synthesis. Layout centered with breathing room for phone + desktop.

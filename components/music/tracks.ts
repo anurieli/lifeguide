@@ -1,9 +1,15 @@
-// Atmosphere — the four ambient moods. Each maps to one looping instrumental
-// served as a static asset from /public/audio. The `key` is the durable id used
-// in settings (convex/schema.ts: settings.musicDefaultMood) and across the UI.
+// Atmosphere — the ambient moods. Each maps to one looping instrumental served
+// as a static asset from /public/audio. The `key` is the durable id used across
+// the UI (and, for the original four, in convex/schema.ts: settings.musicDefaultMood).
 // See docs/product/features/atmosphere.md.
 
-export type MoodKey = "inspiration" | "deep-thinking" | "focus" | "calm-reset";
+export type MoodKey =
+  | "inspiration"
+  | "deep-thinking"
+  | "focus"
+  | "calm-reset"
+  | "reflection"
+  | "stillness";
 
 export type Track = {
   key: MoodKey;
@@ -46,6 +52,22 @@ export const TRACKS: Track[] = [
     desc: "wind down & reflect",
     color: "#3A5C86", // blue
     src: "/audio/calm-reset.mp3",
+  },
+  {
+    key: "reflection",
+    mood: "Reflection",
+    title: "Stillwater",
+    desc: "contemplative neoclassical piano",
+    color: "#5C6BB0", // indigo
+    src: "/audio/reflection.mp3",
+  },
+  {
+    key: "stillness",
+    mood: "Stillness",
+    title: "Still Water",
+    desc: "soft, soothing piano",
+    color: "#3E8278", // deep teal-green
+    src: "/audio/stillness.mp3",
   },
 ];
 

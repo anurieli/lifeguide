@@ -118,7 +118,7 @@ A Convex action `convex/ai/synthesizeInterview.ts`:
 > Your wording ("unlocked if not done… once locked unlocks Level 2") was tangled. Confirmed model below — **flag if wrong.**
 
 - A blueprint is **open/in-progress** while boxes remain empty. `blueprintStatus = in_progress`, `level = 0`. Account carries a visible status: **"blueprint not finished."** The app is usable (board, etc.) but flagged to finish.
-- **Completing** the blueprint (all 18 boxes filled, or user explicitly marks done with N filled — threshold TBD, default: all 18) **locks it in** → `blueprintStatus = complete`, `level = 1`. This is the promotion: **Level 1 = app fully unlocked.**
+- **Completing** the blueprint (**all 18 boxes filled** — by the user or by synthesis) **locks it in** → `blueprintStatus = complete`, `level = 1`. This is the promotion: **Level 1 = app fully unlocked.**
 - **Level 2+** = ongoing rankings as the person keeps progressing (kept simple in v1: level derivation function exists, higher levels are a stub driven by continued engagement; full ranking rules deferred).
 - `onboardedAt` is set once the user leaves onboarding (whether or not the blueprint is complete) so they aren't trapped in the wizard; the *blueprint status* is the separate, persistent "are you done" signal that gates levels.
 
@@ -169,9 +169,9 @@ Spine first (sequential), then parallel:
 - Full manual smoke: text path and voice path each take a fresh user from Door → AppShell with a partially/fully filled Core.
 - Docs + CHANGELOG updated.
 
-## 11. Open questions
+## 11. Resolved decisions (2026-06-03)
 
-1. **Completion threshold for Level 1** — all 18 boxes, or a "good enough" subset (e.g. all reds + N)? Default assumed: all 18.
-2. **Cross-device auth for QR** — full anonymous-session join token in v1, or require same-account sign-in on phone with a noted limitation? Default assumed: implement join token if light; else fall back + document.
-3. **Where the blueprint-status badge surfaces** in the app (Home/Guide/Rail?). Default: a small banner on Home + a marker in the Guide.
-4. **Voice model id** — exact current OpenAI realtime-mini id to pin in `config.ts`.
+1. **Completion threshold for Level 1 → ALL 18 boxes filled** (by user or synthesis). `level` flips 0→1 only when every `BLUEPRINT` question has a non-empty `coreResponses` entry.
+2. **QR handoff → true join token.** Mint a short-lived token bound to the `sessionId`; any phone can join the session without signing into the account. (Build the token-mint + verify path; keep tokens short-lived and single-session-scoped.)
+3. **Status surfacing → calm Home banner + a progress marker in the Guide.** No rail badge, no persistent level chip in v1.
+4. **Voice model id** — pin a current OpenAI realtime-mini id in `convex/ai/config.ts`; resolved during build and swappable via the provider abstraction (not a user decision).

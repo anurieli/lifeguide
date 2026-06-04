@@ -34,6 +34,7 @@ export function VoiceField({
   rows = 2,
   className = "",
   inputClassName = "",
+  ctaTooltip = "Speak it, I'll shape it",
 }: {
   meta: FieldMeta;
   value: string;
@@ -45,6 +46,8 @@ export function VoiceField({
   className?: string;
   /** Extra classes for the textarea itself, so each surface keeps its own field styling. */
   inputClassName?: string;
+  /** Hover tooltip on the idle mic — tell the person where this takes them. */
+  ctaTooltip?: string;
 }) {
   const shape = useAction(api.voice.shape);
   const fetchPrompts = useAction(api.voice.prompts);
@@ -192,14 +195,11 @@ export function VoiceField({
               type="button"
               onClick={begin}
               aria-label="Speak your answer"
-              className="vf-mic vf-cta w-9 h-9 rounded-full grid place-items-center text-ink hover:text-gold"
+              className="vf-mic w-8 h-8 rounded-full grid place-items-center text-ink-mute hover:text-gold"
             >
-              <span className="vf-dot">
-                <i />
-              </span>
               <Mic className="w-[17px] h-[17px]" />
             </button>
-            <span className="vf-tip">Speak it — I&apos;ll shape it</span>
+            <span className="vf-tip">{ctaTooltip}</span>
           </span>
         )}
         {shaped && (

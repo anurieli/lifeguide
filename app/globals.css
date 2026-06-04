@@ -185,82 +185,63 @@ body {
   transform: scale(0.94);
 }
 
-/* ── Idle mic as a call-to-action: rotating rainbow ring + pulsing glow + orbiting dot ── */
-.vf-cta {
+/* ── Rainbow comet halo ──
+   A glowing rainbow comet — a bright head dragging a fading rainbow trail — that runs
+   around the rim of ANY rounded element (a pill, a card), strokeless. Wrap the element
+   in `.vf-halo`. The gradient angle is animated via a registered custom property so the
+   comet sweeps the perimeter while the (rounded-rect) mask stays put. */
+@property --vf-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+.vf-halo {
   position: relative;
   border-radius: 9999px;
-  animation: vf-cta-glow 2.6s ease-in-out infinite;
+  animation: vf-halo-glow 2.8s ease-in-out infinite;
 }
-.vf-cta::before {
-  /* the rainbow ring */
+.vf-halo > * {
+  position: relative;
+  z-index: 1;
+}
+.vf-halo::before {
   content: "";
   position: absolute;
-  inset: -2.5px;
-  border-radius: 9999px;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px; /* ring thickness */
+  /* comet: clear for most of the loop, then a rainbow trail building to a white-hot head */
   background: conic-gradient(
-    from 0deg,
-    #ff6b6b,
-    #feca57,
-    #48dbfb,
-    #1dd1a1,
-    #5f27cd,
-    #ff9ff3,
-    #ff6b6b
+    from var(--vf-angle),
+    transparent 0deg,
+    transparent 165deg,
+    rgba(91, 39, 205, 0.15) 230deg,
+    rgba(176, 106, 179, 0.6) 290deg,
+    rgba(72, 219, 251, 0.9) 333deg,
+    #ffffff 356deg,
+    transparent 360deg
   );
-  animation: vf-spin 3.4s linear infinite;
-  z-index: 0;
+  /* the gradient-border trick: keep only the `padding`-width ring, punch out the center */
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  filter: drop-shadow(0 0 4px rgba(150, 120, 255, 0.6));
+  animation: vf-angle 2.8s linear infinite;
+  pointer-events: none;
 }
-.vf-cta::after {
-  /* inner fill so the ring reads as a thin border, not a disc */
-  content: "";
-  position: absolute;
-  inset: 1px;
-  border-radius: 9999px;
-  background: var(--paper);
-  z-index: 0;
-}
-.vf-cta > * {
-  position: relative;
-  z-index: 2;
-}
-@keyframes vf-spin {
+@keyframes vf-angle {
   to {
-    transform: rotate(360deg);
+    --vf-angle: 360deg;
   }
 }
-@keyframes vf-cta-glow {
+@keyframes vf-halo-glow {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(255, 150, 200, 0);
+    box-shadow: 0 0 0 0 rgba(150, 120, 255, 0);
   }
   50% {
-    box-shadow: 0 0 16px 3px rgba(255, 150, 200, 0.5);
-  }
-}
-/* the rainbow dot that orbits the mic */
-.vf-dot {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  z-index: 3;
-  pointer-events: none;
-  animation: vf-spin 2.8s linear infinite;
-}
-.vf-dot > i {
-  display: block;
-  width: 5px;
-  height: 5px;
-  border-radius: 9999px;
-  background: #fff;
-  transform: translate(-50%, -50%) translateX(21px);
-  box-shadow: 0 0 8px 2px hsl(320 90% 65%);
-  animation: vf-hue 3s linear infinite;
-}
-@keyframes vf-hue {
-  to {
-    filter: hue-rotate(360deg);
+    box-shadow: 0 0 16px 2px rgba(150, 120, 255, 0.35);
   }
 }
 
@@ -292,10 +273,7 @@ body {
   .vf-prompt.vf-hide,
   .vf-pulse,
   .vf-word,
-  .vf-cta,
-  .vf-cta::before,
-  .vf-dot,
-  .vf-dot > i {
+  .vf-halo {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
   }
@@ -306,8 +284,8 @@ body {
   .vf-wave i {
     transition-duration: 0.001ms !important;
   }
-  /* keep the ring visible but static for reduced motion */
-  .vf-dot {
-    display: none;
+  /* hold the comet still (a faint static arc) rather than sweeping */
+  .vf-halo::before {
+    animation: none !important;
   }
 }

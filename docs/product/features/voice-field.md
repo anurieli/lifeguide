@@ -48,7 +48,9 @@ Relationship to the **onboarding voice interview**: separate mechanism (realtime
 ## 5. States
 
 - **idle** — text box + mic. Empty or holding a value.
-- **listening** — a borderless, centered surface (no box): a minimalist waveform you can tap to finish (plus a quiet finish button with a "Tap to finish" tooltip), live transcript, a breathing dot, and one Prompt Mode suggestion at a time. The idle mic is a glowing call-to-action — a rotating rainbow ring + orbiting dot + hover tooltip — to invite the first tap. The idle text box auto-grows to fit its content (no inner scrollbar).
+- **listening** — a borderless, centered surface (no box): a minimalist waveform you can tap to finish (plus a quiet finish button with a "Tap to finish" tooltip), live transcript, a breathing dot, and one Prompt Mode suggestion at a time. The idle mic is a quiet glyph with a hover tooltip (configurable via `ctaTooltip`); the idle text box auto-grows to fit its content (no inner scrollbar).
+
+The **rainbow comet halo** (`.vf-halo` in `globals.css`) is a reusable, strokeless rotating-rainbow border for *any* rounded element — a glowing head dragging a fading rainbow trail around the rim (gradient-angle animated via the registered `--vf-angle` custom property + the gradient-border mask trick). It is applied not to the mic but to the onboarding **on-ramp**: the Door's "I don't know" button, to magnetize the lost person into the guided interview.
 - **analyzing** — waveform settles to a flat ghost line, transcript blurs, spinner + "understanding what you mean…".
 - **shaped (back to idle)** — field holds the cleaned text; the "shaped · show raw" affordance is present.
 - **shaped→raw** — same as above, field showing the exact raw words; toggle reads "show shaped".

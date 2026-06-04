@@ -14,8 +14,8 @@ A field starts as an ordinary text box with a quiet mic in the corner (the mic a
 
 Happy path:
 1. The person taps the mic. The field morphs into a recording surface: a live, reactive waveform and a single breathing dot. No timer, no buttons.
-2. As they speak, words stream in live (committed words solid, in-flight words ghosted). Around the field, **Prompt Mode** surfaces 2–3 short, contextual suggestions of what they could say next — drawn from the question and what the app knows about them — fading in and dissolving as ambient nudges.
-3. When they're done, they **tap the waveform**. The surface shows a brief "understanding what you mean…" while the transcript is shaped.
+2. As they speak, words stream in live (committed words solid, in-flight words ghosted). Inside the surface, **Prompt Mode** shows **one** short, contextual suggestion at a time of what they could say next — drawn from the question and what the app knows about them, refreshed as they talk and rotated gently so only a single nudge is ever on screen.
+3. When they're done, they **tap the waveform** (or the explicit finish button beside it). The surface shows a brief "understanding what you mean…" while the transcript is shaped.
 4. The cleaned answer lands back in the field, editable and saved through the field's normal save path, with a small "✓ shaped from what you said · show raw" note. One tap swaps between the shaped version and their exact raw words. Editing by hand dismisses the note.
 
 Manual and Coach paths: VoiceField is the **manual** voice path (the person drives). It is independent of the Coach dock, which remains the conversational path. The two never block each other.
@@ -27,8 +27,8 @@ Manual and Coach paths: VoiceField is the **manual** voice path (the person driv
 | Type | Person types in the idle field | Standard controlled input; calls `onChange`, persists via host `onCommit` on blur | Manual | host field's store |
 | Begin speaking | Tap the mic | Starts client-side Web Speech recognition; switches to the recording surface | Manual | none (audio stays on device) |
 | Live transcribe | Speaking | `useSpeechRecognition` streams committed + interim words into the UI | Manual | none |
-| Prompt Mode | On start, then ~2.5s after each pause | `voice.prompts` generates 2–3 contextual suggestions from field metadata + Mirror | Manual (AI-assisted) | reads Mirror via Context Bus |
-| Finish | Tap the waveform | Stops recognition, captures the full raw transcript | Manual | none |
+| Prompt Mode | On start, then ~2.5s after each pause | `voice.prompts` generates contextual suggestions from field metadata + Mirror; the UI shows one at a time, rotating | Manual (AI-assisted) | reads Mirror via Context Bus |
+| Finish | Tap the waveform or the finish (■) button | Stops recognition, captures the full raw transcript | Manual | none |
 | Shape | After finish | `voice.shape` cleans the raw transcript to fit the field's `intent`; result written via `onChange`/`onCommit` | Manual (AI-assisted) | host field's store |
 | Show raw / shaped | Tap the toggle after shaping | Swaps the field value between the cleaned text and the exact raw words | Manual | host field's store |
 
@@ -48,7 +48,7 @@ Relationship to the **onboarding voice interview**: separate mechanism (realtime
 ## 5. States
 
 - **idle** — text box + mic. Empty or holding a value.
-- **listening** — recording surface: waveform, live transcript, breathing dot, Prompt Mode around it.
+- **listening** — recording surface: waveform + finish button, live transcript, breathing dot, and one Prompt Mode suggestion at a time inside the surface.
 - **analyzing** — waveform settles to a flat ghost line, transcript blurs, spinner + "understanding what you mean…".
 - **shaped (back to idle)** — field holds the cleaned text; the "shaped · show raw" affordance is present.
 - **shaped→raw** — same as above, field showing the exact raw words; toggle reads "show shaped".

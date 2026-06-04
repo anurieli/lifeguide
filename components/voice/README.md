@@ -76,8 +76,9 @@ Same component + different bundle = different behavior, no per-field code.
 2. On finish, the raw transcript + `meta` go to **`voice.shape`** (a Convex action) →
    cleaned text. The raw is kept; "show raw" reverts in one tap (never silently
    overwritten).
-3. While listening, **`voice.prompts`** generates 2–3 contextual nudges from `meta` +
-   the Mirror. It's ambient: any failure → no prompts, no error.
+3. While listening, **`voice.prompts`** generates contextual nudges from `meta` + the
+   Mirror; the UI shows **one at a time**, inside the recording surface, rotating gently
+   and refreshing as you speak. It's ambient: any failure → no prompts, no error.
 
 Both AI tasks live in [`convex/voice.ts`](../../convex/voice.ts) and are tuned in
 [`convex/ai/config.ts`](../../convex/ai/config.ts) (`voiceShape`, `voicePrompts`) like

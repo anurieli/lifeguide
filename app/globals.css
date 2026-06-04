@@ -519,9 +519,11 @@ body {
 .atmo-panel {
   position: absolute;
   left: 0;
-  bottom: 58px; /* float ABOVE the orb so it never covers the quick-pause icon */
+  bottom: 70px; /* float ABOVE the orb so it never covers the quick-pause icon */
   z-index: 1;
   width: 312px;
+  display: flex;
+  flex-direction: column;
   background: #fff;
   border: 1px solid #e7e1d4;
   border-radius: 16px;
@@ -532,6 +534,13 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: transform 0.22s var(--vf-ease-out), opacity 0.18s var(--vf-ease-out);
+}
+/* the mood list takes the slack and scrolls if the panel is height-capped near
+   a screen edge, so the panel never has to grow down onto the orb */
+.atmo-meter {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 .atmo-panel.open {
   transform: scale(1);

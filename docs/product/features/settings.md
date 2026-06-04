@@ -20,7 +20,7 @@ Lostness is made worse by tools that bombard. Settings & Onboarding exist to mak
 
 On finish (or "skip" at any point), `completeOnboarding` writes the rhythm and tone and stamps `onboardedAt`; if a first thing was entered, a [capture](vision-board.md) is created (`source: "paste"`) and distilled async into the board. The page swaps to the app reactively the moment `onboardedAt` is set.
 
-**Settings (any time).** A single calm surface (`components/settings/Settings.tsx`), titled "How I treat you," grouped into Daily rhythm, The Coach, Your pillars, and Yours alone. Every control writes immediately (no save button): toggles for morning/evening, segmented pickers for daily exercise, Coach tone, and reaching out; a pillar chip row with add (preset or custom); and sign-out. The north star is owned here but surfaced and edited through the [Guide](guide.md).
+**Settings (any time).** A single calm surface (`components/settings/Settings.tsx`), titled "How I treat you," grouped into Daily rhythm, The Coach, Your pillars, and Yours alone. Every control writes immediately (no save button): toggles for morning/evening, segmented pickers for daily exercise, Coach tone, and reaching out; a pillar chip row with add (preset or custom); and sign-out. The north star is owned here but surfaced and edited inline on [Home (Today)](dashboard.md) (the compass card). Settings itself is reached from the **account menu at the bottom of the rail** (Settings / Account / Sign out), not a primary rail tab; the avatar no longer signs you out on click.
 
 ## 3. Functions / actions
 
@@ -33,7 +33,7 @@ On finish (or "skip" at any point), `completeOnboarding` writes the rhythm and t
 | Set daily exercise | Settings picker | `intention` \| `gratitude` \| `free`, shaping the check-in prompt | manual | writes `settings.dailyExercise` |
 | Set Coach tone | Settings / onboarding | `gentle` \| `balanced` \| `direct` | manual (Coach may suggest) | writes `settings.coachTone` |
 | Set reaching out | Settings picker | `leave` \| `earned` \| `often`, the earned-interruption budget | manual | writes `settings.reachingOut` |
-| Set north star | Guide surface (`settings.update`) | the one-line direction the Guide renders | manual (Coach may propose) | writes `settings.northStar` |
+| Set north star | Home compass card (`settings.update`) | the one-line direction Home renders as the compass | manual (Coach may propose) | writes `settings.northStar` |
 | Add pillar | Settings "+ add pillar" | adds a preset or custom [pillar](pillars-and-goals.md) | manual | writes `pillars` (drawn) |
 | Sign out | "Yours alone" | ends the session | manual | auth only |
 
@@ -43,7 +43,7 @@ Settings **owns** the `settings` table and nothing else. It does not publish dis
 
 - **[Journal / Sessions](journal.md)** draws `morningCheckin`, `eveningCheckin`, and `dailyExercise` to decide which beats exist and what each check-in asks.
 - **[The Coach](coach.md)** draws `coachTone` to shape voice and `reachingOut` as the [earned-interruption](../concept-and-soul.md#interaction-principles--the-creative-constraint) budget (`leave` = never unprompted, `earned` = only when it has something specific and true, `often` = a wider allowance).
-- **[The Guide](guide.md)** draws `northStar` to render the person's direction.
+- **[Home (Today)](dashboard.md)** draws `northStar` to render the compass (and hosts its one editable write).
 - Onboarding **draws** [`captures`](vision-board.md) (writes one on the person's behalf) and Settings **draws** [`pillars`](pillars-and-goals.md) (adds rows) but owns neither.
 
 ## 5. States
@@ -51,7 +51,7 @@ Settings **owns** the `settings` table and nothing else. It does not publish dis
 - **Seeded, not onboarded:** `settings` row exists from bootstrap, `onboardedAt` unset. The app shows Onboarding.
 - **Onboarded:** `onboardedAt` stamped. The app proper renders; Settings is reachable.
 - **Tuned:** any field edited; `updatedAt` advances on every write.
-- **North star empty vs set:** absent until the person (or Coach) names a direction; the Guide handles the empty case.
+- **North star empty vs set:** absent until the person (or Coach) names a direction; the Home compass card handles the empty case ("write it").
 - There is no archived or conflicted state: `settings` is a single live row per user, last-write-wins.
 
 ## 6. Edge cases

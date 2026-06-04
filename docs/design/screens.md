@@ -18,11 +18,11 @@
 **One thing:** one prompt per step. Finishing writes settings and seeds a capture from the first input.
 **Status:** built. [`components/onboarding/Onboarding.tsx`](../../components/onboarding/Onboarding.tsx).
 
-## Home / Dashboard (Today)
-**Purpose:** the two daily beats and the identity-aware home. Greets you by who you are, knows the time, walks you into the right beat (rule 1).
-**On it:** a Morning/Evening toggle. **Morning:** "Good morning," your direction (north star, gold highlight card), "Today's one move" prompt with a save, and a Coach whisper. **Evening:** "Before bed. No score. No streak," one reflective prompt, a "Save & rest," and a Coach whisper. Saves log to interactions (`checkin_morning` / `checkin_evening`).
-**One thing:** one beat, one focus. A warm home, never a metrics dashboard (rule 2).
-**Status:** built. [`components/today/Today.tsx`](../../components/today/Today.tsx). Greeting-by-identity and richer time-awareness are partial (greeting is time-of-day; deeper identity framing is proposed).
+## Home (Today)
+**Purpose:** the single home surface. The identity-aware home **and** the synthesized-you read-back, merged into one scroll. Greets you by who you are, points you at your north star (the compass), walks you into the right beat (rule 1), then lets you read yourself back as deep as you've filled in. The Guide is no longer a separate surface; it lives here.
+**On it, top to bottom:** a time-aware greeting; a Core progress chip (`x/18 · Level n`, with a "continue" link while incomplete); the **north star compass** (gold card with a compass mark, editable inline — tap "edit"/"write it", type, Save); a Morning/Evening toggle with the day's one beat (**Morning:** "Today's one move" + Save; **Evening:** "Tonight" reflection + "Save & rest"; saves log `checkin_morning` / `checkin_evening` to `interactions`); a Coach whisper; then a "Who you're becoming" section — the **Mirror** (dark Coach card: value/theme tag chips + a noticed-summary) and each **pillar** with its tagged-thing count.
+**One thing:** the compass and the day up top; the deeper self is depth scrolled to, never dumped (rules 2, 5). Still a warm home, never a metrics dashboard.
+**Status:** built. [`components/today/Today.tsx`](../../components/today/Today.tsx). Greeting-by-identity and richer time-awareness are partial (greeting is time-of-day). The north star, Mirror, and pillars folded in from the former Guide surface.
 
 ## Journal (sessions)
 **Purpose:** the Sessions stream: a chronological feed of morning and night self-sessions, adaptive prompts (typed or spoken), scrollable back through history, each feeding the Mirror. See [`../architecture/elements-and-context.md`](../architecture/elements-and-context.md).
@@ -42,16 +42,13 @@
 **One thing:** the gallery of who you're becoming.
 **Status:** proposed. Element and `futureSelf` schema defined in [`../architecture/elements-and-context.md`](../architecture/elements-and-context.md); not yet built or in the rail.
 
-## Guide
-**Purpose:** the synthesized you, read back. A read-only render of the Core: north star, the Mirror, the pillars. Not a data owner.
-**On it:** "Who you're becoming · a draft," an editable north star (gold highlight card), the Mirror (dark Coach card: value/theme tag chips plus a noticed-summary), then each pillar with its tagged-thing count and goals.
-**One thing:** read yourself back, top to bottom, only as deep as you've filled in (rule 5). The north star is the single editable focus.
-**Status:** built. [`components/guide/Guide.tsx`](../../components/guide/Guide.tsx). Pillar truths and goals are partial (counts live; truths/goals lists are thin vs. the mockup).
+## Guide → merged into Home (Today)
+**Status:** merged. The Guide is no longer its own surface or rail tab. Its three parts (the editable north star, the Mirror, the pillars) now live in the lower half of [Home (Today)](#home-today) under "Who you're becoming." The component `components/guide/Guide.tsx` was removed; see [`../product/features/guide.md`](../product/features/guide.md) for the merge record.
 
 ## The rail (navigation)
 **Purpose:** the always-present left rail that switches surfaces. One quiet column of icons; the work fills the rest.
-**On it:** an icon per surface (Today / Core / Board / Guide / Settings), the current one highlighted. The Board stays mounted across nav so its canvas state survives. The active tab is **remembered across refreshes** (persisted per-device in `localStorage` under `lifeguide.activeView`), so a reload returns you to where you were instead of snapping back to Today.
-**One thing:** move between surfaces without losing your place.
+**On it:** an icon per primary surface (Today / Core / Board), the current one highlighted, with an **account avatar pinned at the bottom**. Clicking the avatar no longer signs you out; it opens a small popup menu — **Settings · Account · Sign out**. Settings and Account both open the Settings surface for now (Account is not yet its own page); Sign out ends the session. The Board stays mounted across nav so its canvas state survives. The active tab is **remembered across refreshes** (persisted per-device in `localStorage` under `lifeguide.activeView`), so a reload returns you to where you were instead of snapping back to Today.
+**One thing:** move between surfaces without losing your place; account actions tucked into one bottom menu, not the main column.
 **Status:** built. [`components/shell/Rail.tsx`](../../components/shell/Rail.tsx), [`components/shell/AppShell.tsx`](../../components/shell/AppShell.tsx).
 
 ## The docked Coach
@@ -62,6 +59,7 @@
 
 ## Settings
 **Purpose:** how the Coach treats you. The tuning for the calm contract.
+**Reached via:** the account menu at the bottom of the rail (Settings / Account), not a primary rail tab.
 **On it:** Daily rhythm (morning/evening toggles, daily-exercise segmented control), The Coach (tone, reaching-out frequency; quiet hours in the mockup), Your pillars (chips + add-pillar modal with presets and custom), and Yours alone (data is yours / sign out).
 **One thing:** quiet preference rows, grouped. No analytics here.
 **Status:** built. [`components/settings/Settings.tsx`](../../components/settings/Settings.tsx). Quiet hours is in the mockup, proposed in the live build.
@@ -74,10 +72,10 @@
 |---|---|---|
 | Splash | no | partial |
 | Onboarding | no | built |
-| Today (Home) | yes | built |
+| Home (Today) | yes | built |
 | Journal | proposed | proposed |
 | Board | yes | built |
 | Future Self | proposed | proposed |
-| Guide | yes | built |
+| Guide | merged into Home | merged |
 | Coach (docked) | always-on | built |
-| Settings | yes | built |
+| Settings | via account menu | built |

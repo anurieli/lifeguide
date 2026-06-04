@@ -97,7 +97,7 @@ export function ZenCore({ onExit }: { onExit: () => void }) {
     setTimeout(() => {
       setCur(ni);
       setSlide("none");
-    }, 160);
+    }, 80);
   }
 
   function jumpTo(i: number) {
@@ -124,12 +124,16 @@ export function ZenCore({ onExit }: { onExit: () => void }) {
     }
     if ((acc.current > 0) !== (e.deltaY > 0)) acc.current = 0;
     acc.current += e.deltaY;
-    if (Math.abs(acc.current) > 30) {
-      const dir = acc.current > 0 ? 1 : -1;
+    // A discrete mouse-wheel notch (line-mode or any non-trivial delta) advances
+    // immediately — one click, one question. Tiny high-res / trackpad deltas
+    // accumulate to a low threshold. Short cooldown so fast notches aren't dropped.
+    const notch = e.deltaMode !== 0 || Math.abs(e.deltaY) >= 16;
+    if (notch || Math.abs(acc.current) > 8) {
+      const dir = (notch ? e.deltaY : acc.current) > 0 ? 1 : -1;
       acc.current = 0;
       cool.current = true;
       nav(dir);
-      setTimeout(() => (cool.current = false), 360);
+      setTimeout(() => (cool.current = false), 80);
     }
   }
 
@@ -276,7 +280,7 @@ export function ZenCore({ onExit }: { onExit: () => void }) {
           </div>
 
           <div
-            className="w-full max-w-[600px] text-center transition-all duration-200"
+            className="w-full max-w-[600px] text-center transition-all duration-150"
             style={{
               opacity: slide === "none" ? 1 : 0,
               transform:

@@ -56,9 +56,6 @@ export function VoiceField({
   const [phase, setPhase] = useState<Phase>("idle");
   const [prompts, setPrompts] = useState<string[]>([]);
   const [pIdx, setPIdx] = useState(0); // which single prompt is currently showing
-  // After a voice answer is shaped, offer a one-tap revert to the exact raw words.
-  const [shaped, setShaped] = useState<{ raw: string; clean: string; base: string } | null>(null);
-  const [showingRaw, setShowingRaw] = useState(false);
 
   const barsRef = useRef<(HTMLSpanElement | null)[]>([]);
   const baseRef = useRef(""); // value present before this voice take (so voice appends, never destroys)
@@ -127,8 +124,6 @@ export function VoiceField({
 
   const begin = () => {
     baseRef.current = value.trim();
-    setShaped(null);
-    setShowingRaw(false);
     setPrompts([]);
     setPIdx(0);
     speech.reset();
@@ -146,70 +141,73 @@ export function VoiceField({
       clean = raw; // if shaping fails, keep their raw words — never lose the answer
     }
     const base = baseRef.current;
+    // Land the shaped words as plain, regular text — no special "shaped" state.
     const next = base ? `${base}\n${clean}` : clean;
-    setShaped({ raw, clean, base });
-    setShowingRaw(false);
     onChange(next);
     onCommit?.(next);
     setPhase("idle");
+    requestAnimationFrame(() => taRef.current?.focus());
   };
 
-  const toggleRaw = () => {
-    if (!shaped) return;
-    const useRaw = !showingRaw;
-    const next = shaped.base
-      ? `${shaped.base}\n${useRaw ? shaped.raw : shaped.clean}`
-      : useRaw
-        ? shaped.raw
-        : shaped.clean;
-    setShowingRaw(useRaw);
-    onChange(next);
-    onCommit?.(next);
-  };
+  // Backspace (or Escape) mid-recording cancels: drop the audio, keep whatever text was
+  // already there, and put the cursor back in the box to keep typing.
+  const cancel = useCallback(() => {
+    speech.stop(); // discard the transcript
+    setPrompts([]);
+    setPIdx(0);
+    setPhase("idle");
+    requestAnimationFrame(() => taRef.current?.focus());
+  }, [speech]);
+
+  useEffect(() => {
+    if (phase !== "listening") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Backspace" || e.key === "Escape") {
+        e.preventDefault();
+        cancel();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [phase, cancel]);
 
   // ---------------------------------------------------------------- idle view
   if (phase === "idle") {
     return (
-      <div className={`relative ${className}`}>
-        <textarea
-          ref={taRef}
-          value={value}
-          onChange={(e) => {
-            onChange(e.target.value);
-            autosize(); // grow to fit as they type (no inner scrollbar)
-            if (shaped) setShaped(null); // a manual edit ends the "shaped" relationship
-          }}
-          onBlur={() => onCommit?.(value)}
-          rows={rows}
-          placeholder={meta.placeholder ?? "Type, or tap the mic to speak…"}
-          className={`overflow-hidden ${
-            inputClassName ||
-            `w-full bg-paper border border-line-2 rounded-xl p-3 pr-12 text-[14.5px] leading-relaxed text-ink resize-none outline-none focus:border-gold transition placeholder:text-ink-mute ${
-              isCompact ? "min-h-[44px]" : ""
-            }`
-          }`}
-        />
-        {speech.supported && (
-          <span className="vf-tipwrap absolute right-2.5 bottom-2.5">
-            <button
-              type="button"
-              onClick={begin}
-              aria-label="Speak your answer"
-              className="vf-mic w-8 h-8 rounded-full grid place-items-center text-ink-mute hover:text-gold"
-            >
-              <Mic className="w-[17px] h-[17px]" />
-            </button>
-            <span className="vf-tip">{ctaTooltip}</span>
-          </span>
-        )}
-        {shaped && (
-          <div className="mt-1.5 flex items-center gap-2 text-[11.5px] text-ink-mute">
-            <span className="text-green">✓ shaped from what you said</span>
-            <button type="button" onClick={toggleRaw} className="underline underline-offset-2 hover:text-ink">
-              {showingRaw ? "show shaped" : "show raw"}
-            </button>
-          </div>
-        )}
+      <div className={className}>
+        {/* mic is anchored to the textarea itself, so it always sits in its corner */}
+        <div className="relative">
+          <textarea
+            ref={taRef}
+            value={value}
+            onChange={(e) => {
+              onChange(e.target.value);
+              autosize(); // grow to fit as they type (no inner scrollbar)
+            }}
+            onBlur={() => onCommit?.(value)}
+            rows={rows}
+            placeholder={meta.placeholder ?? "Type, or tap the mic to speak…"}
+            className={`overflow-hidden ${
+              inputClassName ||
+              `w-full bg-paper border border-line-2 rounded-xl p-3 pr-12 text-[14.5px] leading-relaxed text-ink resize-none outline-none focus:border-gold transition placeholder:text-ink-mute ${
+                isCompact ? "min-h-[44px]" : ""
+              }`
+            }`}
+          />
+          {speech.supported && (
+            <span className="vf-tipwrap absolute right-2.5 bottom-2.5">
+              <button
+                type="button"
+                onClick={begin}
+                aria-label="Speak your answer"
+                className="vf-mic w-8 h-8 rounded-full grid place-items-center text-ink-mute hover:text-gold"
+              >
+                <Mic className="w-[17px] h-[17px]" />
+              </button>
+              <span className="vf-tip">{ctaTooltip}</span>
+            </span>
+          )}
+        </div>
       </div>
     );
   }
@@ -286,7 +284,7 @@ export function VoiceField({
           "I can't hear the mic — check the browser's mic permission."
         ) : (
           <>
-            <span className="vf-pulse" /> tap the wave when you&apos;re done
+            <span className="vf-pulse" /> tap the wave when you&apos;re done · backspace to cancel
           </>
         )}
       </div>

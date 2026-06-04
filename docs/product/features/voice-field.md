@@ -16,7 +16,9 @@ Happy path:
 1. The person taps the mic. The field morphs into a recording surface: a live, reactive waveform and a single breathing dot. No timer, no buttons.
 2. As they speak, words stream in live (committed words solid, in-flight words ghosted). Inside the surface, **Prompt Mode** shows **one** short, contextual suggestion at a time of what they could say next — drawn from the question and what the app knows about them, refreshed as they talk and rotated gently so only a single nudge is ever on screen.
 3. When they're done, they **tap the waveform** (or the explicit finish button beside it). The surface shows a brief "understanding what you mean…" while the transcript is shaped.
-4. The cleaned answer lands back in the field, editable and saved through the field's normal save path, with a small "✓ shaped from what you said · show raw" note. One tap swaps between the shaped version and their exact raw words. Editing by hand dismisses the note.
+4. The cleaned answer lands back in the field as **plain, regular text** — editable and saved through the field's normal save path, with no special "shaped" state or chrome. The mic returns to the corner of the (auto-grown) textarea and the box is refocused for typing.
+
+To bail mid-recording, press **Backspace** (or Escape): the audio is discarded, whatever text was already in the box is kept, and the cursor returns to the box to keep typing.
 
 Manual and Coach paths: VoiceField is the **manual** voice path (the person drives). It is independent of the Coach dock, which remains the conversational path. The two never block each other.
 
@@ -30,7 +32,7 @@ Manual and Coach paths: VoiceField is the **manual** voice path (the person driv
 | Prompt Mode | On start, then ~2.5s after each pause | `voice.prompts` generates contextual suggestions from field metadata + Mirror; the UI shows one at a time, rotating | Manual (AI-assisted) | reads Mirror via Context Bus |
 | Finish | Tap the waveform or the finish (■) button | Stops recognition, captures the full raw transcript | Manual | none |
 | Shape | After finish | `voice.shape` cleans the raw transcript to fit the field's `intent`; result written via `onChange`/`onCommit` | Manual (AI-assisted) | host field's store |
-| Show raw / shaped | Tap the toggle after shaping | Swaps the field value between the cleaned text and the exact raw words | Manual | host field's store |
+| Cancel | Backspace / Escape while listening | Discards the audio + transcript, keeps the text that was already there, returns focus to the textarea | Manual | none |
 
 ## 4. Dynamics and interactions with other elements
 
@@ -52,8 +54,8 @@ Relationship to the **onboarding voice interview**: separate mechanism (realtime
 
 The **rainbow comet halo** (`.vf-halo` in `globals.css`) is a reusable, strokeless rotating-rainbow border for *any* rounded element — a glowing head dragging a fading rainbow trail around the rim (gradient-angle animated via the registered `--vf-angle` custom property + the gradient-border mask trick). It is applied not to the mic but to the onboarding **on-ramp**: the Door's "I don't know" button, to magnetize the lost person into the guided interview.
 - **analyzing** — waveform settles to a flat ghost line, transcript blurs, spinner + "understanding what you mean…".
-- **shaped (back to idle)** — field holds the cleaned text; the "shaped · show raw" affordance is present.
-- **shaped→raw** — same as above, field showing the exact raw words; toggle reads "show shaped".
+- **done (back to idle)** — field holds the cleaned text as plain editable text; mic back in the textarea corner, box refocused. No special state.
+- **cancelled** — Backspace/Escape mid-recording returns to idle with the prior text intact, no shaping.
 
 ## 6. Edge cases
 
@@ -62,9 +64,9 @@ The **rainbow comet halo** (`.vf-halo` in `globals.css`) is a reusable, strokele
 - **Engine idle timeout:** Web Speech ends sessions periodically; the hook auto-restarts while the person still intends to listen, so long pauses don't drop the session.
 - **Shape pass fails / offline:** `voice.shape` falls back to the raw transcript — the answer is never lost.
 - **Prompt pass fails:** `voice.prompts` returns `[]`; Prompt Mode simply shows nothing (ambient, never blocking, never an error toast).
-- **Existing text in the field:** a voice take is **appended** (newline-joined) to whatever was already there, never destructive. The show-raw/shaped toggle swaps only the spoken portion.
+- **Existing text in the field:** a voice take is **appended** (newline-joined) to whatever was already there, never destructive.
 - **Empty transcript:** shaping of empty input returns empty; nothing is written.
-- **Manual edit after shaping:** dismisses the "shaped" relationship (the raw/shaped toggle disappears), since the field is now hand-authored.
+- **After shaping:** the cleaned text is just regular text — the person can keep typing/editing it normally; nothing special to dismiss.
 
 ## 7. AI involvement
 

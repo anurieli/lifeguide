@@ -23,6 +23,7 @@ import type * as edges from "../edges.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as interactions from "../interactions.js";
+import type * as interview from "../interview.js";
 import type * as messages from "../messages.js";
 import type * as mirror from "../mirror.js";
 import type * as nodes from "../nodes.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   files: typeof files;
   http: typeof http;
   interactions: typeof interactions;
+  interview: typeof interview;
   messages: typeof messages;
   mirror: typeof mirror;
   nodes: typeof nodes;

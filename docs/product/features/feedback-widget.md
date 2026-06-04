@@ -71,8 +71,12 @@ Owns the `feedback` table (see [`../../architecture/data-model.md`](../../archit
 
 Draws `_storage` (the uploaded snapshot) via `files.generateUploadUrl` / `ctx.storage.getUrl`.
 
-## 9. Open questions
+## 9. Owner inbox & replies
 
-- When the app gets real multi-user accounts, `listAll`/`resolve`/`reopen` should move behind a true `isAdmin` role rather than the current self-scoped model.
+`listAll`/`resolve`/`reopen` are **owner-aware** (see [`0006-owner-gated-admin.md`](../../decisions/0006-owner-gated-admin.md)). The owner (`anurieli365@gmail.com`) sees **every** user's feedback as a support inbox — each row joins the submitter's `{ name, email, isAnonymous }` from the users table — and can act on any ticket; everyone else stays self-scoped. In the `/admin` queue each ticket with a known submitter email gets a **Reply** button that opens a `mailto:` in the owner's own mail client (mail goes from the owner's real address, no email provider needed). Anonymous submitters have no email and are not repliable.
+
+## 10. Open questions
+
+- Programmatic/threaded email (auto-acknowledgment, in-app two-way thread, inbound capture) was deliberately deferred in favor of `mailto`. Revisit if reply volume grows.
 - Snapshot fidelity depends on `html2canvas`; if it proves lossy on the canvas-heavy Board, consider the native screen-capture API behind an explicit opt-in there.
 - No retention/cleanup policy yet for snapshots in `_storage`.

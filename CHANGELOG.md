@@ -7,6 +7,21 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-04 · Owner-gated admin + cross-user feedback inbox
+
+`cd8fd77` — `/admin` was a self-scoped dev panel. Turned it into the builder's support inbox, locked to the owner in production.
+
+- **Owner identity** (`convex/owner.ts`): `OWNER_EMAIL = "anurieli365@gmail.com"`, an `isOwner(ctx)` helper (Google sign-in puts `email` on the user; anonymous users have none and never match), and an `amOwner` query for the client gate.
+- **Server-side authorization** (`convex/feedback.ts`): `listAll` returns **every** user's feedback to the owner (support inbox), joined with each submitter's `{ name, email, isAnonymous }`; everyone else is self-scoped to their own rows. `resolve`/`reopen` let the owner act on any ticket, others only their own (`actableRow`). Enforced server-side so it holds regardless of caller — dev or prod.
+- **Page access** (`app/admin/page.tsx`): open in local dev (any session), **owner-only in production** (`isDev || isOwner`); non-owners get a "Not authorized" wall. Each ticket now shows the **submitter** (name + email, or "anonymous") and a **Reply** button that opens a `mailto:` in the owner's own mail client (sends from your real email, threads in your inbox — no email provider, no auto-ack; both deferred by choice).
+- **Settings**: the `/admin` entry now shows in dev or to the owner in prod (was dev-only).
+
+No schema change (`email`/`name` already live on the Google user doc). Backend deployed to the dev Convex deployment (`gregarious-boar-475`); **prod uses a separate Convex deployment (`strong-wildebeest-896`), so shipping to prod must deploy the backend there too.** `tsc` clean; `tests/convex/feedback.test.ts` extended (owner sees all + submitter join, non-owner self-scoped, owner resolves any, `amOwner` gating) — 7 feedback tests, full suite green; production build clean.
+
+**Docs touched:** `docs/decisions/0006-owner-gated-admin.md` (new ADR), `docs/product/features/admin.md` (access model + owner inbox + reply), `docs/product/features/feedback-widget.md` (owner inbox & replies section), `docs/architecture/data-model.md` (feedback owner-aware access).
+
+---
+
 ## 2026-06-04 · Fix: Google login token not persisting on prod (`SITE_URL` mismatch)
 
 Google sign-in on prod (`mylifesguide.com`) completed the Google consent flow but the user landed back logged-out — the auth token never persisted. Root cause was a misconfig, not a code bug: the shared Convex deployment's `SITE_URL` env var was `http://localhost:3000`.

@@ -175,6 +175,20 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
     wired: true,
   },
 
+  // Vision board: generate an image from a prompt (the "/" AI mode + right-click menu).
+  // Pinned to the openai provider — OpenRouter has no /images/generations endpoint — so it
+  // uses the user's saved OpenAI key, else the deployment's OPENAI_API_KEY. `dall-e-3` needs
+  // no org verification and is broadly available; swap to "gpt-image-1" here to upgrade. The
+  // action (convex/ai/imageGen.ts) handles both b64 and url responses, so the model is the
+  // only dial. temperature is unused by the images API but the TaskConfig shape requires it.
+  imageGen: {
+    label: "Generate image (vision board)",
+    provider: "openai",
+    model: "dall-e-3",
+    temperature: 0,
+    wired: true,
+  },
+
   // Brain dump: segment a free-form spoken dump into distinct atomic thoughts.
   // Returns JSON {"segments": ["...", "..."]}. A single-thought dump yields one element.
   brainDumpSplit: {

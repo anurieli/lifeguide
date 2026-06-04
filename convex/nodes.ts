@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
@@ -142,6 +142,44 @@ export const morph = mutation({
     if (!n || n.userId !== userId) throw new Error("Not found");
     const { nodeId, ...rest } = args;
     await ctx.db.patch(nodeId, { ...rest, updatedAt: Date.now() });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// AI image generation (vision board). The client creates a "generating" node and
+// calls convex/ai/imageGen.generateInto; these server-only helpers let that action
+// read the node (ownership) and file the result back. See that action for the flow.
+// ---------------------------------------------------------------------------
+
+export const getInternal = internalQuery({
+  args: { nodeId: v.id("nodes") },
+  handler: async (ctx, args) => await ctx.db.get(args.nodeId),
+});
+
+// Generation succeeded: attach the stored image and clear the "generating" flag.
+// Clearing attribution (to undefined) deletes the field, so the card — which keys
+// off fileId-present + attribution — flips from spinner to the rendered image.
+export const finishGeneratedImage = internalMutation({
+  args: { nodeId: v.id("nodes"), fileId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.nodeId, {
+      fileId: args.fileId,
+      attribution: undefined,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// Generation failed: flag the node so the card shows an error + "Try again" (the
+// prompt is preserved in node.text). `note` carries the model/transport error.
+export const failGeneratedImage = internalMutation({
+  args: { nodeId: v.id("nodes"), note: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.nodeId, {
+      attribution: "error",
+      title: args.note?.slice(0, 200),
+      updatedAt: Date.now(),
+    });
   },
 });
 

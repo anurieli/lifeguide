@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { NodeDoc } from "@/lib/types";
 import { SelectionMods } from "@/lib/selection";
-import { ImagePlus, FileText } from "lucide-react";
+import { ImagePlus, FileText, Loader2, Sparkles } from "lucide-react";
 import { DocPreview } from "./DocPreview";
 
 type Props = {
@@ -25,6 +25,12 @@ type Props = {
   onDragDelta: (dx: number, dy: number) => void;
   /** Drag finished; `moved` is false for a plain click. */
   onDragEnd: (moved: boolean) => void;
+  /** Start this card in AI image-prompt mode (right-click "Generate with AI"). */
+  startAiMode?: boolean;
+  /** AI mode was dismissed; lets the parent forget the one-shot startAiMode flag. */
+  onClearAiMode?: () => void;
+  /** Submit an AI image prompt — the parent morphs this card into a generating image. */
+  onGenerateImage: (prompt: string) => void;
   /** Called when the user drags the resize handle (debounced 300ms before persisting). */
   onResize?: (w: number, h: number) => void;
   onText: (t: string) => void;
@@ -56,6 +62,9 @@ export function NodeCard({
   onPointerDownNode,
   onDragDelta,
   onDragEnd,
+  startAiMode,
+  onClearAiMode,
+  onGenerateImage,
   onResize,
   onText,
   onDelete,
@@ -72,6 +81,42 @@ export function NodeCard({
   const taRef = useRef<HTMLTextAreaElement>(null);
   const [dragging, setDragging] = useState(false);
   const pos = posOverride ?? node.position;
+
+  // AI image-prompt mode: a text card the person is dictating an image into. Entered
+  // by typing "/" then space inside an empty card, or by the right-click "Generate"
+  // action (startAiMode). Submitting hands the prompt up; the parent morphs this same
+  // card into a generating image, so the AI UI is replaced by the spinner render.
+  const [aiMode, setAiMode] = useState(!!startAiMode);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const aiRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (startAiMode) setAiMode(true);
+  }, [startAiMode]);
+  useEffect(() => {
+    if (aiMode) aiRef.current?.focus();
+  }, [aiMode]);
+
+  const submitAi = () => {
+    const p = aiPrompt.trim();
+    if (!p) return;
+    setAiMode(false);
+    setAiPrompt("");
+    onClearAiMode?.();
+    onGenerateImage(p);
+  };
+  const exitAi = () => {
+    setAiMode(false);
+    setAiPrompt("");
+    onClearAiMode?.();
+  };
+  // Inside an empty text card, "/" then space drops into AI mode (the slash is eaten).
+  const onTextKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === " " && e.currentTarget.value === "/") {
+      e.preventDefault();
+      e.currentTarget.value = "";
+      setAiMode(true);
+    }
+  };
 
   // Optimistic local dimensions for the resize handle in DocPreview.
   // Debounces the persist call so we don't fire a mutation on every pointer move.
@@ -208,17 +253,54 @@ export function NodeCard({
         <img src={img} alt="" className="w-full h-full object-cover rounded-xl" draggable={false} />
       )}
 
-      {(node.type === "text" || node.type === "quote") && (
+      {(node.type === "text" || node.type === "quote") && !aiMode && (
         <textarea
           ref={taRef}
           defaultValue={node.text ?? ""}
           onBlur={onBlur}
           onPaste={onPaste}
-          placeholder={isQuote ? "A quote that hit you…" : "Type, paste an image, or drop a link…"}
+          onKeyDown={onTextKeyDown}
+          placeholder={isQuote ? "A quote that hit you…" : "Type, paste, drop a link, or / for AI…"}
           className={`w-full h-full p-3 bg-transparent resize-none outline-none text-sm text-ink placeholder:text-ink-mute ${
             isQuote ? "italic" : ""
           }`}
         />
+      )}
+
+      {(node.type === "text" || node.type === "quote") && aiMode && (
+        <div className="flex flex-col h-full p-2.5 gap-2" onPointerDown={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#7c3aed]">
+            <Sparkles className="w-3.5 h-3.5" /> Generate with AI
+          </div>
+          <textarea
+            ref={aiRef}
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                submitAi();
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                exitAi();
+              }
+            }}
+            placeholder="Describe an image to generate, then press Enter…"
+            className="flex-1 w-full bg-transparent resize-none outline-none text-sm text-ink placeholder:text-ink-mute"
+          />
+          <div className="flex items-center justify-between">
+            <button onClick={exitAi} className="text-xs text-ink-mute hover:text-ink transition">
+              Cancel
+            </button>
+            <button
+              onClick={submitAi}
+              disabled={!aiPrompt.trim()}
+              className="text-xs px-2.5 py-1 rounded-md bg-[#7c3aed] text-white disabled:opacity-40 transition"
+            >
+              Generate
+            </button>
+          </div>
+        </div>
       )}
 
       {node.type === "link" && (
@@ -268,12 +350,35 @@ export function NodeCard({
         </div>
       )}
 
-      {node.type === "generated_image" && (
-        <div className="p-3 text-sm text-ink overflow-hidden">{node.text ?? node.title}</div>
-      )}
+      {node.type === "generated_image" &&
+        (img ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={img} alt="" className="w-full h-full object-cover rounded-xl" draggable={false} />
+        ) : node.attribution === "error" ? (
+          <div className="flex flex-col items-center justify-center h-full p-3 text-center gap-1.5">
+            <span className="text-xs text-ink-mute">Couldn&apos;t generate that image.</span>
+            {node.text && (
+              <span className="text-[11px] text-ink-mute/80 line-clamp-2">“{node.text}”</span>
+            )}
+            <button
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => onGenerateImage(node.text ?? "")}
+              className="mt-1 text-xs px-2.5 py-1 rounded-md bg-[#7c3aed] text-white transition"
+            >
+              Try again
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full p-3 text-center gap-2">
+            <Loader2 className="w-5 h-5 animate-spin text-[#7c3aed]" />
+            <span className="text-[11px] text-ink-mute line-clamp-3">
+              {node.text ? `Generating “${node.text}”…` : "Generating…"}
+            </span>
+          </div>
+        ))}
 
       {/* attach an image file into an empty card */}
-      {isEmptyText && (
+      {isEmptyText && !aiMode && (
         <>
           <button
             onPointerDown={(e) => e.stopPropagation()}

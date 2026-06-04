@@ -18,5 +18,6 @@ The element model these hang off is [`../../architecture/elements-and-context.md
 | [Home (Today)](dashboard.md) | view-only | draws Core + Sessions | partial (hosts the merged Guide) |
 | [Settings & Onboarding](settings.md) | `settings` | system | built (reached via the account menu) |
 | [Feedback Widget](feedback-widget.md) | `feedback` | dev tooling | built (draggable widget + `/admin` ticket queue) |
+| [Atmosphere](atmosphere.md) | `settings.music*` + audio assets | none (ambient) | built (v1) |
 
 **Home (Today)** is the one home surface: it owns no data, renders and routes, and now hosts the former **Guide** (north star compass, Mirror, pillars) folded in. Everything else owns its tables and publishes distilled text to the two streams. Settings is reached from the account menu at the bottom of the rail, not a primary rail tab.

@@ -154,6 +154,33 @@ export function Settings() {
           </Row>
         </Group>
 
+        <Group label="Atmosphere">
+          <Row title="Music" desc="Ambient sound, always at the ready">
+            <Toggle
+              on={s?.musicEnabled ?? true}
+              onClick={() => update({ musicEnabled: !(s?.musicEnabled ?? true) })}
+            />
+          </Row>
+          <Row title="Autoplay" desc="Start playing when you open the app">
+            <Toggle
+              on={s?.musicAutoplay ?? false}
+              onClick={() => update({ musicAutoplay: !(s?.musicAutoplay ?? false) })}
+            />
+          </Row>
+          <Row title="Default mood" desc="What plays first each session">
+            <Seg
+              value={s?.musicDefaultMood ?? "inspiration"}
+              onChange={(v) => update({ musicDefaultMood: v })}
+              options={[
+                { v: "inspiration", label: "Inspire" },
+                { v: "deep-thinking", label: "Deep" },
+                { v: "focus", label: "Focus" },
+                { v: "calm-reset", label: "Calm" },
+              ]}
+            />
+          </Row>
+        </Group>
+
         <Group label="Your pillars">
           <div className="flex items-center gap-2 py-3.5 flex-wrap">
             {(pillars ?? []).map((p, i) => (

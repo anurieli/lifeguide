@@ -1,0 +1,89 @@
+# Atmosphere
+
+**Status:** built (v1) · **Element of:** spine (ambient surface, present across the app) · **Owns:** three `settings` fields (`musicEnabled`, `musicAutoplay`, `musicDefaultMood`) + four static audio assets in `/public/audio`
+
+> Atmosphere is the app's ambient music system: four looping instrumental moods, always at the ready, controlled from a calm breathing orb. It gives the space a sound.
+
+## 1. Purpose
+
+The soul calls LifeGuide "a calm room he returns to." A room has an atmosphere. Atmosphere gives the space a literal one: a low, looping instrumental bed that supports the work the person came to do (reflect, think, focus, wind down) without ever demanding attention. It is the opposite of a notification: it asks for nothing, it is just there when wanted, and it tints itself to the kind of attention the moment needs. It exists so the act of opening LifeGuide can feel like stepping into a space, not opening an app.
+
+## 2. User-facing behavior
+
+A small orb sits at the bottom-left of the app, just clear of the rail. At rest it is a still dot; while music plays it breathes. Clicking it scales open (from the orb's own origin) into the **Atmosphere** panel:
+
+- A **now-playing** block: the current mood, the track name, a one-line description, a play/pause button, a live equalizer while playing, and a loop glyph (every track loops seamlessly).
+- A **mood meter**: the four moods as a color-coded list. Picking one crossfades to it (gapless) and tints the whole panel to that mood's color.
+- An **AUTO** toggle: when on, Atmosphere matches the mood to the time of day and drifts as the day moves (a v1 stand-in for the Context Bus). Any manual mood pick turns AUTO off.
+- A **volume** slider and a **Close** action.
+
+The four moods: **Inspiration** (First Light, gold), **Creative Deep Thinking** (Wander, violet), **Super Focus** (Flow State, teal), **Calm Reset** (After Hours, blue).
+
+Durable preferences live in **Settings → Atmosphere**: turn music off entirely, autoplay on open, and the default mood each session starts in. Live choices (what is sounding right now, the volume, AUTO) are remembered for the session/browser but are not "settings."
+
+Coach path: not wired in v1. The hooks (`pickMood`, `togglePlay`, `setAuto`) are deliberately a small imperative surface so the Coach can "act from far away" (set the mood for a focus session it just scheduled) when act-from-far-away lands. See Open questions.
+
+## 3. Functions / actions
+
+| Action | Trigger | What it does | Manual / Coach | Data touched |
+|---|---|---|---|---|
+| Open / close panel | Click orb / Close / Esc | Scales the panel open from the orb origin, or back | Manual | none (local UI) |
+| Play / pause | Play button | Starts the active mood (fades in) or pauses it | Manual (Coach-ready) | none (ephemeral) |
+| Pick mood | Mood row | Gapless crossfade to that mood; tints the player; turns AUTO off | Manual (Coach-ready) | none (ephemeral `moodKey`) |
+| Toggle AUTO | AUTO chip | Mood follows the clock and drifts every ~10 min | Manual | `localStorage` (`lifeguide.music.auto`) |
+| Set volume | Volume slider | Sets and ramps playback volume | Manual | `localStorage` (`lifeguide.music.volume`) |
+| Turn music on/off | Settings → Atmosphere → Music | Master switch; off hides the orb and silences audio | Manual | `settings.musicEnabled` |
+| Toggle autoplay | Settings → Atmosphere → Autoplay | Start playing on app load (gesture permitting) | Manual | `settings.musicAutoplay` |
+| Set default mood | Settings → Atmosphere → Default mood | The mood each new session starts in | Manual | `settings.musicDefaultMood` |
+| Autoplay on load | App mount (if enabled + autoplay) | Attempts to play; if the browser blocks it, starts on the first click/keypress anywhere | Automatic | reads `settings`, `localStorage` |
+
+## 4. Dynamics and interactions with other elements
+
+Atmosphere **owns** its three `settings` fields and the audio assets. It **draws** nothing from the streams in v1 and **publishes** nothing to the Mirror. It is an ambient surface, not a context source: a person's listening is not (yet) signal about who they are.
+
+It is mounted inside `AppShell` (wrapping the whole shell in `MusicProvider`), so it is present on every surface (Today, Core, Board, Guide, Settings) and survives navigation between them. It coexists with the **Coach dock** (right side) and the rail (left); the orb is positioned to clear both. It is intentionally decoupled from the Context Bus so it can be enabled, disabled, or removed without touching the spine.
+
+The intended future tie: when **AUTO** graduates from a clock heuristic to real context, `moodForHour` is the single function that gets replaced by a read of the active session, the surface in view, and the person's energy. That is the one designed seam into the Context Bus.
+
+## 5. States
+
+- **Disabled** (`musicEnabled === false`): no orb, no audio. Nothing renders.
+- **Idle** (enabled, paused): still orb dot, panel available, active track preloaded but silent.
+- **Playing**: orb breathes, equalizer animates, volume at the set level.
+- **Crossfading**: two tracks overlap for ~650ms while one ramps up and the other down; the now-playing text blurs briefly to mask the swap.
+- **AUTO**: mood is clock-derived and re-evaluated on an interval; a manual pick exits this state.
+- **Autoplay-pending**: enabled + autoplay but the browser blocked sound; armed to start on the first user gesture.
+
+## 6. Edge cases
+
+- **Autoplay policy.** Browsers refuse audio before a user gesture. Autoplay attempts once and, if rejected, attaches a one-time `pointerdown`/`keydown` listener that starts playback on the first interaction. It never retries in a loop and never throws.
+- **SSR.** `new Audio()` is browser-only; the two elements are created in a mount effect, never during render. Volume/AUTO are restored in an effect (not a render-time `localStorage` read) to avoid hydration mismatch.
+- **No settings row yet.** New users may have no `settings` row (it is created on first mutation). Absent/`null`/`undefined` all read as enabled-on, autoplay-off, default mood `inspiration`.
+- **Master switch off mid-play.** Flipping Music off immediately pauses both audio elements and hides the orb.
+- **Missing/blocked asset.** If a track fails to load or play, the promise rejects and is swallowed; the UI returns to paused rather than hanging.
+- **Reduced motion.** `prefers-reduced-motion` stops the orb breathing and the equalizer; crossfades and tints (opacity/color) remain, as they are not motion.
+- **Rapid mood switches.** Crossfade uses two fixed elements and swaps the active pointer; a new pick simply retargets the next crossfade. (Volume ramps are rAF loops, not interruptible mid-flight; harmless overlap settles to the latest target.)
+
+## 7. AI involvement
+
+None at runtime in v1. The four tracks were generated once with Suno (an authoring-time tool, not a runtime dependency) and ship as static MP3s. No model is in the loop when the app plays them. The only place AI is intended to enter later is AUTO, where the Coach's context would choose the mood instead of the clock. See [`../../architecture/ai-layer.md`](../../architecture/ai-layer.md).
+
+## 8. Data touched
+
+**Owned (durable):** `settings.musicEnabled?`, `settings.musicAutoplay?`, `settings.musicDefaultMood?` (see [`../../architecture/data-model.md`](../../architecture/data-model.md)). Written via `settings.update` from the Settings surface.
+
+**Owned (assets):** `/public/audio/{inspiration,deep-thinking,focus,calm-reset}.mp3`.
+
+**Ephemeral (not in any table):** current `moodKey`, `playing`, `volume`, `auto`. Held in `MusicProvider` React state; `volume` and `auto` mirrored to `localStorage` (`lifeguide.music.volume`, `lifeguide.music.auto`).
+
+**Drawn:** none.
+
+Code: `components/music/MusicProvider.tsx` (engine + context), `components/music/AtmospherePlayer.tsx` (orb + panel), `components/music/tracks.ts` (the four moods + `moodForHour`), styles in `app/globals.css` (`.atmo-*`).
+
+## 9. Open questions
+
+- **Licensing.** The v1 tracks were generated on a free Suno account (non-commercial). Shipping to real users needs commercial rights (Suno Pro) or replacement audio. Blocking for public launch, not for dev.
+- **Coach control.** The imperative hooks are Coach-ready, but no Coach tool calls them yet. When act-from-far-away lands, add `set_atmosphere(mood)` so a scheduled focus block can bring up Super Focus on its own.
+- **AUTO as real context.** Replace `moodForHour` with a Context Bus read (active session, surface, energy). Decide whether listening becomes weak signal to the Mirror or stays private and ambient.
+- **More moods / per-pillar themes.** Whether the meter grows beyond four, and whether moods ever map to pillars.
+- **Cross-device continuity.** Volume/AUTO are per-browser today. Decide if they should follow the user (promote to `settings`) once multi-device is real.

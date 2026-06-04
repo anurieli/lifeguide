@@ -19,6 +19,14 @@ Google sign-in on prod (`mylifesguide.com`) completed the Google consent flow bu
 
 ---
 
+## 2026-06-04 · Shipped Zen Core + Conversational scaffold to production (`dev` → `main`)
+
+Integrated the two in-flight Core branches and released them to prod. `zen-core` (the calm one-question-at-a-time Zen view + the **Exit Zen** affordances: rail header, subliminal top-right exit, snappy one-notch scroll) and `ari-2-conversational-core` (the `grid | zen | conversational` mode machine + a stubbed `ConversationalCore` placeholder + the **Talk** switch in Zen's rail) were merged into `dev` in one pass, resolving 7 conflicts by hand: `components/core/Core.tsx` (kept `dev`'s `VoiceField` grid **and** the new 3-mode machine), `app/globals.css` (`dev`'s VoiceField CSS + `.zen-prose`), `package.json` (union of deps; lockfile regenerated via `npm install`), and the `core.md` / `CHANGELOG.md` / `TO-CHECK.md` docs (both sides kept; one duplicated "Functions/actions" section dropped). Verified before release: **tsc clean · 152/152 tests · `next build` clean** (after clearing a stray broken `.next` symlink in the repo root). Then fast-forwarded `main` to `dev` and pushed — Vercel **Production deploy Ready** (~48s), `mylifesguide.com` returns 200. Because `main` ff'd to the full `dev`, this also promoted the previously-`dev`-only work to prod: the onboarding/voice (`VoiceField` on-ramp) refinements and the feedback widget + `/admin` ticket queue. **Caveat:** Conversational mode ships as a visible "coming soon" placeholder (shares the real answered-count; no voice/chat engine yet — tracked in Linear ARI-2). Verified via build + tests + HTTP 200, not a signed-in click-through; the in-app interactions are logged in `TO-CHECK.md`.
+
+**Docs touched:** none new — the feature docs rode in with the merge (`docs/product/features/core.md` "Modes of the Core" + Zen view; `docs/superpowers/specs/2026-06-03-zen-core-design.md` "Exit (built)"). This entry records the integration + production release itself. Linear: **ARI-2** moved to In Progress (Slice 0 shipped).
+
+---
+
 ## 2026-06-03 · Feedback widget + `/admin` ticketing queue
 
 A lightweight, always-available feedback channel for any authenticated user, plus a live ticket queue to triage what comes in.

@@ -14,9 +14,11 @@ A field starts as an ordinary text box with a quiet mic in the corner (the mic a
 
 Happy path:
 1. The person taps the mic. The field morphs into a recording surface: a live, reactive waveform and a single breathing dot. No timer, no buttons.
-2. As they speak, words stream in live (committed words solid, in-flight words ghosted). Around the field, **Prompt Mode** surfaces 2–3 short, contextual suggestions of what they could say next — drawn from the question and what the app knows about them — fading in and dissolving as ambient nudges.
-3. When they're done, they **tap the waveform**. The surface shows a brief "understanding what you mean…" while the transcript is shaped.
-4. The cleaned answer lands back in the field, editable and saved through the field's normal save path, with a small "✓ shaped from what you said · show raw" note. One tap swaps between the shaped version and their exact raw words. Editing by hand dismisses the note.
+2. As they speak, words stream in live (committed words solid, in-flight words ghosted). Inside the surface, **Prompt Mode** shows **one** short, contextual suggestion at a time of what they could say next — drawn from the question and what the app knows about them, refreshed as they talk and rotated gently so only a single nudge is ever on screen.
+3. When they're done, they **tap the waveform** (or the explicit finish button beside it). The surface shows a brief "understanding what you mean…" while the transcript is shaped.
+4. The cleaned answer lands back in the field as **plain, regular text** — editable and saved through the field's normal save path, with no special "shaped" state or chrome. The mic returns to the corner of the (auto-grown) textarea and the box is refocused for typing.
+
+To bail mid-recording, press **Backspace** (or Escape): the audio is discarded, whatever text was already in the box is kept, and the cursor returns to the box to keep typing.
 
 Manual and Coach paths: VoiceField is the **manual** voice path (the person drives). It is independent of the Coach dock, which remains the conversational path. The two never block each other.
 
@@ -27,17 +29,17 @@ Manual and Coach paths: VoiceField is the **manual** voice path (the person driv
 | Type | Person types in the idle field | Standard controlled input; calls `onChange`, persists via host `onCommit` on blur | Manual | host field's store |
 | Begin speaking | Tap the mic | Starts client-side Web Speech recognition; switches to the recording surface | Manual | none (audio stays on device) |
 | Live transcribe | Speaking | `useSpeechRecognition` streams committed + interim words into the UI | Manual | none |
-| Prompt Mode | On start, then ~2.5s after each pause | `voice.prompts` generates 2–3 contextual suggestions from field metadata + Mirror | Manual (AI-assisted) | reads Mirror via Context Bus |
-| Finish | Tap the waveform | Stops recognition, captures the full raw transcript | Manual | none |
+| Prompt Mode | On start, then ~2.5s after each pause | `voice.prompts` generates contextual suggestions from field metadata + Mirror; the UI shows one at a time, rotating | Manual (AI-assisted) | reads Mirror via Context Bus |
+| Finish | Tap the waveform or the finish (■) button | Stops recognition, captures the full raw transcript | Manual | none |
 | Shape | After finish | `voice.shape` cleans the raw transcript to fit the field's `intent`; result written via `onChange`/`onCommit` | Manual (AI-assisted) | host field's store |
-| Show raw / shaped | Tap the toggle after shaping | Swaps the field value between the cleaned text and the exact raw words | Manual | host field's store |
+| Cancel | Backspace / Escape while listening | Discards the audio + transcript, keeps the text that was already there, returns focus to the textarea | Manual | none |
 
 ## 4. Dynamics and interactions with other elements
 
 VoiceField **owns no data**. It is a write-through input: each host field passes `value` + `onChange` (+ optional `onCommit`) and keeps full control of persistence. So the same component feeds:
 - **Today** → `interactions.log` (morning "one move", evening reflection),
 - **Blueprint / Core** → `core.save` (the 18 blueprint boxes),
-- **Onboarding** → local state → vision-seed capture on finish.
+- **Onboarding** → the Door (`Door.tsx`, → northStar + vision-seed capture) and the text interview (`Interview.tsx`, every blueprint question → `interview.appendTurn`). The realtime `VoiceInterview` is a separate spoken-conversation path; the phone composer is a chat box (future compact-variant fit).
 
 It **draws** at act-time: `voice.prompts` pulls the **Mirror** through the Context Bus (`mirror.assemble`) so suggestions are about *this* person, not generic. It does not publish to the streams itself — the host field's existing write path is what reaches the Bus (e.g. a saved capture still distills as before).
 
@@ -48,10 +50,12 @@ Relationship to the **onboarding voice interview**: separate mechanism (realtime
 ## 5. States
 
 - **idle** — text box + mic. Empty or holding a value.
-- **listening** — recording surface: waveform, live transcript, breathing dot, Prompt Mode around it.
+- **listening** — a borderless, centered surface (no box): a minimalist waveform you can tap to finish (plus a quiet finish button with a "Tap to finish" tooltip), live transcript, a breathing dot, and one Prompt Mode suggestion at a time. The idle mic is a quiet glyph with a hover tooltip (configurable via `ctaTooltip`); the idle text box auto-grows to fit its content (no inner scrollbar).
+
+The **rainbow comet halo** (`.vf-halo` in `globals.css`) is a reusable, strokeless rotating-rainbow border for *any* rounded element — a glowing head dragging a fading rainbow trail around the rim (gradient-angle animated via the registered `--vf-angle` custom property + the gradient-border mask trick). It is applied not to the mic but to the onboarding **on-ramp**: the Door's "I don't know" button, to magnetize the lost person into the guided interview.
 - **analyzing** — waveform settles to a flat ghost line, transcript blurs, spinner + "understanding what you mean…".
-- **shaped (back to idle)** — field holds the cleaned text; the "shaped · show raw" affordance is present.
-- **shaped→raw** — same as above, field showing the exact raw words; toggle reads "show shaped".
+- **done (back to idle)** — field holds the cleaned text as plain editable text; mic back in the textarea corner, box refocused. No special state.
+- **cancelled** — Backspace/Escape mid-recording returns to idle with the prior text intact, no shaping.
 
 ## 6. Edge cases
 
@@ -60,14 +64,14 @@ Relationship to the **onboarding voice interview**: separate mechanism (realtime
 - **Engine idle timeout:** Web Speech ends sessions periodically; the hook auto-restarts while the person still intends to listen, so long pauses don't drop the session.
 - **Shape pass fails / offline:** `voice.shape` falls back to the raw transcript — the answer is never lost.
 - **Prompt pass fails:** `voice.prompts` returns `[]`; Prompt Mode simply shows nothing (ambient, never blocking, never an error toast).
-- **Existing text in the field:** a voice take is **appended** (newline-joined) to whatever was already there, never destructive. The show-raw/shaped toggle swaps only the spoken portion.
+- **Existing text in the field:** a voice take is **appended** (newline-joined) to whatever was already there, never destructive.
 - **Empty transcript:** shaping of empty input returns empty; nothing is written.
-- **Manual edit after shaping:** dismisses the "shaped" relationship (the raw/shaped toggle disappears), since the field is now hand-authored.
+- **After shaping:** the cleaned text is just regular text — the person can keep typing/editing it normally; nothing special to dismiss.
 
 ## 7. AI involvement
 
 Two live server tasks (`convex/ai/config.ts`), both via `aiForTask` and routed through OpenRouter (per-profile key if set, else env), defined in `convex/voice.ts`:
-- **`voiceShape`** (temp 0.3) — raw transcript + field `question`/`descriptor`/`intent` → cleaned, intent-fitted text. Keeps meaning, strips filler, fixes obvious speech-to-text errors, returns only the answer.
+- **`voiceShape`** (temp 0.3) — raw transcript + field `question`/`descriptor`/`intent` → cleaned, intent-fitted text. Framed as a *silent text editor* (not a chatbot) with a strict output contract + one-shot example: returns ONLY the rewritten first-person answer, never a preamble/greeting/meta sentence, never adds ideas the person didn't say, returns the input unchanged if empty/unintelligible.
 - **`voicePrompts`** (temp 0.7, JSON mode) — field metadata + Mirror → up to 3 short next-thought nudges.
 
 **Transcription is not server AI** — it is the browser's on-device Web Speech API (no audio leaves the device, no cost). See [`../../architecture/ai-layer.md`](../../architecture/ai-layer.md) role 6.

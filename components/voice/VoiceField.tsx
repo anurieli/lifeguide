@@ -3,26 +3,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Mic } from "lucide-react";
+import { Mic, Square } from "lucide-react";
 import { useSpeechRecognition } from "@/lib/useSpeechRecognition";
 import type { FieldMeta } from "@/lib/voiceField";
 
 type Phase = "idle" | "listening" | "analyzing";
 
-const BAR_COUNT = { default: 28, compact: 20 } as const;
-const PROMPT_ANCHORS = [
-  "top-0 left-0 text-left",
-  "top-[38%] right-0 text-right",
-  "bottom-0 left-[8%] text-left",
-];
+const BAR_COUNT = { default: 11, compact: 9 } as const;
+const PROMPT_ROTATE_MS = 3800; // how long each single prompt holds before the next one fades in
 
 /**
  * VoiceField — one voice-capable input for any field in LifeGuide.
  *
  * Drop-in replacement for a controlled `<textarea>`: same `value` / `onChange`
  * contract, plus a mic that does live (Web Speech) transcription and an AI pass
- * that shapes the raw transcript into what the field is asking for. The floating
- * "Prompt Mode" suggestions are AI-generated from the field metadata + the Mirror.
+ * that shapes the raw transcript into what the field is asking for. Prompt Mode
+ * surfaces ONE AI-generated suggestion at a time, inside the recording surface,
+ * related to what's being said (field metadata + the Mirror).
  *
  * The host still renders the field's label/question; `meta` carries that same
  * info to the AI so shaping + prompts are about THIS field. See
@@ -37,6 +34,7 @@ export function VoiceField({
   rows = 2,
   className = "",
   inputClassName = "",
+  ctaTooltip = "Speak it, I'll shape it",
 }: {
   meta: FieldMeta;
   value: string;
@@ -48,6 +46,8 @@ export function VoiceField({
   className?: string;
   /** Extra classes for the textarea itself, so each surface keeps its own field styling. */
   inputClassName?: string;
+  /** Hover tooltip on the idle mic — tell the person where this takes them. */
+  ctaTooltip?: string;
 }) {
   const shape = useAction(api.voice.shape);
   const fetchPrompts = useAction(api.voice.prompts);
@@ -55,12 +55,23 @@ export function VoiceField({
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [prompts, setPrompts] = useState<string[]>([]);
-  // After a voice answer is shaped, offer a one-tap revert to the exact raw words.
-  const [shaped, setShaped] = useState<{ raw: string; clean: string; base: string } | null>(null);
-  const [showingRaw, setShowingRaw] = useState(false);
+  const [pIdx, setPIdx] = useState(0); // which single prompt is currently showing
 
   const barsRef = useRef<(HTMLSpanElement | null)[]>([]);
   const baseRef = useRef(""); // value present before this voice take (so voice appends, never destroys)
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Auto-grow the idle textarea to fit its content (no inner scrollbar). Runs whenever
+  // the value changes (typed or filled by voice) and on mount.
+  const autosize = useCallback(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
+  }, []);
+  useEffect(() => {
+    if (phase === "idle") autosize();
+  }, [value, phase, autosize]);
 
   const isCompact = variant === "compact";
   const aiMeta = { question: meta.question, intent: meta.intent, descriptor: meta.descriptor };
@@ -84,7 +95,12 @@ export function VoiceField({
   const loadPrompts = useCallback(
     (partial: string) => {
       void fetchPrompts({ partial, ...aiMeta })
-        .then((p) => Array.isArray(p) && setPrompts(p))
+        .then((p) => {
+          if (Array.isArray(p) && p.length) {
+            setPrompts(p);
+            setPIdx(0); // newest, most-relevant suggestion shows first
+          }
+        })
         .catch(() => {});
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,11 +113,19 @@ export function VoiceField({
     return () => window.clearTimeout(t);
   }, [phase, speech.finalText, loadPrompts]);
 
+  // Show exactly ONE prompt at a time; rotate through the set so it stays gentle.
+  useEffect(() => {
+    if (phase !== "listening" || prompts.length < 2) return;
+    const id = window.setInterval(() => setPIdx((i) => i + 1), PROMPT_ROTATE_MS);
+    return () => window.clearInterval(id);
+  }, [phase, prompts.length]);
+
+  const currentPrompt = prompts.length ? prompts[pIdx % prompts.length] : null;
+
   const begin = () => {
     baseRef.current = value.trim();
-    setShaped(null);
-    setShowingRaw(false);
     setPrompts([]);
+    setPIdx(0);
     speech.reset();
     speech.start();
     setPhase("listening");
@@ -117,94 +141,90 @@ export function VoiceField({
       clean = raw; // if shaping fails, keep their raw words — never lose the answer
     }
     const base = baseRef.current;
+    // Land the shaped words as plain, regular text — no special "shaped" state.
     const next = base ? `${base}\n${clean}` : clean;
-    setShaped({ raw, clean, base });
-    setShowingRaw(false);
     onChange(next);
     onCommit?.(next);
     setPhase("idle");
+    requestAnimationFrame(() => taRef.current?.focus());
   };
 
-  const toggleRaw = () => {
-    if (!shaped) return;
-    const useRaw = !showingRaw;
-    const next = shaped.base
-      ? `${shaped.base}\n${useRaw ? shaped.raw : shaped.clean}`
-      : useRaw
-        ? shaped.raw
-        : shaped.clean;
-    setShowingRaw(useRaw);
-    onChange(next);
-    onCommit?.(next);
-  };
+  // Backspace (or Escape) mid-recording cancels: drop the audio, keep whatever text was
+  // already there, and put the cursor back in the box to keep typing.
+  const cancel = useCallback(() => {
+    speech.stop(); // discard the transcript
+    setPrompts([]);
+    setPIdx(0);
+    setPhase("idle");
+    requestAnimationFrame(() => taRef.current?.focus());
+  }, [speech]);
+
+  useEffect(() => {
+    if (phase !== "listening") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Backspace" || e.key === "Escape") {
+        e.preventDefault();
+        cancel();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [phase, cancel]);
 
   // ---------------------------------------------------------------- idle view
   if (phase === "idle") {
     return (
-      <div className={`relative ${className}`}>
-        <textarea
-          value={value}
-          onChange={(e) => {
-            onChange(e.target.value);
-            if (shaped) setShaped(null); // a manual edit ends the "shaped" relationship
-          }}
-          onBlur={() => onCommit?.(value)}
-          rows={rows}
-          placeholder={meta.placeholder ?? "Type, or tap the mic to speak…"}
-          className={
-            inputClassName ||
-            `w-full bg-paper border border-line-2 rounded-xl p-3 pr-12 text-[14.5px] leading-relaxed text-ink resize-none outline-none focus:border-gold transition placeholder:text-ink-mute ${
-              isCompact ? "min-h-[44px]" : ""
-            }`
-          }
-        />
-        {speech.supported && (
-          <button
-            type="button"
-            onClick={begin}
-            title="Speak your answer"
-            aria-label="Speak your answer"
-            className="vf-mic absolute right-2.5 bottom-2.5 w-8 h-8 rounded-full grid place-items-center text-ink-mute hover:text-gold"
-          >
-            <Mic className="w-[18px] h-[18px]" />
-          </button>
-        )}
-        {shaped && (
-          <div className="mt-1.5 flex items-center gap-2 text-[11.5px] text-ink-mute">
-            <span className="text-green">✓ shaped from what you said</span>
-            <button type="button" onClick={toggleRaw} className="underline underline-offset-2 hover:text-ink">
-              {showingRaw ? "show shaped" : "show raw"}
-            </button>
-          </div>
-        )}
+      <div className={className}>
+        {/* mic is anchored to the textarea itself, so it always sits in its corner */}
+        <div className="relative">
+          <textarea
+            ref={taRef}
+            value={value}
+            onChange={(e) => {
+              onChange(e.target.value);
+              autosize(); // grow to fit as they type (no inner scrollbar)
+            }}
+            onBlur={() => onCommit?.(value)}
+            rows={rows}
+            placeholder={meta.placeholder ?? "Type, or tap the mic to speak…"}
+            className={`overflow-hidden ${
+              inputClassName ||
+              `w-full bg-paper border border-line-2 rounded-xl p-3 pr-12 text-[14.5px] leading-relaxed text-ink resize-none outline-none focus:border-gold transition placeholder:text-ink-mute ${
+                isCompact ? "min-h-[44px]" : ""
+              }`
+            }`}
+          />
+          {speech.supported && (
+            <span className="vf-tipwrap absolute right-2.5 bottom-2.5">
+              <button
+                type="button"
+                onClick={begin}
+                aria-label="Speak your answer"
+                className="vf-mic w-8 h-8 rounded-full grid place-items-center text-ink-mute hover:text-gold"
+              >
+                <Mic className="w-[17px] h-[17px]" />
+              </button>
+              <span className="vf-tip">{ctaTooltip}</span>
+            </span>
+          )}
+        </div>
       </div>
     );
   }
 
   // -------------------------------------------------- listening / analyzing view
+  // No box, no border — just an open, centered, minimal column. Feels like stepping
+  // onto a different path rather than typing in a field.
   const barCount = BAR_COUNT[variant];
+  const analyzing = phase === "analyzing";
   return (
-    <div
-      className={`vf-rise relative border border-gold rounded-[14px] p-4 ${className}`}
-      style={{ background: "linear-gradient(180deg,#FFFDF7,#FBF6EC)" }}
-    >
-      {/* ambient Prompt Mode — suggestions surface around the field */}
-      <div className="pointer-events-none absolute inset-x-1 -inset-y-3">
-        {prompts.slice(0, 3).map((p, i) => (
-          <div
-            key={p}
-            className={`vf-prompt vf-show absolute max-w-[190px] text-[13px] italic leading-snug text-[#8A6A2E] ${PROMPT_ANCHORS[i]}`}
-          >
-            <span className="not-italic text-gold text-[10px] mr-1.5 align-[1px]">✦</span>
-            {p}
-          </div>
-        ))}
-      </div>
-
-      <div className="flex items-center gap-3">
+    <div className={`vf-rise flex flex-col items-center gap-3 py-3 ${className}`}>
+      {/* minimalist waveform (tap it to finish) + a quiet finish button with a tooltip */}
+      <div className="flex items-center gap-3.5">
         <div
-          className={`vf-wave flex-1 ${phase === "analyzing" ? "vf-settling" : ""}`}
-          onClick={() => phase === "listening" && void finish()}
+          className={`vf-wave justify-center ${analyzing ? "vf-settling" : ""}`}
+          onClick={() => !analyzing && void finish()}
+          role="button"
           title="Tap to finish"
         >
           {Array.from({ length: barCount }).map((_, i) => (
@@ -216,27 +236,58 @@ export function VoiceField({
             />
           ))}
         </div>
+        <span className="vf-tipwrap relative">
+          <button
+            type="button"
+            onClick={() => !analyzing && void finish()}
+            disabled={analyzing}
+            aria-label="Finish"
+            className="vf-mic w-8 h-8 rounded-full grid place-items-center text-ink-mute hover:text-ink"
+          >
+            {analyzing ? (
+              <span className="w-3.5 h-3.5 rounded-full border-2 border-ink-mute/30 border-t-ink-mute animate-spin" />
+            ) : (
+              <Square className="w-3 h-3" fill="currentColor" strokeWidth={0} />
+            )}
+          </button>
+          {!analyzing && <span className="vf-tip">Tap to finish</span>}
+        </span>
       </div>
 
-      <div className={`vf-script mt-3 text-[15px] leading-relaxed text-ink-soft ${phase === "analyzing" ? "vf-blurring" : ""}`}>
-        {speech.finalText}
+      {/* live transcript */}
+      <div
+        className={`vf-script text-center text-[15px] leading-relaxed text-ink-soft max-w-[460px] ${analyzing ? "vf-blurring" : ""}`}
+      >
+        {speech.finalText || (!speech.interim && <span className="text-ink-mute">listening…</span>)}
         {speech.interim && <span className="vf-interim"> {speech.interim}</span>}
-        {phase === "listening" && <span className="vf-caret" />}
+        {!analyzing && <span className="vf-caret" />}
       </div>
 
-      {phase === "listening" ? (
-        <div className="mt-2.5 flex items-center gap-2 text-[11.5px] text-ink-mute">
-          <span className="vf-pulse" />
-          {speech.error === "not-allowed"
-            ? "I can't hear the mic — check the browser's mic permission."
-            : "tap the wave when you're done"}
-        </div>
-      ) : (
-        <div className="mt-2.5 flex items-center gap-2 text-[12px] text-[#8A6A2E]">
-          <span className="w-3.5 h-3.5 rounded-full border-2 border-[#8A6A2E]/30 border-t-[#8A6A2E] animate-spin" />
-          understanding what you mean…
-        </div>
-      )}
+      {/* Prompt Mode — exactly ONE suggestion at a time, related to what's said */}
+      <div className="h-5 flex items-center justify-center text-center">
+        {!analyzing && currentPrompt && (
+          <span
+            key={currentPrompt}
+            className="vf-prompt vf-show text-[13px] italic leading-snug text-[#8A6A2E] max-w-[90%]"
+          >
+            <span className="not-italic text-gold text-[10px] mr-1.5 align-[1px]">✦</span>
+            {currentPrompt}
+          </span>
+        )}
+      </div>
+
+      {/* status line */}
+      <div className="flex items-center justify-center gap-2 text-[11.5px] text-ink-mute">
+        {analyzing ? (
+          <span className="text-[#8A6A2E]">understanding what you mean…</span>
+        ) : speech.error === "not-allowed" ? (
+          "I can't hear the mic — check the browser's mic permission."
+        ) : (
+          <>
+            <span className="vf-pulse" /> tap the wave when you&apos;re done · backspace to cancel
+          </>
+        )}
+      </div>
     </div>
   );
 }

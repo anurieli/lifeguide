@@ -3,26 +3,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Mic } from "lucide-react";
+import { Mic, Square } from "lucide-react";
 import { useSpeechRecognition } from "@/lib/useSpeechRecognition";
 import type { FieldMeta } from "@/lib/voiceField";
 
 type Phase = "idle" | "listening" | "analyzing";
 
 const BAR_COUNT = { default: 28, compact: 20 } as const;
-const PROMPT_ANCHORS = [
-  "top-0 left-0 text-left",
-  "top-[38%] right-0 text-right",
-  "bottom-0 left-[8%] text-left",
-];
+const PROMPT_ROTATE_MS = 3800; // how long each single prompt holds before the next one fades in
 
 /**
  * VoiceField — one voice-capable input for any field in LifeGuide.
  *
  * Drop-in replacement for a controlled `<textarea>`: same `value` / `onChange`
  * contract, plus a mic that does live (Web Speech) transcription and an AI pass
- * that shapes the raw transcript into what the field is asking for. The floating
- * "Prompt Mode" suggestions are AI-generated from the field metadata + the Mirror.
+ * that shapes the raw transcript into what the field is asking for. Prompt Mode
+ * surfaces ONE AI-generated suggestion at a time, inside the recording surface,
+ * related to what's being said (field metadata + the Mirror).
  *
  * The host still renders the field's label/question; `meta` carries that same
  * info to the AI so shaping + prompts are about THIS field. See
@@ -55,6 +52,7 @@ export function VoiceField({
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [prompts, setPrompts] = useState<string[]>([]);
+  const [pIdx, setPIdx] = useState(0); // which single prompt is currently showing
   // After a voice answer is shaped, offer a one-tap revert to the exact raw words.
   const [shaped, setShaped] = useState<{ raw: string; clean: string; base: string } | null>(null);
   const [showingRaw, setShowingRaw] = useState(false);
@@ -84,7 +82,12 @@ export function VoiceField({
   const loadPrompts = useCallback(
     (partial: string) => {
       void fetchPrompts({ partial, ...aiMeta })
-        .then((p) => Array.isArray(p) && setPrompts(p))
+        .then((p) => {
+          if (Array.isArray(p) && p.length) {
+            setPrompts(p);
+            setPIdx(0); // newest, most-relevant suggestion shows first
+          }
+        })
         .catch(() => {});
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,11 +100,21 @@ export function VoiceField({
     return () => window.clearTimeout(t);
   }, [phase, speech.finalText, loadPrompts]);
 
+  // Show exactly ONE prompt at a time; rotate through the set so it stays gentle.
+  useEffect(() => {
+    if (phase !== "listening" || prompts.length < 2) return;
+    const id = window.setInterval(() => setPIdx((i) => i + 1), PROMPT_ROTATE_MS);
+    return () => window.clearInterval(id);
+  }, [phase, prompts.length]);
+
+  const currentPrompt = prompts.length ? prompts[pIdx % prompts.length] : null;
+
   const begin = () => {
     baseRef.current = value.trim();
     setShaped(null);
     setShowingRaw(false);
     setPrompts([]);
+    setPIdx(0);
     speech.reset();
     speech.start();
     setPhase("listening");
@@ -183,28 +196,18 @@ export function VoiceField({
 
   // -------------------------------------------------- listening / analyzing view
   const barCount = BAR_COUNT[variant];
+  const analyzing = phase === "analyzing";
   return (
     <div
-      className={`vf-rise relative border border-gold rounded-[14px] p-4 ${className}`}
+      className={`vf-rise relative border border-gold rounded-[14px] px-4 py-3.5 ${className}`}
       style={{ background: "linear-gradient(180deg,#FFFDF7,#FBF6EC)" }}
     >
-      {/* ambient Prompt Mode — suggestions surface around the field */}
-      <div className="pointer-events-none absolute inset-x-1 -inset-y-3">
-        {prompts.slice(0, 3).map((p, i) => (
-          <div
-            key={p}
-            className={`vf-prompt vf-show absolute max-w-[190px] text-[13px] italic leading-snug text-[#8A6A2E] ${PROMPT_ANCHORS[i]}`}
-          >
-            <span className="not-italic text-gold text-[10px] mr-1.5 align-[1px]">✦</span>
-            {p}
-          </div>
-        ))}
-      </div>
-
+      {/* waveform (tap anywhere on it to finish) + an explicit, obvious finish button */}
       <div className="flex items-center gap-3">
         <div
-          className={`vf-wave flex-1 ${phase === "analyzing" ? "vf-settling" : ""}`}
-          onClick={() => phase === "listening" && void finish()}
+          className={`vf-wave flex-1 justify-center ${analyzing ? "vf-settling" : ""}`}
+          onClick={() => !analyzing && void finish()}
+          role="button"
           title="Tap to finish"
         >
           {Array.from({ length: barCount }).map((_, i) => (
@@ -216,27 +219,56 @@ export function VoiceField({
             />
           ))}
         </div>
+        <button
+          type="button"
+          onClick={() => !analyzing && void finish()}
+          disabled={analyzing}
+          title="Finish"
+          aria-label="Finish"
+          className="vf-mic w-9 h-9 rounded-full grid place-items-center bg-gold text-[#231a08] shrink-0 shadow-sm hover:brightness-105"
+        >
+          {analyzing ? (
+            <span className="w-3.5 h-3.5 rounded-full border-2 border-[#231a08]/30 border-t-[#231a08] animate-spin" />
+          ) : (
+            <Square className="w-3.5 h-3.5" fill="currentColor" strokeWidth={0} />
+          )}
+        </button>
       </div>
 
-      <div className={`vf-script mt-3 text-[15px] leading-relaxed text-ink-soft ${phase === "analyzing" ? "vf-blurring" : ""}`}>
-        {speech.finalText}
+      {/* live transcript */}
+      <div
+        className={`vf-script mt-3 text-center text-[15px] leading-relaxed text-ink-soft ${analyzing ? "vf-blurring" : ""}`}
+      >
+        {speech.finalText || (!speech.interim && <span className="text-ink-mute">listening…</span>)}
         {speech.interim && <span className="vf-interim"> {speech.interim}</span>}
-        {phase === "listening" && <span className="vf-caret" />}
+        {!analyzing && <span className="vf-caret" />}
       </div>
 
-      {phase === "listening" ? (
-        <div className="mt-2.5 flex items-center gap-2 text-[11.5px] text-ink-mute">
-          <span className="vf-pulse" />
-          {speech.error === "not-allowed"
-            ? "I can't hear the mic — check the browser's mic permission."
-            : "tap the wave when you're done"}
-        </div>
-      ) : (
-        <div className="mt-2.5 flex items-center gap-2 text-[12px] text-[#8A6A2E]">
-          <span className="w-3.5 h-3.5 rounded-full border-2 border-[#8A6A2E]/30 border-t-[#8A6A2E] animate-spin" />
-          understanding what you mean…
-        </div>
-      )}
+      {/* Prompt Mode — exactly ONE suggestion at a time, inside the surface, related to what's said */}
+      <div className="mt-2.5 h-5 flex items-center justify-center text-center">
+        {!analyzing && currentPrompt && (
+          <span
+            key={currentPrompt}
+            className="vf-prompt vf-show text-[13px] italic leading-snug text-[#8A6A2E] max-w-[90%]"
+          >
+            <span className="not-italic text-gold text-[10px] mr-1.5 align-[1px]">✦</span>
+            {currentPrompt}
+          </span>
+        )}
+      </div>
+
+      {/* status line */}
+      <div className="mt-1 flex items-center justify-center gap-2 text-[11.5px] text-ink-mute">
+        {analyzing ? (
+          <span className="text-[#8A6A2E]">understanding what you mean…</span>
+        ) : speech.error === "not-allowed" ? (
+          "I can't hear the mic — check the browser's mic permission."
+        ) : (
+          <>
+            <span className="vf-pulse" /> tap the wave or ■ to finish
+          </>
+        )}
+      </div>
     </div>
   );
 }

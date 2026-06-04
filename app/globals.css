@@ -313,3 +313,50 @@ body {
     animation: none !important;
   }
 }
+
+/* Zen Core editor (TipTap). Calm prose; a subtle placeholder; real lists/headings. */
+.zen-prose {
+  outline: none;
+  font-size: 18px;
+  line-height: 1.7;
+  color: theme("colors.ink");
+  min-height: 96px;
+}
+.zen-prose p {
+  margin: 0 0 0.35em;
+}
+.zen-prose ul,
+.zen-prose ol {
+  margin: 0.2em 0;
+  padding-left: 1.25em;
+}
+.zen-prose ul {
+  list-style: disc;
+}
+.zen-prose ol {
+  list-style: decimal;
+}
+.zen-prose h1 {
+  font-size: 1.3em;
+  font-weight: 600;
+  margin: 0.3em 0 0.2em;
+}
+.zen-prose h2 {
+  font-size: 1.15em;
+  font-weight: 600;
+  margin: 0.3em 0 0.2em;
+}
+.zen-prose h3 {
+  font-size: 1.05em;
+  font-weight: 600;
+  margin: 0.3em 0 0.2em;
+}
+/* placeholder (tiptap shows this on the first empty node) */
+.zen-prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: theme("colors.ink-mute");
+  opacity: 0.7;
+}

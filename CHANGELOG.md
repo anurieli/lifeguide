@@ -7,6 +7,14 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-04 · Voice transcript cleanup: semantic VAD + Coach-restart de-dup
+
+The voice interview transcript was shattering into fragments. Two fixes. **(1) Source fix — semantic VAD.** The Realtime session mint (`convex/ai/voice/openaiRealtime.ts`) now sets `session.audio.input.turn_detection = { type: "semantic_vad", eagerness: "auto", create_response: true, interrupt_response: true }`. The default server VAD ended the user's turn on any short silence, so one thought ("Oh… this is um, like… I guess…") committed as five bubbles; semantic VAD waits until the speaker is actually finished, so a whole answer lands as one bubble. The Coach still auto-replies and the user can still barge in. **(2) Coach-restart de-dup.** A barge-in can truncate the Coach mid-sentence (partial commits) before it restarts with the fuller version, leaving two consecutive Coach bubbles. A new pure helper `appendTranscriptTurn` (`convex/lib/transcript.ts`) replaces a back-to-back Coach turn within 15s instead of appending; both `appendTurn` and `appendTurnByToken` route through it. TDD: 7 unit tests for the helper (`tests/transcript-merge.test.ts`); full suite 200 green; `tsc` + `next build` clean. (VAD behavior needs a live ear — logged in `TO-CHECK.md`; open question whether the pinned model accepts `semantic_vad`, fallback is `server_vad` with a long `silence_duration_ms`.)
+
+Files: `convex/ai/voice/openaiRealtime.ts`, `convex/lib/transcript.ts` (new), `convex/interview.ts` (both append paths), `tests/transcript-merge.test.ts` (new).
+
+**Docs touched:** `docs/product/features/interview.md` (§5 mutation table, §6 mint + de-dup behavior, §11 edge case), `docs/superpowers/specs/2026-06-04-voice-transcript-cleanup-design.md` (new design spec), `TO-CHECK.md` (live VAD + de-dup check).
+
 ## 2026-06-04 · Atmosphere: real audio waveform (Web Audio AnalyserNode)
 
 Replaced the fake CSS equalizer with a **real visualizer**. Playback now runs through the Web Audio API: each `<audio>` element is wired `MediaElementSource -> GainNode -> destination` (gain handles volume + the gapless crossfade) plus a `MediaElementSource -> AnalyserNode` tap. A new `AtmoWave` canvas reads `getByteTimeDomainData` every frame and draws the live, linear time-domain waveform, so both the panel wave and the orb's mini-wave now move with the actual music. The graph builds lazily on first play and resumes the `AudioContext` on a user gesture (autoplay policy); a flat idle line shows when paused; falls back to `element.volume` if `AudioContext` is unavailable. `tsc` + `next build` clean. (Audio-engine rewrite verified by build only — runtime playback needs a human ear, since it can't be exercised headlessly.)

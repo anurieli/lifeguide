@@ -2,6 +2,12 @@
 
 Features that are done but haven't been manually verified yet.
 
+### Voice transcript cleanup — semantic VAD + Coach-restart de-dup
+- [ ] **Model accepts semantic_vad:** start a voice interview and confirm the session connects (no mint/SDP error). If it errors on `turn_detection`, the pinned model rejects `semantic_vad` — fall back to `server_vad` with a long `silence_duration_ms` (~1000ms) in `convex/ai/voice/openaiRealtime.ts`.
+- [ ] **No more fragmentation:** speak one answer with natural mid-thought pauses ("Oh… this is, um, like… I guess… when I'm taking charge of something big"). Confirm it lands as **one** user bubble, not several.
+- [ ] **Coach not too slow / not cutting in:** confirm the Coach waits for you to finish (doesn't reply during a pause) but still replies promptly once you're done (~a few seconds). If it feels sluggish, lower `eagerness` toward `high`; if it cuts you off, it stays at `auto`/`low`.
+- [ ] **Coach-restart de-dup:** barge in while the Coach is speaking, forcing it to restart. Confirm only the single, fuller Coach turn remains in the transcript (no truncated "…So" fragment left behind).
+
 ### VoiceField — chunked Whisper transcription (ADR 0005)
 - [ ] **Deploy first:** this branch's `convex/voice.ts` (now `"use node"`, with the new `transcribe` action) must be pushed to the deployment — it lands via the normal dev/main merge pipeline, not from this branch. Confirm `voice:transcribe` resolves after the merge deploy (`npx convex run voice:transcribe '{"audio":"","mimeType":"audio/webm"}'` → auth error, not "function not found").
 - [ ] **Chrome happy path:** open a field with the mic (Today, Core, or onboarding), grant the mic, speak ~10s, confirm the live caption streams (Web Speech) and that the landed text matches Whisper-grade accuracy (not the rougher on-device transcript). Confirm `voiceShape` still cleans it.

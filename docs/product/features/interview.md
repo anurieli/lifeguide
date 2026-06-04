@@ -69,12 +69,12 @@ All mutations and queries enforce ownership (every session carries `userId`; eve
 | Function | Args | What it does |
 |---|---|---|
 | `start` | `experienceId, device` | Inserts an `interviewSessions` row (`status:"active"`, empty transcript and skipped); logs a `"started"` event; returns the session id. |
-| `appendTurn` | `sessionId, role, questionKey?, text` | Appends a turn to `transcript`; if `role === "user"`, logs an `"answered"` event. Ownership-checked. |
+| `appendTurn` | `sessionId, role, questionKey?, text` | Appends a turn to `transcript` via `appendTranscriptTurn` (collapses back-to-back Coach restarts, see §6); if `role === "user"`, logs an `"answered"` event. Ownership-checked. |
 | `skip` | `sessionId, questionKey` | Adds `questionKey` to `session.skipped` (deduplicated); logs a `"skipped"` event. Ownership-checked. |
 | `end` | `sessionId, status ("completed"/"abandoned")` | Patches `status` and `endedAt`; logs the matching event. Ownership-checked. |
 | `issueJoinToken` | `sessionId` | Owner-only. Generates a random token (two concatenated `crypto.randomUUID()` calls), stores `sha256(token)` as `joinTokenHash` with a 10-minute expiry. Returns the raw token (never stored). |
 | `markJoined` | `sessionId, token` | Public (no auth). Validates token against `joinTokenHash` and expiry; logs a `"qr_scanned"` event. |
-| `appendTurnByToken` | `sessionId, token, role, questionKey?, text` | Public. Validates token; appends turn to transcript; logs `"answered"` if user turn. |
+| `appendTurnByToken` | `sessionId, token, role, questionKey?, text` | Public. Validates token; appends turn to transcript via `appendTranscriptTurn` (same Coach-restart de-dup as `appendTurn`); logs `"answered"` if user turn. |
 | `endByToken` | `sessionId, token, status` | Public. Validates token; patches status/endedAt; logs event. |
 
 ### Internal mutation
@@ -118,7 +118,7 @@ interface VoiceProvider {
 }
 ```
 
-**`OpenAIRealtimeAdapter.mint()`:** calls `POST https://api.openai.com/v1/realtime/client_secrets` (the GA Realtime endpoint) with a nested `session` config: `{ type: "realtime", model, instructions, audio: { output: { voice: "alloy" } } }`. Returns the ephemeral key `value` as `clientSecret` and derives `expiresAt` from `expires_at`. Requires `OPENAI_API_KEY` in the Convex deployment environment. (The pre-GA `POST /v1/realtime/sessions` + `OpenAI-Beta: realtime=v1` endpoint now 404s "Invalid URL" — that change is what broke "Talk it through"; pinned by `tests/voice-mint.test.ts`.) The browser then POSTs its WebRTC SDP offer to `https://api.openai.com/v1/realtime/calls` using that ephemeral key (the model is bound to the key; the old Beta `/v1/realtime?model=…` SDP shape was retired 2026-05-12 and now 400s).
+**`OpenAIRealtimeAdapter.mint()`:** calls `POST https://api.openai.com/v1/realtime/client_secrets` (the GA Realtime endpoint) with a nested `session` config: `{ type: "realtime", model, instructions, audio: { input: { transcription, turn_detection }, output: { voice: "alloy" } } }`. **Turn detection is `semantic_vad` with `eagerness: "auto"`** (plus `create_response: true` / `interrupt_response: true`): a classifier decides when the speaker is *actually finished* rather than ending the turn on any short silence, so natural mid-thought pauses ("um…", "like…") no longer shatter one spoken answer into many tiny transcript bubbles. The Coach still auto-replies when the user finishes and the user can still barge in. Returns the ephemeral key `value` as `clientSecret` and derives `expiresAt` from `expires_at`. Requires `OPENAI_API_KEY` in the Convex deployment environment. (The pre-GA `POST /v1/realtime/sessions` + `OpenAI-Beta: realtime=v1` endpoint now 404s "Invalid URL" — that change is what broke "Talk it through"; pinned by `tests/voice-mint.test.ts`.) The browser then POSTs its WebRTC SDP offer to `https://api.openai.com/v1/realtime/calls` using that ephemeral key (the model is bound to the key; the old Beta `/v1/realtime?model=…` SDP shape was retired 2026-05-12 and now 400s).
 
 **`getVoiceProvider()`:** reads `TASKS.voice.model` from `convex/ai/config.ts` and returns an `OpenAIRealtimeAdapter` for that model. Swapping to a different realtime provider = add a new adapter class and update `getVoiceProvider()`.
 
@@ -148,7 +148,9 @@ interface VoiceProvider {
    - `"response.audio_transcript.done"` / `"response.output_audio_transcript.done"` → `interview.appendTurn({ role: "coach", text })`, clears `coachLive`.
    - `"conversation.item.input_audio_transcription.delta"` → appends to the live user partial (`userLive`).
    - `"conversation.item.input_audio_transcription.completed"` → `interview.appendTurn({ role: "user", text })`, clears `userLive`.
-   User-speech transcription only fires because the mint enables it via `session.audio.input.transcription = { model: "gpt-realtime-whisper" }`; without that, only the coach side is transcribed.
+   User-speech transcription only fires because the mint enables it via `session.audio.input.transcription = { model: "gpt-realtime-whisper" }`; without that, only the coach side is transcribed. With semantic VAD (above), each `…input_audio_transcription.completed` now fires once per whole thought rather than once per pause, so a user answer commits as a single bubble.
+
+   **Coach-restart de-dup:** a barge-in can truncate the Coach mid-sentence (its partial `…transcript.done` commits) before it restarts with the fuller version, producing two consecutive Coach turns. `appendTurn`/`appendTurnByToken` run the new turn through `appendTranscriptTurn` (`convex/lib/transcript.ts`), which **replaces** a back-to-back Coach turn within `COACH_RESTART_WINDOW_MS` (15s) instead of appending — collapsing the restart to the single later turn. Safe because the Coach asks one question then waits, so it never legitimately speaks twice in a row without an intervening user turn.
 8. **Pause / Mute / End controls** sit under the waveform. **Mute** toggles `track.enabled` on the mic (the Coach keeps talking, it just can't hear you). **Pause** holds the whole exchange — disables the mic, pauses the Coach `<audio>`, and `suspend()`s the AudioContext so the waveform freezes — and **Resume** restores it (respecting the mute state). **End** closes the peer connection, stops mic tracks, tears down the audio graph, calls `interview.end({ status:"completed" })`, and calls `onComplete()`. The status chip reads `Listening` / `Muted` / `Paused` accordingly.
 9. On any connection or mic error, sets `micState = "error"` and renders the actual error reason plus a fallback link to the text interview.
 
@@ -258,7 +260,7 @@ Two surfaces show blueprint progress without being intrusive:
 - **Empty transcript at synthesis time:** `synthesizeInterview` passes `"(no transcript)"` to the model. The model should return all nulls; synthesis writes nothing; the user enters the app with an empty blueprint.
 - **No API key for voice:** `OpenAIRealtimeAdapter.mint()` throws `"No OpenAI API key found."` The Convex action propagates this; the VoiceInterview component catches it and shows the error/fallback UI.
 - **No API key for synthesis:** the `aiForTask` call inside `synthesizeInterview` will throw. The outer try/catch returns the zero-filled result and lets the user proceed.
-- **Duplicate turns from transcript events:** the Realtime API may fire multiple events for the same turn. `appendTurnByToken` and `appendTurn` do not deduplicate; the transcript may contain duplicate lines. Synthesis reads the transcript as a flat string so duplicates add noise but do not break the output.
+- **Duplicate / restarted Coach turns:** a barge-in can make the Coach emit a truncated turn then a fuller restart. Both `appendTurn` and `appendTurnByToken` route through `appendTranscriptTurn`, which collapses consecutive Coach turns within 15s to the later one (see §6). Non-Coach duplicates (e.g. repeated user events) are not deduplicated; synthesis reads the transcript as a flat string so any residual duplicates add noise but do not break the output.
 - **Session with no skipped keys circles back:** `nextQuestion` only enters the circle-back pass if `skipped.length > 0`. A session with no skips returns `null` as soon as all fresh keys are answered.
 
 ---

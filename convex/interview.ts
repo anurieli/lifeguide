@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { appendTranscriptTurn } from "./lib/transcript";
 
 // ─── Internal helpers ────────────────────────────────────────────────────────
 
@@ -140,7 +141,7 @@ export const appendTurn = mutation({
     if (questionKey !== undefined) turn.questionKey = questionKey;
 
     await ctx.db.patch(sessionId, {
-      transcript: [...session.transcript, turn],
+      transcript: appendTranscriptTurn(session.transcript, turn),
     });
 
     if (role === "user") {
@@ -312,7 +313,7 @@ export const appendTurnByToken = mutation({
     if (questionKey !== undefined) turn.questionKey = questionKey;
 
     await ctx.db.patch(sessionId, {
-      transcript: [...session.transcript, turn],
+      transcript: appendTranscriptTurn(session.transcript, turn),
     });
 
     if (role === "user") {

@@ -34,7 +34,20 @@ export class OpenAIRealtimeAdapter implements VoiceProvider {
             // Enable streaming transcription of the user's speech (otherwise the
             // `conversation.item.input_audio_transcription.*` events never fire and
             // only the coach's side shows up in the transcript).
-            input: { transcription: { model: "gpt-realtime-whisper" } },
+            input: {
+              transcription: { model: "gpt-realtime-whisper" },
+              // Semantic VAD judges whether the speaker is *actually finished*
+              // rather than ending the turn on any short silence — so natural
+              // mid-thought pauses ("um…", "like…") no longer shatter one answer
+              // into many tiny transcript bubbles. `auto` (≈medium, ~4s patience)
+              // keeps the Coach responsive while still letting people think out loud.
+              turn_detection: {
+                type: "semantic_vad",
+                eagerness: "auto",
+                create_response: true, // Coach still auto-replies when the user finishes
+                interrupt_response: true, // the user can still barge in
+              },
+            },
             output: { voice: "alloy" },
           },
         },

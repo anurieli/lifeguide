@@ -4,12 +4,30 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { BLUEPRINT, type Malleability } from "@/lib/blueprint";
+import { ZenCore } from "./ZenCore";
 
 const MALL: Record<Malleability, { dot: string; label: string }> = {
   green: { dot: "#4F7A4A", label: "freely changeable" },
   yellow: { dot: "#B8945A", label: "change with weight" },
   red: { dot: "#B5524A", label: "core · change rarely" },
 };
+
+// The invitation into Zen mode: a calm, focused pill whose concentric mark
+// contracts on hover — simplicity you want to reach for.
+function ZenButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="group flex items-center gap-2 rounded-full border border-line bg-card px-3.5 py-2 text-[13px] text-ink-soft shadow-sm transition-all duration-300 hover:border-gold hover:text-ink hover:shadow-md hover:-translate-y-0.5"
+    >
+      <span className="relative flex items-center justify-center w-[15px] h-[15px]">
+        <span className="absolute inset-0 rounded-full border border-current opacity-50 transition-all duration-300 group-hover:scale-75" />
+        <span className="w-[5px] h-[5px] rounded-full bg-current transition-all duration-300 group-hover:scale-125" />
+      </span>
+      <span className="tracking-wide">Zen</span>
+    </button>
+  );
+}
 
 function Question({
   qKey,
@@ -73,12 +91,18 @@ export function Core() {
   const responses = stored ?? {};
   const loadingRef = useRef(stored === undefined);
   loadingRef.current = stored === undefined;
+  const [mode, setMode] = useState<"grid" | "zen">("grid");
+
+  if (mode === "zen") return <ZenCore onExit={() => setMode("grid")} />;
 
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-[760px] mx-auto px-8 py-10">
-        <div className="text-[11px] tracking-[0.16em] uppercase text-gold mb-2">
-          The Blueprint · who you are
+        <div className="flex items-start justify-between gap-4">
+          <div className="text-[11px] tracking-[0.16em] uppercase text-gold mb-2">
+            The Blueprint · who you are
+          </div>
+          <ZenButton onClick={() => setMode("zen")} />
         </div>
         <h1 className="text-[30px] tracking-tight text-ink mb-2">Your Core</h1>
         <p className="text-[15px] text-ink-soft leading-relaxed mb-8 max-w-[560px]">

@@ -11,6 +11,18 @@ The Core is the enduring "who you are" layer beneath the daily Sessions, the lon
 - Answers **autosave on blur** (when the field loses focus and the value changed); a brief "Saved ✓" confirms.
 - Empty questions show the original example as placeholder text (`e.g. …`).
 
+### Zen view (built — Slice 1 of the Zen Core)
+The Core surface has two modes, toggled by an inviting **Zen** pill at the top of the grid:
+- **Grid** (above): all 18 questions at once, autosave on blur.
+- **Zen** (`components/core/ZenCore.tsx`): a calm, one-question-at-a-time scene. The question is plain text (serif title + prompt) on a quiet field; the previous and next question titles sit faint above and below. The answer is a real **TipTap/ProseMirror** editor (`components/core/ZenEditor.tsx`, `.zen-prose` in `app/globals.css`): markdown input rules (`- ` → bullet, `# ` → heading), content persisted as **Markdown** into `coreResponses.content` (Mirror-readable), instant focus, debounced autosave (~600ms) with a "Saving…/Saved" indicator. The editor is **remounted per question** (keyed) so each field is isolated; the scene waits for `core.get` before mounting so the first question shows its saved answer.
+  - **Keyboard** (defaults, to become remappable in Settings): `Enter` = newline / continue list · `⌘/⇧+Enter` = next · `⌘/⇧+Backspace` = previous.
+  - **Scroll** (wheel/trackpad): one question per gesture with a soft slide.
+  - **Timeline rail** (left): grayscale ticks whose length grows toward the current question (a fisheye for "where am I"); current is thickest with a dot, answered stay bold, far ones fade, gaps mark sections. On hover it expands into the Core **table of contents** (sections/questions, current highlighted, click to jump). The global app rail sits to its left — Zen is embedded in the shell, not a fullscreen escape.
+  - **Header**: scrolling up at the first question reveals a slim header (Core · answered count · grid toggle).
+  - **Speak**: a quiet text affordance under the editor dictates via the browser Web Speech API, appending into the field (to later swap to the app's voice stack).
+  - **Theme**: ships in the app's light/paper theme (no dark mode app-wide yet).
+- Full design + the not-yet-built slices (holes + section gating; commit/lock + the trajectory change log) live in `docs/superpowers/specs/2026-06-03-zen-core-design.md`.
+
 ## Functions / actions
 - `convex/core.ts` → `get` (query): returns the signed-in user's answers as a `{ questionKey: content }` map.
 - `convex/core.ts` → `save` (mutation): upserts one answer by `(userId, questionKey)`.

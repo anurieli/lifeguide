@@ -11,8 +11,15 @@ The Core is the enduring "who you are" layer beneath the daily Sessions, the lon
 - Answers **autosave on blur** (when the field loses focus and the value changed); a brief "Saved ✓" confirms.
 - Empty questions show the original example as placeholder text (`e.g. …`).
 
+### Modes of the Core
+The Core can be filled three ways, all writing the **same** answers (`coreResponses`, keyed by the 18 blueprint keys) so progress carries across modes. The mode machine lives in `components/core/Core.tsx` (`grid | zen | conversational`):
+- **Grid** — all 18 questions at once, autosave on blur (the default surface).
+- **Zen** — the calm, one-question-at-a-time scene (below).
+- **Conversational** (`components/core/ConversationalCore.tsx`) — building the Core by talking, a guided back-and-forth that fills the same Blueprint. **Scaffold only (ARI-2, Slice 0):** the mode, the switch affordances, and the shared data binding (reads `core.get`, shows the same answered-count) are built; the real conversation engine — the voice/chat loop that maps free-flowing talk onto the question keys — plugs in as a thin surface over the merged `voice-field` work (marked in the component). Honors the concept's "manual AND Coach are both first-class" principle.
+
+**Switching:** the grid offers the **Zen** pill; inside Zen, the rail header offers **Talk** (→ Conversational) and **Exit Zen** (→ grid); Conversational's header offers **Zen** and **Grid**. No data is lost switching, since all three bind the same `coreResponses`.
+
 ### Zen view (built — Slice 1 of the Zen Core)
-The Core surface has two modes, toggled by an inviting **Zen** pill at the top of the grid:
 - **Grid** (above): all 18 questions at once, autosave on blur.
 - **Zen** (`components/core/ZenCore.tsx`): a calm, one-question-at-a-time scene. The question is plain text (serif title + prompt) on a quiet field; the previous and next question titles sit faint above and below. The answer is a real **TipTap/ProseMirror** editor (`components/core/ZenEditor.tsx`, `.zen-prose` in `app/globals.css`): markdown input rules (`- ` → bullet, `# ` → heading), content persisted as **Markdown** into `coreResponses.content` (Mirror-readable), instant focus, debounced autosave (~600ms) with a "Saving…/Saved" indicator. The editor is **remounted per question** (keyed) so each field is isolated; the scene waits for `core.get` before mounting so the first question shows its saved answer.
   - **Keyboard** (defaults, to become remappable in Settings): `Enter` = newline / continue list · `⌘/⇧+Enter` = next · `⌘/⇧+Backspace` = previous.

@@ -5,7 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { BLUEPRINT, type Malleability } from "@/lib/blueprint";
 import { ZenEditor, type ZenEditorHandle } from "./ZenEditor";
-import { LayoutGrid, Mic, ChevronLeft } from "lucide-react";
+import { LayoutGrid, Mic, ChevronLeft, MessageSquare } from "lucide-react";
 
 const DOT: Record<Malleability, string> = { green: "#4F7A4A", yellow: "#B8945A", red: "#B5524A" };
 
@@ -39,7 +39,13 @@ function flatten(): FlatQ[] {
   return out;
 }
 
-export function ZenCore({ onExit }: { onExit: () => void }) {
+export function ZenCore({
+  onExit,
+  onConversational,
+}: {
+  onExit: () => void;
+  onConversational?: () => void;
+}) {
   const stored = useQuery(api.core.get, {});
   const save = useMutation(api.core.save);
   const Q = useMemo(flatten, []);
@@ -257,12 +263,22 @@ export function ZenCore({ onExit }: { onExit: () => void }) {
               <span className="text-ink font-semibold tracking-tight flex items-center gap-2 text-[14px]">
                 <span className="text-gold">◆</span> Core
               </span>
-              <button
-                onClick={onExit}
-                className="text-[11.5px] text-ink-mute hover:text-ink flex items-center gap-1 transition"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" /> Exit Zen
-              </button>
+              <div className="flex items-center gap-3">
+                {onConversational && (
+                  <button
+                    onClick={onConversational}
+                    className="text-[11.5px] text-ink-mute hover:text-ink flex items-center gap-1 transition"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" /> Talk
+                  </button>
+                )}
+                <button
+                  onClick={onExit}
+                  className="text-[11.5px] text-ink-mute hover:text-ink flex items-center gap-1 transition"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" /> Exit Zen
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto py-4">

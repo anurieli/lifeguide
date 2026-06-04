@@ -5,6 +5,9 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { BLUEPRINT, type Malleability } from "@/lib/blueprint";
 import { ZenCore } from "./ZenCore";
+import { ConversationalCore } from "./ConversationalCore";
+
+type CoreMode = "grid" | "zen" | "conversational";
 
 const MALL: Record<Malleability, { dot: string; label: string }> = {
   green: { dot: "#4F7A4A", label: "freely changeable" },
@@ -91,9 +94,22 @@ export function Core() {
   const responses = stored ?? {};
   const loadingRef = useRef(stored === undefined);
   loadingRef.current = stored === undefined;
-  const [mode, setMode] = useState<"grid" | "zen">("grid");
+  const [mode, setMode] = useState<CoreMode>("grid");
 
-  if (mode === "zen") return <ZenCore onExit={() => setMode("grid")} />;
+  if (mode === "zen")
+    return (
+      <ZenCore
+        onExit={() => setMode("grid")}
+        onConversational={() => setMode("conversational")}
+      />
+    );
+  if (mode === "conversational")
+    return (
+      <ConversationalCore
+        onExit={() => setMode("grid")}
+        onZen={() => setMode("zen")}
+      />
+    );
 
   return (
     <div className="h-full overflow-y-auto">

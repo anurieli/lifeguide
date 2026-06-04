@@ -7,7 +7,8 @@ Features that are done but haven't been manually verified yet.
 - [ ] **Chrome happy path:** open a field with the mic (Today, Core, or onboarding), grant the mic, speak ~10s, confirm the live caption streams (Web Speech) and that the landed text matches Whisper-grade accuracy (not the rougher on-device transcript). Confirm `voiceShape` still cleans it.
 - [ ] **Whisper-only browser:** repeat in Firefox or Safari (no Web Speech) — confirm the mic still appears, the Whisper transcript shows a few seconds behind as segments confirm, and the answer lands.
 - [ ] **Fallback:** with `OPENAI_API_KEY` absent (or network blocked to OpenAI), confirm on Chrome the take still completes using the on-device Web Speech transcript (answer never lost).
-- [ ] **Cancel mid-take:** backspace/escape while recording releases the mic, keeps prior text, no chunk lands.
+- [ ] **Cancel mid-take (Escape):** pressing Escape while recording releases the mic, keeps prior text, no shaped chunk lands.
+- [ ] **Backspace mid-take does NOT cancel:** pressing Backspace while recording leaves the recording running (no cancel, no discard); the mic stays open and the transcript continues streaming. (Backspace is now a no-op in the listening view — there is no editable field focused there.)
 
 ### Onboarding rebuild — manual QA
 

@@ -172,7 +172,7 @@ export function VoiceField({
     requestAnimationFrame(() => taRef.current?.focus());
   };
 
-  // Backspace (or Escape) mid-recording cancels: drop the audio, keep whatever text was
+  // Escape mid-recording cancels: drop the audio, keep whatever text was
   // already there, and put the cursor back in the box to keep typing.
   const cancel = useCallback(() => {
     speech.stop(); // discard the transcript
@@ -187,7 +187,12 @@ export function VoiceField({
   useEffect(() => {
     if (phase !== "listening") return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Backspace" || e.key === "Escape") {
+      // Only Escape cancels a recording. Backspace is intentionally not handled
+      // here — during the listening phase the UI shows a waveform (no editable
+      // field is focused), so Backspace has no default text-editing target; by
+      // not calling preventDefault/cancel() we leave the key to do nothing
+      // destructive. The recording continues uninterrupted.
+      if (e.key === "Escape") {
         e.preventDefault();
         cancel();
       }
@@ -309,7 +314,7 @@ export function VoiceField({
           "I can't hear the mic — check the browser's mic permission."
         ) : (
           <>
-            <span className="vf-pulse" /> tap the wave when you&apos;re done · backspace to cancel
+            <span className="vf-pulse" /> tap the wave when you&apos;re done · esc to cancel
           </>
         )}
       </div>

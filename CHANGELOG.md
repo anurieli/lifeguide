@@ -7,6 +7,20 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-04 · Fix: Backspace mid-recording no longer cancels the voice take
+
+**Root cause:** `VoiceField.tsx` registered a global `window` keydown listener during the `listening` phase that called `cancel()` (discarding the recording and transcript) on both `Backspace` and `Escape`. Pressing Backspace at any point while speaking silently threw away the entire take.
+
+**Fix:** removed Backspace from the cancel handler. Only `Escape` now triggers cancel. Backspace is left to its default (a no-op in the listening view, which has no focused editable field — the waveform/transcript UI is purely display). The recording continues uninterrupted when Backspace is pressed.
+
+Note on transcript/editing interaction: the listening-phase UI shows the live transcript as display-only text (not a contenteditable or input), so there is currently no in-flight text to edit with Backspace. The cancel key being Escape (explicit, intentional) is the right UX contract; Backspace is harmless rather than destructive.
+
+Also updated the status-line hint in the component from "backspace to cancel" to "esc to cancel".
+
+tsc clean (exit 0).
+
+**Docs touched:** `docs/product/features/voice-field.md` (§2 cancel paragraph, §3 Cancel row, §5 cancelled state); `TO-CHECK.md` (corrected "Cancel mid-take" bullet, added Backspace-no-cancel check item).
+
 ## 2026-06-04 · Atmosphere polish: playing-aware orb, remembered controls, autoplay on by default
 
 Three refinements to the music system from live testing. (1) **The orb now shows it's playing**: while music runs it fills with the current mood's color, runs a live soundwave, pulses a soft halo, and names the mood in small text beneath it; paused it's a quiet dot on white. (2) **Controls are remembered as config**: the chosen mood now persists to `localStorage` (`lifeguide.music.mood`) alongside volume and AUTO, and the last chosen mood wins over the Convex default on load. (3) **Autoplay is on by default** (`musicAutoplay` absent now reads as `true`, in both the provider and the Settings toggle); still gesture-gated, so it starts on the first interaction if the browser blocks autosound. tsc + `next build` clean.

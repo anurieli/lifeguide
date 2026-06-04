@@ -18,7 +18,7 @@ Happy path:
 3. When they're done, they **tap the waveform** (or the explicit finish button beside it). The surface shows a brief "understanding what you mean…" while the transcript is shaped.
 4. The cleaned answer lands back in the field as **plain, regular text** — editable and saved through the field's normal save path, with no special "shaped" state or chrome. The mic returns to the corner of the (auto-grown) textarea and the box is refocused for typing.
 
-To bail mid-recording, press **Backspace** (or Escape): the audio is discarded, whatever text was already in the box is kept, and the cursor returns to the box to keep typing.
+To bail mid-recording, press **Escape**: the audio is discarded, whatever text was already in the box is kept, and the cursor returns to the box to keep typing. Pressing **Backspace** mid-recording does nothing destructive; the recording continues uninterrupted (the listening UI has no editable text field, so Backspace has nowhere to act).
 
 Manual and Coach paths: VoiceField is the **manual** voice path (the person drives). It is independent of the Coach dock, which remains the conversational path. The two never block each other.
 
@@ -33,7 +33,7 @@ Manual and Coach paths: VoiceField is the **manual** voice path (the person driv
 | Prompt Mode | On start, then ~2.5s after each pause | `voice.prompts` generates contextual suggestions from field metadata + Mirror; the UI shows one at a time, rotating | Manual (AI-assisted) | reads Mirror via Context Bus |
 | Finish | Tap the waveform or the finish (■) button | Stops both transcribers, flushes the final Whisper segment; the raw transcript is Whisper's (the on-device transcript if Whisper produced nothing) | Manual | none |
 | Shape | After finish | `voice.shape` cleans the raw transcript to fit the field's `intent`; result written via `onChange`/`onCommit` | Manual (AI-assisted) | host field's store |
-| Cancel | Backspace / Escape while listening | Discards the audio + transcript, keeps the text that was already there, returns focus to the textarea | Manual | none |
+| Cancel | **Escape** while listening | Discards the audio + transcript, keeps the text that was already there, returns focus to the textarea | Manual | none |
 
 ## 4. Dynamics and interactions with other elements
 
@@ -56,7 +56,7 @@ Relationship to the **onboarding voice interview**: separate mechanism (realtime
 The **rainbow comet halo** (`.vf-halo` in `globals.css`) is a reusable, strokeless rotating-rainbow border for *any* rounded element — a glowing head dragging a fading rainbow trail around the rim (gradient-angle animated via the registered `--vf-angle` custom property + the gradient-border mask trick). It is applied not to the mic but to the onboarding **on-ramp**: the Door's "I don't know" button, to magnetize the lost person into the guided interview.
 - **analyzing** — waveform settles to a flat ghost line, transcript blurs, spinner + "understanding what you mean…".
 - **done (back to idle)** — field holds the cleaned text as plain editable text; mic back in the textarea corner, box refocused. No special state.
-- **cancelled** — Backspace/Escape mid-recording returns to idle with the prior text intact, no shaping.
+- **cancelled** — Escape mid-recording returns to idle with the prior text intact, no shaping. (Backspace mid-recording does not cancel; it is a no-op in the listening view since there is no focused editable field.)
 
 ## 6. Edge cases
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { filledCount } from "@/lib/levels";
 
 const PILLAR_COLOR: Record<string, string> = {
   lifestyle: "#B8945A",
@@ -25,6 +26,7 @@ function colorFor(name: string, i: number) {
 
 export function Guide() {
   const settings = useQuery(api.settings.get, {});
+  const coreMap = useQuery(api.core.get, {});
   const mirror = useQuery(api.mirror.current, {});
   const pillars = useQuery(api.pillars.list, {});
   const surfaceId = useQuery(api.surfaces.firstForUser, {});
@@ -35,6 +37,9 @@ export function Guide() {
   const [draft, setDraft] = useState("");
 
   const northStar = settings?.northStar ?? "";
+  const bpCount =
+    coreMap && typeof coreMap === "object" ? filledCount(coreMap as Record<string, string>) : 0;
+  const bpLevel = settings?.level ?? 0;
   const values = mirror?.structured.values ?? [];
   const themes = mirror?.structured.themes ?? [];
   const tags = [...values, ...themes];
@@ -53,6 +58,15 @@ export function Guide() {
           This isn&apos;t fixed. It&apos;s what we&apos;ve pieced together from what you&apos;ve put
           in. Edit anything, or just read yourself back.
         </p>
+
+        {/* blueprint progress marker */}
+        {settings !== undefined && (
+          <div className="mt-4 inline-flex items-center gap-2.5 text-[12.5px] text-ink-mute bg-card border border-line rounded-full px-4 py-1.5">
+            <span>Blueprint: {bpCount}/18</span>
+            <span className="text-line">|</span>
+            <span>Level {bpLevel}</span>
+          </div>
+        )}
 
         {/* north star */}
         <div className="bg-card border border-gold rounded-[18px] p-[26px] my-7">

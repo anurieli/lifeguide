@@ -9,7 +9,7 @@ Use `mcp__claude_ai_Linear__save_issue` (do NOT pass `id` — that's only for up
 ```
 mcp__claude_ai_Linear__save_issue({
   title:   "<short imperative title>",
-  team:    "Agents & Skills",      // the team the LifeGuide project lives under
+  team:    "Personal",             // the team the LifeGuide project lives under (key ARI)
   project: "LifeGuide",            // or id e0af6c94-da8e-4ac3-8fd7-415f9c9cd2f8
   assignee:"me",
   state:   "Backlog",
@@ -19,7 +19,7 @@ mcp__claude_ai_Linear__save_issue({
 })
 ```
 
-If the project has moved to a dedicated `LifeGuide` team, set `team` to that team instead. Resolve it with `mcp__claude_ai_Linear__get_project({ query: "LifeGuide" })` and read `teams[0].name`.
+The LifeGuide project lives under the **Personal** team (key `ARI`) as of 2026-06-03. If it moves again, resolve the current team with `mcp__claude_ai_Linear__get_project({ query: "LifeGuide" })` and read `teams[0].name`.
 
 ## Description template
 

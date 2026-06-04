@@ -7,12 +7,55 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-03 · Onboarding rebuild: Door, interview, voice, QR, synthesis, levels (branch `onboarding-rebuild`)
+
+**Commits:** `a92c830` (levels), `8b3486e` (experiences), `73c1b48` (policy), `cb8b0e1` (interview CRUD), `7ab0e5a` (schema), `2cbb180` (settings recompute), `50010a7` (Door), `2974668` (text interview), `91d9438` (voice provider), `db143f9` (voice WebRTC UI), `aaf5397` (QR join token + phone route), `95cf473` (synthesis + status surfacing), `64e58da` (orchestrator + gate wiring)
+
+The five-step onboarding wizard is replaced with a real first-pass Core draw. The full flow: the Door ("What do you want out of life?" with north star save and vision-seed capture), a choose-experience screen (text or voice), a one-question-at-a-time text interview (skip + single circle-back policy in `lib/interview/policy.ts`), a voice interview (OpenAI Realtime `gpt-4o-mini-realtime-preview` via WebRTC, provider-abstracted in `convex/ai/voice/`), a QR phone handoff (short-lived join token, SHA-256 hashed, public phone route at `app/interview/[sessionId]`), a synthesis action (`convex/ai/synthesizeInterview.ts`: fills empty `coreResponses` boxes from the transcript, logs conflicts, never overwrites authored text), and a status reveal screen. Blueprint status (`unstarted`/`in_progress`/`complete`) and level (0 or 1) are computed from `coreResponses` and stored in `settings`. Status is surfaced via a calm Home banner and a Guide progress marker.
+
+New schema tables: `interviewSessions` (the session row + transcript array + join-token fields) and `experienceEvents` (telemetry). New settings fields: `blueprintStatus` and `level`. New pure logic: `lib/levels.ts` (blueprint completeness + level derivation) and `lib/interview/policy.ts` (question-selection). New experience registry: `lib/experiences/index.ts`.
+
+**Docs touched:**
+- `docs/architecture/data-model.md` (added `interviewSessions`, `experienceEvents`, extended `settings` entry)
+- `docs/product/features/onboarding.md` (new, complete)
+- `docs/product/features/interview.md` (new, complete)
+- `docs/design/onboarding.md` (new, complete)
+- `docs/decisions/0004-voice-stack-and-levels.md` (new ADR)
+- `docs/decisions/README.md` (ADR table entry)
+- `docs/product/prd.md` (onboarding rebuild section added)
+- `docs/roadmap.md` (already-built section updated; deferred items listed)
+- `TO-CHECK.md` (manual QA section added)
+- Spec: `docs/superpowers/specs/2026-06-03-onboarding-rebuild-design.md`
+- Plan: `docs/superpowers/plans/2026-06-03-onboarding-rebuild.md`
+
+---
+
+## 2026-06-03 · Task 0.6: `settings.recompute` — blueprint status + level (branch `onboarding-rebuild`) commit `2cbb180`
+
+Added `recompute` mutation to `convex/settings.ts`. It loads all `coreResponses` for the authed user, builds a `{ questionKey: content }` map, calls `blueprintStatus()` and `deriveLevel()` from `lib/levels`, and patches the user's settings row. The existing `getOrCreate` helper and `get` query were reused unchanged. Covered by TDD: test written first (`tests/convex/levels-settings.test.ts`), confirmed failing, implementation written to pass. Full suite: 83/83 pass, no regressions. Codegen ran to update `convex/_generated`.
+
+**Files changed:** `convex/settings.ts`, `tests/convex/levels-settings.test.ts`, `convex/_generated/`
+**Docs touched:** none (schema fields `blueprintStatus` + `level` already exist; no new product behavior added beyond wiring the compute).
+
+---
+
+## 2026-06-03 · Task 0.2: Interview question-selection policy (branch `onboarding-rebuild`) commit `73c1b48`
+
+Created `lib/interview/policy.ts` with the `nextQuestion` function and `InterviewState` type. The policy selects questions in canonical blueprint order, defers skipped keys until all fresh keys are exhausted, circles back to each skipped key exactly once, and returns null when nothing remains. Verified via TDD: 4 vitest tests written first, confirmed failing, then implementation written to pass.
+
+**Files changed:** `lib/interview/policy.ts`, `tests/interview-policy.test.ts`
+**Docs touched:** none (pure logic module, no product behavior or schema change).
+
+---
+
 ## 2026-06-03 · Built VoiceField — voice input for any text field (branch `voice-field`, worktree) ✅ typecheck + tests + build
 Built a reusable **VoiceField** component and wired it into every text field in **Today**, the **Blueprint/Core**, and **Onboarding**. It's a drop-in replacement for a controlled `<textarea>` (same `value`/`onChange` contract) plus voice: tap the mic → live transcript → tap the waveform to finish → the raw spoken words are shaped by AI into what the field is asking for, with a one-tap "show raw" (never silently overwritten). While speaking, ambient **Prompt Mode** suggestions surface around the field. **Transcription is client-side** (browser Web Speech API — no audio leaves the device, no cost; graceful no-op + plain textarea where unsupported). Two new live AI tasks in `convex/voice.ts` / `convex/ai/config.ts`: `voiceShape` (clean transcript to the field's `intent`) and `voicePrompts` (contextual nudges from field metadata + the Mirror, ambient — returns `[]` on any error). The modular **field bundle** (`lib/voiceField.ts` `FieldMeta`: `id`/`question`/`descriptor`/`placeholder`/`intent`) is the only per-field input, kept minimal for v1 — so the same component behaves correctly on all ~6 fields with zero per-field code, and the onboarding rebuild can reuse it. Distinct from the proposed realtime onboarding voice interview (they coexist). Motion is CSS-only in `globals.css` (`vf-*`, transform/opacity, ease-out, blur-masked swaps, `prefers-reduced-motion` honored). Passed the commitment gate (committed, full scope). Built in an isolated git worktree off the current HEAD. Verified: `tsc --noEmit` clean, 23/23 tests pass, `next build` succeeds; functions pushed to the shared dev deployment via codegen. Manual in-browser mic smoke test pending.
 **Docs touched:** `docs/product/features/voice-field.md` (new, complete feature doc), `components/voice/README.md` (new, developer README), `docs/architecture/ai-layer.md` (role 6: VoiceField + the two voice tasks; live call sites updated). Code: `components/voice/VoiceField.tsx`, `lib/voiceField.ts`, `lib/useSpeechRecognition.ts`, `convex/voice.ts` (new); `convex/ai/config.ts`, `app/globals.css`, `components/today/Today.tsx`, `components/core/Core.tsx`, `components/onboarding/Onboarding.tsx` (wired in). Prototypes: `mockup/voice-input.html`, `mockup/voice-input-minimal.html`.
 ## 2026-06-03 · Remember the active tab across refresh (branch `feat/persist-active-tab`) ✅ typecheck + tests
 The app always reset to Today on reload because the active surface lived only in `AppShell`'s `useState`. Now the rail's active tab persists per-device in `localStorage` (`lifeguide.activeView`) and is restored on mount, so a refresh returns you to where you were (Board, Core, Guide, Settings) instead of snapping back to Today. Restore happens in a mount effect rather than a lazy `useState` initializer, so the server and first client render agree (no hydration mismatch); the value is validated against the known `View` set before use. Built in a separate git worktree off `dev`. Verified: `tsc --noEmit` clean, 23/23 unit tests pass.
 **Docs touched:** `docs/design/screens.md` (new "The rail (navigation)" section documenting surface switching, board-stays-mounted, and tab persistence). Code: `components/shell/AppShell.tsx`.
+
+---
 
 ## 2026-06-03 · Build: AI config hub + per-profile keys + per-task models (branch `spec-rebuild`) ✅ typecheck + tests
 Implemented three requested capabilities on the `spec-rebuild` branch. (1) **One AI config file** (`convex/ai/config.ts`, now a `PROVIDERS` + `TASKS` registry with a `convex/ai/README.md`): every AI node is visible and tunable in one place, with `openrouter`, `openai`, and `local` providers (point `LOCAL_AI_BASE_URL` at LM Studio / Ollama / vLLM, key optional). (2) **Different models per task**: each task names its own `provider` + `model`; `aiForTask(ctx, taskId, userId)` (`convex/ai/openai.ts`) builds the client per task; `distill` and `coachReply` are wired to it, `curate` and `journalPrompts` are defined and visible but not yet called. (3) **Per-profile keys** (`apiKeys` table + `convex/aiKeys.ts`): a user can save their own OpenRouter key in Settings; it wins over the deployment env key for their calls, is server-only (never returned to the client, only status + last4), via an `internalQuery` for server use. Added a Settings "AI models & keys" section listing every node and its model and letting the user save/remove their key. Login was already wired (`auth.ts`: Anonymous + Google; Google needs OAuth creds). Verified: `tsc --noEmit` clean, 23/23 unit tests pass (added `tests/ai-config.test.ts`). Not live-deployed: the shared dev deployment is in active use by the `app-shell` session, so this awaits merge.

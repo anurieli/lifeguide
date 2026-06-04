@@ -1,0 +1,79 @@
+"use client";
+
+import { useState } from "react";
+
+const Eyebrow = ({ children }: { children: React.ReactNode }) => (
+  <div className="text-[12px] tracking-[0.18em] uppercase text-ink-mute mb-3.5">{children}</div>
+);
+const H = ({ children }: { children: React.ReactNode }) => (
+  <h1 className="text-[34px] leading-tight tracking-tight text-ink mb-3.5">{children}</h1>
+);
+const P = ({ children }: { children: React.ReactNode }) => (
+  <p className="text-[17px] text-ink-soft leading-relaxed max-w-[460px] mx-auto">{children}</p>
+);
+
+export function Door({
+  onWrote,
+  onDontKnow,
+}: {
+  onWrote: (text: string) => void;
+  onDontKnow: () => void;
+}) {
+  const [text, setText] = useState("");
+  const [dontKnowClicked, setDontKnowClicked] = useState(false);
+
+  const trimmed = text.trim();
+
+  const handleDontKnow = () => {
+    if (!dontKnowClicked) {
+      setDontKnowClicked(true);
+    } else {
+      onDontKnow();
+    }
+  };
+
+  return (
+    <div
+      className="h-screen flex flex-col items-center justify-center p-5"
+      style={{ background: "radial-gradient(1000px 500px at 50% -10%, #FFFDF7, #FAF8F2)" }}
+    >
+      <div className="max-w-[560px] w-full text-center">
+        <Eyebrow>Welcome</Eyebrow>
+        <H>What do you want out of life?</H>
+        <P>There&apos;s no wrong answer. Just start anywhere.</P>
+
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={4}
+          placeholder="Start writing… anything."
+          className="w-full max-w-[440px] mx-auto mt-6 bg-card border border-line rounded-[14px] p-4 text-[15px] outline-none resize-none block text-ink"
+        />
+
+        <div className="pt-7 flex flex-col items-center gap-3">
+          <button
+            onClick={() => onWrote(trimmed)}
+            disabled={trimmed.length === 0}
+            className="rounded-xl px-[26px] py-[13px] text-[15px] bg-ink text-white hover:bg-[#2a2f3a] disabled:opacity-40 disabled:cursor-not-allowed transition"
+          >
+            Continue →
+          </button>
+
+          <div className="flex flex-col items-center gap-2">
+            {dontKnowClicked && (
+              <p className="text-[14px] text-ink-soft max-w-[340px] leading-relaxed">
+                Most people don&apos;t. Let&apos;s sort it out, one question at a time.
+              </p>
+            )}
+            <button
+              onClick={handleDontKnow}
+              className="text-[14px] text-ink-mute hover:text-ink transition"
+            >
+              {dontKnowClicked ? "Begin →" : "I don't know"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

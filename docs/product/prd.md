@@ -82,3 +82,25 @@ The product works when **the person returns twice a day** (the morning and night
 ## Sequence
 
 Foundation first, then surfaces, per the build order in [`concept-and-soul.md`](concept-and-soul.md) ("The evolved system" / build order) and [`../roadmap.md`](../roadmap.md): (1) the two-stream context and the Coach's core-curation loop (the spine), (2) the Journal and the identity Dashboard, (3) the Future Self surface and data model.
+
+---
+
+## Onboarding rebuild (shipped 2026-06-03)
+
+The five-step settings wizard has been replaced with a real onboarding that draws the Core out of the person in one session. The change is fully shipped on branch `onboarding-rebuild`. See [`features/onboarding.md`](features/onboarding.md) and [`features/interview.md`](features/interview.md) for the complete feature docs.
+
+**What shipped:**
+- The Door ("What do you want out of life?") with the north star and vision-seed capture path.
+- A typed one-question-at-a-time interview (skip + single circle-back policy, orientation row).
+- A voice interview (OpenAI Realtime "mini" via WebRTC, provider-abstracted).
+- A QR phone handoff (short-lived join-token, public phone route).
+- Synthesis: transcript to `coreResponses` (fill empty boxes only; log conflicts for the Coach).
+- Blueprint status (`unstarted`/`in_progress`/`complete`) and level (0/1) in `settings`.
+- Home banner and Guide marker for incomplete blueprint.
+
+**Deferred (designed for, not built in v1 of the rebuild):**
+- **A/B testing harness:** telemetry rows (`experienceEvents`) are captured so A/B analysis can be run, but no test-assignment or variant-routing logic exists yet.
+- **Level 2+ ranking rules:** `deriveLevel` returns `1` for all-18-filled and `0` otherwise. Higher levels are a stub; the engagement-driven ranking rules are TBD.
+- **Personal onboarding variant:** a branded or cohort-specific flow variant. The experience registry architecture supports it; no variant has been built.
+- **Cross-device auth hardening:** the QR join token is time-limited (10 minutes) but requires no account sign-in on the phone. A future hardening step could add a PIN or require the same Google account.
+- **Session resume:** a tab closed mid-interview leaves an orphaned `active` session. A future improvement could detect and offer to resume it.

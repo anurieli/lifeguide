@@ -125,6 +125,10 @@ export default defineSchema({
     reachingOut: v.union(v.literal("leave"), v.literal("earned"), v.literal("often")),
     northStar: v.optional(v.string()),
     updatedAt: v.number(),
+    blueprintStatus: v.optional(
+      v.union(v.literal("unstarted"), v.literal("in_progress"), v.literal("complete")),
+    ),
+    level: v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
   // Per-profile AI provider keys. A user's own key (e.g. their OpenRouter key) is
@@ -168,6 +172,40 @@ export default defineSchema({
     payload: v.string(),
     at: v.number(),
   }).index("by_user", ["userId", "at"]),
+
+  // One run of an onboarding experience. Joinable by _id (QR encodes /interview/<_id>).
+  interviewSessions: defineTable({
+    userId: v.id("users"),
+    experienceId: v.string(), // "text-interview" | "voice-interview"
+    status: v.union(v.literal("active"), v.literal("completed"), v.literal("abandoned")),
+    device: v.union(v.literal("desktop"), v.literal("phone")),
+    transcript: v.array(
+      v.object({
+        role: v.union(v.literal("coach"), v.literal("user")),
+        questionKey: v.optional(v.string()),
+        text: v.string(),
+        at: v.number(),
+      }),
+    ),
+    skipped: v.array(v.string()),
+    joinTokenHash: v.optional(v.string()), // sha256 of the QR join token
+    joinTokenExpiresAt: v.optional(v.number()),
+    startedAt: v.number(),
+    endedAt: v.optional(v.number()),
+  }).index("by_user", ["userId", "startedAt"]),
+
+  // Telemetry stream: what each experience is doing (for A/B + funnel later).
+  experienceEvents: defineTable({
+    userId: v.id("users"),
+    sessionId: v.optional(v.id("interviewSessions")),
+    experienceId: v.string(),
+    event: v.string(), // started|question_shown|answered|skipped|circled_back|synthesized|completed|abandoned|voice_connected|qr_scanned
+    questionKey: v.optional(v.string()),
+    meta: v.optional(v.string()), // JSON blob
+    at: v.number(),
+  })
+    .index("by_user", ["userId", "at"])
+    .index("by_session", ["sessionId", "at"]),
 
   // Reserved for Plan 2 (Coach) — defined now to avoid migration churn.
   threads: defineTable({

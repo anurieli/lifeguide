@@ -67,3 +67,13 @@ Features that are done but haven't been manually verified yet.
 - [x] Prod (`strong-wildebeest-896`) was stale (frontend on `c5d0c05`, backend never deployed there) → `npx convex deploy` pushed the current backend; anonymous + token auth now succeed on mylifesguide.com ✓
 - [ ] Google OAuth click-through on prod — still wants a human pass (can't drive Google sign-in headlessly)
 - [ ] Wire `CONVEX_DEPLOY_KEY` (prod) into Vercel + build command `npx convex deploy --cmd 'npm run build'` so the prod backend auto-deploys with the frontend (prevents the drift that caused the outage) — needs a prod deploy key from the Convex dashboard
+
+### Vision board drag-to-select / multi-select (ARI-12)
+- [ ] Shift-drag on empty canvas pans the board (and a plain drag on empty canvas draws a marquee instead, not a pan)
+- [ ] Trackpad two-finger swipe pans the board smoothly
+- [ ] ⌘-scroll (or trackpad pinch) zooms toward the cursor and stops at the min/max zoom
+- [ ] Marquee-select a few cards, then ⌘-Shift-click one of them and confirm it drops out of the selection (count decreases)
+- [ ] Group-move with image / document / link cards (not just empty text cards) keeps their relative spacing and doesn't snap back after the move lands
+- [ ] Zoom in, then group-move a selection — confirm the cards track the cursor 1:1 at that zoom and commit in place
+- [ ] ⌘-A selects every card; ⌫/Delete clears the whole selection from the board
+- [ ] Click into a card, type, and press Backspace/Delete — confirm it edits the text and does NOT delete the selected cards

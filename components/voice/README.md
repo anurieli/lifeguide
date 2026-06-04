@@ -95,8 +95,11 @@ classes (transform/opacity only, strong ease-out curves, blur to mask state swap
 
 - **Today** (`components/today/Today.tsx`) — morning "one move", evening reflection.
 - **Blueprint / Core** (`components/core/Core.tsx`) — all 18 blueprint boxes.
-- **Onboarding** (`components/onboarding/Onboarding.tsx`) — the "something that pulls
-  at you" field. The onboarding rebuild reuses this same component.
+- **Onboarding** — the Door (`components/onboarding/Door.tsx`, "What do you want out of
+  life?") and the text interview (`components/onboarding/Interview.tsx`, every blueprint
+  question). The realtime `VoiceInterview` is a separate spoken-conversation path; the
+  phone composer (`app/interview/[sessionId]/page.tsx`) is a chat box, a future fit for
+  the compact variant.
 
 ## Gotchas
 

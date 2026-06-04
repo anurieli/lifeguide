@@ -37,7 +37,7 @@ Manual and Coach paths: VoiceField is the **manual** voice path (the person driv
 VoiceField **owns no data**. It is a write-through input: each host field passes `value` + `onChange` (+ optional `onCommit`) and keeps full control of persistence. So the same component feeds:
 - **Today** → `interactions.log` (morning "one move", evening reflection),
 - **Blueprint / Core** → `core.save` (the 18 blueprint boxes),
-- **Onboarding** → local state → vision-seed capture on finish.
+- **Onboarding** → the Door (`Door.tsx`, → northStar + vision-seed capture) and the text interview (`Interview.tsx`, every blueprint question → `interview.appendTurn`). The realtime `VoiceInterview` is a separate spoken-conversation path; the phone composer is a chat box (future compact-variant fit).
 
 It **draws** at act-time: `voice.prompts` pulls the **Mirror** through the Context Bus (`mirror.assemble`) so suggestions are about *this* person, not generic. It does not publish to the streams itself — the host field's existing write path is what reaches the Bus (e.g. a saved capture still distills as before).
 

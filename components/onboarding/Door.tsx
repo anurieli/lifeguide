@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { VoiceField } from "@/components/voice/VoiceField";
 
 const Eyebrow = ({ children }: { children: React.ReactNode }) => (
   <div className="text-[12px] tracking-[0.18em] uppercase text-ink-mute mb-3.5">{children}</div>
@@ -42,12 +43,19 @@ export function Door({
         <H>What do you want out of life?</H>
         <P>There&apos;s no wrong answer. Just start anywhere.</P>
 
-        <textarea
+        <VoiceField
+          meta={{
+            id: "onboarding.door",
+            question: "What do you want out of life?",
+            descriptor: "There's no wrong answer. Just start anywhere.",
+            placeholder: "Start writing… anything.",
+            intent: "capture, in their own words, what they want out of life — direction, aspirations, a felt sense",
+          }}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={setText}
           rows={4}
-          placeholder="Start writing… anything."
-          className="w-full max-w-[440px] mx-auto mt-6 bg-card border border-line rounded-[14px] p-4 text-[15px] outline-none resize-none block text-ink"
+          className="max-w-[440px] mx-auto mt-6 text-left"
+          inputClassName="w-full bg-card border border-line rounded-[14px] p-4 pr-12 text-[15px] outline-none resize-none block text-ink focus:border-gold transition placeholder:text-ink-mute"
         />
 
         <div className="pt-7 flex flex-col items-center gap-3">

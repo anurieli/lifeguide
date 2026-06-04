@@ -7,6 +7,12 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-04 · VoiceField into the rebuilt onboarding (branch `voice-field`) ✅ typecheck + tests
+Merged latest `dev` (which had replaced the old 5-step onboarding wizard with the Door → guided interview → synthesis rebuild) into the voice-field branch, then wired **VoiceField** into the new onboarding's two question fields: the **Door** (`components/onboarding/Door.tsx`, "What do you want out of life?") and the **text interview** (`components/onboarding/Interview.tsx`, every blueprint question, meta derived from the live question `q`). My earlier wiring targeted the now-deleted wizard, so those text fields had no mic; this restores voice on the onboarding the user actually sees. The realtime `VoiceInterview` is left as the separate spoken-conversation path; the phone composer (`app/interview/[sessionId]/page.tsx`) is a chat box deferred to the compact variant. The `config.ts` merge cleanly kept both the realtime-interview tasks (`voice`, `synthesis`) and VoiceField's (`voiceShape`, `voicePrompts`). Verified: `tsc --noEmit` clean, 43/43 tests pass; running dev server recompiled with no errors.
+**Docs touched:** `docs/product/features/voice-field.md` (onboarding wiring updated to Door + Interview), `components/voice/README.md` (wired-today list updated). Code: `components/onboarding/Door.tsx`, `components/onboarding/Interview.tsx`.
+
+---
+
 ## 2026-06-03 · Onboarding rebuild: Door, interview, voice, QR, synthesis, levels (branch `onboarding-rebuild`)
 
 **Commits:** `a92c830` (levels), `8b3486e` (experiences), `73c1b48` (policy), `cb8b0e1` (interview CRUD), `7ab0e5a` (schema), `2cbb180` (settings recompute), `50010a7` (Door), `2974668` (text interview), `91d9438` (voice provider), `db143f9` (voice WebRTC UI), `aaf5397` (QR join token + phone route), `95cf473` (synthesis + status surfacing), `64e58da` (orchestrator + gate wiring)

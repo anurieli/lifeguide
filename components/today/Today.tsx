@@ -4,6 +4,25 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { View } from "@/components/shell/Rail";
+import { VoiceField } from "@/components/voice/VoiceField";
+
+const FIELD_CLASS =
+  "w-full border border-line-2 rounded-xl p-3 pr-12 text-[14.5px] resize-none outline-none bg-paper text-ink placeholder:text-ink-mute focus:border-gold transition";
+
+const AM_FIELD = {
+  id: "today.one-move",
+  question: "What's one small thing today that points at it?",
+  descriptor: "It can be tiny. That's the point.",
+  placeholder: "It can be tiny. That's the point.",
+  intent: "extract a single concrete, doable action the person can take today",
+};
+const PM_FIELD = {
+  id: "today.tonight",
+  question: "What pulled at you today?",
+  descriptor: "No score. No streak. Just set it down.",
+  placeholder: "Say it however it comes out…",
+  intent: "capture an honest, plain reflection on what tugged at them today",
+};
 
 function greeting() {
   const h = new Date().getHours();
@@ -73,15 +92,15 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
               <div className="text-[17px] text-ink mb-3.5">
                 What&apos;s one small thing today that points at it?
               </div>
-              <textarea
+              <VoiceField
+                meta={AM_FIELD}
                 value={amText}
-                onChange={(e) => {
-                  setAmText(e.target.value);
+                onChange={(v) => {
+                  setAmText(v);
                   setAmSaved(false);
                 }}
                 rows={2}
-                placeholder="It can be tiny. That's the point."
-                className="w-full border border-line-2 rounded-xl p-3 text-[14.5px] resize-none outline-none bg-paper text-ink placeholder:text-ink-mute"
+                inputClassName={FIELD_CLASS}
               />
               <button
                 onClick={async () => {
@@ -103,15 +122,15 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
             <div className="bg-card border border-line rounded-[18px] p-[22px] mb-[18px]">
               <div className="text-[11px] tracking-[0.16em] uppercase text-ink-mute mb-2.5">Tonight</div>
               <div className="text-[17px] text-ink mb-3.5">What pulled at you today?</div>
-              <textarea
+              <VoiceField
+                meta={PM_FIELD}
                 value={pmText}
-                onChange={(e) => {
-                  setPmText(e.target.value);
+                onChange={(v) => {
+                  setPmText(v);
                   setPmSaved(false);
                 }}
                 rows={3}
-                placeholder="Say it however it comes out…"
-                className="w-full border border-line-2 rounded-xl p-3 text-[14.5px] resize-none outline-none bg-paper text-ink placeholder:text-ink-mute"
+                inputClassName={FIELD_CLASS}
               />
               <button
                 onClick={async () => {

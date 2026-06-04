@@ -15,7 +15,7 @@ The whole AI surface is defined in one place: [`../../convex/ai/config.ts`](../.
 
 Because everything is OpenAI-compatible, the same SDK reaches all three providers; only the `baseURL` and key differ. Moving a task to a local model is: set its `provider` to `local`, set its `model` to whatever the local server serves, and `npx convex env set LOCAL_AI_BASE_URL http://localhost:1234/v1`. Pointing a task at a stronger hosted model (an Anthropic or open-weights model on OpenRouter) is a one-line model change.
 
-`aiForTask(ctx, taskId, userId)` in `convex/ai/openai.ts` builds the client for a task: it reads the provider + model from `config.ts`, resolves the key (per-profile then env, below), and returns `{ client, model, temperature, system }`. Live call sites: `distill.ts` (`distill`) and `coach.ts` (`coachReply`). The `curate` and `journalPrompts` nodes are defined and visible in Settings but not yet called. A secret-free `aiNodeSummary()` feeds the Settings list so every node is visible in the app.
+`aiForTask(ctx, taskId, userId)` in `convex/ai/openai.ts` builds the client for a task: it reads the provider + model from `config.ts`, resolves the key (per-profile then env, below), and returns `{ client, model, temperature, system }`. Live call sites: `distill.ts` (`distill`), `coach.ts` (`coachReply`), and `voice.ts` (`voiceShape`, `voicePrompts` — see role 6). The `curate` and `journalPrompts` nodes are defined and visible in Settings but not yet called. A secret-free `aiNodeSummary()` feeds the Settings list so every node is visible in the app.
 
 ### Keys: deployment env and per-profile
 
@@ -56,6 +56,15 @@ Two consumers, both writing text-bearing image rows:
 ### 5. Transcription: spoken Journal answers (proposed)
 
 A session prompt may be answered by voice (`answerAudioFileId`). Transcription turns the audio into `answerText`, the form the rest of the system reads. This is the `source: "audio"` path on captures and the spoken self-session.
+
+### 6. VoiceField: spoken answers on any field (LIVE)
+
+[`VoiceField`](../product/features/voice-field.md) lets a person speak into any text field instead of typing. **Transcription itself is client-side** — the browser's Web Speech API does live, on-device speech-to-text, so no audio ever reaches the server (and there is no transcription cost). The AI layer enters only after the words exist, in two field-aware server passes (both in `convex/voice.ts`):
+
+- **`voiceShape`** — takes the raw transcript plus the field's `question` / `descriptor` / `intent` and returns the words cleaned and fitted to what the field asks. It keeps the person's meaning; the client retains the raw transcript and offers a one-tap "show raw", so nothing is silently overwritten.
+- **`voicePrompts`** — "Prompt Mode": generates 2–3 short, contextual nudges for what to say next, grounded in the field metadata and the Mirror (drawn through the Context Bus). It is ambient — on any error it returns `[]` and the UI simply shows nothing.
+
+This is distinct from the **onboarding voice interview** (a realtime, conversational OpenAI Realtime stack, provider-abstracted, still proposed in the onboarding-rebuild spec): VoiceField is per-field dictation, the interview is a spoken conversation. They coexist and share nothing but the goal of letting people talk instead of type.
 
 ---
 

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { BLUEPRINT, type Malleability } from "@/lib/blueprint";
+import { VoiceField } from "@/components/voice/VoiceField";
 
 const MALL: Record<Malleability, { dot: string; label: string }> = {
   green: { dot: "#4F7A4A", label: "freely changeable" },
@@ -46,21 +47,27 @@ function Question({
           {description}
         </p>
       )}
-      <textarea
+      <VoiceField
+        meta={{
+          id: qKey,
+          question: title,
+          descriptor: description || undefined,
+          placeholder: example ? `e.g. ${example}` : "Write yours…",
+          intent: `a clear, honest, first-person answer about: ${title.toLowerCase()}`,
+        }}
         value={draft}
-        onChange={(e) => {
-          setDraft(e.target.value);
+        onChange={(v) => {
+          setDraft(v);
           setSaved(false);
         }}
-        onBlur={() => {
-          if (draft !== value) {
-            onSave(draft);
+        onCommit={(v) => {
+          if (v !== value) {
+            onSave(v);
             setSaved(true);
           }
         }}
         rows={Math.min(10, Math.max(3, draft.split("\n").length + 1))}
-        placeholder={example ? `e.g. ${example}` : "Write yours…"}
-        className="w-full bg-paper-2 border border-line rounded-xl p-3.5 text-[14.5px] text-ink leading-relaxed outline-none resize-y focus:border-gold transition placeholder:text-ink-mute/70"
+        inputClassName="w-full bg-paper-2 border border-line rounded-xl p-3.5 pr-12 text-[14.5px] text-ink leading-relaxed outline-none resize-y focus:border-gold transition placeholder:text-ink-mute/70"
       />
       {saved && <div className="text-[11.5px] text-green mt-1.5">Saved ✓</div>}
     </div>

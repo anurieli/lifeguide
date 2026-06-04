@@ -10,7 +10,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ConvexAuthNextjsServerProvider>
+    // verbose → auth flow logs to the server (Vercel) logs and the browser console.
+    // Temporary, paired with the middleware verbose flag, for diagnosing prod login.
+    <ConvexAuthNextjsServerProvider verbose>
       <html lang="en">
         <body>
           <Providers>{children}</Providers>

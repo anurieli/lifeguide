@@ -73,12 +73,15 @@ export function Door({
                 Most people don&apos;t. Let&apos;s sort it out, one question at a time.
               </p>
             )}
-            <button
-              onClick={handleDontKnow}
-              className="text-[14px] text-ink-mute hover:text-ink transition"
-            >
-              {dontKnowClicked ? "Begin →" : "I don't know"}
-            </button>
+            <span className="vf-halo vf-tipwrap inline-flex rounded-full">
+              <button
+                onClick={handleDontKnow}
+                className="relative rounded-full bg-card px-5 py-2.5 text-[14px] text-ink-soft hover:text-ink transition"
+              >
+                {dontKnowClicked ? "Begin →" : "I don't know"}
+              </button>
+              <span className="vf-tip">I&apos;ll guide you, one question at a time</span>
+            </span>
           </div>
         </div>
       </div>

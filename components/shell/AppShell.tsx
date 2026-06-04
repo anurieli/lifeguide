@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Id } from "@/convex/_generated/dataModel";
 import { Rail, View } from "./Rail";
 import { Today } from "@/components/today/Today";
@@ -10,8 +10,24 @@ import { Guide } from "@/components/guide/Guide";
 import { Settings } from "@/components/settings/Settings";
 import { CoachDock } from "@/components/coach/CoachDock";
 
+const VIEW_STORAGE_KEY = "lifeguide.activeView";
+const VIEWS: View[] = ["today", "core", "board", "guide", "settings"];
+
 export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   const [view, setView] = useState<View>("today");
+
+  // Restore the last-viewed tab after mount. Done in an effect (not a lazy
+  // useState initializer) so server and first client render agree — reading
+  // localStorage during render would cause a hydration mismatch.
+  useEffect(() => {
+    const saved = window.localStorage.getItem(VIEW_STORAGE_KEY);
+    if (saved && VIEWS.includes(saved as View)) setView(saved as View);
+  }, []);
+
+  // Remember the active tab so a refresh returns here instead of Today.
+  useEffect(() => {
+    window.localStorage.setItem(VIEW_STORAGE_KEY, view);
+  }, [view]);
 
   return (
     <div className="flex h-screen bg-paper overflow-hidden">

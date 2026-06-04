@@ -29,14 +29,19 @@ Features that are done but haven't been manually verified yet.
 - [ ] Repeat for Core, Guide, and Settings, confirming each is remembered after a reload
 - [ ] In a fresh browser (no saved value), confirm it still opens on Today by default
 
-### Zen mode exit affordances
-- [ ] Enter Zen, hover the left timeline rail to expand it — confirm a header (◆ Core + "Exit Zen" back chevron) sits above the table of contents, and the TOC list scrolls independently beneath it
-- [ ] Click "Exit Zen" in the rail header, confirm it returns to the grid view
-- [ ] Confirm the faint "Exit Zen" label in the top-right corner brightens on hover and returns to the grid on click
-- [ ] Scroll up at the first question so the slim header appears, confirm the top-right "Exit Zen" fades out (no duplicate exit)
-- [ ] Check light-theme contrast and that nothing overlaps the centered question scene
+### Zen mode exit affordances — ✅ verified live on prod (mylifesguide.com) 2026-06-04
+- [x] Enter Zen, hover the left timeline rail to expand it — header (◆ Core + "Exit Zen" back chevron) sits above the TOC, list scrolls independently ✓
+- [x] "Exit Zen" in the rail header renders (same `onExit` as the top-right; top-right path confirmed below)
+- [x] The faint "EXIT ZEN" label in the top-right corner returns to the grid on click ✓
+- [ ] Scroll up at the first question so the slim header appears, confirm the top-right "Exit Zen" fades out (no duplicate exit) — not exercised
+- [x] Light-theme contrast good; nothing overlaps the centered question scene ✓
 
-### Conversational mode scaffold
-- [ ] Enter Zen, hover the rail — confirm a "Talk" control sits next to "Exit Zen" in the rail header; click it and confirm the Conversational placeholder appears
-- [ ] In Conversational mode, confirm the header shows the same "X / 18 answered" count as Zen/Grid (shared data)
-- [ ] From Conversational, click "Zen" → lands in Zen; click "Grid" → lands in the grid; confirm no answers are lost switching between all three modes
+### Conversational mode scaffold — ✅ verified live on prod (mylifesguide.com) 2026-06-04
+- [x] Hover the rail → "Talk" sits next to "Exit Zen"; clicking it shows the Conversational placeholder ("Talk it through") ✓
+- [x] Conversational header shows the same "0 / 18 answered" count as Zen/Grid (shared data) ✓
+- [x] From Conversational, "Zen" → lands in Zen; round-trip Grid→Zen→Conversational→Zen→Grid works ✓ (answer-preservation across modes not tested — Core was empty, 0/18)
+
+### Prod Convex deployment / auth — ✅ fixed + verified 2026-06-04
+- [x] Prod (`strong-wildebeest-896`) was stale (frontend on `c5d0c05`, backend never deployed there) → `npx convex deploy` pushed the current backend; anonymous + token auth now succeed on mylifesguide.com ✓
+- [ ] Google OAuth click-through on prod — still wants a human pass (can't drive Google sign-in headlessly)
+- [ ] Wire `CONVEX_DEPLOY_KEY` (prod) into Vercel + build command `npx convex deploy --cmd 'npm run build'` so the prod backend auto-deploys with the frontend (prevents the drift that caused the outage) — needs a prod deploy key from the Convex dashboard

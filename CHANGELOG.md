@@ -7,6 +7,18 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-04 · Fix: Google login token not persisting on prod (`SITE_URL` mismatch)
+
+Google sign-in on prod (`mylifesguide.com`) completed the Google consent flow but the user landed back logged-out — the auth token never persisted. Root cause was a misconfig, not a code bug: the shared Convex deployment's `SITE_URL` env var was `http://localhost:3000`.
+
+- **Why it broke.** Convex Auth runs OAuth entirely on `<deployment>.convex.site`, then redirects the browser back to the app (where the Next.js middleware sets the `__convexAuthJWT` / refresh cookies) using `SITE_URL`, rejecting any other origin (`@convex-dev/auth/.../implementation/redirects.js`). The app calls `signIn("google")` with no `redirectTo`, so it always fell back to `SITE_URL`. With `SITE_URL=localhost:3000`, prod OAuth bounced the browser to localhost and the token never landed on `mylifesguide.com`. Dev worked because it matched. Vercel logs were a red herring — the failure is server-side on Convex, and the only Vercel project the MCP can see is an empty placeholder (real prod is the `lifeguide` project on the other Vercel account).
+- **The fix (one shared deployment serves both dev and prod).** Set `SITE_URL=https://mylifesguide.com` on `gregarious-boar-475`; `convex/auth.ts` now supplies a `callbacks.redirect` whitelisting the approved app origins (`mylifesguide.com`, `www.mylifesguide.com`, `localhost:3000`); `components/auth/StartButton.tsx` passes `redirectTo: window.location.origin` so each host gets the token back. Prod login is fixed by the env change alone (old prod button falls back to the now-correct `SITE_URL`); the client + callback changes restore local-dev Google login and make prod robust across apex/www.
+- **Verification.** Root cause confirmed against the `@convex-dev/auth` source and the live Convex env. Backend pushed to `gregarious-boar-475` (`npx convex dev --once`, green). End-to-end Google click-through on prod still wants a manual human pass (Google blocks headless OAuth). Follow-up (not done here): a dedicated Convex **production** deployment with its own `SITE_URL` instead of sharing the dev one.
+
+**Docs touched:** `docs/architecture/security-privacy.md` (new "OAuth redirect across one shared deployment" subsection under Auth).
+
+---
+
 ## 2026-06-03 · Feedback widget + `/admin` ticketing queue
 
 A lightweight, always-available feedback channel for any authenticated user, plus a live ticket queue to triage what comes in.

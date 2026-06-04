@@ -12,6 +12,13 @@ Multi-tenant auth via `@convex-dev/auth` (`convex/auth.ts`), with two providers 
 - **Anonymous:** instant, cookie-bound, throwaway identity for "just look around." Caveat: clearing the cookie starts a fresh person.
 - **Google:** a durable account that survives cookie clears and works across browsers and devices. The code is wired; it needs `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` in the Convex deployment env and the callback URL `https://<deployment>.convex.site/api/auth/callback/google` registered in the Google Cloud OAuth client. Until those exist, `signIn("google")` fails but Anonymous still works.
 
+### OAuth redirect across one shared deployment (why prod login can silently fail)
+Google OAuth runs entirely on the Convex side (`<deployment>.convex.site`). After Google approves, Convex redirects the browser back to the app to set the auth cookies. By default it sends the browser to the single `SITE_URL` env var and rejects any other origin. Because **one Convex deployment (`gregarious-boar-475`) serves both local dev and prod (`mylifesguide.com`)**, a single `SITE_URL` cannot be right for both: when it pointed at `http://localhost:3000`, prod OAuth completed but the token was redirected to localhost and never persisted on `mylifesguide.com` (login appeared to "not stick"). The fix has two halves, both required:
+- The client passes its own origin as `redirectTo`: `signIn("google", { redirectTo: window.location.origin })` (`components/auth/StartButton.tsx`).
+- `convex/auth.ts` supplies a `callbacks.redirect` that whitelists the approved app origins (`mylifesguide.com`, `www.mylifesguide.com`, `localhost:3000`), so the one deployment serves every host. `SITE_URL` is set to `https://mylifesguide.com` as the prod default/fallback.
+
+The long-term clean version is a separate Convex **production** deployment with its own `SITE_URL`; until then, the whitelist keeps one deployment correct for all origins.
+
 Identity is established server-side; the client never asserts a `userId`. Durable login is what makes a per-profile OpenRouter key (see [`ai-layer.md`](ai-layer.md)) actually stick to a person across devices.
 
 ## Keys never reach the client

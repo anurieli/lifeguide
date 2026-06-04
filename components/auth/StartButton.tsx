@@ -18,7 +18,12 @@ export function StartButton() {
         <button
           onClick={() => {
             setPending("google");
-            void signIn("google").catch(() => setPending(null));
+            // Tell Convex which origin to send the browser back to after OAuth, so the auth
+            // token lands on whatever host we're actually on (prod or localhost). Without this
+            // Convex falls back to its single SITE_URL and the token never persists on prod.
+            void signIn("google", { redirectTo: window.location.origin }).catch(() =>
+              setPending(null),
+            );
           }}
           disabled={pending !== null}
           className="mt-8 flex items-center gap-3 mx-auto bg-card border border-line text-ink px-7 py-3 rounded-xl text-sm font-medium hover:border-gold transition disabled:opacity-50"

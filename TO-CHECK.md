@@ -2,6 +2,13 @@
 
 Features that are done but haven't been manually verified yet.
 
+### VoiceField — chunked Whisper transcription (ADR 0005)
+- [ ] **Deploy first:** this branch's `convex/voice.ts` (now `"use node"`, with the new `transcribe` action) must be pushed to the deployment — it lands via the normal dev/main merge pipeline, not from this branch. Confirm `voice:transcribe` resolves after the merge deploy (`npx convex run voice:transcribe '{"audio":"","mimeType":"audio/webm"}'` → auth error, not "function not found").
+- [ ] **Chrome happy path:** open a field with the mic (Today, Core, or onboarding), grant the mic, speak ~10s, confirm the live caption streams (Web Speech) and that the landed text matches Whisper-grade accuracy (not the rougher on-device transcript). Confirm `voiceShape` still cleans it.
+- [ ] **Whisper-only browser:** repeat in Firefox or Safari (no Web Speech) — confirm the mic still appears, the Whisper transcript shows a few seconds behind as segments confirm, and the answer lands.
+- [ ] **Fallback:** with `OPENAI_API_KEY` absent (or network blocked to OpenAI), confirm on Chrome the take still completes using the on-device Web Speech transcript (answer never lost).
+- [ ] **Cancel mid-take:** backspace/escape while recording releases the mic, keeps prior text, no chunk lands.
+
 ### Onboarding rebuild — manual QA
 
 - [ ] **(a) Realtime voice:** start a voice interview, confirm the mic connects, speak a sentence, and verify that both coach and user transcripts appear in the session transcript panel. Specifically, confirm the `"conversation.item.input_audio_transcription.completed"` event fires for user speech (this event name has not been verified against the live OpenAI Realtime API; if user transcripts are missing, check the data-channel event types in the browser console and update `VoiceInterview.tsx` accordingly).

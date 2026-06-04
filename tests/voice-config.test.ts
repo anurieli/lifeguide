@@ -10,4 +10,11 @@ describe("voice task config", () => {
     expect(TASKS["synthesis"]).toBeDefined();
     expect(TASKS["synthesis"].model.length).toBeGreaterThan(0);
   });
+  it("declares a Whisper transcription task pinned to the openai provider", () => {
+    // Whisper has no OpenRouter endpoint, so VoiceField transcription must go openai-direct.
+    expect(TASKS["voiceTranscribe"]).toBeDefined();
+    expect(TASKS["voiceTranscribe"].provider).toBe("openai");
+    expect(TASKS["voiceTranscribe"].model).toMatch(/whisper/);
+    expect(TASKS["voiceTranscribe"].wired).toBe(true);
+  });
 });

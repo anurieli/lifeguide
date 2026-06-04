@@ -1,17 +1,23 @@
+"use node"; // Whisper transcription uses Buffer + the OpenAI SDK's toFile (node-only).
+
 import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { toFile } from "openai";
 import { api } from "./_generated/api";
 import { aiForTask } from "./ai/openai";
 import { assembleContext } from "./context/assemble";
 import { ContextFragment } from "./context/types";
 
 // ============================================================================
-// VoiceField server passes. Transcription is CLIENT-side (Web Speech API); these
-// two actions are the AI layer that turns raw speech into something useful:
-//   shape()   — clean a raw transcript into what the field is asking for.
-//   prompts() — generate contextual "say this next" nudges for Prompt Mode.
-// Both are field-aware (they receive the field's question/descriptor/intent) and
+// VoiceField server passes. Three actions turn speech into something useful:
+//   transcribe() — one short audio segment -> text, via Whisper (OpenAI-direct).
+//   shape()      — clean a raw transcript into what the field is asking for.
+//   prompts()    — generate contextual "say this next" nudges for Prompt Mode.
+// The client records in ~4s chunks and calls transcribe() per chunk, so text
+// lands incrementally and a dropped chunk costs only itself; the on-device Web
+// Speech transcript is the live-display + disconnect fallback. shape/prompts are
+// field-aware (they receive the field's question/descriptor/intent) and
 // person-aware (they read the Mirror via the Context Bus). See
 // docs/product/features/voice-field.md.
 // ============================================================================
@@ -23,6 +29,36 @@ const fieldArgs = {
   intent: v.string(),
   descriptor: v.optional(v.string()),
 } as const;
+
+/**
+ * Transcribe ONE short audio segment (a few seconds of speech) with Whisper.
+ * The VoiceField records in ~4s chunks and calls this per chunk so the transcript
+ * fills in as the person talks and a single dropped chunk costs only itself.
+ *
+ * Whisper is OpenAI-only (OpenRouter exposes no audio endpoint), so the
+ * "voiceTranscribe" task pins the openai provider; the key is the person's saved
+ * OpenAI key, otherwise the deployment's OPENAI_API_KEY. Returns the segment's
+ * text (trimmed); "" for a too-small/near-silent segment. A thrown error (no key,
+ * network, decode) is non-fatal to the take — the client keeps the on-device Web
+ * Speech transcript as the fallback.
+ */
+export const transcribe = action({
+  args: { audio: v.bytes(), mimeType: v.optional(v.string()) },
+  handler: async (ctx, args): Promise<string> => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    // Skip empty/near-silent segments (a webm/opus header alone is ~hundreds of bytes).
+    if (args.audio.byteLength < 1200) return "";
+
+    const mime = args.mimeType ?? "audio/webm";
+    const ext = mime.includes("mp4") ? "mp4" : mime.includes("ogg") ? "ogg" : "webm";
+
+    const { client, model } = await aiForTask(ctx, "voiceTranscribe", userId);
+    const file = await toFile(Buffer.from(args.audio), `segment.${ext}`, { type: mime });
+    const res = await client.audio.transcriptions.create({ file, model });
+    return (res.text ?? "").trim();
+  },
+});
 
 /**
  * Shape a raw spoken transcript into clean text fitted to the field.

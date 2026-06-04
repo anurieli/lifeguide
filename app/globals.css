@@ -266,6 +266,30 @@ body {
   transform: translateX(-50%) translateY(0);
 }
 
+/* side variant: sits to the RIGHT of the element (so it never overlaps what's above),
+   high z-index for full contrast, minimal. */
+.vf-tip-side {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  white-space: nowrap;
+  background: var(--ink);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  padding: 5px 9px;
+  border-radius: 7px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 50;
+  transition: opacity 0.18s var(--vf-ease-out), transform 0.18s var(--vf-ease-out);
+}
+.vf-tipwrap:hover .vf-tip-side {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .vf-rise,
   .vf-final,

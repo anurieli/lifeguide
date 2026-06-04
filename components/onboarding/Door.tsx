@@ -80,7 +80,7 @@ export function Door({
               >
                 {dontKnowClicked ? "Begin →" : "I don't know"}
               </button>
-              <span className="vf-tip">I&apos;ll guide you, one question at a time</span>
+              <span className="vf-tip-side">I&apos;ll guide you</span>
             </span>
           </div>
         </div>

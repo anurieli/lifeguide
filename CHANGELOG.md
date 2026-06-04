@@ -7,6 +7,29 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-06-03 · Onboarding rebuild: Door, interview, voice, QR, synthesis, levels (branch `onboarding-rebuild`)
+
+**Commits:** `a92c830` (levels), `8b3486e` (experiences), `73c1b48` (policy), `cb8b0e1` (interview CRUD), `7ab0e5a` (schema), `2cbb180` (settings recompute), `50010a7` (Door), `2974668` (text interview), `91d9438` (voice provider), `db143f9` (voice WebRTC UI), `aaf5397` (QR join token + phone route), `95cf473` (synthesis + status surfacing), `64e58da` (orchestrator + gate wiring)
+
+The five-step onboarding wizard is replaced with a real first-pass Core draw. The full flow: the Door ("What do you want out of life?" with north star save and vision-seed capture), a choose-experience screen (text or voice), a one-question-at-a-time text interview (skip + single circle-back policy in `lib/interview/policy.ts`), a voice interview (OpenAI Realtime `gpt-4o-mini-realtime-preview` via WebRTC, provider-abstracted in `convex/ai/voice/`), a QR phone handoff (short-lived join token, SHA-256 hashed, public phone route at `app/interview/[sessionId]`), a synthesis action (`convex/ai/synthesizeInterview.ts`: fills empty `coreResponses` boxes from the transcript, logs conflicts, never overwrites authored text), and a status reveal screen. Blueprint status (`unstarted`/`in_progress`/`complete`) and level (0 or 1) are computed from `coreResponses` and stored in `settings`. Status is surfaced via a calm Home banner and a Guide progress marker.
+
+New schema tables: `interviewSessions` (the session row + transcript array + join-token fields) and `experienceEvents` (telemetry). New settings fields: `blueprintStatus` and `level`. New pure logic: `lib/levels.ts` (blueprint completeness + level derivation) and `lib/interview/policy.ts` (question-selection). New experience registry: `lib/experiences/index.ts`.
+
+**Docs touched:**
+- `docs/architecture/data-model.md` (added `interviewSessions`, `experienceEvents`, extended `settings` entry)
+- `docs/product/features/onboarding.md` (new, complete)
+- `docs/product/features/interview.md` (new, complete)
+- `docs/design/onboarding.md` (new, complete)
+- `docs/decisions/0004-voice-stack-and-levels.md` (new ADR)
+- `docs/decisions/README.md` (ADR table entry)
+- `docs/product/prd.md` (onboarding rebuild section added)
+- `docs/roadmap.md` (already-built section updated; deferred items listed)
+- `TO-CHECK.md` (manual QA section added)
+- Spec: `docs/superpowers/specs/2026-06-03-onboarding-rebuild-design.md`
+- Plan: `docs/superpowers/plans/2026-06-03-onboarding-rebuild.md`
+
+---
+
 ## 2026-06-03 · Task 0.6: `settings.recompute` — blueprint status + level (branch `onboarding-rebuild`) commit `2cbb180`
 
 Added `recompute` mutation to `convex/settings.ts`. It loads all `coreResponses` for the authed user, builds a `{ questionKey: content }` map, calls `blueprintStatus()` and `deriveLevel()` from `lib/levels`, and patches the user's settings row. The existing `getOrCreate` helper and `get` query were reused unchanged. Covered by TDD: test written first (`tests/convex/levels-settings.test.ts`), confirmed failing, implementation written to pass. Full suite: 83/83 pass, no regressions. Codegen ran to update `convex/_generated`.

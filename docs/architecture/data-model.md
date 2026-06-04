@@ -46,10 +46,63 @@ The immutable event of inspiration, distilled async, may become a node. `{ userI
 Cross-cutting typed tags (NOT containers). `{ userId, name, description?, weight, source: default|preset|custom, createdAt }`. Seeds a single default on bootstrap; the preset library adds more.
 
 ### settings
-Per-user app settings. `{ userId, onboardedAt?, morningCheckin, eveningCheckin, dailyExercise: intention|gratitude|free, coachTone: gentle|balanced|direct, reachingOut: leave|earned|often, northStar?, updatedAt }`.
+Per-user app settings. `{ userId, onboardedAt?, morningCheckin, eveningCheckin, dailyExercise: intention|gratitude|free, coachTone: gentle|balanced|direct, reachingOut: leave|earned|often, northStar?, blueprintStatus?, level?, updatedAt }`.
+
+`blueprintStatus` is a computed field (see `convex/settings.ts: recompute`): `"unstarted"` (zero boxes filled), `"in_progress"` (some boxes filled), or `"complete"` (all 18 filled by user or synthesis). `level` is the numeric level derived from status: `0` = blueprint unfinished, `1` = all 18 boxes filled (app fully unlocked), `2+` deferred (engagement-driven, rules TBD). Both are set by `settings.recompute` and re-read by the Home banner and the Guide marker.
 
 ### apiKeys
 Per-profile AI provider keys. `{ userId, provider: openrouter|openai|local, key, last4, createdAt, updatedAt }`, indexed `by_user_provider`. A user's own key wins over the deployment env key for that provider when their AI tasks run (see [`ai-layer.md`](ai-layer.md)). Server-only: `key` is never returned to the client (`convex/aiKeys.ts` exposes only status plus `last4`, and an `internalQuery` for server use). Encryption at rest is a tracked hardening step (see [`security-privacy.md`](security-privacy.md)).
+
+### interviewSessions (onboarding interviews)
+
+One run of an onboarding experience. The QR phone-handoff encodes `/interview/<_id>` so any device can join the same row.
+
+```
+interviewSessions {
+  userId,                       // owner of the session
+  experienceId: string,         // "text-interview" | "voice-interview"
+  status: "active" | "completed" | "abandoned",
+  device: "desktop" | "phone",  // device that started the session
+  transcript: Array<{
+    role: "coach" | "user",
+    questionKey?: string,       // which blueprint key this turn addresses
+    text: string,
+    at: number,                 // unix ms
+  }>,
+  skipped: string[],            // questionKeys deferred this run (for circle-back)
+  joinTokenHash?: string,       // sha256 of the QR join token (raw token never stored)
+  joinTokenExpiresAt?: number,  // token expiry in unix ms (10-minute window)
+  startedAt: number,
+  endedAt?: number,
+}
+```
+
+Indexes: `by_user` over `["userId", "startedAt"]`.
+
+A join token is minted by `interview.issueJoinToken` (owner-only), hashed with SHA-256 via Web Crypto, stored as `joinTokenHash`. The raw token is returned once and embedded in the QR URL as `?t=<token>`. Public mutations (`markJoined`, `appendTurnByToken`, `endByToken`) validate the token by rehashing and comparing to `joinTokenHash`.
+
+---
+
+### experienceEvents (telemetry)
+
+A row per notable moment in an interview run. Used for A/B funnel analysis and debugging; never read by the interview engine itself.
+
+```
+experienceEvents {
+  userId,
+  sessionId?: id("interviewSessions"),
+  experienceId: string,
+  event: string,   // started | question_shown | answered | skipped | circled_back
+                   // | synthesized | completed | abandoned | voice_connected | qr_scanned
+  questionKey?: string,
+  meta?: string,   // JSON blob for extra fields (e.g. conflict keys from synthesis)
+  at: number,
+}
+```
+
+Indexes: `by_user` over `["userId", "at"]`, `by_session` over `["sessionId", "at"]`.
+
+---
 
 ### coreResponses (the Core's raw backbone)
 The person's own answers to the fixed Life Blueprint. `{ userId, questionKey, content, updatedAt }`, indexed `by_user_question`. The question/section skeleton (3 sections, 18 questions, malleability) is code config in `lib/blueprint.ts` (generated from [`../product/blueprint/blueprint.json`](../product/blueprint/blueprint.json)); `questionKey` is `s{section}q{index}` (e.g. `s1q0`). This is the raw text the Coach curates into the synthesized `mirror`. See [`../product/features/core.md`](../product/features/core.md).

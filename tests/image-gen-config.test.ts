@@ -10,7 +10,6 @@ describe("vision board image generation task config", () => {
   });
   it("is wired and names a real image model", () => {
     expect(TASKS["imageGen"].wired).toBe(true);
-    // The action handles both b64 and url responses, so any DALL·E / gpt-image id works.
-    expect(TASKS["imageGen"].model).toMatch(/dall-e|gpt-image/);
+    expect(TASKS["imageGen"].model).toBe("gpt-image-1");
   });
 });

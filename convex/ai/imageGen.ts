@@ -41,6 +41,7 @@ export const generateInto = action({
       const fileId = await ctx.storage.store(blob);
       await ctx.runMutation(internal.nodes.finishGeneratedImage, { nodeId, fileId });
     } catch (e) {
+      console.error("image generation failed", e);
       await ctx.runMutation(internal.nodes.failGeneratedImage, {
         nodeId,
         note: e instanceof Error ? e.message : String(e),

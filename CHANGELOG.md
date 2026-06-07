@@ -7,6 +7,7 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+<<<<<<< Updated upstream
 ## 2026-06-04 · Fix: image generation model (dall-e-3 → gpt-image-1)
 
 Image generation failed on localhost with `400 The model 'dall-e-3' does not exist`. A probe against the deployment's OpenAI key showed this account exposes only **`gpt-image-1`** (both `dall-e-3` and `dall-e-2` 400 as nonexistent — newer OpenAI accounts no longer carry the DALL·E ids). Flipped `imageGen.model` to `gpt-image-1`; the action already handled its base64 response, so no other change. Verified the model returns an image with the deployment key.
@@ -14,6 +15,23 @@ Image generation failed on localhost with `400 The model 'dall-e-3' does not exi
 Files: `convex/ai/config.ts` (`imageGen.model`).
 
 **Docs touched:** `docs/product/features/vision-board.md` (§7 + §9 model dial), `CHANGELOG.md` (prior entry's model reference).
+=======
+## 2026-06-06 · Karpathy-style research wiki scaffold
+
+Created a `docs/research/wiki/` workspace following Andrey Karpathy's LLM wiki method: immutable `raw/`, agent-written `wiki/`, local schema in `CLAUDE.md`, an `index.md` entry point, and a `log.md` for ingestions/reorganizations. Added a `.claude/skills/llm-wiki` skill so Claude/Codex can maintain the wiki consistently: read the schema first, preserve raw sources, synthesize durable Markdown pages, update the index, and log changes.
+
+Files: `.claude/skills/llm-wiki/SKILL.md` (new), `docs/research/wiki/CLAUDE.md` (new), `docs/research/wiki/index.md` (new), `docs/research/wiki/log.md` (new), `docs/research/wiki/raw/.gitkeep` (new), `docs/research/wiki/wiki/.gitkeep` (new).
+
+**Docs touched:** `docs/research/README.md`, `docs/research/wiki/CLAUDE.md`, `docs/research/wiki/index.md`, `docs/research/wiki/log.md`, `CHANGELOG.md`.
+
+## 2026-06-04 · Listener polish: toss a session + the audio orb
+
+Two improvements to the Listener before it ships. **Toss a session:** a quiet, ghosted **Toss** control beside End lets you end a call *without filing* — time is still tracked (`endedAt`), the transcript is kept, but the Center never runs and a calm "that one was just for thinking" close appears. Added a `tossed` literal to the `interviewSessions.status` union and to `interview.end`; the realtime hook grew a `toss()` path (same teardown as `end()`, different finishing handler) alongside `onToss`. **The audio orb:** replaced the bar waveform in the Listener with `VoiceOrb`, a raw-WebGL fragment shader (no new dependency) rendering a circular fabric of dots that ripples like cloth — warming **gold** and tapping from the top when the Listener speaks, cooling **blue** from the bottom when you do, brighter/agitated with volume, calm neutral breathing in silence. The hook exposes per-party loudness via a new `sampleLevels()` (reused scratch buffers, zero per-frame allocation) which the shader reads each frame (attack-fast / release-slow smoothing). The live view was reworked around the orb: the **current caption is always clear** beneath it (small gold/blue speaker dot), while earlier lines **rise and fade behind the orb**. Onboarding's `VoiceInterview` keeps its bar waveform for now (the engine is shared, so it can swap later). `tsc` clean, full suite **226 green**, Convex schema pushed to dev, `/speak` compiles 200. The orb's live look + the toss flow need a human eye/mic — logged in `TO-CHECK.md`. (Brainstormed first; user chose WebGL fidelity.)
+
+Files: `convex/schema.ts` (`tossed` status), `convex/interview.ts` (`end` accepts `tossed`), `hooks/useRealtimeVoice.ts` (`toss`/`onToss`, `sampleLevels`), `components/voice/VoiceOrb.tsx` (new, WebGL shader), `components/voice/SpeakSurface.tsx` (orb live view, toss control, tossed close, CaptionLine).
+
+**Docs touched:** `docs/product/features/listener.md` (§2 orb + captions + Toss, §3 toss action, §4 shared engine note, §5 tossed state), `docs/architecture/data-model.md` (`interviewSessions.status` includes `tossed`).
+>>>>>>> Stashed changes
 
 ## 2026-06-04 · Vision board: AI image generation + double-click / right-click add
 

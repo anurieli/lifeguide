@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LifeGuide - Human System 3D Map</title>
+<link rel="icon" href="data:,">
+<style>
+  :root{
+    --bg:#f7f4ed;
+    --panel:#ffffff;
+    --ink:#171a21;
+    --soft:#4d5563;
+    --muted:#858c99;
+    --line:#dfd8ca;
+    --gold:#b58a45;
+    --blue:#2f638c;
+    --teal:#28736f;
+    --green:#4f7848;
+    --red:#a34d48;
+    --violet:#68528d;
+    --slate:#303a48;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    overflow:hidden;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font-family:inherit}
+  #app{position:fixed;inset:0;display:grid;grid-template-columns:300px 1fr 380px}
+  .left,.right{
+    position:relative;
+    z-index:5;
+    background:rgba(255,255,255,.92);
+    border-color:var(--line);
+    border-style:solid;
+    backdrop-filter:blur(18px);
+    overflow:auto;
+  }
+  .left{border-width:0 1px 0 0}
+  .right{border-width:0 0 0 1px}
+  .brand{padding:22px 22px 16px;border-bottom:1px solid var(--line)}
+  .brand h1{font-size:20px;line-height:1.1;margin:0 0 8px;letter-spacing:0}
+  .brand p{font-size:13px;line-height:1.45;margin:0;color:var(--soft)}
+  .section{padding:18px 18px;border-bottom:1px solid var(--line)}
+  .section-title{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.14em;
+    color:var(--muted);
+    margin-bottom:10px;
+    font-weight:700;
+  }
+  .layer-list{display:grid;gap:8px}
+  .layer-btn{
+    border:1px solid var(--line);
+    background:#fff;
+    border-radius:8px;
+    padding:10px 11px;
+    display:grid;
+    grid-template-columns:12px 1fr auto;
+    gap:9px;
+    align-items:center;
+    text-align:left;
+    cursor:pointer;
+    color:var(--ink);
+  }
+  .layer-btn:hover{border-color:#b9ad99}
+  .layer-btn.active{box-shadow:inset 0 0 0 1px var(--slate);border-color:var(--slate)}
+  .swatch{width:10px;height:10px;border-radius:50%}
+  .layer-btn span:nth-child(2){font-size:13px;font-weight:650}
+  .layer-btn em{font-size:11px;color:var(--muted);font-style:normal}
+  .mode-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .mode-row button,.action-btn{
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--ink);
+    border-radius:8px;
+    padding:10px 12px;
+    cursor:pointer;
+    font-size:13px;
+    font-weight:650;
+  }
+  .mode-row button.active,.action-btn.primary{background:var(--slate);border-color:var(--slate);color:#fff}
+  .legend{display:grid;gap:9px;font-size:12px;color:var(--soft);line-height:1.35}
+  .legend-row{display:grid;grid-template-columns:18px 1fr;gap:8px;align-items:start}
+  .legend-key{width:18px;height:18px;border:1px solid var(--line);border-radius:5px;background:#fff}
+  .canvas-wrap{position:relative;overflow:hidden}
+  #scene,#fallback{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #fallback{display:none}
+  .label-layer{position:absolute;inset:0;pointer-events:none;z-index:3}
+  .node-label{
+    position:absolute;
+    transform:translate(-50%,-50%);
+    min-width:74px;
+    max-width:150px;
+    padding:6px 8px;
+    border-radius:8px;
+    border:1px solid rgba(23,26,33,.12);
+    background:rgba(255,255,255,.9);
+    color:#161a20;
+    font-size:11px;
+    line-height:1.15;
+    text-align:center;
+    box-shadow:0 6px 18px rgba(24,28,36,.08);
+    opacity:.94;
+    white-space:normal;
+    pointer-events:auto;
+    cursor:pointer;
+    z-index:2;
+  }
+  .node-label.dim{opacity:.2}
+  .node-label.hide-label{display:none!important}
+  .node-label.selected{border-color:#171a21;box-shadow:0 0 0 2px rgba(23,26,33,.16)}
+  .node-label.child{
+    min-width:54px;
+    max-width:116px;
+    padding:5px 7px;
+    font-size:10px;
+    background:rgba(255,255,255,.86);
+  }
+  .edge-label{
+    position:absolute;
+    transform:translate(-50%,-50%);
+    padding:4px 7px;
+    border-radius:999px;
+    border:1px solid rgba(23,26,33,.1);
+    background:rgba(255,255,255,.84);
+    color:var(--soft);
+    font-size:10px;
+    line-height:1;
+    pointer-events:none;
+    box-shadow:0 4px 12px rgba(24,28,36,.07);
+    z-index:1;
+  }
+  .toolbar{
+    position:absolute;
+    z-index:4;
+    left:18px;
+    right:18px;
+    bottom:18px;
+    display:flex;
+    justify-content:center;
+    pointer-events:none;
+  }
+  .toolbar-inner{
+    pointer-events:auto;
+    display:flex;
+    gap:8px;
+    align-items:center;
+    background:rgba(255,255,255,.92);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:8px;
+    box-shadow:0 12px 34px rgba(20,24,30,.12);
+  }
+  .toolbar button{
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--ink);
+    border-radius:7px;
+    width:36px;
+    height:34px;
+    cursor:pointer;
+    font-size:15px;
+    font-weight:750;
+  }
+  .toolbar button.active{background:var(--slate);color:#fff;border-color:var(--slate)}
+  .status{
+    position:absolute;
+    z-index:4;
+    top:16px;
+    left:50%;
+    transform:translateX(-50%);
+    background:rgba(255,255,255,.92);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:8px 13px;
+    color:var(--soft);
+    font-size:12px;
+    box-shadow:0 8px 26px rgba(20,24,30,.08);
+  }
+  .inspector{padding:24px}
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    color:var(--muted);
+    font-weight:750;
+    margin-bottom:13px;
+  }
+  .badge i{width:10px;height:10px;border-radius:50%;display:block}
+  .inspector h2{font-size:25px;line-height:1.12;margin:0 0 10px;letter-spacing:0}
+  .inspector p{font-size:14px;line-height:1.48;margin:0 0 18px;color:var(--soft)}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:16px 0}
+  .stat{border:1px solid var(--line);border-radius:8px;padding:11px;background:#fff}
+  .stat b{display:block;font-size:18px;margin-bottom:2px}
+  .stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+  .detail-block{border-top:1px solid var(--line);padding-top:16px;margin-top:16px}
+  .detail-block h3{font-size:13px;margin:0 0 10px}
+  .chip-list{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{font-size:12px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 9px;color:var(--soft)}
+  .flow-list{display:grid;gap:9px}
+  .flow-item{display:grid;grid-template-columns:22px 1fr;gap:9px;align-items:start;font-size:13px;line-height:1.35;color:var(--soft)}
+  .flow-item b{color:var(--ink)}
+  .num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#eef0ee;color:var(--ink);font-size:11px;font-weight:800}
+  .connection-btn{
+    width:100%;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:#fff;
+    color:var(--ink);
+    padding:10px 11px;
+    text-align:left;
+    cursor:pointer;
+  }
+  .connection-btn:hover{border-color:#a99d8b}
+  .connection-btn b{display:block;font-size:13px;margin-bottom:4px}
+  .connection-btn span{display:block;font-size:12px;line-height:1.35;color:var(--soft)}
+  @media(max-width:980px){
+    #app{grid-template-columns:1fr}
+    .left{position:absolute;left:12px;top:12px;width:280px;max-height:42vh;border:1px solid var(--line);border-radius:10px}
+    .right{position:absolute;right:12px;bottom:72px;width:min(360px,calc(100vw - 24px));max-height:44vh;border:1px solid var(--line);border-radius:10px}
+    .brand{padding:14px}
+    .section{padding:14px}
+    .inspector{padding:16px}
+    .status{top:auto;bottom:126px;white-space:nowrap}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside class="left">
+    <div class="brand">
+      <h1>LifeGuide Human System</h1>
+      <p>A visual map of how the small parts of life affect each other: sleep, energy, work, money, habits, relationships, environment, and vision.</p>
+    </div>
+    <div class="section">
+      <div class="section-title">Layer Focus</div>
+      <div class="layer-list" id="layerList"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">View Mode</div>
+      <div class="mode-row">
+        <button id="mapMode" class="active">System</button>
+        <button id="pathMode">A to B</button>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">How to Read It</div>
+      <div class="legend">
+        <div class="legend-row"><div class="legend-key"></div><div>Center is the Core Human. Everything else is either an input, a direction, a bridge, or evidence.</div></div>
+        <div class="legend-row"><div class="legend-key"></div><div>Upper space is the desired future. Lower space is present reality and behavior.</div></div>
+        <div class="legend-row"><div class="legend-key"></div><div>Click a life area to highlight what it touches across the whole person. The side panel turns that into questions and data to capture.</div></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="canvas-wrap">
+    <canvas id="scene"></canvas>
+    <canvas id="fallback"></canvas>
+    <div class="label-layer" id="labels"></div>
+    <div class="status" id="status">Drag to orbit. Wheel to zoom. Click nodes.</div>
+    <div class="toolbar">
+      <div class="toolbar-inner">
+        <button id="zoomOut" title="Zoom out">-</button>
+        <button id="resetView" title="Reset view">o</button>
+        <button id="zoomIn" title="Zoom in">+</button>
+        <button id="autoSpin" title="Toggle motion">~</button>
+      </div>
+    </div>
+  </main>
+
+  <aside class="right">
+    <div class="inspector" id="inspector"></div>
+  </aside>
+</div>
+
+<script type="module">
+const layers = {
+  core:{name:"Core Human", color:0x303a48, css:"#303a48"},
+  state:{name:"Current State", color:0x2f638c, css:"#2f638c"},
+  vision:{name:"Vision + Future", color:0xb58a45, css:"#b58a45"},
+  gap:{name:"Gap + Goals", color:0xa34d48, css:"#a34d48"},
+  practice:{name:"Practices", color:0x4f7848, css:"#4f7848"},
+  influence:{name:"Influences", color:0x68528d, css:"#68528d"},
+  ritual:{name:"Ritual + Signal", color:0x28736f, css:"#28736f"},
+  evidence:{name:"Evidence", color:0x8b6b3f, css:"#8b6b3f"}
+};
+
+const nodes = [
+  {
+    id:"core", label:"Whole Person", layer:"core", size:1.55, pos:[0,0,0],
+    description:"The full life system: the way body, mind, work, money, relationships, environment, habits, identity, and vision affect one another.",
+    fields:["body","mind","work","money","relationships","environment","habits","vision"],
+    practices:["See the whole loop before giving advice","Find the strongest leverage point","Keep cause and effect visible"],
+    metrics:["life system","connected parts","feedback loops"]
+  },
+  {
+    id:"identity", label:"Identity", layer:"core", size:.72, pos:[-2.0,.75,.8],
+    description:"Who the person believes they are and the standards they choose to live by.",
+    fields:["values","beliefs","standards","principles","self-authored commitments"],
+    practices:["External formula audit","Belief source check","Standard provenance check"],
+    metrics:["stable","slow-changing","high weight"]
+  },
+  {
+    id:"current", label:"Body", layer:"state", size:.86, pos:[0,-2.15,.25],
+    description:"Sleep, training, food, energy, appearance, and physical confidence. This is often the first lever for changing the rest of life.",
+    fields:["sleep","training","food","energy","appearance","confidence"],
+    practices:["Find the body bottleneck","Stabilize sleep first when needed","Tie training to confidence and discipline"],
+    metrics:["energy","health","confidence"]
+  },
+  {
+    id:"vision", label:"Vision Map", layer:"vision", size:.95, pos:[0,2.65,.1],
+    description:"The wanted life made visible: images, words, people, places, aesthetics, and semantic meaning.",
+    fields:["wanted life","visual references","inspiration","semantic meaning","themes"],
+    practices:["Ask what each card represents","Extract meaning from media","Cluster repeated themes"],
+    metrics:["north","semantic layer","pull"]
+  },
+  {
+    id:"future", label:"Mind", layer:"vision", size:.82, pos:[1.95,2.0,-.7],
+    description:"Mood, focus, stress, clarity, self-talk, and avoidance. The mind shapes what the person can actually execute.",
+    fields:["mood","focus","self-talk","stress","clarity","avoidance"],
+    practices:["Name the mental pattern","Separate fear from fact","Reduce avoidance loops"],
+    metrics:["clarity","attention","stress"]
+  },
+  {
+    id:"gap", label:"Gap Engine", layer:"gap", size:.78, pos:[-1.95,.15,-.85],
+    description:"Compares current readings against desired readings. The gap creates the reason for goals and practices.",
+    fields:["current reading","desired reading","gap statement","trajectory","staleness"],
+    practices:["Compute local gap per pillar","Name actionability","Track closing or widening"],
+    metrics:["delta","trajectory","priority"]
+  },
+  {
+    id:"goals", label:"Goals", layer:"gap", size:.78, pos:[1.9,.1,.95],
+    description:"Chosen outcomes that close specific gaps. A goal should know the future self, pillar, why, obstacle, and evidence.",
+    fields:["why","pillar","desired outcome","required identity shift","success evidence"],
+    practices:["Tie every goal to a gap","Define proof","Name the required behavior change"],
+    metrics:["bridge","chosen","outcome"]
+  },
+  {
+    id:"behaviors", label:"Habits", layer:"practice", size:.74, pos:[1.7,-1.55,-.85],
+    description:"Repeated loops: scrolling, avoidance, substances, training, planning, sleep routine, and the defaults that run the day.",
+    fields:["scrolling","avoidance","training","planning","sleep routine","replacement"],
+    practices:["Map cue -> routine -> reward","Replace bad loops with better loops","Track recovery, not shame"],
+    metrics:["repeats","automatic","cost"]
+  },
+  {
+    id:"practices", label:"Practices", layer:"practice", size:.8, pos:[0,-.75,2.1],
+    description:"Repeated behaviors that move the user from A to B. Practices make goals real.",
+    fields:["cadence","minimum version","cue","friction","recovery plan","automaticity"],
+    practices:["Minimum viable action","Context repetition","Missed-day recovery"],
+    metrics:["daily","compounds","bridge"]
+  },
+  {
+    id:"influences", label:"Influences", layer:"influence", size:.72, pos:[-2.65,-.55,.55],
+    description:"People, creators, books, social media, places, groups, and culture shaping the person.",
+    fields:["source","frequency","pulls toward","pulls away","intensity","modeled traits"],
+    practices:["Feed audit","Relationship influence map","Environment friction design"],
+    metrics:["external field","pull","pressure"]
+  },
+  {
+    id:"relationships", label:"Relationships", layer:"influence", size:.68, pos:[-1.25,-1.8,-1.6],
+    description:"Support, belonging, social integration, and the people the user becomes themselves around.",
+    fields:["close ties","support available","negative load","group memberships","connection actions"],
+    practices:["Check in","Repair drift","Ask for help","Join repeated group contexts"],
+    metrics:["support","belonging","health"]
+  },
+  {
+    id:"ritual", label:"Rituals", layer:"ritual", size:.76, pos:[2.55,-.35,.0],
+    description:"The root consistency layer: morning orientation, evening reflection, anytime dump, reset, and stabilize.",
+    fields:["cadence","purpose","cue","prompt","minimum version","last completed"],
+    practices:["Return daily","Lower friction to resume","No shame on missed rituals"],
+    metrics:["return","signal","consistency"]
+  },
+  {
+    id:"signals", label:"Environment", layer:"ritual", size:.62, pos:[2.2,1.25,1.45],
+    description:"The room, phone, calendar, city, feeds, tools, and friction around the person. Environment decides what is easy to repeat.",
+    fields:["room","phone","calendar","city","tools","friction"],
+    practices:["Move friction around","Design cues instead of relying on willpower","Make the right behavior easier"],
+    metrics:["context","friction","cues"]
+  },
+  {
+    id:"evidence", label:"Money", layer:"evidence", size:.7, pos:[-.25,-2.75,1.05],
+    description:"Income, spending, debt, savings, freedom, and financial stress. Money changes options and pressure.",
+    fields:["income","spending","debt","savings","freedom","stress"],
+    practices:["Name the financial pressure","Connect money to freedom, not just numbers","Track the behavior that changes it"],
+    metrics:["options","pressure","freedom"]
+  },
+  {
+    id:"coach", label:"Work", layer:"core", size:.68, pos:[-.4,1.35,-2.0],
+    description:"Skills, craft, output, career, reputation, ambition, and the work that can turn into freedom.",
+    fields:["skills","career","craft","output","reputation","ambition"],
+    practices:["Find the work bottleneck","Turn ambition into output","Protect deep work"],
+    metrics:["output","skill","reputation"]
+  }
+];
+
+const mainNodeIds = new Set(nodes.map(n => n.id));
+nodes.forEach(n => {
+  n.pos = n.pos.map(v => v * 2.05);
+  n.size *= .78;
+});
+
+const childWorlds = {
+  core:["Body","Mind","Work","Money","Relationships","Environment","Habits","Vision"],
+  identity:["Self-image","Principles","Borrowed scripts","Chosen commitments","Personal standards"],
+  current:["Sleep","Training","Food","Energy","Appearance","Confidence"],
+  vision:["Images","Places","Aesthetic","Inspiration themes","Wanted lifestyle"],
+  future:["Mood","Focus","Self-talk","Stress","Clarity","Avoidance"],
+  gap:["Current reading","Desired reading","Gap statement","Priority","Trajectory"],
+  goals:["Vision","Gap","Milestone","Tradeoff","Proof"],
+  behaviors:["Scrolling","Avoidance","Substances","Training","Planning","Sleep routine"],
+  practices:["Cadence","Minimum version","Friction","Recovery plan","Automaticity"],
+  influences:["People","Creators","Social media","Environment","Culture"],
+  relationships:["Close ties","Groups","Support available","Negative load","Connection actions"],
+  ritual:["Morning","Evening","Anytime dump","Reset","Stabilize"],
+  signals:["Room","Phone","Calendar","City","Tools","Friction"],
+  evidence:["Income","Spending","Debt","Savings","Freedom","Stress"],
+  coach:["Skills","Career","Craft","Output","Reputation","Ambition"]
+};
+
+const causalLinks = {
+  core:[["Body","Mind","changes"],["Mind","Habits","drives"],["Habits","Work","compounds"],["Work","Money","creates"],["Money","Vision","funds"],["Relationships","Mind","stabilizes"],["Environment","Habits","cues"]],
+  identity:[["Borrowed scripts","Self-image","shapes"],["Self-image","Personal standards","sets"],["Principles","Chosen commitments","anchors"]],
+  current:[["Sleep","Energy","affects"],["Food","Energy","affects"],["Training","Confidence","builds"],["Appearance","Confidence","changes"],["Energy","Training","enables"]],
+  vision:[["Images","Inspiration themes","suggest"],["Places","Wanted lifestyle","points to"],["Aesthetic","Wanted lifestyle","colors"],["Inspiration themes","Wanted lifestyle","clarifies"]],
+  future:[["Stress","Avoidance","triggers"],["Self-talk","Mood","shapes"],["Mood","Focus","affects"],["Focus","Clarity","creates"],["Avoidance","Stress","feeds"]],
+  gap:[["Current reading","Gap statement","compared to"],["Desired reading","Gap statement","defines"],["Gap statement","Priority","sets"],["Priority","Trajectory","moves"]],
+  goals:[["Vision","Gap","reveals"],["Gap","Milestone","breaks into"],["Milestone","Tradeoff","requires"],["Tradeoff","Proof","tests"]],
+  behaviors:[["Scrolling","Sleep routine","damages"],["Avoidance","Planning","blocks"],["Training","Planning","supports"],["Substances","Sleep routine","disrupts"]],
+  practices:[["Minimum version","Cadence","protects"],["Friction","Recovery plan","needs"],["Cadence","Automaticity","builds"]],
+  influences:[["People","Culture","reinforces"],["Creators","Social media","flows through"],["Social media","Environment","shapes"],["Environment","People","selects"]],
+  relationships:[["Close ties","Support available","creates"],["Negative load","Connection actions","requires"],["Groups","Support available","increases"]],
+  ritual:[["Morning","Reset","sets"],["Anytime dump","Reset","enables"],["Evening","Stabilize","supports"]],
+  signals:[["Phone","Friction","creates"],["Room","Friction","changes"],["Calendar","Tools","structures"],["City","Room","shapes"]],
+  evidence:[["Income","Savings","feeds"],["Spending","Debt","can create"],["Debt","Stress","raises"],["Savings","Freedom","builds"]],
+  coach:[["Skills","Output","improves"],["Craft","Reputation","builds"],["Output","Career","moves"],["Ambition","Output","must become"]]
+};
+
+function childId(parentId, label){
+  return `${parentId}-${label.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"")}`;
+}
+
+Object.entries(childWorlds).forEach(([parentId, labels]) => {
+  const parent = nodes.find(n => n.id === parentId);
+  if(!parent) return;
+    const radius = parent.id === "core" ? 3.15 : 2.35;
+  labels.forEach((label, i) => {
+    const angle = (Math.PI * 2 * i) / labels.length;
+    const tilt = ((i % 3) - 1) * .38;
+    const pos = [
+      parent.pos[0] + Math.cos(angle) * radius,
+      parent.pos[1] + Math.sin(angle) * radius * .48 + tilt,
+      parent.pos[2] + Math.sin(angle) * radius
+    ];
+    nodes.push({
+      id:childId(parentId, label),
+      label,
+      layer:parent.layer,
+      parent:parentId,
+      size:.3,
+      pos,
+      description:`A real-life part inside ${parent.label}. This is something the person can notice, change, strengthen, or connect to another part of life.`,
+      fields:["current state","desired state","effect on other areas","pattern","next move"],
+      practices:["Notice how this affects the rest of life","Name the repeated pattern","Choose one small change"],
+      metrics:["life part","connected","actionable"]
+    });
+  });
+});
+
+const edges = [
+  ["identity","core","defines standards"],
+  ["current","future","changes energy and mood"],
+  ["current","behaviors","sets capacity"],
+  ["current","coach","enables output"],
+  ["future","behaviors","drives avoidance or action"],
+  ["future","ritual","needs stabilization"],
+  ["vision","identity","pulls self-image"],
+  ["vision","goals","becomes concrete"],
+  ["vision","signals","is fed by inspiration"],
+  ["gap","goals","creates priority"],
+  ["goals","practices","requires repetition"],
+  ["practices","behaviors","rewires defaults"],
+  ["behaviors","current","feeds back into body"],
+  ["behaviors","evidence","creates proof"],
+  ["evidence","identity","updates belief"],
+  ["evidence","gap","shows progress"],
+  ["evidence","vision","funds freedom"],
+  ["signals","behaviors","cues"],
+  ["signals","future","shapes attention"],
+  ["ritual","signals","collects daily data"],
+  ["ritual","practices","protects consistency"],
+  ["influences","identity","shapes"],
+  ["influences","vision","supplies examples"],
+  ["influences","behaviors","normalizes"],
+  ["relationships","future","stabilizes or stresses"],
+  ["relationships","influences","is the social field"],
+  ["relationships","identity","mirrors self-image"],
+  ["coach","goals","turns ambition into output"],
+  ["coach","evidence","creates money/reputation"],
+  ["coach","future","requires focus"],
+  ["evidence","current","creates pressure or safety"],
+  ["signals","influences","controls feed exposure"]
+];
+
+const connectionDetails = {
+  core:{
+    summary:"This is the entire human system. The point is not to store random profile fields. It is to see which life areas are pushing the person toward or away from the life they say they want.",
+    questions:["Where is life currently unstable?","Which area is creating the most spillover into the rest?","What is the smallest daily return point that keeps the map alive?"],
+    actions:["Use the map to find leverage before prescribing habits.","Keep every journal note tied to at least one life area.","Let AI explain loops, not just summarize entries."]
+  },
+  identity:{
+    summary:"Identity is the standard layer. It connects vision, evidence, influences, relationships, and the core person because people act from what they believe is normal for them.",
+    questions:["Which beliefs are chosen versus inherited?","What proof would make the person believe they are changing?","Who makes this identity easier or harder to hold?"],
+    actions:["Capture values, standards, beliefs, and borrowed scripts.","Show identity conflicts when behavior and vision disagree.","Use evidence to update self-image instead of relying on motivation."]
+  },
+  current:{
+    summary:"The body affects almost everything else: sleep, energy, training, food, appearance, and confidence change mood, work output, avoidance, and discipline.",
+    questions:["What is the body bottleneck today?","Is low discipline actually low energy?","What physical pattern keeps repeating before bad habits?"],
+    actions:["Track sleep, energy, training, food, and confidence together.","Connect body notes to work, habits, and mood automatically.","Prioritize stabilization when the body is dragging the whole system down."]
+  },
+  future:{
+    summary:"The mind is the execution weather: mood, focus, stress, clarity, self-talk, and avoidance decide whether a person can act on the plan they already know.",
+    questions:["What emotion is causing the current behavior?","What is being avoided?","What would make the next action feel smaller and safer?"],
+    actions:["Capture mood, stress, focus, and avoidance as daily signals.","Detect loops like stress -> avoidance -> more stress.","Offer grounding, simplification, or direct challenge depending on state."]
+  },
+  vision:{
+    summary:"Vision is the north star, but it has to connect to goals, identity, environment, influences, and money or it stays fantasy.",
+    questions:["What does this image or idea actually represent?","Which parts of the vision are status, freedom, craft, health, love, or peace?","What part can be translated into a goal this week?"],
+    actions:["Let users drop images, text, articles, posts, and voice notes.","Extract themes and semantic meaning from inspiration.","Compare vision against current behavior and evidence."]
+  },
+  gap:{
+    summary:"The gap engine converts self-knowledge into direction. It compares A, where the person is, with B, where they want to go, then names the highest-leverage difference.",
+    questions:["What is the current reading?","What is the desired reading?","Which gap is painful, actionable, and connected to the vision?"],
+    actions:["Compute gap statements per life area.","Rank gaps by spillover and urgency.","Turn vague dissatisfaction into specific movement."]
+  },
+  goals:{
+    summary:"Goals are bridges. They are useful only when connected to vision, gaps, work, practices, and proof.",
+    questions:["What gap does this goal close?","What behavior has to change for this goal to happen?","What proof will show it is working?"],
+    actions:["Attach every goal to a why, pillar, obstacle, and evidence metric.","Break goals into practices and milestones.","Reject goals that are not connected to the life map."]
+  },
+  practices:{
+    summary:"Practices are the repeated actions that move the person. They connect goals to habits and need ritual support so missed days do not become collapse.",
+    questions:["What is the minimum version?","Where will the cue live?","What is the recovery plan after a miss?"],
+    actions:["Define cadence, cue, friction, minimum action, and recovery.","Make practices visible in morning and evening ritual.","Connect practice completion to identity evidence."]
+  },
+  behaviors:{
+    summary:"Behaviors are the actual loops running the day: scrolling, avoidance, substances, planning, training, and sleep routine. They are where the map becomes real.",
+    questions:["What cue starts the bad loop?","What reward is the person trying to get?","What replacement gives the reward without the cost?"],
+    actions:["Map cue -> routine -> reward.","Show upstream causes like stress, phone, loneliness, or low sleep.","Track replacements and recovery instead of only streaks."]
+  },
+  influences:{
+    summary:"Influences are the people, feeds, creators, books, places, and culture shaping what feels normal and desirable.",
+    questions:["What is this influence pulling the person toward?","What does their feed make them want?","Which influences create comparison, clarity, ambition, or drift?"],
+    actions:["Build an influence audit for people and media.","Let users send inspiration into the board.","Flag influences that conflict with chosen identity or goals."]
+  },
+  relationships:{
+    summary:"Relationships shape mood, identity, support, pressure, and belonging. A person changes differently depending on who surrounds them.",
+    questions:["Who stabilizes the person?","Who drains them?","Where do they need repair, boundaries, or repeated group contact?"],
+    actions:["Map close ties, groups, support, and negative load.","Connect loneliness to avoidance or scrolling patterns.","Recommend concrete connection actions, not generic social advice."]
+  },
+  ritual:{
+    summary:"Ritual is the consistency root: morning orientation, evening reflection, reset, and anytime brain dump. It keeps the map alive.",
+    questions:["When does the user return to themselves?","What should they capture in 2 minutes?","What ritual prevents drift today?"],
+    actions:["Create morning, evening, and emergency check-ins.","Use snippets instead of forcing one long journal.","Turn repeated entries into system updates."]
+  },
+  signals:{
+    summary:"Environment controls what is easy. Phone, room, calendar, tools, city, and feed exposure can cue the person into or out of the life they want.",
+    questions:["What object or context triggers the bad loop?","How can the right action become easier?","What should be removed, moved, blocked, or scheduled?"],
+    actions:["Track cues, friction, and context with habits.","Recommend environment changes before willpower advice.","Connect inspiration intake and social media to vision and identity."]
+  },
+  evidence:{
+    summary:"Evidence is proof: money, output, health readings, completed practices, reputation, and visible progress. It updates identity and exposes what is working.",
+    questions:["What proof did today create?","Is money creating freedom, pressure, or avoidance?","What evidence would make progress undeniable?"],
+    actions:["Collect proof from habits, work, money, and body.","Show progress even when emotions lag behind.","Use evidence to recalibrate goals and identity."]
+  },
+  coach:{
+    summary:"Work turns ambition into output, skill, reputation, career movement, and money. It connects vision to practical life power.",
+    questions:["What output matters this week?","What skill bottleneck blocks the next level?","What work pattern is being destroyed by mood, sleep, or environment?"],
+    actions:["Connect work sessions to energy, focus, and goals.","Track output and reputation evidence.","Protect deep work with environment and ritual design."]
+  }
+};
+
+Object.entries(childWorlds).forEach(([parentId, labels]) => {
+  labels.forEach(label => edges.push([parentId, childId(parentId, label), "contains"]));
+});
+
+Object.entries(causalLinks).forEach(([parentId, links]) => {
+  links.forEach(([from, to, label]) => edges.push([childId(parentId, from), childId(parentId, to), label, "causal"]));
+});
+
+let selectedId = null;
+let expandedId = null;
+let focusLayer = "all";
+let mode = "system";
+let auto = false;
+let rendererMode = "loading";
+const inspector = document.getElementById("inspector");
+const labelRoot = document.getElementById("labels");
+const sceneCanvas = document.getElementById("scene");
+const fallbackCanvas = document.getElementById("fallback");
+const statusEl = document.getElementById("status");
+
+function colorCss(layer){return layers[layer]?.css || "#555";}
+function nodeById(id){return nodes.find(n => n.id === id);}
+function baseNodeId(id){
+  const n = nodeById(id);
+  return n?.parent || id;
+}
+function directConnectionIds(id){
+  const base = baseNodeId(id);
+  const ids = new Set([base]);
+  edges.forEach(e => {
+    if(e[3] === "causal") return;
+    const a = baseNodeId(e[0]);
+    const b = baseNodeId(e[1]);
+    if(a === base) ids.add(b);
+    if(b === base) ids.add(a);
+  });
+  return ids;
+}
+function relevanceSet(){
+  if(!selectedId) return null;
+  const ids = directConnectionIds(selectedId);
+  const selected = nodeById(selectedId);
+  if(selected?.parent) ids.add(selected.parent);
+  nodes.forEach(n => {
+    if(n.parent && (n.parent === expandedId || ids.has(n.parent))) ids.add(n.id);
+  });
+  ids.add(selectedId);
+  return ids;
+}
+function isHighlighted(n){
+  const set = relevanceSet();
+  if(!set) return true;
+  return set.has(n.id) || set.has(baseNodeId(n.id));
+}
+function isVisible(n){
+  if(n.parent){
+    return n.parent === expandedId;
+  }
+  const pathIds = ["core","current","vision","future","gap","goals","practices","behaviors","evidence"];
+  if(mode === "path") return pathIds.includes(n.id);
+  if(focusLayer === "all") return true;
+  if(n.layer === focusLayer) return true;
+  if(n.id === "core") return true;
+  return false;
+}
+
+function selectNode(id){
+  selectedId = id;
+  const n = nodeById(id);
+  expandedId = n?.parent || id;
+  updateAll();
+}
+
+function clearFocus(){
+  selectedId = null;
+  expandedId = null;
+  updateAll();
+}
+
+function displayPosition(n){
+  if(n.parent !== expandedId) return n.pos;
+  const parent = nodeById(expandedId);
+  if(!parent) return n.pos;
+  const siblings = nodes.filter(child => child.parent === expandedId);
+  const index = siblings.findIndex(child => child.id === n.id);
+  const angle = (Math.PI * 2 * Math.max(0, index)) / Math.max(1, siblings.length);
+  const radius = expandedId === "core" ? 3.9 : 3.15;
+  return [
+    parent.pos[0] + Math.cos(angle) * radius,
+    parent.pos[1] + Math.sin(angle) * radius * .54,
+    parent.pos[2] + Math.sin(angle) * radius
+  ];
+}
+
+function renderLayerList(){
+  const root = document.getElementById("layerList");
+  root.innerHTML = "";
+  const all = document.createElement("button");
+  all.className = "layer-btn" + (focusLayer === "all" ? " active" : "");
+  all.innerHTML = `<span class="swatch" style="background:#171a21"></span><span>All Layers</span><em>${mainNodeIds.size}</em>`;
+  all.onclick = () => {focusLayer = "all"; renderLayerList(); updateAll();};
+  root.appendChild(all);
+  Object.entries(layers).forEach(([key, layer]) => {
+    const count = nodes.filter(n => n.layer === key && !n.parent).length;
+    const btn = document.createElement("button");
+    btn.className = "layer-btn" + (focusLayer === key ? " active" : "");
+    btn.innerHTML = `<span class="swatch" style="background:${layer.css}"></span><span>${layer.name}</span><em>${count}</em>`;
+    btn.onclick = () => {focusLayer = key; renderLayerList(); updateAll();};
+    root.appendChild(btn);
+  });
+}
+
+function renderInspector(){
+  if(!selectedId){
+    inspector.innerHTML = `
+      <div class="badge"><i style="background:#171a21"></i>Whole Map</div>
+      <h2>Life Connection Board</h2>
+      <p>Click any life area to see what it affects across the whole human. The map will keep the connected areas readable and fade the rest so the chain is easier to understand.</p>
+      <div class="stat-grid">
+        <div class="stat"><b>${mainNodeIds.size}</b><span>Life Areas</span></div>
+        <div class="stat"><b>${edges.filter(e => !e[3] && mainNodeIds.has(e[0]) && mainNodeIds.has(e[1])).length}</b><span>Connections</span></div>
+      </div>
+      <div class="detail-block">
+        <h3>Use This To Design The App</h3>
+        <div class="flow-list">
+          <div class="flow-item"><span class="num">1</span><span><b>Inputs</b> are journals, rituals, inspiration, interviews, habits, media, and proof.</span></div>
+          <div class="flow-item"><span class="num">2</span><span><b>Map updates</b> connect those inputs to body, mind, work, money, relationships, identity, environment, and vision.</span></div>
+          <div class="flow-item"><span class="num">3</span><span><b>Guidance</b> should explain the strongest loop and the next behavior to change.</span></div>
+        </div>
+      </div>
+      <div class="detail-block">
+        <h3>Example Loops</h3>
+        <div class="chip-list">
+          <span class="chip">Sleep -> Energy -> Work -> Money -> Freedom</span>
+          <span class="chip">Phone -> Scrolling -> Sleep -> Mood -> Avoidance</span>
+          <span class="chip">Vision -> Goals -> Practice -> Evidence -> Identity</span>
+          <span class="chip">Relationships -> Mood -> Habits -> Confidence</span>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  const n = nodeById(selectedId) || nodeById("core");
+  const parent = n.parent ? nodeById(n.parent) : null;
+  const base = parent || n;
+  const children = nodes.filter(child => child.parent === base.id);
+  const related = edges.filter(e => !e[3] && mainNodeIds.has(e[0]) && mainNodeIds.has(e[1]) && (e[0] === base.id || e[1] === base.id));
+  const details = connectionDetails[base.id] || connectionDetails.core;
+  const connectedButtons = related.map(e => {
+    const otherId = baseNodeId(e[0]) === base.id ? baseNodeId(e[1]) : baseNodeId(e[0]);
+    const other = nodeById(otherId);
+    const direction = baseNodeId(e[0]) === base.id ? "affects" : "is affected by";
+    return {edge:e, other, direction};
+  }).filter(item => item.other);
+  inspector.innerHTML = `
+    <div class="badge"><i style="background:${colorCss(base.layer)}"></i>${parent ? `Inside ${parent.label}` : layers[base.layer].name}</div>
+    <h2>${parent ? `${parent.label}: ${n.label}` : base.label}</h2>
+    <p>${details.summary || base.description}</p>
+    <div class="stat-grid">
+      <div class="stat"><b>${base.fields.length}</b><span>Data Fields</span></div>
+      <div class="stat"><b>${connectedButtons.length}</b><span>Cross Links</span></div>
+    </div>
+    <div class="detail-block">
+      <h3>What It Touches</h3>
+      <div class="flow-list">${connectedButtons.map(({edge, other, direction}) => `
+        <button class="connection-btn" data-node="${other.id}">
+          <b>${other.label}</b>
+          <span>${base.label} ${direction} ${other.label}: ${edge[2]}.</span>
+        </button>
+      `).join("") || `<div class="flow-item"><span class="num">1</span><span>No direct cross-map links yet.</span></div>`}</div>
+    </div>
+    <div class="detail-block">
+      <h3>Parts To Capture</h3>
+      <div class="chip-list">${children.length ? children.map(child => `<span class="chip">${child.label}</span>`).join("") : base.fields.map(f => `<span class="chip">${f}</span>`).join("")}</div>
+    </div>
+    <div class="detail-block">
+      <h3>Questions To Ask</h3>
+      <div class="flow-list">${details.questions.map((q,i) => `<div class="flow-item"><span class="num">${i+1}</span><span>${q}</span></div>`).join("")}</div>
+    </div>
+    <div class="detail-block">
+      <h3>Product Moves</h3>
+      <div class="flow-list">${details.actions.map((a,i) => `<div class="flow-item"><span class="num">${i+1}</span><span>${a}</span></div>`).join("")}</div>
+    </div>
+  `;
+  inspector.querySelectorAll("[data-node]").forEach(btn => {
+    btn.addEventListener("click", () => selectNode(btn.getAttribute("data-node")));
+  });
+}
+
+function setupControls(){
+  document.getElementById("mapMode").onclick = () => {
+    mode = "system";
+    document.getElementById("mapMode").classList.add("active");
+    document.getElementById("pathMode").classList.remove("active");
+    updateAll();
+  };
+  document.getElementById("pathMode").onclick = () => {
+    mode = "path";
+    focusLayer = "all";
+    document.getElementById("pathMode").classList.add("active");
+    document.getElementById("mapMode").classList.remove("active");
+    renderLayerList();
+    updateAll();
+  };
+  document.getElementById("autoSpin").onclick = () => {
+    auto = !auto;
+    document.getElementById("autoSpin").classList.toggle("active", auto);
+  };
+}
+
+function updateAll(){
+  document.body.classList.toggle("focus-mode", Boolean(selectedId));
+  statusEl.textContent = selectedId
+    ? "Connection view. Click blank space to return to the full life map."
+    : "Click a life area to highlight its cross-life connections.";
+  renderInspector();
+  if(window.__threeUpdate) window.__threeUpdate();
+  if(window.__fallbackUpdate) window.__fallbackUpdate();
+}
+
+async function start(){
+  renderLayerList();
+  renderInspector();
+  setupControls();
+  try{
+    const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js");
+    rendererMode = "three";
+    initThree(THREE);
+  }catch(err){
+    rendererMode = "fallback";
+    statusEl.textContent = "Offline fallback renderer. Drag to orbit. Wheel to zoom. Click nodes.";
+    initFallback();
+  }
+}
+
+function initThree(THREE){
+  sceneCanvas.style.display = "block";
+  fallbackCanvas.style.display = "none";
+  const wrap = document.querySelector(".canvas-wrap");
+  const renderer = new THREE.WebGLRenderer({canvas:sceneCanvas, antialias:true, alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(44, 1, .1, 100);
+  camera.position.set(0, 1.2, 8.8);
+  const group = new THREE.Group();
+  scene.add(group);
+  scene.add(new THREE.AmbientLight(0xffffff, 1.3));
+  const key = new THREE.DirectionalLight(0xffffff, 1.8);
+  key.position.set(4, 7, 5);
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xf4e8d1, .8);
+  fill.position.set(-5, -2, 4);
+  scene.add(fill);
+
+  const meshes = new Map();
+  const labels = new Map();
+  nodes.forEach(n => {
+    const geo = new THREE.SphereGeometry(n.size, n.parent ? 24 : 36, n.parent ? 16 : 24);
+    const mat = new THREE.MeshStandardMaterial({
+      color:layers[n.layer].color,
+      roughness:.48,
+      metalness:.05,
+      emissive:layers[n.layer].color,
+      emissiveIntensity:n.id === "core" ? .08 : n.parent ? .06 : .02
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(...displayPosition(n));
+    mesh.userData.id = n.id;
+    group.add(mesh);
+    meshes.set(n.id, mesh);
+    const label = document.createElement("div");
+    label.className = "node-label" + (n.parent ? " child" : "");
+    label.textContent = n.label;
+    label.addEventListener("click", () => selectNode(n.id));
+    labelRoot.appendChild(label);
+    labels.set(n.id, label);
+  });
+
+  const lineObjects = [];
+  const edgeLabelObjects = [];
+  edges.forEach(e => {
+    const aNode = nodeById(e[0]);
+    const bNode = nodeById(e[1]);
+    if(!aNode || !bNode) return;
+    const a = displayPosition(aNode);
+    const b = displayPosition(bNode);
+    const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...a), new THREE.Vector3(...b)]);
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({color:0x8b8171, transparent:true, opacity:.38}));
+    line.userData.edge = e;
+    group.add(line);
+    lineObjects.push(line);
+    if(e[3] === "causal"){
+      const label = document.createElement("div");
+      label.className = "edge-label";
+      label.textContent = e[2];
+      labelRoot.appendChild(label);
+      edgeLabelObjects.push({edge:e, label});
+    }
+  });
+
+  const ringGeo = new THREE.TorusGeometry(6.6, .006, 8, 160);
+  const ringMat = new THREE.MeshBasicMaterial({color:0xcfc5b5, transparent:true, opacity:.52});
+  const rings = [];
+  [[0,0,0],[Math.PI/2,0,0],[0,Math.PI/2,0]].forEach(rot => {
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.set(rot[0],rot[1],rot[2]);
+    group.add(ring);
+    rings.push(ring);
+  });
+
+  let yaw = -.35, pitch = .16, zoom = 17.2, dragging = false, lx = 0, ly = 0;
+  const cameraTarget = new THREE.Vector3(0,0,0);
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+
+  function resize(){
+    const rect = wrap.getBoundingClientRect();
+    renderer.setSize(rect.width, rect.height, false);
+    camera.aspect = rect.width / rect.height;
+    camera.updateProjectionMatrix();
+  }
+  function setCamera(){
+    const selectedBase = selectedId ? nodeById(baseNodeId(selectedId)) : null;
+    const nextTarget = selectedBase ? new THREE.Vector3(...displayPosition(selectedBase)) : new THREE.Vector3(0,0,0);
+    cameraTarget.lerp(nextTarget, .08);
+    const x = Math.sin(yaw) * Math.cos(pitch) * zoom;
+    const y = Math.sin(pitch) * zoom;
+    const z = Math.cos(yaw) * Math.cos(pitch) * zoom;
+    camera.position.set(cameraTarget.x + x,cameraTarget.y + y,cameraTarget.z + z);
+    camera.lookAt(cameraTarget);
+  }
+  function projectLabels(){
+    const rect = wrap.getBoundingClientRect();
+    const relevant = relevanceSet();
+    nodes.forEach(n => {
+      const mesh = meshes.get(n.id);
+      const label = labels.get(n.id);
+      const p = mesh.position.clone().project(camera);
+      label.style.left = `${(p.x * .5 + .5) * rect.width}px`;
+      label.style.top = `${(-p.y * .5 + .5) * rect.height}px`;
+      label.style.display = p.z > 1 || !mesh.visible ? "none" : "block";
+      label.classList.toggle("selected", n.id === selectedId);
+      label.classList.toggle("dim", relevant && !isHighlighted(n));
+      label.classList.toggle("hide-label", Boolean(relevant) && !isHighlighted(n));
+    });
+    edgeLabelObjects.forEach(({label}) => {
+      label.style.display = "none";
+    });
+  }
+  function applyVisibility(){
+    const relevant = relevanceSet();
+    nodes.forEach(n => {
+      const visible = isVisible(n);
+      const mesh = meshes.get(n.id);
+      const target = new THREE.Vector3(...displayPosition(n));
+      mesh.position.lerp(target, .18);
+      mesh.visible = visible;
+      const highlighted = !relevant || isHighlighted(n);
+      mesh.material.transparent = true;
+      mesh.material.opacity = highlighted ? 1 : .11;
+      mesh.material.emissiveIntensity = n.id === selectedId ? .18 : highlighted ? .04 : 0;
+      mesh.scale.setScalar(n.id === selectedId ? 1.26 : highlighted && selectedId ? 1.08 : 1);
+    });
+    lineObjects.forEach(line => {
+      const [a,b] = line.userData.edge;
+      const na = nodeById(a);
+      const nb = nodeById(b);
+      const pa = new THREE.Vector3(...displayPosition(na));
+      const pb = new THREE.Vector3(...displayPosition(nb));
+      line.geometry.setFromPoints([pa,pb]);
+      const isPath = ["current","gap","goals","practices","behaviors","evidence"].includes(a) && ["current","gap","goals","practices","behaviors","evidence"].includes(b);
+      const visibleEdge = meshes.get(a).visible && meshes.get(b).visible;
+      const childEdge = Boolean(na?.parent || nb?.parent);
+      const causalEdge = line.userData.edge[3] === "causal";
+      const baseA = baseNodeId(a);
+      const baseB = baseNodeId(b);
+      const touchesSelection = selectedId && (baseA === baseNodeId(selectedId) || baseB === baseNodeId(selectedId) || a === selectedId || b === selectedId);
+      line.visible = visibleEdge && (!childEdge || na?.parent === expandedId || nb?.parent === expandedId) && (!causalEdge || Boolean(expandedId)) && (mode !== "path" || isPath || a === "vision" || b === "vision");
+      line.material.color.set(mode === "path" && isPath ? 0x171a21 : causalEdge ? 0x303a48 : 0x8b8171);
+      line.material.opacity = !selectedId ? (mode === "path" && isPath ? .8 : causalEdge ? 0 : .34) : touchesSelection ? (causalEdge ? .54 : .82) : .08;
+    });
+  }
+  function animate(){
+    requestAnimationFrame(animate);
+    if(auto && !dragging) yaw += .0028;
+    setCamera();
+    applyVisibility();
+    rings.forEach((r,i) => r.rotation.z += .0008 * (i+1));
+    renderer.render(scene,camera);
+    projectLabels();
+  }
+  function pick(clientX, clientY){
+    const rect = sceneCanvas.getBoundingClientRect();
+    pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    const hits = raycaster.intersectObjects([...meshes.values()].filter(m => m.visible), false);
+    if(hits[0]){
+      selectNode(hits[0].object.userData.id);
+      return true;
+    }
+    return false;
+  }
+  sceneCanvas.addEventListener("pointerdown", e => {dragging = true; lx = e.clientX; ly = e.clientY;});
+  window.addEventListener("pointerup", e => {
+    if(dragging && Math.abs(e.clientX - lx) < 4 && Math.abs(e.clientY - ly) < 4 && !pick(e.clientX, e.clientY) && selectedId) clearFocus();
+    dragging = false;
+  });
+  window.addEventListener("pointermove", e => {
+    if(!dragging) return;
+    yaw -= (e.clientX - lx) * .006;
+    pitch += (e.clientY - ly) * .004;
+    pitch = Math.max(-1.1, Math.min(1.1, pitch));
+    lx = e.clientX; ly = e.clientY;
+  });
+  sceneCanvas.addEventListener("wheel", e => {
+    e.preventDefault();
+    zoom = Math.max(9.4, Math.min(24, zoom + e.deltaY * .01));
+  }, {passive:false});
+  document.getElementById("zoomIn").onclick = () => {zoom = Math.max(9.4, zoom - 1.25);};
+  document.getElementById("zoomOut").onclick = () => {zoom = Math.min(24, zoom + 1.25);};
+  document.getElementById("resetView").onclick = () => {yaw = -.35; pitch = .16; zoom = 17.2;};
+  window.addEventListener("resize", resize);
+  window.__threeUpdate = applyVisibility;
+  resize();
+  animate();
+  statusEl.textContent = "Click a life area to highlight its cross-life connections.";
+}
+
+function initFallback(){
+  sceneCanvas.style.display = "none";
+  fallbackCanvas.style.display = "block";
+  const wrap = document.querySelector(".canvas-wrap");
+  const ctx = fallbackCanvas.getContext("2d");
+  let w = 0, h = 0, yaw = -.35, pitch = .16, zoom = 62, dragging = false, lx = 0, ly = 0;
+  let target = [0,0,0];
+  const labels = new Map();
+  nodes.forEach(n => {
+    const label = document.createElement("div");
+    label.className = "node-label" + (n.parent ? " child" : "");
+    label.textContent = n.label;
+    label.addEventListener("click", () => selectNode(n.id));
+    labelRoot.appendChild(label);
+    labels.set(n.id, label);
+  });
+  function resize(){
+    const rect = wrap.getBoundingClientRect();
+    w = rect.width; h = rect.height;
+    fallbackCanvas.width = Math.floor(w * window.devicePixelRatio);
+    fallbackCanvas.height = Math.floor(h * window.devicePixelRatio);
+    fallbackCanvas.style.width = `${w}px`;
+    fallbackCanvas.style.height = `${h}px`;
+    ctx.setTransform(window.devicePixelRatio,0,0,window.devicePixelRatio,0,0);
+  }
+  function project(pos){
+    let [x,y,z] = [pos[0] - target[0], pos[1] - target[1], pos[2] - target[2]];
+    const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+    const x1 = x * cy - z * sy;
+    const z1 = x * sy + z * cy;
+    const y1 = y * cp - z1 * sp;
+    const z2 = y * sp + z1 * cp + 7;
+    const s = zoom / z2;
+    return {x:w/2 + x1*s, y:h/2 - y1*s, s, z:z2};
+  }
+  function draw(){
+    requestAnimationFrame(draw);
+    if(auto && !dragging) yaw += .003;
+    const selectedBase = selectedId ? nodeById(baseNodeId(selectedId)) : null;
+    const desired = selectedBase ? displayPosition(selectedBase) : [0,0,0];
+    target = target.map((v,i) => v + (desired[i] - v) * .08);
+    const relevant = relevanceSet();
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = "#f7f4ed";
+    ctx.fillRect(0,0,w,h);
+    const projected = nodes.map(n => ({n, p:project(displayPosition(n))})).sort((a,b) => b.p.z - a.p.z);
+    edges.forEach(e => {
+      const a = nodeById(e[0]), b = nodeById(e[1]);
+      if(!a || !b) return;
+      if(!isVisible(a) || !isVisible(b)) return;
+      const pa = project(displayPosition(a)), pb = project(displayPosition(b));
+      const baseA = baseNodeId(e[0]);
+      const baseB = baseNodeId(e[1]);
+      const touchesSelection = selectedId && (baseA === baseNodeId(selectedId) || baseB === baseNodeId(selectedId));
+      if(e[3] === "causal" && !expandedId) return;
+      ctx.strokeStyle = touchesSelection ? "rgba(23,26,33,.72)" : selectedId ? "rgba(87,78,65,.08)" : "rgba(87,78,65,.34)";
+      ctx.lineWidth = touchesSelection ? 2.2 : 1.4;
+      ctx.beginPath();
+      ctx.moveTo(pa.x, pa.y);
+      ctx.lineTo(pb.x, pb.y);
+      ctx.stroke();
+    });
+    projected.forEach(({n,p}) => {
+      if(!isVisible(n)) return;
+      const r = Math.max(7, n.size * p.s * .16);
+      ctx.beginPath();
+      ctx.fillStyle = colorCss(n.layer);
+      const highlighted = !relevant || isHighlighted(n);
+      ctx.globalAlpha = highlighted ? 1 : .12;
+      ctx.arc(p.x,p.y,r,0,Math.PI*2);
+      ctx.fill();
+      if(n.id === selectedId){
+        ctx.strokeStyle = "#171a21";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      const label = labels.get(n.id);
+      label.style.left = `${p.x}px`;
+      label.style.top = `${p.y - r - 18}px`;
+      label.style.display = "block";
+      label.classList.toggle("selected", n.id === selectedId);
+      label.classList.toggle("dim", relevant && !highlighted);
+      label.classList.toggle("hide-label", Boolean(relevant) && !highlighted);
+    });
+  }
+  function pick(x,y){
+    let best = null;
+    nodes.forEach(n => {
+      if(!isVisible(n)) return;
+      const p = project(displayPosition(n));
+      const r = Math.max(10, n.size * p.s * .17);
+      const d = Math.hypot(p.x - x, p.y - y);
+      if(d < r && (!best || d < best.d)) best = {n,d};
+    });
+    if(best){
+      selectNode(best.n.id);
+      return true;
+    }
+    return false;
+  }
+  fallbackCanvas.addEventListener("pointerdown", e => {dragging = true; lx = e.clientX; ly = e.clientY;});
+  window.addEventListener("pointerup", e => {
+    if(dragging && Math.abs(e.clientX - lx) < 4 && Math.abs(e.clientY - ly) < 4){
+      const rect = fallbackCanvas.getBoundingClientRect();
+      if(!pick(e.clientX - rect.left, e.clientY - rect.top) && selectedId) clearFocus();
+    }
+    dragging = false;
+  });
+  window.addEventListener("pointermove", e => {
+    if(!dragging) return;
+    yaw -= (e.clientX - lx) * .006;
+    pitch += (e.clientY - ly) * .004;
+    pitch = Math.max(-1.1, Math.min(1.1, pitch));
+    lx = e.clientX; ly = e.clientY;
+  });
+  fallbackCanvas.addEventListener("wheel", e => {
+    e.preventDefault();
+    zoom = Math.max(40, Math.min(120, zoom - e.deltaY * .1));
+  }, {passive:false});
+  document.getElementById("zoomIn").onclick = () => {zoom = Math.min(120, zoom + 8);};
+  document.getElementById("zoomOut").onclick = () => {zoom = Math.max(40, zoom - 8);};
+  document.getElementById("resetView").onclick = () => {yaw = -.35; pitch = .16; zoom = 62;};
+  window.addEventListener("resize", resize);
+  window.__fallbackUpdate = () => {};
+  resize();
+  draw();
+}
+
+start();
+</script>
+</body>
+</html>

@@ -513,7 +513,17 @@ body {
   white-space: nowrap;
   padding-left: 2px;
   user-select: none;
-  transition: color 0.5s var(--vf-ease-out);
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-2px);
+  transition: color 0.5s var(--vf-ease-out), opacity 0.16s var(--vf-ease-out),
+    max-width 0.16s var(--vf-ease-out), transform 0.16s var(--vf-ease-out);
+}
+.atmo-orb-wrap.expanded .atmo-orb-label {
+  max-width: min(220px, calc(100vw - 24px));
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .atmo-panel {
@@ -530,6 +540,7 @@ body {
   box-shadow: 0 30px 70px -30px rgba(26, 29, 36, 0.55), 0 4px 14px -6px rgba(26, 29, 36, 0.18);
   transform-origin: bottom left;
   overflow: hidden;
+  min-height: 0;
   transform: scale(0.92);
   opacity: 0;
   pointer-events: none;
@@ -553,6 +564,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 15px 16px 12px;
+  flex: 0 0 auto;
 }
 .atmo-head .name {
   font-size: 13px;
@@ -608,6 +620,7 @@ body {
   transition: background 0.5s var(--vf-ease-out);
   position: relative;
   overflow: hidden;
+  flex: 0 0 auto;
 }
 .atmo-now .swap {
   transition: filter 0.35s var(--vf-ease-out), opacity 0.35s var(--vf-ease-out);
@@ -800,6 +813,7 @@ body {
   padding: 11px 16px 15px;
   border-top: 1px solid #efeade;
   margin-top: 6px;
+  flex: 0 0 auto;
 }
 .atmo-foot .vol-ic {
   width: 15px;

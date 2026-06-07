@@ -65,6 +65,34 @@ export async function aiForTask(
   return { client, model: task.model, temperature: task.temperature, system: task.system, provider: task.provider };
 }
 
+export async function aiForEngine(
+  ctx: RunQueryCtx,
+  engine: { provider: ProviderId; model: string; temperature: number; system?: string },
+  userId?: string | null,
+): Promise<TaskClient> {
+  const prov = PROVIDERS[engine.provider];
+  const key = await resolveKey(ctx, engine.provider, userId);
+  if (!key && !prov.keyOptional) {
+    throw new Error(
+      `No API key for provider "${engine.provider}". Set ${prov.keyEnv} in the Convex env, or save your own key in Settings.`,
+    );
+  }
+
+  const client = new OpenAI({
+    apiKey: key ?? "local-no-key",
+    baseURL: prov.baseURL,
+    defaultHeaders: prov.defaultHeaders,
+  });
+
+  return {
+    client,
+    model: engine.model,
+    temperature: engine.temperature,
+    system: engine.system,
+    provider: engine.provider,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Back-compat: the old global, key-only client. Prefer aiForTask going forward.
 // ---------------------------------------------------------------------------

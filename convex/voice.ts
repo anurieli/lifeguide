@@ -49,7 +49,10 @@ export const transcribe = action({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
     // Skip empty/near-silent segments (a webm/opus header alone is ~hundreds of bytes).
-    if (args.audio.byteLength < 1200) return "";
+    if (args.audio.byteLength < 240) {
+      console.log("voice.transcribe.skip_tiny", { bytes: args.audio.byteLength });
+      return "";
+    }
 
     const mime = args.mimeType ?? "audio/webm";
     const ext = mime.includes("mp4") ? "mp4" : mime.includes("ogg") ? "ogg" : "webm";

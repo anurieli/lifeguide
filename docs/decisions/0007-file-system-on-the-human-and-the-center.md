@@ -6,7 +6,7 @@
 
 The parts of a person were either frozen in code (the 18 Blueprint questions in `lib/blueprint.ts` → `coreResponses`) or reduced to a thin `values[]`/`themes[]` Mirror. There was no open-ended, growing structure for "everything that makes up a man," and no low-friction way to feed it. The product brief: an always-available voice button (`/speak`) that lets a person think out loud, and a system that routes what they say into who they are, building something long-term.
 
-This realizes a first concrete slice of the parked **living person-model** research ([`../research/living-person-model.md`](../research/living-person-model.md)).
+This realizes a first concrete slice of the parked **living person-model** research ([`../research/raw/internal-notes/living-person-model.md`](../research/raw/internal-notes/living-person-model.md)).
 
 ## Decision
 

@@ -177,10 +177,16 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
 
   // Vision board: generate an image from a prompt (the "/" AI mode + right-click menu).
   // Pinned to the openai provider — OpenRouter has no /images/generations endpoint — so it
+<<<<<<< Updated upstream
   // uses the user's saved OpenAI key, else the deployment's OPENAI_API_KEY. `gpt-image-1` is
   // OpenAI's current image model (newer accounts no longer expose the dall-e-* ids at all);
   // it returns base64, which the action (convex/ai/imageGen.ts) handles alongside url, so the
   // model is the only dial. temperature is unused by the images API but the shape requires it.
+=======
+  // uses the user's saved OpenAI key, else the deployment's OPENAI_API_KEY. The action
+  // (convex/ai/imageGen.ts) handles both b64 and url responses, so the model is the only
+  // dial. temperature is unused by the images API but the TaskConfig shape requires it.
+>>>>>>> Stashed changes
   imageGen: {
     label: "Generate image (vision board)",
     provider: "openai",
@@ -209,6 +215,17 @@ Rules:
 - If the entire dump is one thought, return a single-element array.
 - Minimum useful segment length: ~5 words. Merge very short fragments into the nearest related thought.
 - Do NOT return empty segments.`,
+  },
+
+  // Experimental tab: maintain the evolving idea graph JSON from transcript chunks.
+  // The tab stores a per-session provider/model/system prompt override, but this entry
+  // keeps the default node visible in Settings.
+  brainDumpGraph: {
+    label: "Brain dump · idea graph",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.25,
+    wired: true,
   },
 };
 

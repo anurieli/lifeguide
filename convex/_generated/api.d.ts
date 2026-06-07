@@ -21,6 +21,7 @@ import type * as ai_voice_openaiRealtime from "../ai/voice/openaiRealtime.js";
 import type * as ai_voice_provider from "../ai/voice/provider.js";
 import type * as aiKeys from "../aiKeys.js";
 import type * as auth from "../auth.js";
+import type * as brainDumps from "../brainDumps.js";
 import type * as captures from "../captures.js";
 import type * as center from "../center.js";
 import type * as coach from "../coach.js";
@@ -66,6 +67,7 @@ declare const fullApi: ApiFromModules<{
   "ai/voice/provider": typeof ai_voice_provider;
   aiKeys: typeof aiKeys;
   auth: typeof auth;
+  brainDumps: typeof brainDumps;
   captures: typeof captures;
   center: typeof center;
   coach: typeof coach;

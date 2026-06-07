@@ -12,9 +12,19 @@ import { SpeakSurface } from "@/components/voice/SpeakSurface";
 import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
 import { MusicProvider } from "@/components/music/MusicProvider";
 import { AtmospherePlayer } from "@/components/music/AtmospherePlayer";
+import { BrainDumpLab } from "@/components/brain-dump/BrainDumpLab";
 
 const VIEW_STORAGE_KEY = "lifeguide.activeView";
-const VIEWS: View[] = ["today", "core", "board", "settings"];
+const VIEWS: View[] = ["today", "core", "board", "dump", "settings"];
+
+function clientLog(event: string, meta?: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "production") return;
+  void fetch("/api/client-log", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ event, meta }),
+  }).catch(() => {});
+}
 
 export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   const [view, setView] = useState<View>("today");
@@ -36,10 +46,15 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
     window.localStorage.setItem(VIEW_STORAGE_KEY, view);
   }, [view]);
 
+  const openSpeak = () => {
+    clientLog("talk.open", { view });
+    setSpeakOpen(true);
+  };
+
   return (
     <MusicProvider>
       <div className="flex h-[100dvh] bg-paper overflow-hidden">
-        <Rail view={view} onNav={setView} onSpeak={() => setSpeakOpen(true)} />
+        <Rail view={view} onNav={setView} onSpeak={openSpeak} />
         {/* Leave room for the fixed bottom bar on mobile; full height on desktop. */}
         <main className="flex-1 relative h-[calc(100dvh-64px)] md:h-screen overflow-hidden">
           {/* Board stays mounted so canvas state (viewport, in-flight edits) survives nav. */}
@@ -48,6 +63,7 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
           </div>
           {view === "today" && <Today onNavigate={setView} />}
           {view === "core" && <Core />}
+          {view === "dump" && <BrainDumpLab />}
           {view === "settings" && <Settings />}
         </main>
         <CoachDock
@@ -55,7 +71,7 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
           surfaceId={surfaceId}
           open={coachOpen}
           onToggle={() => setCoachOpen((o) => !o)}
-          onSpeak={() => setSpeakOpen(true)}
+          onSpeak={openSpeak}
         />
         <FeedbackWidget view={view} />
         {/* Atmosphere: ambient music, always at the ready across the app. */}

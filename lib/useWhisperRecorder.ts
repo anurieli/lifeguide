@@ -10,9 +10,11 @@ import { api } from "@/convex/_generated/api";
 // recorder every SEGMENT_MS — each segment is then a complete, self-contained file
 // Whisper can decode on its own. The tiny gap between segments is inaudible for
 // dictation, and Web Speech runs alongside as the live display + fallback.
-const SEGMENT_MS = 4000;
-const MIN_SEGMENT_BYTES = 1200; // a bare container header with ~no audio
+const SEGMENT_MS = 1800;
+const MIN_SEGMENT_BYTES = 240; // a bare container header with ~no audio
 const FLUSH_TIMEOUT_MS = 15000; // hard cap on how long stop() waits for the tail
+const SPEECH_LEVEL = 0.06;
+const MIN_SPEECH_FRAMES = 4;
 
 // Whisper accepts webm/ogg/mp4/wav. We pick the first the browser can record.
 const MIME_CANDIDATES = [
@@ -34,16 +36,23 @@ export type WhisperRecorderState = {
   /** Whether this browser can record + segment audio at all. False → caller should rely on Web Speech / typing. */
   supported: boolean;
   recording: boolean;
+  devices: MediaDeviceInfo[];
+  deviceId: string;
+  activeDeviceLabel: string;
   /** Ordered, confirmed transcript assembled from the segments returned so far. */
   text: string;
   /** Segments still being transcribed (drives an optional "transcribing…" hint). */
   pending: number;
   /** Count of segments that failed to transcribe — a signal the caller may prefer the local fallback. */
   failures: number;
+  /** Live microphone input level from the browser audio stream (0..1). */
+  level: number;
   /** Actionable error code (currently just "not-allowed" when mic permission is denied). */
   error: string | null;
   /** Begin capture. Resolves false if it couldn't start (unsupported, or mic denied). */
   start: () => Promise<boolean>;
+  setDeviceId: (deviceId: string) => void;
+  refreshDevices: () => Promise<void>;
   /** Stop capture, flush the final segment, and resolve with the full ordered transcript. */
   stop: () => Promise<string>;
   reset: () => void;
@@ -66,13 +75,21 @@ export function useWhisperRecorder(): WhisperRecorderState {
       !!navigator.mediaDevices?.getUserMedia,
   );
   const [recording, setRecording] = useState(false);
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [deviceId, setDeviceId] = useState("default");
+  const [activeDeviceLabel, setActiveDeviceLabel] = useState("");
   const [text, setText] = useState("");
   const [pending, setPending] = useState(0);
   const [failures, setFailures] = useState(0);
+  const [level, setLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const streamRef = useRef<MediaStream | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const levelRafRef = useRef<number | null>(null);
+  const segmentSpeechFramesRef = useRef(0);
   const mimeRef = useRef<string>("audio/webm");
   const wantRef = useRef(false); // true while the user means to keep recording
   const segTimerRef = useRef<number | null>(null);
@@ -89,9 +106,19 @@ export function useWhisperRecorder(): WhisperRecorderState {
     return parts.join(" ").replace(/\s+/g, " ").trim();
   }, []);
 
+  const refreshDevices = useCallback(async () => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    try {
+      const all = await navigator.mediaDevices.enumerateDevices();
+      setDevices(all.filter((device) => device.kind === "audioinput"));
+    } catch {
+      // Some browsers only allow enumeration after permission; start() retries.
+    }
+  }, []);
+
   const sendSegment = useCallback(
-    (blob: Blob, idx: number) => {
-      if (blob.size < MIN_SEGMENT_BYTES) {
+    (blob: Blob, idx: number, speechFrames: number) => {
+      if (blob.size < MIN_SEGMENT_BYTES || speechFrames < MIN_SPEECH_FRAMES) {
         resultsRef.current.set(idx, "");
         return;
       }
@@ -133,12 +160,13 @@ export function useWhisperRecorder(): WhisperRecorderState {
     }
     recRef.current = rec;
     const chunks: BlobPart[] = [];
+    segmentSpeechFramesRef.current = 0;
     rec.ondataavailable = (e) => {
       if (e.data && e.data.size) chunks.push(e.data);
     };
     rec.onstop = () => {
       const idx = seqRef.current++;
-      sendSegment(new Blob(chunks, { type: mimeRef.current }), idx);
+      sendSegment(new Blob(chunks, { type: mimeRef.current }), idx, segmentSpeechFramesRef.current);
       if (wantRef.current) startSegment();
     };
     try {
@@ -151,10 +179,56 @@ export function useWhisperRecorder(): WhisperRecorderState {
     }, SEGMENT_MS);
   }, [sendSegment]);
 
+  const stopLevelMeter = useCallback(() => {
+    if (levelRafRef.current) window.cancelAnimationFrame(levelRafRef.current);
+    levelRafRef.current = null;
+    analyserRef.current = null;
+    void audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+    setLevel(0);
+  }, []);
+
+  const startLevelMeter = useCallback((stream: MediaStream) => {
+    stopLevelMeter();
+    const Ctor =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor) return;
+    try {
+      const ctx = new Ctor();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.72;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+      audioCtxRef.current = ctx;
+      analyserRef.current = analyser;
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        analyser.getByteTimeDomainData(buf);
+        let sum = 0;
+        for (let i = 0; i < buf.length; i += 1) {
+          const centered = (buf[i] - 128) / 128;
+          sum += centered * centered;
+        }
+        const rms = Math.sqrt(sum / buf.length);
+        const nextLevel = Math.min(1, rms * 8);
+        if (nextLevel >= SPEECH_LEVEL) segmentSpeechFramesRef.current += 1;
+        setLevel(nextLevel);
+        levelRafRef.current = window.requestAnimationFrame(tick);
+      };
+      void ctx.resume().catch(() => {});
+      tick();
+    } catch {
+      stopLevelMeter();
+    }
+  }, [stopLevelMeter]);
+
   const teardownStream = useCallback(() => {
+    stopLevelMeter();
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
-  }, []);
+    setActiveDeviceLabel("");
+  }, [stopLevelMeter]);
 
   const start = useCallback(async (): Promise<boolean> => {
     if (!supported) return false;
@@ -168,17 +242,48 @@ export function useWhisperRecorder(): WhisperRecorderState {
     seqRef.current = 0;
     inflightRef.current = 0;
     setPending(0);
+    setLevel(0);
+    setActiveDeviceLabel("");
     try {
-      streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setError("not-allowed");
+      streamRef.current = await navigator.mediaDevices.getUserMedia({
+        audio: deviceId
+          ? {
+              deviceId: { exact: deviceId },
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            }
+          : {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
+      });
+    } catch (err) {
+      const name =
+        err && typeof err === "object" && "name" in err && typeof err.name === "string"
+          ? err.name
+          : "";
+      setError(
+        name === "NotAllowedError" || name === "SecurityError"
+          ? "not-allowed"
+          : name === "NotFoundError"
+            ? "not-found"
+            : name === "NotReadableError"
+              ? "not-readable"
+              : "unavailable",
+      );
       return false;
     }
+    const track = streamRef.current.getAudioTracks()[0];
+    setActiveDeviceLabel(track?.label || "");
+    void refreshDevices();
+    startLevelMeter(streamRef.current);
     wantRef.current = true;
     setRecording(true);
     startSegment();
     return true;
-  }, [supported, startSegment]);
+  }, [deviceId, refreshDevices, supported, startLevelMeter, startSegment]);
 
   const stop = useCallback(async (): Promise<string> => {
     wantRef.current = false;
@@ -220,6 +325,8 @@ export function useWhisperRecorder(): WhisperRecorderState {
     setText("");
     setPending(0);
     setFailures(0);
+    setLevel(0);
+    setActiveDeviceLabel("");
     setError(null);
   }, []);
 
@@ -233,10 +340,35 @@ export function useWhisperRecorder(): WhisperRecorderState {
       } catch {
         /* noop */
       }
+      stopLevelMeter();
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
-  }, []);
+  }, [stopLevelMeter]);
 
-  return { supported, recording, text, pending, failures, error, start, stop, reset };
+  useEffect(() => {
+    void refreshDevices();
+    navigator.mediaDevices?.addEventListener?.("devicechange", refreshDevices);
+    return () => {
+      navigator.mediaDevices?.removeEventListener?.("devicechange", refreshDevices);
+    };
+  }, [refreshDevices]);
+
+  return {
+    supported,
+    recording,
+    devices,
+    deviceId,
+    activeDeviceLabel,
+    text,
+    pending,
+    failures,
+    level,
+    error,
+    start,
+    setDeviceId,
+    refreshDevices,
+    stop,
+    reset,
+  };
 }

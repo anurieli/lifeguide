@@ -263,6 +263,72 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_thread", ["threadId", "createdAt"]),
 
+  // Experimental brain-dump lab: one durable workspace for a spoken stream,
+  // its sentence-level transcript, the evolving JSON idea graph, and the
+  // per-session AI engine knobs used to maintain that graph.
+  brainDumpSessions: defineTable({
+    userId: v.id("users"),
+    title: v.string(),
+    transcript: v.array(
+      v.object({
+        id: v.string(),
+        text: v.string(),
+        capturedAt: v.number(),
+        source: v.union(v.literal("speech"), v.literal("typed")),
+        status: v.union(v.literal("pending"), v.literal("processed"), v.literal("error")),
+      }),
+    ),
+    graph: v.object({
+      version: v.literal(1),
+      ideas: v.array(
+        v.object({
+          id: v.string(),
+          title: v.string(),
+          summary: v.string(),
+          details: v.array(v.string()),
+          mentions: v.number(),
+          createdAt: v.number(),
+          updatedAt: v.number(),
+        }),
+      ),
+      relations: v.array(
+        v.object({
+          id: v.string(),
+          from: v.string(),
+          to: v.string(),
+          label: v.string(),
+          reason: v.string(),
+          strength: v.number(),
+          createdAt: v.number(),
+        }),
+      ),
+    }),
+    engine: v.object({
+      provider: v.union(v.literal("openrouter"), v.literal("openai"), v.literal("local")),
+      model: v.string(),
+      temperature: v.number(),
+      systemPrompt: v.string(),
+    }),
+    aiCalls: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          kind: v.string(),
+          provider: v.union(v.literal("openrouter"), v.literal("openai"), v.literal("local")),
+          model: v.string(),
+          status: v.union(v.literal("pending"), v.literal("success"), v.literal("error")),
+          inputPreview: v.string(),
+          outputPreview: v.optional(v.string()),
+          error: v.optional(v.string()),
+          startedAt: v.number(),
+          endedAt: v.optional(v.number()),
+        }),
+      ),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user_updated", ["userId", "updatedAt"]),
+
   // In-app feedback: a quick note from a user, captured with page context (route,
   // metadata, the page's recent JS/console errors, and an optional visual snapshot).
   // Surfaced in the /admin dev panel as a live ticketing queue. Self-scoped like the

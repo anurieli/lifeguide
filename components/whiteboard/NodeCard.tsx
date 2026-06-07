@@ -360,6 +360,9 @@ export function NodeCard({
             {node.text && (
               <span className="text-[11px] text-ink-mute/80 line-clamp-2">“{node.text}”</span>
             )}
+            {node.title && (
+              <span className="text-[10px] text-ink-mute/70 line-clamp-2">{node.title}</span>
+            )}
             <button
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => onGenerateImage(node.text ?? "")}

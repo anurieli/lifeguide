@@ -5,6 +5,7 @@ import {
   Sun,
   Gem,
   LayoutGrid,
+  BrainCircuit,
   Mic,
   Settings as SettingsIcon,
   User,
@@ -12,12 +13,13 @@ import {
 } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 
-export type View = "today" | "core" | "board" | "settings";
+export type View = "today" | "core" | "board" | "dump" | "settings";
 
 const ITEMS: { key: View; label: string; Icon: typeof Sun }[] = [
   { key: "today", label: "Today", Icon: Sun },
   { key: "core", label: "Core", Icon: Gem },
   { key: "board", label: "Board", Icon: LayoutGrid },
+  { key: "dump", label: "Dump", Icon: BrainCircuit },
 ];
 
 // One nav target. Vertical pill on the desktop rail; an evenly-spread tab on the

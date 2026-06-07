@@ -47,12 +47,16 @@ function AtmoWave({ variant }: { variant: "orb" | "panel" }) {
     // Persisted across frames: eased band amplitudes + a slowly advancing phase.
     let loAmp = 0;
     let hiAmp = 0;
+    let bodyAmp = 0;
     let phase = 0;
-    const EASE = 0.045; // how fast the displayed wave chases the live signal (low = calm)
-    const SPEED = variant === "orb" ? 0.012 : 0.009; // phase advance per frame (slow drift)
+    const EASE = variant === "orb" ? 0.22 : 0.12;
+    const SPEED = variant === "orb" ? 0.038 : 0.02;
     const STEP = variant === "orb" ? 2 : 3; // px between sampled points
     const lf = variant === "orb" ? 2.4 : 1.6; // low-band wavelength (cycles across width)
     const hf = variant === "orb" ? 4.0 : 3.4; // high-band wavelength
+    const gain = variant === "orb" ? 2.9 : 2.0;
+    const freqBuf = new Uint8Array(512);
+    const timeBuf = new Uint8Array(512);
 
     const band = (buf: Uint8Array, from: number, to: number) => {
       let sum = 0;
@@ -77,16 +81,26 @@ function AtmoWave({ variant }: { variant: "orb" | "panel" }) {
       // Target band energies (0 when idle/paused, so the wave eases down to flat).
       let loTarget = 0;
       let hiTarget = 0;
+      let bodyTarget = 0;
       if (an && mm.playing) {
         const bins = an.frequencyBinCount;
-        const buf = new Uint8Array(bins);
-        an.getByteFrequencyData(buf);
-        loTarget = band(buf, 0, Math.floor(bins * 0.12)); // bass swell
-        hiTarget = band(buf, Math.floor(bins * 0.12), Math.floor(bins * 0.55)); // mids/air ripple
+        const freq = freqBuf.length === bins ? freqBuf : new Uint8Array(bins);
+        const time = timeBuf.length === bins ? timeBuf : new Uint8Array(bins);
+        an.getByteFrequencyData(freq);
+        an.getByteTimeDomainData(time);
+        loTarget = Math.min(1, band(freq, 0, Math.floor(bins * 0.14)) * gain); // bass swell
+        hiTarget = Math.min(1, band(freq, Math.floor(bins * 0.14), Math.floor(bins * 0.68)) * gain); // mids/air ripple
+        let sum = 0;
+        for (let i = 0; i < bins; i++) {
+          const centered = (time[i] - 128) / 128;
+          sum += centered * centered;
+        }
+        bodyTarget = Math.min(1, Math.sqrt(sum / bins) * gain * 2.2);
       }
       loAmp += (loTarget - loAmp) * EASE;
       hiAmp += (hiTarget - hiAmp) * EASE;
-      phase += SPEED;
+      bodyAmp += (bodyTarget - bodyAmp) * EASE;
+      phase += SPEED * (1 + bodyAmp * 1.4);
 
       // A gentle resting baseline so a paused wave isn't a dead-flat line.
       const rest = 0.05;
@@ -99,8 +113,8 @@ function AtmoWave({ variant }: { variant: "orb" | "panel" }) {
         const t = x / W;
         // Taper the ends so the wave fades in/out at the edges — softer, more passive.
         const taper = Math.sin(Math.PI * t);
-        const lo = Math.sin(t * Math.PI * 2 * lf + phase) * (loAmp + rest);
-        const hi = Math.sin(t * Math.PI * 2 * hf + phase * 1.7) * hiAmp * 0.6;
+        const lo = Math.sin(t * Math.PI * 2 * lf + phase) * (loAmp + bodyAmp * 0.55 + rest);
+        const hi = Math.sin(t * Math.PI * 2 * hf + phase * 1.7) * (hiAmp + bodyAmp * 0.35) * 0.72;
         const y = mid - (lo + hi) * maxA * taper;
         if (x === 0) c.moveTo(x, y);
         else c.lineTo(x, y);

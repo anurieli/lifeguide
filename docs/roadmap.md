@@ -1,6 +1,17 @@
 # Roadmap
 
-**Status:** the rebuilt roadmap (2026-06-03). It replaces the old Plan-1-to-4 sequence and re-sequences the build to the evolved order from [`product/concept-and-soul.md`](product/concept-and-soul.md) ("The evolved system" → "Build order") and the element model in [`architecture/elements-and-context.md`](architecture/elements-and-context.md).
+## Capture-first reframe (2026-07-02)
+
+The product's center of gravity is **capture**: quickly get a thought out, and have it decomposed, labeled, and routed into a pillar-clean brain. The life-coach vision board is the **destination** that capture fills, not the starting point. Shipping is now cut into two concrete milestones (tracked in the [LifeGuide Linear project](https://linear.app/cuttheedge/project/lifeguide-67aceaa648cf)):
+
+- **MVP — the capture spine.** Hosted + mobile-accessible. One pipeline, three front doors (brain dump, morning beat, night beat): `capture → decompose into atomic thoughts → sentiment + labels → propose+confirm routing → session stream OR a pillar-clean main thought`. Entities: **Session** (raw capture + metadata: time, day, duration, voice/text, and where known location, activity, source media), **Atomic thought** (text + sentiment + labels), **Main thought** (persistent, one pillar per thought). Two rules govern it: **clean storage, associative reading** (no forced cross-links written into storage; connections are found at read time) and the **transient ↔ durable membrane** (everything lands in the Session stream; only confirmed thoughts promote into the durable Brain via propose+confirm). Home screen is a plain, warm, identity-aware greeting. No read-back intelligence yet.
+- **V1 — the insight engine.** The read-time layer that mines the clean corpus: cross-pillar patterns and hidden connections (how you feel now ↔ where you are in life; ideas ↔ hobbies), the two "maps of how you think" (session-scoped and all-time), smart morning/night surfacing, the auto-routing upgrade, and core enrichment. It cannot exist until the MVP has filled the reservoir with pillar-clean main thoughts.
+
+**Terminology reconciliation:** the sections below still call the full evolved build "v1." That "v1" is the *whole vision*; the *shippable slices* are now **MVP** then **V1 (insight)**. Read the spine sections (two-stream Context Bus, the Coach's core-curation loop, the Journal as adaptive-prompt capture) as the **MVP capture spine**; read the alignment-engine sections (the alignment engine and §v1.5) as the **V1 insight engine**; the Vision Board sections are the **destination surface**, deferred behind both.
+
+---
+
+**Status:** the rebuilt roadmap (2026-06-03), re-sequenced by the capture-first reframe above (2026-07-02). It replaces the old Plan-1-to-4 sequence and re-sequences the build to the evolved order from [`product/concept-and-soul.md`](product/concept-and-soul.md) ("The evolved system" → "Build order") and the element model in [`architecture/elements-and-context.md`](architecture/elements-and-context.md).
 
 The build order is **spine first, then surfaces**: stand up the two-stream Context Bus and the Coach's core-curation loop, then hang the Journal, Dashboard, Future Self, Pillars & Goals, and the co-build board off it.
 

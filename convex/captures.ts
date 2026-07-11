@@ -16,7 +16,12 @@ const RAWTYPE = v.union(
   v.literal("link"),
   v.literal("video_link"),
   v.literal("quote"),
+  v.literal("audio"),
+  v.literal("file"),
 );
+
+// Raw types whose text must be derived before distillation (vs. already textual).
+const NEEDS_EXTRACTION = new Set(["image", "link", "video_link", "audio", "file"]);
 
 // Unplaced, active captures for the current user — the "to place" inbox tray.
 export const inbox = query({
@@ -61,6 +66,7 @@ export const create = mutation({
     rawText: v.optional(v.string()),
     rawUrl: v.optional(v.string()),
     rawFileId: v.optional(v.id("_storage")),
+    sourceMeta: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -68,12 +74,84 @@ export const create = mutation({
     const id = await ctx.db.insert("captures", {
       userId,
       ...args,
+      extraction: {
+        status: NEEDS_EXTRACTION.has(args.rawType) ? ("pending" as const) : ("skipped" as const),
+        at: Date.now(),
+      },
       isActive: true,
       createdAt: Date.now(),
     });
-    // Distill in the background (no-op until OPENROUTER_API_KEY is set; the capture still lands).
-    await ctx.scheduler.runAfter(0, internal.ai.distill.distillCapture, { captureId: id });
+    // Ingest in the background: extract text from the raw artifact (transcribe audio,
+    // fetch a link, read an image), then distill. No-op degrades gracefully without keys.
+    await ctx.scheduler.runAfter(0, internal.ai.ingest.ingestCapture, { captureId: id });
     return id;
+  },
+});
+
+// The Thought Stream: every active capture for the current user, newest first, with
+// the raw file resolved to a servable URL (audio player / image src).
+export const stream = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+    const rows = await ctx.db
+      .query("captures")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .take(Math.min(args.limit ?? 100, 200));
+    return await Promise.all(
+      rows.map(async (c) => ({
+        ...c,
+        fileUrl: c.rawFileId ? await ctx.storage.getUrl(c.rawFileId) : null,
+      })),
+    );
+  },
+});
+
+// Re-run extraction + distillation on a capture (error retry, or re-analyzing an old
+// thought after the pipeline improves). The raw artifact is durable, so this is always safe.
+export const reprocess = mutation({
+  args: { captureId: v.id("captures") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const c = await ctx.db.get(args.captureId);
+    if (!c || c.userId !== userId) throw new Error("Not found");
+    await ctx.db.patch(args.captureId, {
+      extraction: {
+        status: NEEDS_EXTRACTION.has(c.rawType) ? ("pending" as const) : ("skipped" as const),
+        at: Date.now(),
+      },
+    });
+    await ctx.scheduler.runAfter(0, internal.ai.ingest.ingestCapture, {
+      captureId: args.captureId,
+    });
+  },
+});
+
+// Server-only write from the ingest action.
+export const updateExtraction = internalMutation({
+  args: {
+    captureId: v.id("captures"),
+    extractedText: v.optional(v.string()),
+    extraction: v.object({
+      status: v.union(
+        v.literal("pending"),
+        v.literal("done"),
+        v.literal("error"),
+        v.literal("skipped"),
+      ),
+      error: v.optional(v.string()),
+      meta: v.optional(v.string()),
+      at: v.optional(v.number()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.captureId, {
+      ...(args.extractedText !== undefined ? { extractedText: args.extractedText } : {}),
+      extraction: args.extraction,
+    });
   },
 });
 

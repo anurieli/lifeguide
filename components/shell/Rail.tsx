@@ -5,7 +5,7 @@ import {
   Sun,
   Gem,
   LayoutGrid,
-  BrainCircuit,
+  AudioLines,
   Mic,
   Settings as SettingsIcon,
   User,
@@ -19,7 +19,7 @@ const ITEMS: { key: View; label: string; Icon: typeof Sun }[] = [
   { key: "today", label: "Today", Icon: Sun },
   { key: "core", label: "Core", Icon: Gem },
   { key: "board", label: "Board", Icon: LayoutGrid },
-  { key: "dump", label: "Dump", Icon: BrainCircuit },
+  { key: "dump", label: "Thoughts", Icon: AudioLines },
 ];
 
 // One nav target. Vertical pill on the desktop rail; an evenly-spread tab on the

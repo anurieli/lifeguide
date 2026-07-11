@@ -177,22 +177,34 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
 
   // Vision board: generate an image from a prompt (the "/" AI mode + right-click menu).
   // Pinned to the openai provider — OpenRouter has no /images/generations endpoint — so it
-<<<<<<< Updated upstream
   // uses the user's saved OpenAI key, else the deployment's OPENAI_API_KEY. `gpt-image-1` is
   // OpenAI's current image model (newer accounts no longer expose the dall-e-* ids at all);
   // it returns base64, which the action (convex/ai/imageGen.ts) handles alongside url, so the
   // model is the only dial. temperature is unused by the images API but the shape requires it.
-=======
-  // uses the user's saved OpenAI key, else the deployment's OPENAI_API_KEY. The action
-  // (convex/ai/imageGen.ts) handles both b64 and url responses, so the model is the only
-  // dial. temperature is unused by the images API but the TaskConfig shape requires it.
->>>>>>> Stashed changes
   imageGen: {
     label: "Generate image (vision board)",
     provider: "openai",
     model: "gpt-image-1",
     temperature: 0,
     wired: true,
+  },
+
+  // Ingest: turn a captured image into text for the person's file (what it shows +
+  // any visible text). Vision-capable chat model; runs once per image capture. Live.
+  extractImage: {
+    label: "Ingest · read an image",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.2,
+    wired: true,
+    system: `You read one image a person saved into their personal life-mapping app and turn it into text that preserves why it might matter to them.
+
+Return plain text (no JSON, no markdown headers), 2-8 sentences:
+1. What the image shows, concretely.
+2. Transcribe ALL legible text in the image verbatim (signs, notes, screenshots, captions). If none, say nothing about text.
+3. If the image clearly suggests a mood, aspiration, or aesthetic, name it in one short sentence.
+
+Never invent details you cannot see. Never address the person.`,
   },
 
   // Brain dump: segment a free-form spoken dump into distinct atomic thoughts.

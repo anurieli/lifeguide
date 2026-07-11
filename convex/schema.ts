@@ -68,7 +68,9 @@ export default defineSchema({
     .index("by_surface", ["surfaceId"])
     .index("by_from", ["fromNode"]),
 
-  // A capture is the immutable event of inspiration; distilled async; may become a node.
+  // A capture is the immutable event of a thought or inspiration; ingested async
+  // (extraction + distillation); may become a node. The raw artifact is always kept
+  // (rawText/rawUrl/rawFileId) so it can be reopened and re-analyzed after the fact.
   captures: defineTable({
     userId: v.id("users"),
     source: v.union(
@@ -84,10 +86,31 @@ export default defineSchema({
       v.literal("link"),
       v.literal("video_link"),
       v.literal("quote"),
+      v.literal("audio"),
+      v.literal("file"),
     ),
     rawText: v.optional(v.string()),
     rawUrl: v.optional(v.string()),
     rawFileId: v.optional(v.id("_storage")),
+    // Client context at capture time, JSON: {"device":"phone"|"desktop", ...}.
+    sourceMeta: v.optional(v.string()),
+    // The canonical text derived from the raw artifact: the transcript (audio), the
+    // article body (link), the description + visible text (image). Distillation and
+    // any later analysis read this, never the raw blob.
+    extractedText: v.optional(v.string()),
+    extraction: v.optional(
+      v.object({
+        status: v.union(
+          v.literal("pending"),
+          v.literal("done"),
+          v.literal("error"),
+          v.literal("skipped"), // nothing to extract (raw is already text)
+        ),
+        error: v.optional(v.string()),
+        meta: v.optional(v.string()), // JSON: link {title,description,siteName,url} / audio {mime,bytes}
+        at: v.optional(v.number()),
+      }),
+    ),
     distilled: v.optional(
       v.object({
         title: v.string(),
@@ -216,7 +239,14 @@ export default defineSchema({
   interviewSessions: defineTable({
     userId: v.id("users"),
     experienceId: v.string(), // "text-interview" | "voice-interview"
-    status: v.union(v.literal("active"), v.literal("completed"), v.literal("abandoned")),
+    // "tossed" = the person discarded the session at the end of a Listener call
+    // (data already exists with this status; the toss UI lives on the listener branch).
+    status: v.union(
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("abandoned"),
+      v.literal("tossed"),
+    ),
     device: v.union(v.literal("desktop"), v.literal("phone")),
     transcript: v.array(
       v.object({

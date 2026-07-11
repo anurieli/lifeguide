@@ -12,6 +12,7 @@ import type * as admin from "../admin.js";
 import type * as ai_config from "../ai/config.js";
 import type * as ai_distill from "../ai/distill.js";
 import type * as ai_imageGen from "../ai/imageGen.js";
+import type * as ai_ingest from "../ai/ingest.js";
 import type * as ai_openai from "../ai/openai.js";
 import type * as ai_parse from "../ai/parse.js";
 import type * as ai_splitDump from "../ai/splitDump.js";
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   "ai/config": typeof ai_config;
   "ai/distill": typeof ai_distill;
   "ai/imageGen": typeof ai_imageGen;
+  "ai/ingest": typeof ai_ingest;
   "ai/openai": typeof ai_openai;
   "ai/parse": typeof ai_parse;
   "ai/splitDump": typeof ai_splitDump;

@@ -7,15 +7,14 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
-<<<<<<< Updated upstream
-## 2026-06-04 · Fix: image generation model (dall-e-3 → gpt-image-1)
+## 2026-07-02 · Capture-first reframe: MVP and V1 milestones
 
-Image generation failed on localhost with `400 The model 'dall-e-3' does not exist`. A probe against the deployment's OpenAI key showed this account exposes only **`gpt-image-1`** (both `dall-e-3` and `dall-e-2` 400 as nonexistent — newer OpenAI accounts no longer carry the DALL·E ids). Flipped `imageGen.model` to `gpt-image-1`; the action already handled its base64 response, so no other change. Verified the model returns an image with the deployment key.
+Reframed the product around **capture** as its center of gravity (quickly get a thought out; decompose into atomic thoughts → sentiment + labels → propose+confirm routing into a pillar-clean brain), with the vision board demoted to the destination capture fills rather than the starting point. Cut shipping into two concrete milestones in the LifeGuide Linear project: **MVP — the capture spine** (hosted + mobile; one pipeline, three front doors — brain dump / morning / night; three entities — Session, Atomic thought, Main thought; the clean-storage-and-associative-reading rule and the transient↔durable membrane) and **V1 — the insight engine** (read-time cross-pillar pattern + hidden-connection surfacing, the two "maps of how you think," smart morning/night surfacing, the auto-routing upgrade, and core enrichment). In Linear: created both milestones with full specs, assigned ARI-18/21/2/23 → MVP and ARI-16/17/13/14/22/11/9 → V1, cancelled the stale vision-board-polish cluster (ARI-3/4/5/6/7/8) plus ARI-1 (model picker) and ARI-10 (cost tracking), and rewrote the project summary + description. Workspace also reorganized on disk: `~/Desktop/Life Board` → `~/Desktop/LifeGuide`, with feeder apps (braindump, PillarOS, goal-manager, me-myself-and-i, eden competitor, vision-board assets) moved under `_source-apps/`.
 
-Files: `convex/ai/config.ts` (`imageGen.model`).
+**Docs touched:** `docs/roadmap.md` (capture-first reframe section + MVP/V1 definitions + terminology reconciliation), `docs/product/prd.md` (reframe note under Status), `CHANGELOG.md`.
 
-**Docs touched:** `docs/product/features/vision-board.md` (§7 + §9 model dial), `CHANGELOG.md` (prior entry's model reference).
-=======
+---
+
 ## 2026-06-06 · Karpathy-style research wiki scaffold
 
 Created a `docs/research/wiki/` workspace following Andrey Karpathy's LLM wiki method: immutable `raw/`, agent-written `wiki/`, local schema in `CLAUDE.md`, an `index.md` entry point, and a `log.md` for ingestions/reorganizations. Added a `.claude/skills/llm-wiki` skill so Claude/Codex can maintain the wiki consistently: read the schema first, preserve raw sources, synthesize durable Markdown pages, update the index, and log changes.
@@ -31,7 +30,14 @@ Two improvements to the Listener before it ships. **Toss a session:** a quiet, g
 Files: `convex/schema.ts` (`tossed` status), `convex/interview.ts` (`end` accepts `tossed`), `hooks/useRealtimeVoice.ts` (`toss`/`onToss`, `sampleLevels`), `components/voice/VoiceOrb.tsx` (new, WebGL shader), `components/voice/SpeakSurface.tsx` (orb live view, toss control, tossed close, CaptionLine).
 
 **Docs touched:** `docs/product/features/listener.md` (§2 orb + captions + Toss, §3 toss action, §4 shared engine note, §5 tossed state), `docs/architecture/data-model.md` (`interviewSessions.status` includes `tossed`).
->>>>>>> Stashed changes
+
+## 2026-06-04 · Fix: image generation model (dall-e-3 → gpt-image-1)
+
+Image generation failed on localhost with `400 The model 'dall-e-3' does not exist`. A probe against the deployment's OpenAI key showed this account exposes only **`gpt-image-1`** (both `dall-e-3` and `dall-e-2` 400 as nonexistent — newer OpenAI accounts no longer carry the DALL·E ids). Flipped `imageGen.model` to `gpt-image-1`; the action already handled its base64 response, so no other change. Verified the model returns an image with the deployment key.
+
+Files: `convex/ai/config.ts` (`imageGen.model`).
+
+**Docs touched:** `docs/product/features/vision-board.md` (§7 + §9 model dial), `CHANGELOG.md` (prior entry's model reference).
 
 ## 2026-06-04 · Vision board: AI image generation + double-click / right-click add
 

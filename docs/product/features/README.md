@@ -9,6 +9,7 @@ The element model these hang off is [`../../architecture/elements-and-context.md
 | Element | Owns | Feeds | Status |
 |---|---|---|---|
 | [Vision Board](vision-board.md) | `surfaces, nodes, edges, captures` | Core | partial (board built; Coach co-build proposed) |
+| [Thought Stream](thought-stream.md) | ingest pipeline over `captures` (table shared with the board) | Sessions → Core | built (v1) |
 | [Future Self](future-self.md) | `futureSelf` | Core | proposed |
 | [Journal / Sessions](journal.md) | `sessions, prompts` | Sessions | proposed (Today ritual is the seed) |
 | [Pillars & Goals](pillars-and-goals.md) | `pillars, goals` | Core, Sessions | partial (pillars built; goals proposed) |

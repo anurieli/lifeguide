@@ -2,6 +2,8 @@
 
 **Status:** rebuilt 2026-06-03 to the evolved vision. The index that ties the per-element feature docs together. It does not restate them; it says what v1 is, what is in and out, and how the pieces form one product. For the why, read [`concept-and-soul.md`](concept-and-soul.md); for the system, [`../architecture/elements-and-context.md`](../architecture/elements-and-context.md).
 
+> **Capture-first reframe (2026-07-02).** The shippable path is now **MVP (the capture spine) → V1 (the insight engine)**; see [`../roadmap.md`](../roadmap.md) for the definitions and the terminology reconciliation (this doc's "v1" is the full vision, not the V1 shipping milestone). Capture is the product's center of gravity: quickly get a thought out and have it decomposed, labeled, and routed into a pillar-clean brain. The **vision board is the destination capture fills, not the starting point**. The element specs below remain valid as the full vision; they are sequenced behind the capture spine.
+
 ---
 
 ## 1. Problem and promise

@@ -98,3 +98,12 @@ Features that are done but haven't been manually verified yet.
 - [ ] Menu "Generate image with AI" opens a new card already in AI mode at the click point
 - [ ] Force a failure (e.g. no OpenAI key) and confirm the card shows "Couldn't generate that image" with a working Try again, and the rest of the board stays interactive while a card is generating
 - [ ] Generated image cards drag, resize, connect, and delete like any other card
+
+### Thought Stream (the Thoughts tab)
+- [ ] Open Thoughts in the rail, tap the mic, speak for 20+ seconds, tap stop, confirm the recording appears with a playable audio player and a transcript shows up under "What I heard" within a minute
+- [ ] Play the audio back, confirm it is your actual recording (raw audio is stored, not just the transcript)
+- [ ] Attach a photo (on the phone this should offer the camera), confirm a thumbnail appears and a description of the image lands under "What I heard" plus a receipt below it
+- [ ] Open the app on your phone, confirm the Thoughts tab is in the bottom bar and the composer (mic, photo, send) is comfortably tappable
+- [ ] Record a dump on the phone specifically, since mic permissions and audio format differ on iOS Safari
+- [ ] Paste a YouTube link, confirm the title lands and the receipt reflects the video's topic
+- [ ] Hover a thought card and delete it, confirm it disappears without a confirm dialog

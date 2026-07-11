@@ -12,7 +12,7 @@ import { SpeakSurface } from "@/components/voice/SpeakSurface";
 import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
 import { MusicProvider } from "@/components/music/MusicProvider";
 import { AtmospherePlayer } from "@/components/music/AtmospherePlayer";
-import { BrainDumpLab } from "@/components/brain-dump/BrainDumpLab";
+import { ThoughtStream } from "@/components/thoughts/ThoughtStream";
 
 const VIEW_STORAGE_KEY = "lifeguide.activeView";
 const VIEWS: View[] = ["today", "core", "board", "dump", "settings"];
@@ -63,7 +63,7 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
           </div>
           {view === "today" && <Today onNavigate={setView} />}
           {view === "core" && <Core />}
-          {view === "dump" && <BrainDumpLab />}
+          {view === "dump" && <ThoughtStream />}
           {view === "settings" && <Settings />}
         </main>
         <CoachDock

@@ -23,6 +23,7 @@ What actually works in code today (`~/Desktop/Life Board/LifeGuide`, Convex depl
 - [x] **Today** — AM/PM ritual, north star, one-move capture.
 - [x] **Core** — the Life Blueprint: 3 sections, 18 questions, malleability colors, editable, autosaved (`coreResponses` + `lib/blueprint.ts`).
 - [x] **Board** — vision board (nodes/edges), unified "Add anything" card, capture → AI distillation (OpenRouter, OpenAI fallback).
+- [x] **Thought Stream** — the one-spot capture valve (speak / type / link / photo) with the async ingest pipeline (Whisper transcription, link fetch + extraction, image vision) and durable, re-analyzable raw storage. First slice of the MVP capture spine.
 - [x] **Guide** — the Mirror (synthesized reflection) + north star + pillars.
 - [x] **Coach** — context-aware dock; **conversation persists** to `messages`/`threads`.
 - [x] **Settings** — rhythm, tone, pillars, plus AI models and per-profile keys.

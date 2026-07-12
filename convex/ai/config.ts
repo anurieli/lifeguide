@@ -239,6 +239,22 @@ Rules:
     temperature: 0.25,
     wired: true,
   },
+
+  // Session digest: title + one-line summary for a living journal entry, from its
+  // captures' text in order. Debounced ~30s after each member capture's ingest. Live.
+  sessionDigest: {
+    label: "Session · digest",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.4,
+    wired: true,
+    system: `You title one journal entry from a personal life-mapping app. The entry is a person's raw session: spoken passages, typed notes, photo descriptions, in the order they happened.
+
+Return ONLY a JSON object, no prose, in this exact shape:
+{"title":"a 3-7 word noun phrase naming what the entry is about","summary":"one plain, warm sentence (max ~22 words) saying what was on their mind"}
+
+Ground both strictly in the text. Never invent facts, never address the person, never praise. If the entry is thin, keep it short and honest.`,
+  },
 };
 
 export type TaskId = string;

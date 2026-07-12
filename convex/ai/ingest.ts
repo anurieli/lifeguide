@@ -84,6 +84,14 @@ export const ingestCapture = internalAction({
     await ctx.scheduler.runAfter(0, internal.ai.distill.distillCapture, {
       captureId: args.captureId,
     });
+
+    // A session-member capture refreshes its session's digest, debounced: the run
+    // 30s out reads current state, so a burst of appends costs one model call.
+    if (capture.sessionId) {
+      await ctx.scheduler.runAfter(30_000, internal.ai.sessionDigest.digestSession, {
+        sessionId: capture.sessionId,
+      });
+    }
   },
 });
 

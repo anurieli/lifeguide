@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
+import { BlueprintCard } from "@/components/settings/BlueprintCard";
 
 const PALETTE = ["#B8945A", "#4F7A4A", "#3A5C86", "#5B4B7A", "#2F6E6A", "#1E3A5F"];
 
@@ -131,6 +132,8 @@ export function Settings() {
             />
           </Row>
         </Group>
+
+        <BlueprintCard />
 
         <Group label="The Coach">
           <Row title="Tone" desc="How direct I am with you">

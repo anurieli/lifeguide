@@ -14,5 +14,8 @@ Architecture Decision Records for LifeGuide. One file per notable decision, numb
 | [0008](0008-sessions-as-container-over-captures.md) | Sessions as a container over captures | accepted (live) | 2026-07-12 |
 | [0009](0009-ritual-day-boundary.md) | The ritual day: client-local key with a 4am rollover | accepted (live) | 2026-07-12 |
 | [0010](0010-merge-thoughts-into-dumps.md) | Merge the Thoughts surface into Dumps (one capture surface) | accepted (live) | 2026-07-12 |
+| [0011](0011-typed-ritual-components.md) | Typed ritual components: one table, a widening kind union | accepted (live) | 2026-07-12 |
+| [0012](0012-roadmap-targets-next-ritual-day.md) | The roadmap targets the next ritual day | accepted (live) | 2026-07-12 |
+| [0013](0013-immersive-reader-overlay.md) | The immersive reader is a full-screen overlay, not scroll-pinning | accepted (live) | 2026-07-12 |
 
 See [`../README.md`](../README.md) for the documentation map and the two seeds, and [`../product/concept-and-soul.md`](../product/concept-and-soul.md) for the current source of truth.

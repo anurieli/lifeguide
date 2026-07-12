@@ -17,6 +17,9 @@ import { ensureBlueprint } from "./blueprintDoc";
 // ============================================================================
 
 const RITUAL = v.union(v.literal("morning"), v.literal("night"));
+// Items and daily check state also accept "any": a ritual practice indifferent
+// to the time of day (rail-only, checkable daily, part of neither seal).
+const RITUAL_ANY = v.union(v.literal("morning"), v.literal("night"), v.literal("any"));
 const KIND = v.union(
   v.literal("do"),
   v.literal("read"),
@@ -66,7 +69,7 @@ async function getOwnedItem(ctx: MutationCtx, userId: Id<"users">, itemId: Id<"r
 async function itemsFor(
   ctx: { db: QueryCtx["db"] },
   userId: Id<"users">,
-  ritual: "morning" | "night",
+  ritual: "morning" | "night" | "any",
 ) {
   return await ctx.db
     .query("ritualItems")
@@ -77,7 +80,7 @@ async function itemsFor(
 async function dayRow(
   ctx: { db: QueryCtx["db"] },
   userId: Id<"users">,
-  ritual: "morning" | "night",
+  ritual: "morning" | "night" | "any",
   day: string,
 ) {
   return await ctx.db
@@ -238,7 +241,7 @@ const DEFAULT_TITLES: Record<string, string> = {
 
 export const addItem = mutation({
   args: {
-    ritual: RITUAL,
+    ritual: RITUAL_ANY,
     kind: KIND,
     title: v.string(),
     content: v.optional(v.string()),
@@ -247,6 +250,8 @@ export const addItem = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
+    if (args.ritual === "any" && args.kind !== "do")
+      throw new Error("Only plain ritual practices can be time-indifferent");
     const siblings = await itemsFor(ctx, userId, args.ritual);
     const now = Date.now();
     return await ctx.db.insert("ritualItems", {
@@ -311,7 +316,7 @@ export const moveItem = mutation({
 
 // The check state + completion record for one ritual on one day (null until touched).
 export const day = query({
-  args: { ritual: RITUAL, day: v.string() },
+  args: { ritual: RITUAL_ANY, day: v.string() },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return null;
@@ -345,7 +350,7 @@ export const history = query({
 
 export const setChecked = mutation({
   args: {
-    ritual: RITUAL,
+    ritual: RITUAL_ANY,
     day: v.string(),
     itemId: v.id("ritualItems"),
     checked: v.boolean(),

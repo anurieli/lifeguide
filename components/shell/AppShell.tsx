@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Rail, View } from "./Rail";
 import { Today } from "@/components/today/Today";
@@ -14,7 +16,7 @@ import { MusicProvider } from "@/components/music/MusicProvider";
 import { AtmospherePlayer } from "@/components/music/AtmospherePlayer";
 import { ThoughtStream } from "@/components/thoughts/ThoughtStream";
 import { Sessions } from "@/components/sessions/Sessions";
-import { RecordTake } from "@/components/sessions/RecordTake";
+import { currentDevice } from "@/components/thoughts/utils";
 
 const VIEW_STORAGE_KEY = "lifeguide.activeView";
 const VIEWS: View[] = ["today", "core", "board", "dump", "sessions", "settings"];
@@ -34,9 +36,11 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   // primary way in — it opens as a full-screen surface.
   const [coachOpen, setCoachOpen] = useState(false);
   const [speakOpen, setSpeakOpen] = useState(false);
-  // The one-tap take overlay (mobile ● button) and the open entry in the Sessions view.
-  const [recordOpen, setRecordOpen] = useState(false);
+  // The open entry in the Sessions view; autoRecordId marks a just-created session
+  // whose document should start recording the moment it opens (the ➕ flow).
   const [activeSessionId, setActiveSessionId] = useState<Id<"sessions"> | null>(null);
+  const [autoRecordId, setAutoRecordId] = useState<Id<"sessions"> | null>(null);
+  const createSession = useMutation(api.sessions.create);
 
   // Restore the last-viewed tab after mount. Done in an effect (not a lazy
   // useState initializer) so server and first client render agree — reading
@@ -56,14 +60,27 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
     setSpeakOpen(true);
   };
 
+  // The ➕ flow: every tap starts a FRESH session and lands inside its empty
+  // document, already recording. Appending to an old entry goes through the list.
+  const startSession = async () => {
+    clientLog("session.start", { view });
+    const id = await createSession({ device: currentDevice() });
+    setAutoRecordId(id);
+    setActiveSessionId(id);
+    setView("sessions");
+  };
+
   return (
     <MusicProvider>
       <div className="flex h-[100dvh] bg-paper overflow-hidden">
         <Rail
           view={view}
-          onNav={setView}
-          onSpeak={openSpeak}
-          onRecord={() => setRecordOpen(true)}
+          onNav={(v) => {
+            // The Sessions tab always shows the list, even from inside an entry.
+            if (v === "sessions") setActiveSessionId(null);
+            setView(v);
+          }}
+          onRecord={() => void startSession()}
         />
         {/* Leave room for the fixed bottom bar on mobile; full height on desktop. */}
         <main className="flex-1 relative h-[calc(100dvh-64px)] md:h-screen overflow-hidden">
@@ -75,7 +92,12 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
           {view === "core" && <Core />}
           {view === "dump" && <ThoughtStream />}
           {view === "sessions" && (
-            <Sessions activeSessionId={activeSessionId} onOpenSession={setActiveSessionId} />
+            <Sessions
+              activeSessionId={activeSessionId}
+              onOpenSession={setActiveSessionId}
+              autoRecordId={autoRecordId}
+              onAutoRecordConsumed={() => setAutoRecordId(null)}
+            />
           )}
           {view === "settings" && <Settings />}
         </main>
@@ -87,21 +109,12 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
           onSpeak={openSpeak}
         />
         <FeedbackWidget view={view} />
-        {/* Atmosphere: ambient music, always at the ready across the app. */}
-        <AtmospherePlayer />
+        {/* Atmosphere: ambient music, desktop only. The phone stays capture-first. */}
+        <div className="hidden md:block">
+          <AtmospherePlayer />
+        </div>
         {/* The Listener: always-available voice. Opens full-screen over everything. */}
         {speakOpen && <SpeakSurface onClose={() => setSpeakOpen(false)} />}
-        {/* The one-tap take: silent capture into a new session, then its document view. */}
-        {recordOpen && (
-          <RecordTake
-            onClose={() => setRecordOpen(false)}
-            onDone={(sessionId) => {
-              setRecordOpen(false);
-              setActiveSessionId(sessionId);
-              setView("sessions");
-            }}
-          />
-        )}
       </div>
     </MusicProvider>
   );

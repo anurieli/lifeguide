@@ -150,6 +150,8 @@ export default defineSchema({
     ),
     startedAt: v.number(),
     updatedAt: v.number(), // bumped on every appended capture
+    pinnedAt: v.optional(v.number()), // set when pinned; pinned entries lead the list
+    lastOpenedAt: v.optional(v.number()), // visit metadata: last time the document view was opened
   }).index("by_user_updated", ["userId", "updatedAt"]),
 
   // A pillar is a region of the "file system on the human" — a folder that holds the

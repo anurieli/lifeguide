@@ -75,6 +75,93 @@ describe("sessions", () => {
     ).rejects.toThrow();
   });
 
+  it("pinned sessions lead the list regardless of recency", async () => {
+    const { asUser } = await setup();
+    const older = await asUser.mutation(api.sessions.create, { device: "phone" });
+    await asUser.mutation(api.captures.create, {
+      source: "paste",
+      rawType: "text",
+      rawText: "older but pinned",
+      sessionId: older,
+    });
+    await new Promise((r) => setTimeout(r, 5));
+    const newer = await asUser.mutation(api.sessions.create, { device: "phone" });
+    await asUser.mutation(api.captures.create, {
+      source: "paste",
+      rawType: "text",
+      rawText: "newer",
+      sessionId: newer,
+    });
+    await asUser.mutation(api.sessions.setPinned, { sessionId: older, pinned: true });
+    let rows = await asUser.query(api.sessions.list, {});
+    expect(rows.map((r) => r._id)).toEqual([older, newer]);
+    await asUser.mutation(api.sessions.setPinned, { sessionId: older, pinned: false });
+    rows = await asUser.query(api.sessions.list, {});
+    expect(rows.map((r) => r._id)).toEqual([newer, older]);
+  });
+
+  it("remove deletes the session but keeps its captures in the archive, inactive", async () => {
+    const { t, asUser } = await setup();
+    const sessionId = await asUser.mutation(api.sessions.create, { device: "phone" });
+    const captureId = await asUser.mutation(api.captures.create, {
+      source: "paste",
+      rawType: "text",
+      rawText: "spoken into the void",
+      sessionId,
+    });
+    await asUser.mutation(api.sessions.remove, { sessionId });
+    expect(await asUser.query(api.sessions.get, { sessionId })).toBeNull();
+    const raw = await t.run(async (ctx) => ctx.db.get(captureId));
+    expect(raw).not.toBeNull();
+    expect(raw!.isActive).toBe(false);
+    expect(raw!.sessionId).toBe(sessionId); // association kept for future mining
+  });
+
+  it("merge folds sessions into the earliest one, elements chronological", async () => {
+    const { asUser } = await setup();
+    const first = await asUser.mutation(api.sessions.create, { device: "phone" });
+    await asUser.mutation(api.captures.create, {
+      source: "paste",
+      rawType: "text",
+      rawText: "one",
+      sessionId: first,
+    });
+    await new Promise((r) => setTimeout(r, 5));
+    const second = await asUser.mutation(api.sessions.create, { device: "phone" });
+    await asUser.mutation(api.captures.create, {
+      source: "paste",
+      rawType: "text",
+      rawText: "two",
+      sessionId: second,
+    });
+    await new Promise((r) => setTimeout(r, 5));
+    await asUser.mutation(api.captures.create, {
+      source: "paste",
+      rawType: "text",
+      rawText: "three",
+      sessionId: first,
+    });
+    const mergedId = await asUser.mutation(api.sessions.merge, {
+      sessionIds: [second, first],
+    });
+    expect(mergedId).toBe(first); // earliest started survives
+    expect(await asUser.query(api.sessions.get, { sessionId: second })).toBeNull();
+    const doc = await asUser.query(api.sessions.get, { sessionId: first });
+    expect(doc!.captures.map((c) => c.rawText)).toEqual(["one", "two", "three"]);
+    expect(doc!.session.digest?.status).toBe("pending"); // digest re-synthesizes
+  });
+
+  it("merge rejects sessions owned by someone else", async () => {
+    const { t, asUser } = await setup();
+    const otherId = await t.run(async (ctx) => ctx.db.insert("users", {}));
+    const asOther = t.withIdentity({ subject: otherId });
+    const mine = await asUser.mutation(api.sessions.create, { device: "phone" });
+    const theirs = await asOther.mutation(api.sessions.create, { device: "phone" });
+    await expect(
+      asUser.mutation(api.sessions.merge, { sessionIds: [mine, theirs] }),
+    ).rejects.toThrow();
+  });
+
   it("deleteIfEmpty deletes a session with no active captures, keeps one with content", async () => {
     const { asUser } = await setup();
     const empty = await asUser.mutation(api.sessions.create, { device: "phone" });

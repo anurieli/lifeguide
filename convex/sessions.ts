@@ -1,6 +1,7 @@
 import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 import { fallbackTitle } from "../lib/sessionDigest";
 
 // ============================================================================
@@ -25,8 +26,9 @@ export const create = mutation({
   },
 });
 
-// Newest-first list rows with derived display fields. Personal volumes are small;
-// reading each session's captures here is fine and keeps storage clean of derived data.
+// List rows with derived display fields: pinned entries first (most recently pinned
+// on top), then the rest newest-first. Personal volumes are small; reading each
+// session's captures here is fine and keeps storage clean of derived data.
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -36,8 +38,8 @@ export const list = query({
       .query("sessions")
       .withIndex("by_user_updated", (q) => q.eq("userId", userId))
       .order("desc")
-      .take(50);
-    return await Promise.all(
+      .take(100);
+    const mapped = await Promise.all(
       rows.map(async (s) => {
         const caps = await ctx.db
           .query("captures")
@@ -59,10 +61,14 @@ export const list = query({
           digestStatus: s.digest?.status,
           startedAt: s.startedAt,
           updatedAt: s.updatedAt,
+          pinnedAt: s.pinnedAt,
           preview: fallbackTitle(caps),
           counts,
         };
       }),
+    );
+    return mapped.sort(
+      (a, b) => (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0) || b.updatedAt - a.updatedAt,
     );
   },
 });
@@ -100,6 +106,89 @@ export const setDoing = mutation({
       doing: args.doing.trim().slice(0, 200) || undefined,
       updatedAt: Date.now(),
     });
+  },
+});
+
+// Visit metadata: stamp when the document view was opened. Deliberately does NOT
+// bump updatedAt; reading an entry is not a content change and must not resort the list.
+export const touchOpened = mutation({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const s = await ctx.db.get(args.sessionId);
+    if (!s || s.userId !== userId) return;
+    await ctx.db.patch(args.sessionId, { lastOpenedAt: Date.now() });
+  },
+});
+
+// Swipe-left pin/unpin. pinnedAt doubles as the pin ordering key in list().
+export const setPinned = mutation({
+  args: { sessionId: v.id("sessions"), pinned: v.boolean() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const s = await ctx.db.get(args.sessionId);
+    if (!s || s.userId !== userId) throw new Error("Not found");
+    await ctx.db.patch(args.sessionId, { pinnedAt: args.pinned ? Date.now() : undefined });
+  },
+});
+
+// Swipe-right delete. The container row goes away; member captures are soft-deleted
+// (isActive=false, sessionId kept) so the raw archive never loses an artifact and
+// future retroactive mining still sees what belonged together.
+export const remove = mutation({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const s = await ctx.db.get(args.sessionId);
+    if (!s || s.userId !== userId) throw new Error("Not found");
+    const caps = await ctx.db
+      .query("captures")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .collect();
+    for (const c of caps) await ctx.db.patch(c._id, { isActive: false });
+    await ctx.db.delete(args.sessionId);
+  },
+});
+
+// Merge selected sessions into one living entry. The earliest-started session is the
+// survivor; every member capture (active or not) is re-parented onto it, so the merged
+// document reads chronologically by each element's own createdAt. The stale digest is
+// cleared and re-synthesized over the combined content.
+export const merge = mutation({
+  args: { sessionIds: v.array(v.id("sessions")) },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    const ids = [...new Set(args.sessionIds)];
+    if (ids.length < 2) throw new Error("Pick at least two sessions to merge");
+    const sessions = [];
+    for (const id of ids) {
+      const s = await ctx.db.get(id);
+      if (!s || s.userId !== userId) throw new Error("Session not found");
+      sessions.push(s);
+    }
+    const target = sessions.reduce((a, b) => (b.startedAt < a.startedAt ? b : a));
+    const rest = sessions.filter((s) => s._id !== target._id);
+    for (const s of rest) {
+      const caps = await ctx.db
+        .query("captures")
+        .withIndex("by_session", (q) => q.eq("sessionId", s._id))
+        .collect();
+      for (const c of caps) await ctx.db.patch(c._id, { sessionId: target._id });
+      await ctx.db.delete(s._id);
+    }
+    await ctx.db.patch(target._id, {
+      doing: [target, ...rest].map((s) => s.doing).find((d) => d) ?? undefined,
+      pinnedAt: sessions.map((s) => s.pinnedAt).find((p) => p !== undefined),
+      title: undefined,
+      summary: undefined,
+      digest: { status: "pending" as const, at: Date.now() },
+      updatedAt: Date.now(),
+    });
+    await ctx.scheduler.runAfter(0, internal.ai.sessionDigest.digestSession, {
+      sessionId: target._id,
+    });
+    return target._id;
   },
 });
 

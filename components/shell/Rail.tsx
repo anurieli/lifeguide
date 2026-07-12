@@ -6,9 +6,8 @@ import {
   Gem,
   LayoutGrid,
   AudioLines,
-  Mic,
+  Plus,
   NotebookPen,
-  Waves,
   Settings as SettingsIcon,
   User,
   LogOut,
@@ -86,12 +85,10 @@ function MenuItem({
 export function Rail({
   view,
   onNav,
-  onSpeak,
   onRecord,
 }: {
   view: View;
   onNav: (v: View) => void;
-  onSpeak: () => void;
   onRecord: () => void;
 }) {
   const { signOut } = useAuthActions();
@@ -114,7 +111,7 @@ export function Rail({
     <div className="fixed bottom-0 inset-x-0 h-[64px] flex-row items-center px-2 border-t border-line z-50 md:static md:inset-auto md:w-[84px] md:h-screen md:flex-col md:items-center md:py-[18px] md:px-0 md:border-t-0 md:border-r md:flex-shrink-0 bg-card flex">
       <div className="hidden md:block font-extrabold text-xl text-ink mb-7">L</div>
       <div className="flex flex-1 flex-row md:flex-col gap-1 md:gap-1.5 items-center justify-around md:justify-start">
-        {ITEMS.slice(0, 1).map(({ key, label, Icon, mobile }) => (
+        {ITEMS.map(({ key, label, Icon, mobile }) => (
           <NavButton
             key={key}
             Icon={Icon}
@@ -124,32 +121,18 @@ export function Rail({
             onClick={() => onNav(key)}
           />
         ))}
-        {/* One tap, recording: the phone's main action, dominant in the bar's center.
-            Desktop records via the Thoughts composer, so this never renders there. */}
-        <button
-          type="button"
-          onClick={onRecord}
-          aria-label="Record a session"
-          className="md:hidden relative -top-3 w-16 h-16 rounded-full bg-accent text-white shadow-lg flex items-center justify-center flex-shrink-0 mx-1 active:scale-95 transition"
-        >
-          <Mic className="w-7 h-7" />
-        </button>
-        {ITEMS.slice(1).map(({ key, label, Icon, mobile }) => (
-          <NavButton
-            key={key}
-            Icon={Icon}
-            label={label}
-            active={view === key}
-            mobile={mobile}
-            onClick={() => onNav(key)}
-          />
-        ))}
-        {/* Talk lives in the bottom bar on mobile — the Listener is one tap from anywhere.
-            On desktop the talk button is the floating dock's primary action, so this is hidden. */}
-        <div className="md:hidden flex-1 flex">
-          <NavButton Icon={Waves} label="Talk" active={false} mobile onClick={onSpeak} />
-        </div>
       </div>
+      {/* One tap, a fresh entry: the phone's main action, dead center of the bar
+          (absolutely centered on the screen, independent of the tabs and avatar).
+          Desktop records inside a session or via the Thoughts composer. */}
+      <button
+        type="button"
+        onClick={onRecord}
+        aria-label="Start a new session"
+        className="md:hidden absolute left-1/2 -translate-x-1/2 -top-4 w-16 h-16 rounded-full bg-accent text-white shadow-lg flex items-center justify-center z-10 active:scale-95 transition"
+      >
+        <Plus className="w-8 h-8" strokeWidth={2.25} />
+      </button>
 
       <div ref={anchorRef} className="relative flex items-center">
         <button

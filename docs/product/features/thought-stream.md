@@ -10,7 +10,7 @@ The concept (see [`../concept-and-soul.md`](../concept-and-soul.md), "The observ
 
 ## 2. User-facing behavior
 
-The surface is one column: a composer on top, the stream of thoughts below, newest first. It is the `Thoughts` item in the rail (and the mobile bottom bar), replacing the experimental Brain Dump Lab in the `dump` view slot.
+The surface is one column: a composer on top, the stream of thoughts below, newest first. It is the `Thoughts` item in the desktop rail (not on the phone bar; mobile capture goes through [Sessions](sessions.md)), replacing the experimental Brain Dump Lab in the `dump` view slot.
 
 **Recording a thought.** Four ways in, all first-class:
 - **Speak.** Tap the record button, talk as long as needed, tap stop. The full recording uploads as one file. No live transcription pressure, no chunking: this is the "let go and explain what's on your brain" mode. Recordings under about a second are ignored.

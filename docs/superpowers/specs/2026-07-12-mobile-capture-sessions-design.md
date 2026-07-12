@@ -115,3 +115,15 @@ Analysis / AI comments on entries (Mindsera's blue layer), decomposition into at
 - Relation of `sessions` to `interviewSessions` (Listener calls): should Listener calls eventually become sessions in this table so all talk lives in one archive? Adjacent to the [listener memory backbone](../../research/listener-memory-backbone.md) research; decide when that work is picked up.
 - Morning/night beats as "front doors" that auto-open a session (roadmap MVP): natural next slice after this ships.
 - Whether the flat Thought Stream remains a top-level view once sessions dominate usage, or demotes to a filter.
+
+## 13. Revision: capture v2 (same day, after first phone use)
+
+Ariel's feedback on the shipped v1, from using it on his phone, replaced several v1 surfaces. Locked as built:
+
+- **The bar's center button is a screen-centered ➕, not a mic**, and the Talk/Listener tab left the phone bar entirely (two voice buttons read as the same thing). Bar: Today · ➕ · Sessions (+ avatar). The Listener stays desktop (Coach dock).
+- **➕ opens the document, not a recording overlay.** It creates a fresh session, lands inside its empty entry, and starts recording inline there (RecordTake deleted). While recording, the page stays usable: type, add photos. Tapping ➕ always starts a NEW session; appending to an old one goes through the list.
+- **The entry is one continuous document**: no "Write here" strip, no send button. Tap anywhere and type; the paragraph commits as a text capture on blur. Mic (primary) + photo float bottom-right; a live take shows in-flow as a pulsing timer. A failed take save stays in memory on the page with Try again.
+- **List gestures:** swipe left pins/unpins (`sessions.setPinned`, pinned lead the list); swipe right parks the row open with a Delete confirm (`sessions.remove`: container deleted, members soft-deleted with raw + `sessionId` kept). Desktop gets hover equivalents. Rows use `touch-action: pan-y` and suppress the post-swipe click.
+- **Merge:** Select 2+ entries → `sessions.merge` folds them into the earliest-started one; members re-parent, `createdAt` ordering interleaves the merged document chronologically, digest re-synthesizes.
+- **Element metadata:** every capture keeps `createdAt`; audio `sourceMeta` gains `recordingStartedAt` next to `durationMs`; sessions gain `pinnedAt?` and `lastOpenedAt?` (`sessions.touchOpened` on document open, deliberately not bumping `updatedAt`).
+- **Atmosphere is desktop-only**; the phone shell hides the music player.

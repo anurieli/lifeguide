@@ -40,7 +40,7 @@ Tapping a read step opens a full-screen, in-page overlay ([ADR 0013](../../decis
 | Offer v2 components | First open of an older account | `rituals.upgradeToSeedVersion`: appends missing question/roadmap kinds to non-empty rituals, once (ADR 0011) | System | writes `ritualItems`, `settings.ritualsSeedVersion` |
 | Walk / check a component | Tap the circle | `rituals.setChecked` in today's `ritualDays` row | Manual | writes `ritualDays.checkedIds` |
 | Read (immersive) | Tap Read on a `read` step | Opens the overlay; scroll-to-end auto-checks the step (ADR 0013) | Manual | writes `ritualDays.checkedIds` |
-| Answer the question | Type/speak + Save on a `question` step | Publishes `ritual_question` `{ritual, day, itemId, question, answer}` to the Bus and checks the step; answer shows in place and in the [Today log](dashboard.md) | Manual (voice via VoiceField) | writes `interactions`, `ritualDays.checkedIds` |
+| Answer the question | Type/speak on a `question` step, then click out (auto-saves on blur — no Save button) | Publishes `ritual_question` `{ritual, day, itemId, question, answer}` to the Bus and checks the step; a non-empty, changed answer only. Answer shows in place and in the [Today log](dashboard.md) | Manual (voice via VoiceField) | writes `interactions`, `ritualDays.checkedIds` |
 | Rotate the question | A `question` step with no fixed words | `questionForDay(bank, dayKey)` — deterministic per ritual day (`lib/questions.ts`) | System | none |
 | Build tomorrow's roadmap | Evening `roadmap` step: type, enter | `roadmap.add` targeting `nextRitualDayKey(now)` (ADR 0012); `+ where / info` sets `note`; arrows reorder; ✕ removes | Manual | writes `roadmapEntries` |
 | Walk today's roadmap | Morning `roadmap` step: tap an entry | `roadmap.setDone`; walking the last entry auto-checks the component | Manual | writes `roadmapEntries.doneAt`, `ritualDays.checkedIds` |
@@ -68,7 +68,7 @@ No Coach path yet (§9); the Coach sees completions and answers through the Bus.
 
 - **Unseeded / fresh day / in progress / all-checked / sealed / empty ritual / editing:** as v1 (empty day rows are created on first check; gold at all-checked; `completedAt` locks checks; delete-all invites, never re-seeds).
 - **Sequence position:** the first unchecked spine component carries the "current" wash; sealed or fully-walked rituals have none.
-- **Question answered:** the answer replaces the input in place, with a quiet edit; re-answering logs a new event (history keeps both, the step shows the latest).
+- **Question answered:** the field stays live, seeded with the saved answer; it auto-saves on blur (and after a voice take). Re-editing then clicking out logs a new event (history keeps both, the step shows the latest); an empty or unchanged blur logs nothing.
 - **Roadmap, morning, nothing set:** "No roadmap was set last night. Set the first thing now:" — the fast input is right there.
 - **Roadmap, evening:** the builder always shows the count set for tomorrow; entries reorder/remove inline.
 - **Reader open:** page scroll locked, close always visible; finish confirmation then release.

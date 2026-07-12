@@ -191,7 +191,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     requestAnimationFrame(step);
   };
 
-  const useWA = () => waRef.current && graphRef.current;
+  const waReady = () => waRef.current && graphRef.current;
 
   const armGesture = useCallback(() => {
     const onGesture = () => {
@@ -211,7 +211,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     ensureGraph();
     const ctx = ctxRef.current;
     const start = () => {
-      if (useWA()) {
+      if (waReady()) {
         const g = getActiveGain();
         if (g) g.gain.value = 0;
       } else {
@@ -225,7 +225,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
             return;
           }
           setPlaying(true);
-          if (useWA()) rampGain(getActiveGain(), volumeRef.current, 600);
+          if (waReady()) rampGain(getActiveGain(), volumeRef.current, 600);
           else rampEl(a, volumeRef.current, 600);
         })
         .catch(() => {
@@ -261,7 +261,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       // Playing: gapless crossfade active -> idle.
       ensureGraph();
       idle.src = src;
-      if (useWA()) {
+      if (waReady()) {
         const ig = getIdleGain();
         if (ig) ig.gain.value = 0;
       } else {
@@ -270,7 +270,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       idle
         .play()
         .then(() => {
-          if (useWA()) {
+          if (waReady()) {
             rampGain(getIdleGain(), volumeRef.current, 650);
             rampGain(getActiveGain(), 0, 650);
           } else {
@@ -358,7 +358,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     if (!a) return;
     if (playing) {
       // brief fade-out, then pause
-      if (useWA()) rampGain(getActiveGain(), 0, 250);
+      if (waReady()) rampGain(getActiveGain(), 0, 250);
       else rampEl(a, 0, 250);
       window.setTimeout(() => a.pause(), 260);
       setPlaying(false);
@@ -396,7 +396,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       setVolumeState(vv);
       window.localStorage.setItem(VOL_KEY, String(vv));
       if (playing) {
-        if (useWA()) rampGain(getActiveGain(), vv, 120);
+        if (waReady()) rampGain(getActiveGain(), vv, 120);
         else {
           const a = getActive();
           if (a) a.volume = vv;

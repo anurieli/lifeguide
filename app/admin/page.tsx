@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { filledCount } from "@/lib/levels";
@@ -61,9 +62,9 @@ export default function AdminPage() {
       return (
         <div className="h-screen flex flex-col items-center justify-center bg-paper text-ink-mute gap-2">
           <div className="text-ink text-[15px]">Not authorized.</div>
-          <a href="/" className="text-[13px] underline hover:text-ink transition">
+          <Link href="/" className="text-[13px] underline hover:text-ink transition">
             ← Back to app
-          </a>
+          </Link>
         </div>
       );
     }
@@ -96,9 +97,9 @@ export default function AdminPage() {
             <div className="text-[12px] tracking-[0.18em] uppercase text-ink-mute">Developer</div>
             <h1 className="text-[28px] tracking-tight">Admin panel</h1>
           </div>
-          <a href="/" className="text-[13px] text-ink-mute hover:text-ink transition">
+          <Link href="/" className="text-[13px] text-ink-mute hover:text-ink transition">
             ← Back to app
-          </a>
+          </Link>
         </div>
 
         {/* Current state */}

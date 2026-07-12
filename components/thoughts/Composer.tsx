@@ -176,7 +176,7 @@ export function Composer() {
       />
       {recorder.error === "not-allowed" && (
         <p className="mt-2 text-[12px] text-ink-mute">
-          I can't hear the mic — check the browser's mic permission.
+          I can&apos;t hear the mic — check the browser&apos;s mic permission.
         </p>
       )}
     </div>

@@ -206,8 +206,8 @@ export function SpeakSurface({ onClose }: { onClose: () => void }) {
         <div className="flex flex-col gap-3 max-w-[440px]">
           <h2 className="text-[24px] text-ink font-semibold tracking-tight">Talk it through</h2>
           <p className="text-[15px] text-ink-soft leading-relaxed">
-            Say whatever is on your mind. I'll listen and think with you. When we're done, I'll file
-            what matters into who you are.
+            Say whatever is on your mind. I&apos;ll listen and think with you. When we&apos;re done,
+            I&apos;ll file what matters into who you are.
           </p>
         </div>
         {voice.micState === "connecting" ? (

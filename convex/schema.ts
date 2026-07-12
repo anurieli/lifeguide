@@ -68,7 +68,9 @@ export default defineSchema({
     .index("by_surface", ["surfaceId"])
     .index("by_from", ["fromNode"]),
 
-  // A capture is the immutable event of inspiration; distilled async; may become a node.
+  // A capture is the immutable event of a thought or inspiration; ingested async
+  // (extraction + distillation); may become a node. The raw artifact is always kept
+  // (rawText/rawUrl/rawFileId) so it can be reopened and re-analyzed after the fact.
   captures: defineTable({
     userId: v.id("users"),
     source: v.union(
@@ -84,10 +86,34 @@ export default defineSchema({
       v.literal("link"),
       v.literal("video_link"),
       v.literal("quote"),
+      v.literal("audio"),
+      v.literal("file"),
     ),
     rawText: v.optional(v.string()),
     rawUrl: v.optional(v.string()),
     rawFileId: v.optional(v.id("_storage")),
+    // The session (living journal entry) this capture belongs to, if any.
+    // Loose captures (board intake, stream composer, voice.brainDump) have none.
+    sessionId: v.optional(v.id("sessions")),
+    // Client context at capture time, JSON: {"device":"phone"|"desktop", ...}.
+    sourceMeta: v.optional(v.string()),
+    // The canonical text derived from the raw artifact: the transcript (audio), the
+    // article body (link), the description + visible text (image). Distillation and
+    // any later analysis read this, never the raw blob.
+    extractedText: v.optional(v.string()),
+    extraction: v.optional(
+      v.object({
+        status: v.union(
+          v.literal("pending"),
+          v.literal("done"),
+          v.literal("error"),
+          v.literal("skipped"), // nothing to extract (raw is already text)
+        ),
+        error: v.optional(v.string()),
+        meta: v.optional(v.string()), // JSON: link {title,description,siteName,url} / audio {mime,bytes}
+        at: v.optional(v.number()),
+      }),
+    ),
     distilled: v.optional(
       v.object({
         title: v.string(),
@@ -102,7 +128,31 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_user", ["userId", "createdAt"])
-    .index("by_user_unplaced", ["userId", "placedAt"]),
+    .index("by_user_unplaced", ["userId", "placedAt"])
+    .index("by_session", ["sessionId", "createdAt"]),
+
+  // A session is one living journal entry: an ordered container of captures the
+  // person keeps adding to over time (voice takes, typed passages, photos). Raw
+  // truth stays on the captures rows; this row holds only container-level state:
+  // the AI digest for the list view and light context. Created with its first
+  // capture. See docs/superpowers/specs/2026-07-12-mobile-capture-sessions-design.md.
+  sessions: defineTable({
+    userId: v.id("users"),
+    title: v.optional(v.string()), // AI digest; UI falls back to first words
+    summary: v.optional(v.string()), // AI one-liner for the list view
+    doing: v.optional(v.string()), // optional "what I was doing", person-entered
+    device: v.union(v.literal("phone"), v.literal("desktop")), // where it was opened
+    digest: v.optional(
+      v.object({
+        status: v.union(v.literal("pending"), v.literal("done"), v.literal("error")),
+        at: v.optional(v.number()),
+      }),
+    ),
+    startedAt: v.number(),
+    updatedAt: v.number(), // bumped on every appended capture
+    pinnedAt: v.optional(v.number()), // set when pinned; pinned entries lead the list
+    lastOpenedAt: v.optional(v.number()), // visit metadata: last time the document view was opened
+  }).index("by_user_updated", ["userId", "updatedAt"]),
 
   // A pillar is a region of the "file system on the human" — a folder that holds the
   // textual files making up one part of a person (see docs/product/features/file-system-on-the-human.md).
@@ -216,7 +266,14 @@ export default defineSchema({
   interviewSessions: defineTable({
     userId: v.id("users"),
     experienceId: v.string(), // "text-interview" | "voice-interview"
-    status: v.union(v.literal("active"), v.literal("completed"), v.literal("abandoned")),
+    // "tossed" = the person discarded the session at the end of a Listener call
+    // (data already exists with this status; the toss UI lives on the listener branch).
+    status: v.union(
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("abandoned"),
+      v.literal("tossed"),
+    ),
     device: v.union(v.literal("desktop"), v.literal("phone")),
     transcript: v.array(
       v.object({
@@ -262,6 +319,72 @@ export default defineSchema({
     ),
     createdAt: v.number(),
   }).index("by_thread", ["threadId", "createdAt"]),
+
+  // Experimental brain-dump lab: one durable workspace for a spoken stream,
+  // its sentence-level transcript, the evolving JSON idea graph, and the
+  // per-session AI engine knobs used to maintain that graph.
+  brainDumpSessions: defineTable({
+    userId: v.id("users"),
+    title: v.string(),
+    transcript: v.array(
+      v.object({
+        id: v.string(),
+        text: v.string(),
+        capturedAt: v.number(),
+        source: v.union(v.literal("speech"), v.literal("typed")),
+        status: v.union(v.literal("pending"), v.literal("processed"), v.literal("error")),
+      }),
+    ),
+    graph: v.object({
+      version: v.literal(1),
+      ideas: v.array(
+        v.object({
+          id: v.string(),
+          title: v.string(),
+          summary: v.string(),
+          details: v.array(v.string()),
+          mentions: v.number(),
+          createdAt: v.number(),
+          updatedAt: v.number(),
+        }),
+      ),
+      relations: v.array(
+        v.object({
+          id: v.string(),
+          from: v.string(),
+          to: v.string(),
+          label: v.string(),
+          reason: v.string(),
+          strength: v.number(),
+          createdAt: v.number(),
+        }),
+      ),
+    }),
+    engine: v.object({
+      provider: v.union(v.literal("openrouter"), v.literal("openai"), v.literal("local")),
+      model: v.string(),
+      temperature: v.number(),
+      systemPrompt: v.string(),
+    }),
+    aiCalls: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          kind: v.string(),
+          provider: v.union(v.literal("openrouter"), v.literal("openai"), v.literal("local")),
+          model: v.string(),
+          status: v.union(v.literal("pending"), v.literal("success"), v.literal("error")),
+          inputPreview: v.string(),
+          outputPreview: v.optional(v.string()),
+          error: v.optional(v.string()),
+          startedAt: v.number(),
+          endedAt: v.optional(v.number()),
+        }),
+      ),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user_updated", ["userId", "updatedAt"]),
 
   // In-app feedback: a quick note from a user, captured with page context (route,
   // metadata, the page's recent JS/console errors, and an optional visual snapshot).

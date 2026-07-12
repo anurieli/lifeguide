@@ -1,0 +1,75 @@
+# Sessions (the living entry)
+
+**Status:** built (v2, 2026-07-12) · **Element of:** Sessions (feeds the Core) · **Owns:** `sessions` (container rows); members are `captures` rows via `captures.sessionId`
+
+> A session is one living journal entry: a brain dump you keep adding to. Tap record and talk; the take lands as an entry you can reopen tomorrow to speak more, type into, or drop photos on. Every piece stays a raw, immutable capture; the entry is the document view over them, titled by AI for the chronological list. On the phone, this is the app's main action.
+
+## 1. Purpose
+
+The observation contract says: let the thought out first, structure later. The Thought Stream catches single thoughts; a session catches a *sitting*, the twenty-minute walk where one thread unspools across voice, a typed line, and a photo of the whiteboard. The roadmap's MVP capture spine names this entity ("Session: raw capture + metadata"). Because members stay ordinary captures with their raw artifacts kept forever, every future pass (decomposition into atomic thoughts, cross-session linking, pattern mining) can run retroactively over the whole archive; the session is the unit those passes will read.
+
+## 2. User-facing behavior
+
+**Starting one (phone).** The bottom bar's big center ➕ creates a fresh session and lands inside its empty document, already recording (no separate recording screen). Tapping ➕ always starts a NEW entry; appending to an old one goes through the list. If the mic is denied, a small note says "Mic unavailable. Tap the page and type." and the document stays fully usable. A too-short take (~1s) saves nothing.
+
+**The entry (one continuous document).** The session's captures render in order as one flowing page: spoken passages as text (with a quiet inline player; "Listening back…" while transcribing; on failure, "the recording is safe" + Try again), typed passages, photos. There is no composer strip and no send button: tap anywhere on the page and type; the paragraph commits as a text capture on blur (Cmd/Ctrl+Enter also commits). The mic (primary) and photo controls float bottom-right; a live take shows in-flow as a pulsing timer while the rest of the page stays usable, so you can type and drop photos mid-recording. A small "What were you doing?" field holds context. Entries are never closed; reopening one days later and appending is the intended use.
+
+**The list.** The Sessions tab is the archive: pinned entries first, then newest by activity; relative time, a pin glyph, voice/photo count glyphs, the AI title, and a one-sentence AI summary (until the digest runs, the entry's first words). Tap to open. Swipe left to pin/unpin. Swipe right to delete: the row parks open with a Delete button, a second tap confirms. "Select" enters multi-select; picking 2+ entries shows "Merge N into one".
+
+**Merging.** Merge folds the selected sessions into the earliest-started one: every element keeps its own timestamp, so the merged document reads in the chronological order each piece was added, interleaved across the original entries. The stale title/summary are cleared and the digest re-synthesizes over the combined content.
+
+**Deleting.** Deleting removes the entry from the archive view only: the container row is deleted, member captures are soft-deleted (`isActive: false`) with their raw artifacts and `sessionId` intact, so nothing raw is ever lost and future retroactive passes still see what belonged together.
+
+**Desktop.** Sessions is a rail tab; the same document behavior applies, and pin/delete appear as hover actions on list rows (no swipe). Desktop remains the command center. The phone bar carries only Today · ➕ · Sessions: the Talk/Listener tab and the Atmosphere music player are desktop-only now; the phone is capture-first.
+
+## 3. Functions / actions
+
+| Action | Trigger | What it does | Data touched |
+|---|---|---|---|
+| Start an entry | ➕ (phone bar) | `sessions.create`, opens the empty document, auto-starts an inline take; stop uploads the whole file as the first capture (`sourceMeta` carries device, durationMs, recordingStartedAt) | `sessions` (create), `captures` (create), `_storage` |
+| Append (voice/text/photo) | In the document: tap-and-type (commits on blur), floating mic, floating photo | `captures.create` with `sessionId` (ownership-checked); bumps `sessions.updatedAt` | `captures`, `sessions.updatedAt` |
+| Pin / unpin | Swipe left (phone), hover pin (desktop) | `sessions.setPinned`; pinned entries lead the list | `sessions.pinnedAt` |
+| Delete | Swipe right + confirm tap (phone), hover trash + confirm (desktop) | `sessions.remove`: deletes the container, soft-deletes members (raw kept, `sessionId` kept) | `sessions` (delete), `captures.isActive` |
+| Merge | Select 2+ in the list → Merge | `sessions.merge`: re-parents every member onto the earliest-started session, deletes the emptied rows, clears title/summary, re-digests | `sessions`, `captures.sessionId` |
+| Visit stamp | Opening a document | `sessions.touchOpened` writes `lastOpenedAt` (no `updatedAt` bump; reading must not resort the list) | `sessions.lastOpenedAt` |
+| Ingest + distill members | Auto | Unchanged Thought Stream pipeline per capture | `captures.extractedText/extraction/distilled` |
+| Digest | ~30s after a member's ingest completes | AI writes `title` + `summary` onto the session (idempotent; last append wins; skipped while any member is still ingesting) | `sessions.title/summary/digest` |
+| Set context | "What were you doing?" field | Saves `doing` (≤200 chars) | `sessions.doing` |
+| List / open | Sessions tab | `sessions.list` (derived preview + counts) / `sessions.get` (ordered members, file URLs resolved) | read-only |
+| Retry transcription | Entry's Try again | Existing `captures.reprocess`; digest refreshes after | `captures.extraction`, then as ingest |
+| No husks | Back action in an entry; sweep when the list renders | `sessions.deleteIfEmpty` removes a container with no active members; the server re-checks emptiness, so it never races an append (raw captures are never touched; an empty container holds none) | `sessions` (delete) |
+
+## 4. Dynamics with other elements
+
+- **Thought Stream.** Same `captures` table, same ingest, same receipts. Loose captures (`sessionId` absent) behave exactly as before; session members also appear in the stream. A visible session chip on stream cards is deferred (spec deviation).
+- **Vision Board.** Unchanged. Session members surface in the board Inbox like any unplaced capture; a photo added to an entry from the phone is also inspiration waiting to be placed.
+- **Journal (proposed).** The Journal's morning/night beats will *open* sessions (the roadmap's three front doors); the Journal owns `prompts` and writes into this table when built. See [`journal.md`](journal.md).
+- **The Center / Core.** Not yet wired; sessions are upstream signal, like the stream.
+- **The Listener.** Separate for now (`interviewSessions`); unifying Listener calls into this archive is an open question (see the listener memory backbone research note).
+
+## 5. States and edge cases
+
+- **No AI keys:** entries and captures land; digest no-ops with fallback title; transcription errors show with retry; nothing is lost.
+- **Failed save of a take (network):** the document keeps the finished blob in memory and shows "That take didn't save; it's still here" with Try again, so retry never re-records. Killing the app mid-take still loses it (accepted; crash-recovery buffer is a parked follow-up).
+- **Failed transcription:** the audio file is stored regardless; the entry says "the recording is safe" with Try again.
+- **Typed text pending on leave:** the back action commits a non-empty draft as a capture instead of husk-checking; a failed commit puts the text back on the page.
+- **Empty session:** the ➕ flow creates the container before any content, so bailing out immediately is the common path; `deleteIfEmpty` clears it on the entry's back action, and the list sweeps any zero-count row on render.
+- **Swipe vs tap vs scroll:** rows use `touch-action: pan-y` (vertical scroll stays native); a horizontal swipe suppresses the click that browsers fire after touchend, so a swipe never opens the entry.
+- **Digest burst:** several appends in a row cost one model call (each ingest completion schedules a run 30s out; runs skip while any member is pending, and overwrite idempotently).
+- **iOS Safari:** `useAudioRecorder` negotiates audio/mp4; ingest maps the extension. On-phone QA tracked in `TO-CHECK.md`.
+
+## 6. AI involvement
+
+One new node, `sessionDigest` (`convex/ai/config.ts`): OpenRouter, JSON `{title, summary}`, grounded strictly in member text via `lib/sessionDigest.ts` (`assembleDigestInput`, 6k cap, chronological, labeled by kind). Members' transcription/vision/distillation are the existing Thought Stream nodes.
+
+## 7. Data touched
+
+`sessions { userId, title?, summary?, doing?, device: phone|desktop, digest?{status: pending|done|error, at?}, startedAt, updatedAt, pinnedAt?, lastOpenedAt? }` (index `by_user_updated`); `captures.sessionId?` (index `by_session [sessionId, createdAt]`). Element-level metadata rides on each capture: `createdAt` (exact add time), and for audio `sourceMeta` JSON carries `device`, `durationMs`, `recordingStartedAt`. See [`../../architecture/data-model.md`](../../architecture/data-model.md) and [ADR 0008](../../decisions/0008-sessions-as-container-over-captures.md).
+
+## 8. Open questions
+
+- Morning/night beats auto-opening a session (the Journal integration; roadmap front doors).
+- Listener calls joining this archive (one table for all talk) vs staying on `interviewSessions`.
+- The stream chip linking a member capture back to its entry.
+- Whether the flat Thought Stream stays a top-level view once sessions dominate, or demotes to a filter.
+- Decomposition: when atomic thoughts land (roadmap MVP back half), they extract *from* sessions and point back at member captures.

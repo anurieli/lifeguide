@@ -16,6 +16,15 @@ const OPENING_PROMPT =
 
 type Phase = "call" | "filing" | "report";
 
+function clientLog(event: string, meta?: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "production") return;
+  void fetch("/api/client-log", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ event, meta }),
+  }).catch(() => {});
+}
+
 function detectDevice(): "desktop" | "phone" {
   if (typeof window === "undefined") return "desktop";
   return window.matchMedia("(max-width: 768px)").matches ? "phone" : "desktop";
@@ -208,7 +217,10 @@ export function SpeakSurface({ onClose }: { onClose: () => void }) {
           </div>
         ) : (
           <button
-            onClick={() => void voice.start()}
+            onClick={() => {
+              clientLog("talk.start", { sessionId });
+              void voice.start();
+            }}
             className="rounded-full px-12 py-3.5 text-[17px] tracking-[0.04em] text-ink bg-card border border-line shadow-sm hover:border-gold hover:shadow-md transition-all"
           >
             Start talking

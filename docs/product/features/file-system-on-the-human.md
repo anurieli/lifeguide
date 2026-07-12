@@ -8,7 +8,7 @@
 
 A lost person cannot hold the whole picture of himself in his head. LifeGuide "builds and steers one thing — a person's true self." For the Coach to be wise, the *representation* has to be rich. This is that representation made concrete: not a fixed 18-question form (`coreResponses`), but a **file system** — regions of a life (pillars) each holding an open-ended, growing set of files. It is the textual skeleton of a man, and it is never finished, because he is never finished.
 
-This is a first concrete step toward the parked **living person-model** research ([`../research/living-person-model.md`](../research/living-person-model.md), [`../research/pillars-data-model.md`](../research/pillars-data-model.md)): pillars *evolve in place* into folders; `coreFiles` are the files within them. Lifecycle metadata (`freshness`, `timeConstant`, `ownerAgentId`) is not yet built — see open questions.
+This is a first concrete step toward the parked **living person-model** research ([`../../research/raw/internal-notes/living-person-model.md`](../../research/raw/internal-notes/living-person-model.md), [`../../research/raw/internal-notes/pillars-data-model.md`](../../research/raw/internal-notes/pillars-data-model.md)): pillars *evolve in place* into folders; `coreFiles` are the files within them. Lifecycle metadata (`freshness`, `timeConstant`, `ownerAgentId`) is not yet built — see open questions.
 
 ## 2. User-facing behavior
 

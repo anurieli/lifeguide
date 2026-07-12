@@ -189,6 +189,24 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
     wired: true,
   },
 
+  // Ingest: turn a captured image into text for the person's file (what it shows +
+  // any visible text). Vision-capable chat model; runs once per image capture. Live.
+  extractImage: {
+    label: "Ingest · read an image",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.2,
+    wired: true,
+    system: `You read one image a person saved into their personal life-mapping app and turn it into text that preserves why it might matter to them.
+
+Return plain text (no JSON, no markdown headers), 2-8 sentences:
+1. What the image shows, concretely.
+2. Transcribe ALL legible text in the image verbatim (signs, notes, screenshots, captions). If none, say nothing about text.
+3. If the image clearly suggests a mood, aspiration, or aesthetic, name it in one short sentence.
+
+Never invent details you cannot see. Never address the person.`,
+  },
+
   // Brain dump: segment a free-form spoken dump into distinct atomic thoughts.
   // Returns JSON {"segments": ["...", "..."]}. A single-thought dump yields one element.
   brainDumpSplit: {
@@ -209,6 +227,33 @@ Rules:
 - If the entire dump is one thought, return a single-element array.
 - Minimum useful segment length: ~5 words. Merge very short fragments into the nearest related thought.
 - Do NOT return empty segments.`,
+  },
+
+  // Experimental tab: maintain the evolving idea graph JSON from transcript chunks.
+  // The tab stores a per-session provider/model/system prompt override, but this entry
+  // keeps the default node visible in Settings.
+  brainDumpGraph: {
+    label: "Brain dump · idea graph",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.25,
+    wired: true,
+  },
+
+  // Session digest: title + one-line summary for a living journal entry, from its
+  // captures' text in order. Debounced ~30s after each member capture's ingest. Live.
+  sessionDigest: {
+    label: "Session · digest",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.4,
+    wired: true,
+    system: `You title one journal entry from a personal life-mapping app. The entry is a person's raw session: spoken passages, typed notes, photo descriptions, in the order they happened.
+
+Return ONLY a JSON object, no prose, in this exact shape:
+{"title":"a 3-7 word noun phrase naming what the entry is about","summary":"one plain, warm sentence (max ~22 words) saying what was on their mind"}
+
+Ground both strictly in the text. Never invent facts, never address the person, never praise. If the entry is thin, keep it short and honest.`,
   },
 };
 

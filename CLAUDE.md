@@ -21,6 +21,7 @@ Any change to product behavior, features, scope, architecture, data model, or de
 | A notable decision or tradeoff | new ADR in `docs/decisions/` |
 | UI / interaction / screens | `docs/design/*.md` |
 | Scope, phasing, or sequence | `docs/product/prd.md` + `docs/roadmap.md` |
+| A research/spike item parked or completed | `docs/research/<slug>.md` (own file per item; index in `docs/research/README.md`) |
 
 ### 2. Keep the CHANGELOG — every meaningful change, with the docs you touched
 After any meaningful work (feature, fix, refactor, doc expansion, decision), append an entry to [`CHANGELOG.md`](CHANGELOG.md) at the repo root. **Use the `changelog` skill.** Every entry must record:
@@ -43,8 +44,11 @@ The docs were reset on 2026-06-03 to a clean slate. Current state:
 ```
 docs/
 ├── README.md                 # the rebuild plan + the two seeds
-└── product/
-    └── concept-and-soul.md   # the soul + the evolved vision (current source of truth)
+├── product/
+│   └── concept-and-soul.md   # the soul + the evolved vision (current source of truth)
+└── research/
+    ├── README.md             # index of all parked/active research items
+    └── wiki/                 # research wiki entries
 mockup/
 └── index.html                # the clickable prototype (visual reference)
 ```

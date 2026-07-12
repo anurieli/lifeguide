@@ -14,6 +14,8 @@ const CTX: Record<View, string> = {
   today: "sees today · knows you",
   core: "sees your Core · knows you",
   board: "sees your board · knows you",
+  dump: "sees your dump · knows you",
+  sessions: "sees your sessions · knows you",
   settings: "knows you",
 };
 
@@ -129,7 +131,7 @@ export function CoachDock({
       {/* Primary: Talk. The Listener is the headline way to reach the Coach. */}
       <button
         onClick={onSpeak}
-        className="hidden md:flex fixed bottom-6 right-6 w-14 h-14 rounded-full bg-coach text-white z-[60] shadow-xl items-center justify-center hover:scale-105 transition"
+        className="hidden md:flex fixed bottom-6 right-6 w-14 h-14 rounded-full bg-coach text-white z-[75] shadow-xl items-center justify-center hover:scale-105 transition"
         title="Talk to your Coach"
       >
         <span className="absolute -inset-1 rounded-full border-2 border-gold opacity-50 animate-ping" />
@@ -139,7 +141,7 @@ export function CoachDock({
       {/* Secondary: type instead. A small affordance above the talk button. */}
       <button
         onClick={onToggle}
-        className="hidden md:flex fixed bottom-[88px] right-[18px] w-9 h-9 rounded-full bg-card border border-line text-ink-soft z-[60] shadow-md items-center justify-center hover:border-gold transition"
+        className="hidden md:flex fixed bottom-[88px] right-[18px] w-9 h-9 rounded-full bg-card border border-line text-ink-soft z-[75] shadow-md items-center justify-center hover:border-gold transition"
         title={open ? "Close chat" : "Type instead"}
       >
         <MessageCircle className="w-[17px] h-[17px]" />

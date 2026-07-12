@@ -2,9 +2,26 @@
 
 Features that are done but haven't been manually verified yet.
 
+### Sessions + mobile capture v2 (ARI-24)
+- [ ] **➕ flow (real iPhone):** tap the center ➕. A fresh entry opens ALREADY recording (timer pulsing in the page); speak 2+ minutes, tap stop. Transcript fills in ("Listening back…" then text); the audio plays inline, from desktop too; the transcript matches what was said.
+- [ ] **One continuous document:** while a take is recording, tap the page and type a line, and add a photo. Everything lands in chronological order after stop. No "Write here" box, no send button: typing commits when you tap away.
+- [ ] **Bar layout:** at ~390px the bar is Today · ➕ (dead center, raised) · Sessions (+ avatar). No Talk tab, no music orb anywhere on the phone. Core/Board/Thoughts absent on the phone, present on desktop.
+- [ ] **Sessions tab always lists:** from inside an entry, tapping Sessions returns to the list; tapping ➕ again starts a brand-new entry (never appends to the open one); tapping an old row opens it for appending (no auto-record).
+- [ ] **Swipe left = pin:** the row shows the pin glyph and jumps to the top of the list; swipe left again unpins. Vertical scrolling through the list still feels native.
+- [ ] **Swipe right = delete:** the row parks open with a red Delete; tapping Delete removes the entry, tapping the row instead closes it. After deleting, the entry's captures no longer show in the Thought Stream either (soft-deleted, raw kept server-side).
+- [ ] **Merge:** Select → tap 2+ entries → "Merge N into one". The merged document interleaves all elements in the order each was added, and a fresh AI title/summary lands (~30s). The other rows are gone.
+- [ ] **Failure never loses audio:** kill the network, stop a take: "That take didn't save; it's still here" + Try again works with the kept blob (no re-record). Break transcription (no OPENAI key): "Transcription failed, the recording is safe" + Try again works once the key is back.
+- [ ] **No husks:** tap ➕, deny the mic (or just leave immediately via back/Today). The Sessions list gains nothing.
+- [ ] **Mic denied:** after denying, the note "Mic unavailable. Tap the page and type." shows and typing/photos still work.
+- [ ] **Inspiration from phone:** add a photo inside an entry on the phone; confirm it appears distilled in the board Inbox on desktop.
+- [ ] **Loose captures unaffected:** the Thought Stream composer, board intake, and board voice brain dump all still work exactly as before (no sessionId, no session created).
+
 ### The Listener + the Center + the file system on the human
 - [ ] **Talk button → Listener (needs a mic):** on desktop, confirm the floating dock's primary button is now a **mic** (talk), not the message icon, and opens the full-screen "Talk it through" surface. The small secondary button below it still opens the text Coach. On mobile (~414px) the bottom-bar tab reads **"Talk"** and opens the same surface. The `/speak` URL opens it directly; visiting `/speak` while signed out bounces to `/`.
-- [ ] **Listener conversation:** press "Start talking", grant the mic, confirm the Listener opens with a warm one-liner (not a blueprint question), follows your thread, and the two-color waveform (gold = Listener, blue = you) tracks who's speaking. Pause/Mute/End behave. Confirm onboarding's voice interview **still works** (shared `useRealtimeVoice` hook refactor) — start one and verify it asks blueprint questions as before.
+- [ ] **Listener conversation:** press "Start talking", grant the mic, confirm the Listener opens with a warm one-liner (not a blueprint question), follows your thread. Pause/Mute/End behave. Confirm onboarding's voice interview **still works** (shared `useRealtimeVoice` hook refactor) — start one and verify it asks blueprint questions as before (it still uses the bar waveform).
+- [ ] **The audio orb (WebGL):** in a live Listener call, confirm the orb renders as a circular fabric of dots that moves; when the Listener speaks it warms **gold** and agitates from the top, when you speak it cools **blue** from the bottom, and it calms to neutral in silence. Check it's smooth (no jank), and that on a browser/GPU without WebGL it falls back to a calm pulsing circle rather than blank. Tune in `VoiceOrb.tsx` if the color/level response feels too weak or too strong (the `*2.4` level gain and the `top`/`bot` smoothstep).
+- [ ] **Captions behind the orb:** confirm the **current line is always clearly readable** just below the orb with the right speaker dot (gold = Listener, blue = you), and that earlier lines **rise and fade behind the orb** as new ones land. Long lines shouldn't break the layout (history truncates to one line).
+- [ ] **Toss a session:** in a call, press **Toss**. Confirm the calm "Tossed — that one was just for thinking" close appears, that **nothing was filed** (no filing report; the Core gains no files from this call), and that the session is still recorded with time (`status: tossed`, `endedAt` set). Contrast with **End**, which should still file via the Center.
 - [ ] **The Center files it (the core test):** in a Listener call, talk for a minute across a few life areas (e.g. "I've been scared I'm wasting my potential at work, but I love my partner and want to get back in shape"). End the call. Confirm the **filing report** appears showing notes filed under the relevant pillars (Fears & Shadows, Work & Money, Relationships, Body & Health) with sensible names/kinds — and that empty/untouched pillars get nothing. Then open a **second** call, deepen one topic, and confirm it **updates** the existing file rather than duplicating.
 - [ ] **Contradiction → pending (never overwrites):** in one call say something, in a later call contradict it (e.g. "what drives me is legacy" then later "honestly it's just money"). Confirm the report holds the new version as a **pending** item with a reason and "Use this" / "Keep what I had" buttons, that the held file is untouched until you choose, and that choosing applies/drops correctly.
 - [ ] **Skeleton seeding:** a brand-new account should start with the 8 canonical pillars (check the Core/pillars surface). An **older** account (only "Lifestyle") should gain the 8 on next load without losing "Lifestyle" or duplicating (`seedDefaultPillars` is idempotent). Probe: `npx convex run pillars:list` after sign-in.
@@ -95,3 +112,12 @@ Features that are done but haven't been manually verified yet.
 - [ ] Menu "Generate image with AI" opens a new card already in AI mode at the click point
 - [ ] Force a failure (e.g. no OpenAI key) and confirm the card shows "Couldn't generate that image" with a working Try again, and the rest of the board stays interactive while a card is generating
 - [ ] Generated image cards drag, resize, connect, and delete like any other card
+
+### Thought Stream (the Thoughts tab)
+- [ ] Open Thoughts in the rail, tap the mic, speak for 20+ seconds, tap stop, confirm the recording appears with a playable audio player and a transcript shows up under "What I heard" within a minute
+- [ ] Play the audio back, confirm it is your actual recording (raw audio is stored, not just the transcript)
+- [ ] Attach a photo (on the phone this should offer the camera), confirm a thumbnail appears and a description of the image lands under "What I heard" plus a receipt below it
+- [ ] Open the app on your phone, confirm the Thoughts tab is in the bottom bar and the composer (mic, photo, send) is comfortably tappable
+- [ ] Record a dump on the phone specifically, since mic permissions and audio format differ on iOS Safari
+- [ ] Paste a YouTube link, confirm the title lands and the receipt reflects the video's topic
+- [ ] Hover a thought card and delete it, confirm it disappears without a confirm dialog

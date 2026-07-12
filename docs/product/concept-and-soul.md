@@ -156,3 +156,25 @@ Foundation first, then surfaces:
 3. The Future Self surface and data model.
 
 The soul, restated: LifeGuide builds and steers one thing, a person's true self and the plan for their life, through a core that the Coach keeps honest, daily sessions that keep the pulse, pillars that make the person solid, and a vivid Future Self that keeps the direction in view.
+
+---
+
+## The promise, the system thesis, and the observation contract (2026-07-12)
+
+This section sharpens the promise and defines how a new person enters. It is canon for product and branding language alike.
+
+### The promise: the zone of genius
+
+The single outcome everything aims at: **help the person find their zone of genius**, the version of themselves they wake up excited to be and go to sleep excited to return to. Once that is found, everything else starts falling into place; that belief is the product's engine. "Zone of genius" is the internal term; user-facing language translates it plainly ("there's a mode of you where everything clicks; we're going to find it", "finding your ultimate self"). The broader system (Core, pillars, sessions, plan) is the machinery in service of this one search.
+
+### The system thesis: you are a system, so first, track
+
+Any system you want to optimize, you first track. A person is a system: states, ebbs and flows, inputs (environment, what you listen to, what you do, who you're around). LifeGuide's first move is therefore always observation: capture **when, where, and how you're thinking about what you're thinking about**, read between the lines, and hand back a roadmap for getting ahead. This is why capture (the Thought Stream) precedes coaching, and why every raw artifact is kept durable and re-analyzable.
+
+### The observation contract
+
+Onboarding states the deal out loud instead of hiding it behind a form:
+
+> Give me two weeks. A morning and a night check-in, two minutes each, phone or computer. And when your head gets full, let it out: at least seven or eight brain dumps. It takes about a week of real communication to understand somebody. By day seven I'll start showing you what I see.
+
+Honesty about what the system needs IS the frictionless design. No long intake; a clear ask, and visible proof the system is holding up its end: after every dump and session, the person sees what was heard and what was taken from it. **They keep coming back because they can see it learning them.** That visible learning, insight that feels truer than what they could articulate themselves, is the retention engine and the product's proof.

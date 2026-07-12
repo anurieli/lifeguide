@@ -14,7 +14,8 @@ Every table is multi-tenant: every row carries `userId` and every query/mutation
 |---|---|---|
 | Vision Board | `surfaces`, `nodes`, `edges`, `captures` | live |
 | Future Self | `futureSelf` | proposed |
-| Journal / Sessions | `sessions`, `prompts` | proposed |
+| Sessions (the living entry) | `sessions` (container; members via `captures.sessionId`) | live |
+| Journal | `prompts` (its beats open the live `sessions`) | proposed |
 | Pillars & Goals | `pillars`, `goals` | `pillars` live; `goals` proposed |
 | The Core | `coreResponses` (raw Blueprint answers) + `mirror` (synthesized) | live |
 | The Coach | `threads`, `messages` | live (reserved, lightly used) |
@@ -41,7 +42,7 @@ The visual presence of an idea on a surface. `{ userId, surfaceId, captureId?, t
 A labeled, directed connection between two nodes. `{ userId, surfaceId, fromNode, toNode, label?, note?, createdAt }`. One node to many; cycle-checked on create.
 
 ### captures
-The immutable event of inspiration, distilled async, may become a node. `{ userId, source: paste|upload|url|audio|agent, rawType: text|image|link|video_link|quote, rawText?, rawUrl?, rawFileId?, distilled?{title,essence,pillars}, embedding?, placedAt?, nodeId?, isActive, createdAt }`. `source: "agent"` is how the Coach captures on your behalf; `source: "audio"` is the spoken path.
+The immutable event of a thought or inspiration, ingested async (extraction then distillation), may become a node. `{ userId, source: paste|upload|url|audio|agent, rawType: text|image|link|video_link|quote|audio|file, rawText?, rawUrl?, rawFileId?, sessionId?, sourceMeta?, extractedText?, extraction?{status: pending|done|error|skipped, error?, meta?, at?}, distilled?{title,essence,pillars}, embedding?, placedAt?, nodeId?, isActive, createdAt }`. `sessionId` marks membership in a living entry (index `by_session [sessionId, createdAt]`); loose captures have none and behave exactly as before. `source: "agent"` is how the Coach captures on your behalf. The raw artifact (`rawText`/`rawUrl`/`rawFileId`) is always kept so a capture can be re-ingested after the fact. `extractedText` is the canonical derived text (Whisper transcript for `audio`, fetched title/description/body for `link`/`video_link`, vision description + verbatim visible text for `image`); the ingest pipeline is `convex/ai/ingest.ts` + `lib/extractHtml.ts`, and distillation reads `extractedText` first. `sourceMeta` is client context at capture time (JSON, currently `{device}`). `rawType: "file"` is stored durably but not parsed yet. See [`../product/features/thought-stream.md`](../product/features/thought-stream.md).
 
 ### pillars
 The folders of the **file system on the human** — the regions of a person (see [`../product/features/file-system-on-the-human.md`](../product/features/file-system-on-the-human.md)). `{ userId, name, description?, about?, composition?, weight, source: default|preset|custom, createdAt }`, indexed `by_user`. `about` says what this region of the person is; `composition` tells the **Center** how to build this pillar from its files. Bootstrap seeds the **canonical skeleton** (the `DEFAULT_PILLARS` set in `convex/pillars.ts`: Identity & Values, Body & Health, Work & Money, Relationships, Mind & Growth, Meaning & Spirit, Fears & Shadows, Dreams & Aspirations); `seedDefaultPillars` is idempotent and tops up older accounts. The preset library adds more; users can define custom pillars.
@@ -122,6 +123,9 @@ The evolving text layer behind the human. `{ userId, summary, structured{ values
 ### threads / messages (the Coach)
 `threads { userId, title, createdAt }`. `messages { userId, threadId, role: user|coach, content, toolCalls?[{tool,args,result?}], createdAt }`. `toolCalls` is how the Coach records acting from far away (board edits, goal changes).
 
+### sessions (the living entry)
+One journal session a person keeps adding to: a container over captures, never a second store. `{ userId, title?, summary?, doing?, device: phone|desktop, digest?{status: pending|done|error, at?}, startedAt, updatedAt, pinnedAt?, lastOpenedAt? }`. Index: `by_user_updated [userId, updatedAt]`. Members are `captures` rows carrying `sessionId` (their raw artifacts, ingest, and distillation are untouched by session membership). `title`/`summary` are the AI digest for the list (`convex/ai/sessionDigest.ts`, debounced ~30s off member ingest completion; the list falls back to the entry's first words via `lib/sessionDigest.ts`). `doing` is optional person-entered context. `pinnedAt` (`sessions.setPinned`) floats an entry to the top of the list; `lastOpenedAt` (`sessions.touchOpened`) is visit metadata and deliberately does not bump `updatedAt`. Audio members carry `durationMs` and `recordingStartedAt` inside their `sourceMeta` JSON; every member's `createdAt` is the exact add time. Created empty by the phone's ➕ flow; a container left with no active members is deleted on exit (`sessions.deleteIfEmpty`), which never touches captures. `sessions.remove` (swipe delete) deletes the container and soft-deletes members (`isActive: false`, `sessionId` kept), so the raw archive is never thinned. `sessions.merge` re-parents every member of the selected sessions onto the earliest-started one and deletes the emptied rows; member `createdAt` ordering makes the merged document chronological for free, and the digest re-runs. See [`../product/features/sessions.md`](../product/features/sessions.md) and [ADR 0008](../decisions/0008-sessions-as-container-over-captures.md).
+
 ### feedback (the Feedback Widget)
 `feedback { userId, type: bug|feature|other, text, route, view, title, viewport {w,h}, userAgent, errors[{message, stack?, at}], shotId?: _storage, status: open|dealt_with, createdAt, resolvedAt? }`. Indexes: `by_user [userId, createdAt]`, `by_status [status, createdAt]`. A user's in-app feedback, each captured with the page context at submit time (route, metadata, the page's recent JS/console errors, and an optional `html2canvas` snapshot in `_storage`). Surfaced as a live ticketing queue in `/admin`. **Access is owner-aware** (`convex/owner.ts`): the owner reads every user's feedback (joining the submitter's identity from `users`) as a support inbox; everyone else is self-scoped to their own rows. See [`../product/features/feedback-widget.md`](../product/features/feedback-widget.md) and [`../decisions/0006-owner-gated-admin.md`](../decisions/0006-owner-gated-admin.md).
 
@@ -131,19 +135,8 @@ The evolving text layer behind the human. `{ userId, summary, structured{ values
 
 These shapes are the contract the feature docs assume. Field names are chosen to match the live conventions (`userId`, `createdAt`, `isActive`, soft-delete via flags).
 
-### sessions (Journal / Sessions stream)
-One self-session: a morning or night beat. Owns the temporal stream.
-```
-sessions {
-  userId,
-  kind: "morning" | "night" | "triggered",   // triggered = Mirror-noticed, off-rhythm
-  status: "open" | "complete",
-  startedAt, completedAt?,
-  summary?,            // distilled text the session publishes into the Sessions stream
-  mood?,              // optional lightweight signal
-  isActive,
-}  // index by_user over startedAt (chronological, scrollable history)
-```
+### ~~sessions (Journal / Sessions stream)~~ — superseded
+The June draft reserved a beats-shaped `sessions` table here. The capture-first reframe (2026-07-02) redefined the Session entity as "raw capture + metadata," and that shape is now **live** (see the sessions section above and [ADR 0008](../decisions/0008-sessions-as-container-over-captures.md)). When the Journal lands, its morning/night/triggered beats become front doors that open rows in the live table (a `beat`/`kind` field or convention decided then); the Journal owns only `prompts`.
 
 ### prompts (the adaptive questions inside a session)
 A session is a feed of prompts, each with a typed or spoken answer.

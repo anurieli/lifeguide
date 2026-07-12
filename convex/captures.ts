@@ -66,11 +66,16 @@ export const create = mutation({
     rawText: v.optional(v.string()),
     rawUrl: v.optional(v.string()),
     rawFileId: v.optional(v.id("_storage")),
+    sessionId: v.optional(v.id("sessions")),
     sourceMeta: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
+    if (args.sessionId) {
+      const session = await ctx.db.get(args.sessionId);
+      if (!session || session.userId !== userId) throw new Error("Session not found");
+    }
     const id = await ctx.db.insert("captures", {
       userId,
       ...args,
@@ -81,6 +86,8 @@ export const create = mutation({
       isActive: true,
       createdAt: Date.now(),
     });
+    // A session is a living entry: every appended capture bumps it to the top.
+    if (args.sessionId) await ctx.db.patch(args.sessionId, { updatedAt: Date.now() });
     // Ingest in the background: extract text from the raw artifact (transcribe audio,
     // fetch a link, read an image), then distill. No-op degrades gracefully without keys.
     await ctx.scheduler.runAfter(0, internal.ai.ingest.ingestCapture, { captureId: id });

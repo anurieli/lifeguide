@@ -259,7 +259,7 @@ export function SessionsList({ onOpen }: { onOpen: (id: Id<"sessions">) => void 
     <div className="h-full overflow-y-auto">
       <div className="max-w-[680px] mx-auto px-5 py-6 md:px-8">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-[19px] font-semibold text-ink">Sessions</h1>
+          <h1 className="text-[19px] font-semibold text-ink">Dumps</h1>
           {rows && rows.length > 1 && (
             <button
               type="button"
@@ -276,7 +276,7 @@ export function SessionsList({ onOpen }: { onOpen: (id: Id<"sessions">) => void 
           <div className="text-center py-16">
             <p className="text-[15px] text-ink-soft mb-1">No entries yet.</p>
             <p className="text-[13px] text-ink-mute">
-              Tap ➕ and talk. Every session lands here, kept forever.
+              Tap ➕ and let it out. Every dump lands here, kept forever.
             </p>
           </div>
         ) : (

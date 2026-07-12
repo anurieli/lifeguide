@@ -14,8 +14,7 @@ const CTX: Record<View, string> = {
   today: "sees today · knows you",
   core: "sees your Core · knows you",
   board: "sees your board · knows you",
-  dump: "sees your dump · knows you",
-  sessions: "sees your sessions · knows you",
+  sessions: "sees your dumps · knows you",
   settings: "knows you",
 };
 

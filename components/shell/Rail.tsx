@@ -5,23 +5,23 @@ import {
   Sun,
   Gem,
   LayoutGrid,
-  AudioLines,
+  Brain,
   Plus,
-  NotebookPen,
   Settings as SettingsIcon,
   User,
   LogOut,
 } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 
-export type View = "today" | "core" | "board" | "dump" | "sessions" | "settings";
+export type View = "today" | "core" | "board" | "sessions" | "settings";
 
+// Thoughts and Sessions merged into one surface (ADR 0010): Dumps is the single
+// home of capture — the list of living entries — on the phone and the desktop.
 const ITEMS: { key: View; label: string; Icon: typeof Sun }[] = [
   { key: "today", label: "Today", Icon: Sun },
   { key: "core", label: "Core", Icon: Gem },
   { key: "board", label: "Board", Icon: LayoutGrid },
-  { key: "dump", label: "Thoughts", Icon: AudioLines },
-  { key: "sessions", label: "Sessions", Icon: NotebookPen },
+  { key: "sessions", label: "Dumps", Icon: Brain },
 ];
 
 const item = (key: View) => ITEMS.find((i) => i.key === key)!;
@@ -190,7 +190,7 @@ export function Rail({
   return (
     <>
       {/* Phone: a five-slot bottom bar, evenly spread so the ➕ sits dead center:
-          Today · Board · ➕ · Sessions · account. Core and Thoughts are desktop-only. */}
+          Today · Board · ➕ · Dumps · account. Core is desktop-only. */}
       <div className="md:hidden fixed bottom-0 inset-x-0 h-[64px] grid grid-cols-5 items-center px-1 border-t border-line bg-card z-50">
         {(["today", "board"] as const).map((key) => {
           const { label, Icon } = item(key);
@@ -209,7 +209,7 @@ export function Rail({
           <button
             type="button"
             onClick={onRecord}
-            aria-label="Start a new session"
+            aria-label="Start a new dump"
             className="-translate-y-4 w-16 h-16 rounded-full bg-accent text-white shadow-lg flex items-center justify-center active:scale-95 transition"
           >
             <Plus className="w-8 h-8" strokeWidth={2.25} />
@@ -226,7 +226,8 @@ export function Rail({
         </div>
       </div>
 
-      {/* Desktop: the vertical left rail, unchanged. */}
+      {/* Desktop: the vertical left rail. The ➕ is the same main action as the
+          phone's: one click, a fresh dump, ready to type or speak into. */}
       <div className="hidden md:flex w-[84px] h-screen flex-col items-center py-[18px] border-r border-line bg-card flex-shrink-0">
         <div className="font-extrabold text-xl text-ink mb-7">L</div>
         <div className="flex flex-1 flex-col gap-1.5 items-center">
@@ -239,6 +240,14 @@ export function Rail({
               onClick={() => onNav(key)}
             />
           ))}
+          <button
+            type="button"
+            onClick={onRecord}
+            aria-label="Start a new dump"
+            className="mt-2 w-12 h-12 rounded-full bg-accent text-white shadow-md flex items-center justify-center hover:opacity-90 active:scale-95 transition"
+          >
+            <Plus className="w-6 h-6" strokeWidth={2.25} />
+          </button>
         </div>
         <AccountMenu onNav={onNav} opensUpward={false} />
       </div>

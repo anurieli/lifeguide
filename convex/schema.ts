@@ -138,8 +138,9 @@ export default defineSchema({
   // capture. See docs/superpowers/specs/2026-07-12-mobile-capture-sessions-design.md.
   sessions: defineTable({
     userId: v.id("users"),
-    title: v.optional(v.string()), // AI digest; UI falls back to first words
-    summary: v.optional(v.string()), // AI one-liner for the list view
+    title: v.optional(v.string()), // person-entered name, else AI digest; UI falls back to first words
+    titleEditedAt: v.optional(v.number()), // set when the person named the entry; the digest never overwrites a person's name
+    summary: v.optional(v.string()), // AI living description, refreshed as content lands and on open/leave; what an agent traversing sessions pulls
     doing: v.optional(v.string()), // optional "what I was doing", person-entered
     device: v.union(v.literal("phone"), v.literal("desktop")), // where it was opened
     digest: v.optional(

@@ -1,6 +1,8 @@
 # Thought Stream
 
-**Status:** built (v1) · **Element of:** Sessions (feeds the Core) · **Owns:** the ingest pipeline over `captures`; shares the `captures` table with the Vision Board
+**Status:** pipeline live; the stream *surface* merged into Dumps 2026-07-12 (ADR 0010) and is no longer a nav tab · **Element of:** Sessions (feeds the Core) · **Owns:** the ingest pipeline over `captures`; shares the `captures` table with the Vision Board
+
+> **Surface retirement note (2026-07-12).** Thoughts and Sessions were two views over the same `captures` rows, and the split read as two capture surfaces. The flat stream tab is gone on desktop (it was never on the phone); **Dumps** ([`sessions.md`](sessions.md)) is the single capture surface, with the ➕ main action on both devices. Everything below about the **pipeline** (ingest, extraction, distillation, reprocess, storage guarantees) remains true and load-bearing — every session member and every loose capture still flows through it. The stream UI (`components/thoughts/ThoughtStream.tsx`, `Composer.tsx`, `ThoughtCard.tsx`) stays in the codebase unrouted, like the Brain Dump Lab before it, pending a decision on a receipts/inspector filter view.
 
 > The Thought Stream is the one spot where every thought lands: spoken dumps, typed notes, links, photos. Each thought is durably stored raw, AI-processed into text (transcription, article extraction, image reading), analyzed into a receipt, and kept retrievable forever. It is the capture half of the observation contract: the person lets thoughts out; the system visibly learns.
 
@@ -10,7 +12,7 @@ The concept (see [`../concept-and-soul.md`](../concept-and-soul.md), "The observ
 
 ## 2. User-facing behavior
 
-The surface is one column: a composer on top, the stream of thoughts below, newest first. It is the `Thoughts` item in the desktop rail (not on the phone bar; mobile capture goes through [Sessions](sessions.md)), replacing the experimental Brain Dump Lab in the `dump` view slot.
+*(Historical as of 2026-07-12 — the surface is unrouted; see the retirement note above. Capture now goes through [Dumps](sessions.md) on every device.)* The surface is one column: a composer on top, the stream of thoughts below, newest first. It was the `Thoughts` item in the desktop rail (never on the phone bar), replacing the experimental Brain Dump Lab in the `dump` view slot.
 
 **Recording a thought.** Four ways in, all first-class:
 - **Speak.** Tap the record button, talk as long as needed, tap stop. The full recording uploads as one file. No live transcription pressure, no chunking: this is the "let go and explain what's on your brain" mode. Recordings under about a second are ignored.

@@ -13,5 +13,6 @@ Architecture Decision Records for LifeGuide. One file per notable decision, numb
 | [0007](0007-file-system-on-the-human-and-the-center.md) | File system on the human and the Center | accepted | 2026-06-04 |
 | [0008](0008-sessions-as-container-over-captures.md) | Sessions as a container over captures | accepted (live) | 2026-07-12 |
 | [0009](0009-ritual-day-boundary.md) | The ritual day: client-local key with a 4am rollover | accepted (live) | 2026-07-12 |
+| [0010](0010-merge-thoughts-into-dumps.md) | Merge the Thoughts surface into Dumps (one capture surface) | accepted (live) | 2026-07-12 |
 
 See [`../README.md`](../README.md) for the documentation map and the two seeds, and [`../product/concept-and-soul.md`](../product/concept-and-soul.md) for the current source of truth.

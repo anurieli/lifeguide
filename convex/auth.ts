@@ -17,6 +17,9 @@ const ALLOWED_APP_ORIGINS = [
   "https://mylifesguide.com",
   "https://www.mylifesguide.com",
   "http://localhost:3000",
+  // The dev machine served over the private tailnet (`tailscale serve`), so phone QA
+  // can sign in; reachable only from Ariel's own devices.
+  "https://ariels-macbook-pro.tailf278e9.ts.net",
 ];
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({

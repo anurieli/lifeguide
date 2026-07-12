@@ -13,9 +13,11 @@ import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
 import { MusicProvider } from "@/components/music/MusicProvider";
 import { AtmospherePlayer } from "@/components/music/AtmospherePlayer";
 import { ThoughtStream } from "@/components/thoughts/ThoughtStream";
+import { Sessions } from "@/components/sessions/Sessions";
+import { RecordTake } from "@/components/sessions/RecordTake";
 
 const VIEW_STORAGE_KEY = "lifeguide.activeView";
-const VIEWS: View[] = ["today", "core", "board", "dump", "settings"];
+const VIEWS: View[] = ["today", "core", "board", "dump", "sessions", "settings"];
 
 function clientLog(event: string, meta?: Record<string, unknown>) {
   if (process.env.NODE_ENV === "production") return;
@@ -32,6 +34,9 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   // primary way in — it opens as a full-screen surface.
   const [coachOpen, setCoachOpen] = useState(false);
   const [speakOpen, setSpeakOpen] = useState(false);
+  // The one-tap take overlay (mobile ● button) and the open entry in the Sessions view.
+  const [recordOpen, setRecordOpen] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState<Id<"sessions"> | null>(null);
 
   // Restore the last-viewed tab after mount. Done in an effect (not a lazy
   // useState initializer) so server and first client render agree — reading
@@ -54,7 +59,12 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   return (
     <MusicProvider>
       <div className="flex h-[100dvh] bg-paper overflow-hidden">
-        <Rail view={view} onNav={setView} onSpeak={openSpeak} />
+        <Rail
+          view={view}
+          onNav={setView}
+          onSpeak={openSpeak}
+          onRecord={() => setRecordOpen(true)}
+        />
         {/* Leave room for the fixed bottom bar on mobile; full height on desktop. */}
         <main className="flex-1 relative h-[calc(100dvh-64px)] md:h-screen overflow-hidden">
           {/* Board stays mounted so canvas state (viewport, in-flight edits) survives nav. */}
@@ -64,6 +74,9 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
           {view === "today" && <Today onNavigate={setView} />}
           {view === "core" && <Core />}
           {view === "dump" && <ThoughtStream />}
+          {view === "sessions" && (
+            <Sessions activeSessionId={activeSessionId} onOpenSession={setActiveSessionId} />
+          )}
           {view === "settings" && <Settings />}
         </main>
         <CoachDock
@@ -78,6 +91,17 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
         <AtmospherePlayer />
         {/* The Listener: always-available voice. Opens full-screen over everything. */}
         {speakOpen && <SpeakSurface onClose={() => setSpeakOpen(false)} />}
+        {/* The one-tap take: silent capture into a new session, then its document view. */}
+        {recordOpen && (
+          <RecordTake
+            onClose={() => setRecordOpen(false)}
+            onDone={(sessionId) => {
+              setRecordOpen(false);
+              setActiveSessionId(sessionId);
+              setView("sessions");
+            }}
+          />
+        )}
       </div>
     </MusicProvider>
   );

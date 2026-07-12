@@ -92,6 +92,9 @@ export default defineSchema({
     rawText: v.optional(v.string()),
     rawUrl: v.optional(v.string()),
     rawFileId: v.optional(v.id("_storage")),
+    // The session (living journal entry) this capture belongs to, if any.
+    // Loose captures (board intake, stream composer, voice.brainDump) have none.
+    sessionId: v.optional(v.id("sessions")),
     // Client context at capture time, JSON: {"device":"phone"|"desktop", ...}.
     sourceMeta: v.optional(v.string()),
     // The canonical text derived from the raw artifact: the transcript (audio), the
@@ -125,7 +128,29 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_user", ["userId", "createdAt"])
-    .index("by_user_unplaced", ["userId", "placedAt"]),
+    .index("by_user_unplaced", ["userId", "placedAt"])
+    .index("by_session", ["sessionId", "createdAt"]),
+
+  // A session is one living journal entry: an ordered container of captures the
+  // person keeps adding to over time (voice takes, typed passages, photos). Raw
+  // truth stays on the captures rows; this row holds only container-level state:
+  // the AI digest for the list view and light context. Created with its first
+  // capture. See docs/superpowers/specs/2026-07-12-mobile-capture-sessions-design.md.
+  sessions: defineTable({
+    userId: v.id("users"),
+    title: v.optional(v.string()), // AI digest; UI falls back to first words
+    summary: v.optional(v.string()), // AI one-liner for the list view
+    doing: v.optional(v.string()), // optional "what I was doing", person-entered
+    device: v.union(v.literal("phone"), v.literal("desktop")), // where it was opened
+    digest: v.optional(
+      v.object({
+        status: v.union(v.literal("pending"), v.literal("done"), v.literal("error")),
+        at: v.optional(v.number()),
+      }),
+    ),
+    startedAt: v.number(),
+    updatedAt: v.number(), // bumped on every appended capture
+  }).index("by_user_updated", ["userId", "updatedAt"]),
 
   // A pillar is a region of the "file system on the human" — a folder that holds the
   // textual files making up one part of a person (see docs/product/features/file-system-on-the-human.md).

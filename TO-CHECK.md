@@ -2,6 +2,16 @@
 
 Features that are done but haven't been manually verified yet.
 
+### Sessions + mobile capture (ARI-24)
+- [ ] **One-tap take (real iPhone):** tap ● in the bottom bar, speak 2+ minutes, stop. The entry opens; transcript fills in ("Listening back…" then text); the audio plays inline, from desktop too; the transcript matches what was said.
+- [ ] **Living entry:** in the open entry, type a line, add a photo, record a second take. All land in order. Next day, reopen and append; the list row's AI title/subtext refresh (~30s after ingest completes).
+- [ ] **Digest fallback:** with no AI keys, the list shows the first-words fallback instead of a title; no errors surface.
+- [ ] **Failure never loses audio:** kill the network after stopping a take (before upload completes): the failure notice shows and tapping stop retries with the kept blob. Break transcription (no OPENAI key): the entry shows "Transcription failed, the recording is safe" and Try again works once the key is back.
+- [ ] **No husks:** open record, tap X immediately (and: deny the mic → Type instead → leave without typing). The Sessions list gains nothing.
+- [ ] **Mobile bar:** at ~390px only Today · ● · Sessions · Talk (+ avatar). Core/Board/Thoughts are absent on the phone, present on desktop; the desktop rail gains a Sessions tab.
+- [ ] **Inspiration from phone:** add a photo inside an entry on the phone; confirm it appears distilled in the board Inbox on desktop.
+- [ ] **Loose captures unaffected:** the Thought Stream composer, board intake, and board voice brain dump all still work exactly as before (no sessionId, no session created).
+
 ### The Listener + the Center + the file system on the human
 - [ ] **Talk button → Listener (needs a mic):** on desktop, confirm the floating dock's primary button is now a **mic** (talk), not the message icon, and opens the full-screen "Talk it through" surface. The small secondary button below it still opens the text Coach. On mobile (~414px) the bottom-bar tab reads **"Talk"** and opens the same surface. The `/speak` URL opens it directly; visiting `/speak` while signed out bounces to `/`.
 - [ ] **Listener conversation:** press "Start talking", grant the mic, confirm the Listener opens with a warm one-liner (not a blueprint question), follows your thread. Pause/Mute/End behave. Confirm onboarding's voice interview **still works** (shared `useRealtimeVoice` hook refactor) — start one and verify it asks blueprint questions as before (it still uses the bar waveform).

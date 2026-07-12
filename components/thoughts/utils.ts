@@ -1,7 +1,11 @@
 // Shared helpers for the Thought Stream surface (composer + cards).
 
+export function currentDevice(): "phone" | "desktop" {
+  return window.innerWidth < 768 ? "phone" : "desktop";
+}
+
 export function deviceMeta(): string {
-  return JSON.stringify({ device: window.innerWidth < 768 ? "phone" : "desktop" });
+  return JSON.stringify({ device: currentDevice() });
 }
 
 const URL_RE = /^https?:\/\/\S+$/i;

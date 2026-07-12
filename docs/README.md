@@ -24,10 +24,11 @@ What actually works in code today (`~/Desktop/Life Board/LifeGuide`, Convex depl
 - [x] **Core** — the Life Blueprint: 3 sections, 18 questions, malleability colors, editable, autosaved (`coreResponses` + `lib/blueprint.ts`).
 - [x] **Board** — vision board (nodes/edges), unified "Add anything" card, capture → AI distillation (OpenRouter, OpenAI fallback).
 - [x] **Thought Stream** — the one-spot capture valve (speak / type / link / photo) with the async ingest pipeline (Whisper transcription, link fetch + extraction, image vision) and durable, re-analyzable raw storage. First slice of the MVP capture spine.
+- [x] **Sessions** — the living entry: one-tap mobile record into an appendable session over captures, the entry document view, the AI-titled chronological list, and the phone bar reduced to Today · Record · Sessions · Talk (`sessions` + `captures.sessionId`, ADR 0008).
 - [x] **Guide** — the Mirror (synthesized reflection) + north star + pillars.
 - [x] **Coach** — context-aware dock; **conversation persists** to `messages`/`threads`.
 - [x] **Settings** — rhythm, tone, pillars, plus AI models and per-profile keys.
-- [ ] Sessions (daily self-stream), Journal as adaptive prompts, Future Self — not built.
+- [ ] Journal as adaptive prompts (beats opening sessions), Future Self — not built.
 - [ ] Coach tool-use (acting on the board) and Core→Mirror regeneration — not built.
 - [ ] Account linking (anonymous data → Google account) — not built (clean start chosen).
 

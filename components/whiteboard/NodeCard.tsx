@@ -242,7 +242,10 @@ export function NodeCard({
       <button
         onPointerDown={(e) => e.stopPropagation()}
         onClick={onDelete}
-        className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-ink text-paper text-xs leading-none opacity-0 group-hover:opacity-100 transition z-10"
+        // Counter-scale by 1/scale so the control keeps a constant screen size at
+        // any zoom; anchored to the card's top-right corner (8px out, in screen px).
+        style={{ transform: `translate(8px, -8px) scale(${1 / scale})`, transformOrigin: "100% 0%" }}
+        className="absolute top-0 right-0 w-5 h-5 rounded-full bg-ink text-paper text-xs leading-none opacity-0 group-hover:opacity-100 transition-opacity z-10"
         title="Delete"
       >
         ×
@@ -386,7 +389,10 @@ export function NodeCard({
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => fileRef.current?.click()}
-            className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded-md text-ink-mute hover:text-ink hover:bg-paper-2 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+            // Counter-scale to a constant screen size; anchored 6px inside the card's
+            // bottom-right corner (in screen px) so it stays tappable at any zoom.
+            style={{ transform: `translate(-6px, -6px) scale(${1 / scale})`, transformOrigin: "100% 100%" }}
+            className="absolute bottom-0 right-0 w-6 h-6 rounded-md text-ink-mute hover:text-ink hover:bg-paper-2 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
             title="Add an image"
           >
             <ImagePlus className="w-4 h-4" />
@@ -409,7 +415,9 @@ export function NodeCard({
       <button
         onPointerDown={(e) => e.stopPropagation()}
         onClick={onStartLink}
-        className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-accent opacity-0 group-hover:opacity-100 transition"
+        // Counter-scale to a constant screen size; centered on the card's bottom edge.
+        style={{ transform: `translate(-50%, 50%) scale(${1 / scale})`, transformOrigin: "50% 50%" }}
+        className="absolute bottom-0 left-1/2 w-4 h-4 rounded-full bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
         title="Connect to another node"
       />
 

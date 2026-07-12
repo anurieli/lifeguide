@@ -96,6 +96,46 @@ export const get = query({
   },
 });
 
+// The person names the entry. A person-entered name is authoritative: titleEditedAt
+// marks it and the digest stops writing title (the summary keeps refreshing).
+// Clearing the field hands naming back to the AI.
+export const setTitle = mutation({
+  args: { sessionId: v.id("sessions"), title: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const s = await ctx.db.get(args.sessionId);
+    if (!s || s.userId !== userId) throw new Error("Not found");
+    const title = args.title.trim().slice(0, 80);
+    await ctx.db.patch(args.sessionId, {
+      title: title || undefined,
+      titleEditedAt: title ? Date.now() : undefined,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// Called by the document view on open and on leave: the digest (name + the living
+// description an agent pulls) must never sit stale behind the content. Skips when
+// the digest already covers the latest content, so repeated visits cost nothing.
+export const refreshDigest = mutation({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const s = await ctx.db.get(args.sessionId);
+    if (!s || s.userId !== userId) return;
+    if (s.digest?.status === "done" && (s.digest.at ?? 0) >= s.updatedAt) return;
+    const first = await ctx.db
+      .query("captures")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .first();
+    if (!first) return;
+    await ctx.scheduler.runAfter(0, internal.ai.sessionDigest.digestSession, {
+      sessionId: args.sessionId,
+    });
+  },
+});
+
 export const setDoing = mutation({
   args: { sessionId: v.id("sessions"), doing: v.string() },
   handler: async (ctx, args) => {
@@ -177,10 +217,14 @@ export const merge = mutation({
       for (const c of caps) await ctx.db.patch(c._id, { sessionId: target._id });
       await ctx.db.delete(s._id);
     }
+    // A person-entered name survives the merge (earliest such session wins);
+    // AI titles are stale over the combined content and re-synthesize.
+    const named = [target, ...rest].find((s) => s.titleEditedAt !== undefined);
     await ctx.db.patch(target._id, {
       doing: [target, ...rest].map((s) => s.doing).find((d) => d) ?? undefined,
       pinnedAt: sessions.map((s) => s.pinnedAt).find((p) => p !== undefined),
-      title: undefined,
+      title: named?.title,
+      titleEditedAt: named?.titleEditedAt,
       summary: undefined,
       digest: { status: "pending" as const, at: Date.now() },
       updatedAt: Date.now(),
@@ -235,8 +279,11 @@ export const writeDigestInternal = internalMutation({
   handler: async (ctx, args) => {
     const s = await ctx.db.get(args.sessionId);
     if (!s) return; // session deleted while the digest was in flight
+    // A person-entered name is never overwritten; the digest still owns the summary.
     await ctx.db.patch(args.sessionId, {
-      ...(args.title !== undefined ? { title: args.title } : {}),
+      ...(args.title !== undefined && s.titleEditedAt === undefined
+        ? { title: args.title }
+        : {}),
       ...(args.summary !== undefined ? { summary: args.summary } : {}),
       digest: { status: args.status, at: Date.now() },
     });

@@ -14,13 +14,12 @@ import { SpeakSurface } from "@/components/voice/SpeakSurface";
 import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
 import { MusicProvider } from "@/components/music/MusicProvider";
 import { AtmospherePlayer } from "@/components/music/AtmospherePlayer";
-import { ThoughtStream } from "@/components/thoughts/ThoughtStream";
 import { Sessions } from "@/components/sessions/Sessions";
 import { RecordingProvider, useRecording } from "@/components/sessions/RecordingProvider";
 import { currentDevice, formatElapsed } from "@/components/thoughts/utils";
 
 const VIEW_STORAGE_KEY = "lifeguide.activeView";
-const VIEWS: View[] = ["today", "core", "board", "dump", "sessions", "settings"];
+const VIEWS: View[] = ["today", "core", "board", "sessions", "settings"];
 
 function clientLog(event: string, meta?: Record<string, unknown>) {
   if (process.env.NODE_ENV === "production") return;
@@ -57,7 +56,9 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   // localStorage during render would cause a hydration mismatch.
   useEffect(() => {
     const saved = window.localStorage.getItem(VIEW_STORAGE_KEY);
-    if (saved && VIEWS.includes(saved as View)) setView(saved as View);
+    // "dump" was the retired Thoughts tab; its home is the Dumps surface now.
+    if (saved === "dump") setView("sessions");
+    else if (saved && VIEWS.includes(saved as View)) setView(saved as View);
   }, []);
 
   // Remember the active tab so a refresh returns here instead of Today.
@@ -70,16 +71,19 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
     setSpeakOpen(true);
   };
 
-  // The ➕ flow: every tap starts a FRESH session and lands inside its empty
-  // document, already recording. Appending to an old entry goes through the list.
+  // The ➕ flow: every tap starts a FRESH dump and lands inside its empty
+  // document. On the phone it's already recording; on desktop the mic waits one
+  // click away (keyboard-first, and auto-arming the mic would throw a permission
+  // prompt in the person's face). Appending to an old entry goes through the list.
   // The take itself lives in RecordingProvider, so it keeps running wherever
   // the person navigates next.
   const startSession = async () => {
     clientLog("session.start", { view });
-    const id = await createSession({ device: currentDevice() });
+    const device = currentDevice();
+    const id = await createSession({ device });
     setActiveSessionId(id);
     setView("sessions");
-    void rec.start(id);
+    if (device === "phone") void rec.start(id);
   };
 
   const jumpToRecording = () => {
@@ -109,7 +113,6 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
         </div>
         {view === "today" && <Today onNavigate={setView} />}
         {view === "core" && <Core />}
-        {view === "dump" && <ThoughtStream />}
         {view === "sessions" && (
           <Sessions activeSessionId={activeSessionId} onOpenSession={setActiveSessionId} />
         )}

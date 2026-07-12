@@ -56,7 +56,7 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   // localStorage during render would cause a hydration mismatch.
   useEffect(() => {
     const saved = window.localStorage.getItem(VIEW_STORAGE_KEY);
-    // "dump" was the retired Thoughts tab; its home is the Dumps surface now.
+    // "dump" was the retired flat-stream tab; its home is the Thoughts surface now.
     if (saved === "dump") setView("sessions");
     else if (saved && VIEWS.includes(saved as View)) setView(saved as View);
   }, []);
@@ -71,7 +71,7 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
     setSpeakOpen(true);
   };
 
-  // The ➕ flow: every tap starts a FRESH dump and lands inside its empty
+  // The pen/➕ flow: every tap starts a FRESH entry and lands inside its empty
   // document. On the phone it's already recording; on desktop the mic waits one
   // click away (keyboard-first, and auto-arming the mic would throw a permission
   // prompt in the person's face). Appending to an old entry goes through the list.
@@ -114,7 +114,11 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
         {view === "today" && <Today onNavigate={setView} />}
         {view === "core" && <Core />}
         {view === "sessions" && (
-          <Sessions activeSessionId={activeSessionId} onOpenSession={setActiveSessionId} />
+          <Sessions
+            activeSessionId={activeSessionId}
+            onOpenSession={setActiveSessionId}
+            onNew={() => void startSession()}
+          />
         )}
         {view === "settings" && <Settings />}
       </main>

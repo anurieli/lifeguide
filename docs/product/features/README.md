@@ -9,8 +9,8 @@ The element model these hang off is [`../../architecture/elements-and-context.md
 | Element | Owns | Feeds | Status |
 |---|---|---|---|
 | [Vision Board](vision-board.md) | `surfaces, nodes, edges, captures` | Core | partial (board built; Coach co-build proposed) |
-| [Thought Stream](thought-stream.md) | ingest pipeline over `captures` (table shared with the board) | Sessions → Core | pipeline live; surface merged into Dumps (ADR 0010) |
-| [Sessions (the living entry) / Dumps](sessions.md) | `sessions` (container; members via `captures.sessionId`) | Sessions → Core | built (v3: the app's single capture surface) |
+| [Thought Stream](thought-stream.md) | ingest pipeline over `captures` (table shared with the board) | Sessions → Core | pipeline live; surface merged into the Thoughts tab (ADR 0010) |
+| [Sessions (the living entry) / Thoughts](sessions.md) | `sessions` (container; members via `captures.sessionId`) | Sessions → Core | built (v3: the app's single capture surface) |
 | [Future Self](future-self.md) | `futureSelf` | Core | proposed |
 | [Journal](journal.md) | `prompts` (its beats open the live `sessions`) | Sessions | proposed (Today ritual is the seed) |
 | [Daily Ritual](daily-ritual.md) | `ritualItems`, `ritualDays` | Sessions (publishes `ritual_completed`) | built |

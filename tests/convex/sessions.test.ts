@@ -262,4 +262,61 @@ describe("sessions", () => {
     expect(await asUser.query(api.sessions.get, { sessionId: empty })).toBeNull();
     expect(await asUser.query(api.sessions.get, { sessionId: full })).not.toBeNull();
   });
+
+  it("seedDemo builds two packed entries with digest done and no pending ingest", async () => {
+    const { t, asUser } = await setup();
+    const fileIds = await t.run(async (ctx) => {
+      const ids = [];
+      for (let i = 0; i < 4; i++) ids.push(await ctx.storage.store(new Blob([`demo-${i}`])));
+      return ids;
+    });
+    const ids = await asUser.mutation(api.sessions.seedDemo, {
+      voiceFileIds: [fileIds[0], fileIds[1]],
+      photoFileIds: [fileIds[2], fileIds[3]],
+    });
+    expect(ids).toHaveLength(2);
+    const rows = await asUser.query(api.sessions.list, {});
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      expect(row.title).toBeTruthy();
+      expect(row.summary).toBeTruthy();
+      expect(row.digestStatus).toBe("done");
+      expect(row.counts).toEqual({ voice: 1, text: 2, photo: 1 });
+    }
+    const doc = await asUser.query(api.sessions.get, { sessionId: ids[0] });
+    // Members read chronologically; every one is fully extracted (nothing pending,
+    // so opening a demo entry never schedules a digest re-run over demo text).
+    const times = doc!.captures.map((c) => c.createdAt);
+    expect([...times].sort((a, b) => a - b)).toEqual(times);
+    for (const c of doc!.captures) expect(c.extraction?.status).toBe("done");
+    const voice = doc!.captures.find((c) => c.rawType === "audio");
+    expect(voice!.extractedText).toBeTruthy();
+    expect(voice!.fileUrl).toBeTruthy();
+    // The refresh path treats the stamped digest as covering the content.
+    const before = doc!.session.digest;
+    await asUser.mutation(api.sessions.refreshDigest, { sessionId: ids[0] });
+    const after = (await asUser.query(api.sessions.get, { sessionId: ids[0] }))!.session.digest;
+    expect(after).toEqual(before);
+  });
+
+  it("seedDemo requires auth and both media pairs", async () => {
+    const { t, asUser } = await setup();
+    const fileIds = await t.run(async (ctx) => {
+      const ids = [];
+      for (let i = 0; i < 2; i++) ids.push(await ctx.storage.store(new Blob([`x${i}`])));
+      return ids;
+    });
+    await expect(
+      asUser.mutation(api.sessions.seedDemo, {
+        voiceFileIds: [fileIds[0]],
+        photoFileIds: [fileIds[1]],
+      }),
+    ).rejects.toThrow();
+    await expect(
+      t.mutation(api.sessions.seedDemo, {
+        voiceFileIds: [fileIds[0], fileIds[0]],
+        photoFileIds: [fileIds[1], fileIds[1]],
+      }),
+    ).rejects.toThrow();
+  });
 });

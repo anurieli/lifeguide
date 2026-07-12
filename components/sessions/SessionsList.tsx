@@ -5,9 +5,11 @@ import { useMutation, useQuery } from "convex/react";
 import { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Camera, Check, Loader2, Merge, Mic, Pin, Trash2 } from "lucide-react";
+import { Camera, Check, Loader2, Merge, Mic, PenLine, Pin, Trash2 } from "lucide-react";
 import { formatRelativeTime } from "@/components/thoughts/utils";
 import { useRecording } from "./RecordingProvider";
+import { useBlobUpload } from "@/hooks/useBlobUpload";
+import { demoPhotoBlob, demoVoiceBlob } from "./demoMedia";
 
 type Row = FunctionReturnType<typeof api.sessions.list>[number];
 
@@ -205,15 +207,44 @@ function SessionRow({
 }
 
 /** Entries list: pinned first, then newest; AI title + subtext (or fallback). */
-export function SessionsList({ onOpen }: { onOpen: (id: Id<"sessions">) => void }) {
+export function SessionsList({
+  onOpen,
+  onNew,
+}: {
+  onOpen: (id: Id<"sessions">) => void;
+  onNew: () => void;
+}) {
   const rows = useQuery(api.sessions.list, {});
   const deleteIfEmpty = useMutation(api.sessions.deleteIfEmpty);
   const mergeSessions = useMutation(api.sessions.merge);
+  const seedDemo = useMutation(api.sessions.seedDemo);
+  const uploadBlob = useBlobUpload();
   const recordingInto = useRecording().sessionId;
 
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<Id<"sessions">>>(new Set());
   const [merging, setMerging] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+
+  // Paint the demo media in the browser, upload it, then let the server build
+  // two fully packed entries (voice + photos + text). Real rows; swipe to remove.
+  const addDemo = async () => {
+    if (seeding) return;
+    setSeeding(true);
+    try {
+      const voiceFileIds = [
+        await uploadBlob(demoVoiceBlob(24, 196), "audio/wav"),
+        await uploadBlob(demoVoiceBlob(31, 165), "audio/wav"),
+      ];
+      const photoFileIds = [
+        await uploadBlob(await demoPhotoBlob("sunrise"), "image/png"),
+        await uploadBlob(await demoPhotoBlob("notebook"), "image/png"),
+      ];
+      await seedDemo({ voiceFileIds, photoFileIds });
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   // Husk sweep: an empty entry can survive if the person left it without the back
   // action (e.g. switched rail tabs mid-take). The server re-checks emptiness
@@ -259,39 +290,72 @@ export function SessionsList({ onOpen }: { onOpen: (id: Id<"sessions">) => void 
     <div className="h-full overflow-y-auto">
       <div className="max-w-[680px] mx-auto px-5 py-6 md:px-8">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-[19px] font-semibold text-ink">Dumps</h1>
-          {rows && rows.length > 1 && (
+          <h1 className="text-[19px] font-semibold text-ink">Thoughts</h1>
+          <div className="flex items-center gap-3">
+            {rows && rows.length > 1 && (
+              <button
+                type="button"
+                onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
+                className="text-[13px] text-ink-mute hover:text-ink"
+              >
+                {selectMode ? "Cancel" : "Select"}
+              </button>
+            )}
+            {/* The scribbler pen: a fresh entry from right here. */}
             <button
               type="button"
-              onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
-              className="text-[13px] text-ink-mute hover:text-ink"
+              onClick={onNew}
+              aria-label="Think out loud"
+              title="Think out loud"
+              className="w-9 h-9 rounded-full bg-accent text-white shadow-md flex items-center justify-center hover:opacity-90 active:scale-95 transition"
             >
-              {selectMode ? "Cancel" : "Select"}
+              <PenLine className="w-[17px] h-[17px]" strokeWidth={2.25} />
             </button>
-          )}
+          </div>
         </div>
         {rows === undefined ? (
           <p className="text-center text-[13px] text-ink-mute py-10">Loading…</p>
         ) : rows.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-[15px] text-ink-soft mb-1">No entries yet.</p>
+            <p className="text-[15px] text-ink-soft mb-1">No thoughts yet.</p>
             <p className="text-[13px] text-ink-mute">
-              Tap ➕ and let it out. Every dump lands here, kept forever.
+              Tap the pen and think out loud. Everything lands here, kept forever.
             </p>
+            <button
+              type="button"
+              onClick={() => void addDemo()}
+              disabled={seeding}
+              className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-line-2 text-[13px] text-ink-soft hover:border-gold hover:text-gold transition disabled:opacity-60"
+            >
+              {seeding && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {seeding ? "Setting up…" : "Show me two example thoughts"}
+            </button>
           </div>
         ) : (
-          <div className="flex flex-col gap-2.5">
-            {rows.map((s) => (
-              <SessionRow
-                key={s._id}
-                s={s}
-                selectMode={selectMode}
-                selected={selectedIds.has(s._id)}
-                onToggleSelect={() => toggleSelected(s._id)}
-                onOpen={() => onOpen(s._id)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="flex flex-col gap-2.5">
+              {rows.map((s) => (
+                <SessionRow
+                  key={s._id}
+                  s={s}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(s._id)}
+                  onToggleSelect={() => toggleSelected(s._id)}
+                  onOpen={() => onOpen(s._id)}
+                />
+              ))}
+            </div>
+            <div className="text-center mt-6">
+              <button
+                type="button"
+                onClick={() => void addDemo()}
+                disabled={seeding}
+                className="text-[11.5px] text-ink-mute hover:text-gold transition disabled:opacity-60"
+              >
+                {seeding ? "Adding demo thoughts…" : "Add demo thoughts"}
+              </button>
+            </div>
+          </>
         )}
       </div>
 

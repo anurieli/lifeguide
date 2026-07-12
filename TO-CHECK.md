@@ -2,6 +2,13 @@
 
 Features that are done but haven't been manually verified yet.
 
+### Rituals rail v2 (one list, time markers, anytime)
+- [ ] **One list, one add:** the right panel says "Rituals", shows ONE flat list (no Morning/Night headers) with a sun/moon/sun-moon marker per practice, and exactly ONE "+ Add a ritual" at the bottom; opening it shows the input + morning/night/anytime picker; the ✕ closes it
+- [ ] **Anytime practice:** add one as "Anytime"; it shows the sun-moon marker, checks and unchecks today, and does NOT block sealing either the morning or the night
+- [ ] **Warned delete:** hover a practice → ✕ appears; clicking shows the warning ("removed from all rituals — every day"); Keep it cancels; Delete removes it from the list permanently (reload to confirm)
+- [ ] **Seals still count their own:** a morning practice left unchecked still blocks "Seal the morning"; checking it on the rail updates the sequence card's count live
+- [ ] **Phone:** the rail renders as a card under the sequence; the add form and picker are comfortably tappable
+
 ### Today v2: ordered ritual sequence, roadmap loop, Blueprint reader, to-do rail
 - [ ] **Phone first (~390px):** the sequence card walks read → to-dos-elsewhere → roadmap → question comfortably; the day's to-dos render as a card under the sequence (no right rail); nothing overflows; inputs are tappable at 7am size
 - [ ] **Desktop rail:** at a wide window the day's to-dos sit in a sticky right panel; checking there updates the sequence card's x/y count and the seal state live

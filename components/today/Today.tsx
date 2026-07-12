@@ -8,7 +8,7 @@ import { View } from "@/components/shell/Rail";
 import { filledCount } from "@/lib/levels";
 import { activeRitual } from "@/lib/ritual";
 import { RitualSequence } from "@/components/today/RitualSequence";
-import { TodoPanel } from "@/components/today/TodoPanel";
+import { RitualsRail } from "@/components/today/RitualsRail";
 import { DayLog } from "@/components/today/DayLog";
 
 const PILLAR_COLOR: Record<string, string> = {
@@ -172,9 +172,9 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
 
           <RitualSequence ritual={mode === "am" ? "morning" : "night"} />
 
-          {/* the to-do rail folds under the sequence on the phone */}
+          {/* the rituals rail folds under the sequence on the phone */}
           <div className="lg:hidden mb-[18px]">
-            <TodoPanel />
+            <RitualsRail />
           </div>
 
           <DayLog onJump={setMode} />
@@ -244,9 +244,9 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
           </div>
         </div>
 
-        {/* ——— the right rail: the day's to-dos, out of the page's structure ——— */}
+        {/* ——— the right rail: the rituals, out of the page's structure ——— */}
         <aside className="hidden lg:block w-[300px] flex-shrink-0 sticky top-8">
-          <TodoPanel />
+          <RitualsRail />
         </aside>
       </div>
     </div>

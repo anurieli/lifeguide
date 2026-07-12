@@ -2,24 +2,26 @@
 
 **Status:** built (v2, typed components) · **Element of:** the Sessions stream (the two calm bookends of the day) · **Owns:** `ritualItems`, `ritualDays`, `roadmapEntries`
 
-> The morning is an ordered primer sequence, not a checklist: read the doctrine, walk the roadmap set last night, answer the day's question. The evening's real job is building tomorrow morning's roadmap. Plain to-dos ride alongside on their own rail. Seal it, sleep, repeat.
+> The morning is an ordered primer sequence, not a checklist: read the doctrine, walk the roadmap set last night, answer the day's question. The evening's real job is building tomorrow morning's roadmap. Permanent practices ride alongside on the rituals rail. Seal it, sleep, repeat.
 
 ## 1. The philosophy (governs every design choice here)
 
-1. **The morning ritual is an ORDERED PRIMER SEQUENCE, not a checklist.** The person walks it top to bottom and it primes the mind for the day: the current step is quietly held, the walked steps settle. Plain to-do checking exists *alongside* (the day's to-do rail), never as the spine.
+1. **The morning ritual is an ORDERED PRIMER SEQUENCE, not a checklist.** The person walks it top to bottom and it primes the mind for the day: the current step is quietly held, the walked steps settle. Plain practice-checking exists *alongside* (the **rituals rail**), never as the spine. They are called **rituals**, never to-dos (Ariel, 2026-07-12).
 2. **The evening ritual's real job is building TOMORROW MORNING'S ROADMAP.** Before bed, the person quickly inputs exactly what tomorrow starts with — what to do, where, any info needed to just execute. Input is FAST: type, enter, next. The next morning opens with that roadmap as its ordered spine: wake up executing, not deciding. Entries target the NEXT ritual day across the 4am boundary ([ADR 0012](../../decisions/0012-roadmap-targets-next-ritual-day.md)): set at 23:00 or at 1:30am, both land on the upcoming morning.
-3. **Ritual steps are TYPED SCHEMA COMPONENTS** ([ADR 0011](../../decisions/0011-typed-ritual-components.md)). One ritual = an ordered list of typed components. Kinds today: `do` (checkbox, on the rail), `read` (a readout — inline words or the Blueprint), `question` (a reflection prompt, fixed or drawn from the rotating bank), `roadmap` (the evening builder / the morning display). Future kinds slot in by widening a union — no migration.
+3. **Ritual steps are TYPED SCHEMA COMPONENTS** ([ADR 0011](../../decisions/0011-typed-ritual-components.md)). One ritual = an ordered list of typed components. Kinds today: `do` (a permanent practice, on the rituals rail; assignable to morning, night, or **any** — indifferent to the time of day), `read` (a readout — inline words or the Blueprint), `question` (a reflection prompt, fixed or drawn from the rotating bank), `roadmap` (the evening builder / the morning display). Future kinds slot in by widening a union — no migration.
 4. **The Core is the person (character, who you are); the Blueprint is the conduct doctrine (how the day is lived).** The Today page serves the doctrine layer. The two interlink (the read step resolves from [the Blueprint](the-blueprint.md)) but never merge.
 
 No streaks, no scores, no guilt: an unfinished day simply passes; a finished one gets one quiet golden moment.
 
 ## 2. User-facing behavior
 
-**Morning.** Today lands on the Morning tab (cutoffs in `lib/ritual.ts`). The sequence card walks its components in order — typically: **Read the Blueprint** (tap Read → the [immersive reader](#the-immersive-reader) fills the screen, reaching the end marks it read), **Walk today's roadmap** (the list set last night, each entry tapped done as it happens; walking the last one checks the step), **Today's one move** (a question answered in place, typed or spoken). The first unwalked step carries a faint gold wash — the sequence has a "you are here." Plain to-dos (drink the water) sit on the **day's to-do rail**: a right-hand panel on desktop, a card under the sequence on the phone. When every component AND every rail to-do is done, the card turns gold and offers **Seal the morning**.
+**Morning.** Today lands on the Morning tab (cutoffs in `lib/ritual.ts`). The sequence card walks its components in order — typically: **Read the Blueprint** (tap Read → the [immersive reader](#the-immersive-reader) fills the screen, reaching the end marks it read), **Walk today's roadmap** (the list set last night, each entry tapped done as it happens; walking the last one checks the step), **Today's one move** (a question answered in place, typed or spoken). The first unwalked step carries a faint gold wash — the sequence has a "you are here." Plain practices (drink the water) sit on the **rituals rail**: a right-hand panel on desktop, a card under the sequence on the phone. When every component AND every morning-assigned rail practice is done, the card turns gold and offers **Seal the morning**.
+
+**The rituals rail** (reworked 2026-07-12 per Ariel's feedback — no morning/night sections, no double add box): ONE flat list of the person's permanent practices, each row carrying a **time marker** instead of a section — sun (morning), moon (night), sun-moon (**anytime**, indifferent to the time of day). Practices are permanent to the profile and checked fresh each day; morning/night ones count toward their bookend's seal, anytime ones belong to neither seal. Hovering a row reveals a **✕**; deleting always warns first — "Delete this ritual? It'll be removed from all rituals — every day, not just today." — because a delete removes the practice from the profile, not from one day. **One add affordance at the bottom**, closable: open it, type the practice, and pick morning / night / anytime on the segmented picker; enter adds and keeps the form open for the next one.
 
 **Evening.** The Evening tab centers on two components: **Check out** (a reflection question drawn from a rotating bank — a different honest question each night) and **Set tomorrow's roadmap** (the fast builder: type a line, enter, next; optional "+ where / info" per entry; reorder with arrows). A quiet count confirms "3 things set for tomorrow morning." **Close the day** seals it.
 
-**Everything is his.** Edit (top-right) manages every component of that ritual in one place: rename, reorder, delete, rewrite inline mantra words or a fixed question, add any kind (+ to-do, + something to read, + question, + roadmap, + read from the Blueprint). A question left without fixed words rotates through the bank. A brand-new user is seeded the default set below; deleting everything leaves it deleted.
+**Everything is his.** Edit (top-right) manages every component of that ritual in one place: rename, reorder, delete, rewrite inline mantra words or a fixed question, add any kind (+ ritual, + something to read, + question, + roadmap, + read from the Blueprint). A question left without fixed words rotates through the bank. A brand-new user is seeded the default set below; deleting everything leaves it deleted.
 
 **Defaults (new accounts):** morning — Read the Blueprint (from [the Blueprint document](the-blueprint.md)), Drink a glass of water (rail), Walk today's roadmap, Today's one move (fixed question). Night — Check out (rotating question), Set tomorrow's roadmap.
 
@@ -43,9 +45,10 @@ Tapping a read step opens a full-screen, in-page overlay ([ADR 0013](../../decis
 | Build tomorrow's roadmap | Evening `roadmap` step: type, enter | `roadmap.add` targeting `nextRitualDayKey(now)` (ADR 0012); `+ where / info` sets `note`; arrows reorder; ✕ removes | Manual | writes `roadmapEntries` |
 | Walk today's roadmap | Morning `roadmap` step: tap an entry | `roadmap.setDone`; walking the last entry auto-checks the component | Manual | writes `roadmapEntries.doneAt`, `ritualDays.checkedIds` |
 | Add to today late | Morning roadmap, any time | Same fast input writes to today's key | Manual | writes `roadmapEntries` |
-| Check a rail to-do | Tap in the day's to-dos panel | Same `rituals.setChecked` — one check state, so the seal counts the rail | Manual | writes `ritualDays.checkedIds` |
-| Quick-add a to-do | Enter in the rail's input | `rituals.addItem(kind "do")` | Manual | writes `ritualItems` |
-| Seal the ritual | All components + to-dos checked → confirm | `rituals.complete`: verifies against current items, stamps `completedAt`, publishes `ritual_completed` | Manual | writes `ritualDays`, `interactions` |
+| Check a practice | Tap in the rituals rail | Same `rituals.setChecked` — one check state per assignment (morning/night rows feed their seal; `any` rows feed none) | Manual | writes `ritualDays.checkedIds` |
+| Add a practice | The rail's single bottom add (closable): type + pick morning/night/anytime | `rituals.addItem(kind "do", ritual: morning\|night\|any)`; `any` is rejected for non-`do` kinds | Manual | writes `ritualItems` |
+| Delete a practice | Hover ✕ → confirm the warning | `rituals.removeItem` — removes it from the profile (every day); the warning is never skipped | Manual | deletes `ritualItems` |
+| Seal the ritual | All components + that bookend's practices checked → confirm | `rituals.complete`: verifies against current items, stamps `completedAt`, publishes `ritual_completed` | Manual | writes `ritualDays`, `interactions` |
 | Edit the ritual | edit → inline | `rituals.addItem` (any kind, `source` for reads) / `updateItem` (title, inline words, fixed question) / `removeItem` / `moveItem` | Manual | writes `ritualItems` |
 | Adopt the Blueprint read | edit-mode button / Settings card | `rituals.adoptBlueprintRead`: ensures the [Blueprint document](the-blueprint.md) exists and prepends one blueprint-sourced read to the morning; idempotent | Manual | writes `blueprint?`, `ritualItems` |
 | Read completion history | Today's log renders | `rituals.history(sinceDay)` feeds the keeping-up strip | System | reads `ritualDays` |
@@ -54,7 +57,7 @@ No Coach path yet (§9); the Coach sees completions and answers through the Bus.
 
 ## 4. Dynamics and interactions with other elements
 
-- **Hosted by [Home (Today)](dashboard.md):** the sequence card renders inside the toggled beat; the to-do rail is the page's right-hand panel (desktop) or a card below (phone). The Dashboard stays draw-only.
+- **Hosted by [Home (Today)](dashboard.md):** the sequence card renders inside the toggled beat; the rituals rail is the page's right-hand panel (desktop) or a card below (phone). The Dashboard stays draw-only.
 - **Reads from [the Blueprint](the-blueprint.md):** a `read` step with `source: "blueprint"` resolves its words live from the person's Blueprint document — no duplicated text; a Settings edit tonight is tomorrow's read.
 - **Publishes to the Sessions stream:** `ritual_completed` on seal and `ritual_question` on every answer land in `interactions`, so the Mirror/Coach fold conduct and reflection into context, and the [Today log](dashboard.md) renders the day's journal from them.
 - **The roadmap loop is self-contained:** tonight's builder and tomorrow's spine are the same `roadmapEntries` rows under one target-day key (ADR 0012) — no handoff, no copy.
@@ -69,7 +72,8 @@ No Coach path yet (§9); the Coach sees completions and answers through the Bus.
 - **Roadmap, morning, nothing set:** "No roadmap was set last night. Set the first thing now:" — the fast input is right there.
 - **Roadmap, evening:** the builder always shows the count set for tomorrow; entries reorder/remove inline.
 - **Reader open:** page scroll locked, close always visible; finish confirmation then release.
-- **Rail with no to-dos:** quiet "Nothing here yet" + the quick-add.
+- **Rail with no practices:** a quiet invitation + the single add.
+- **Deleting from the rail:** always behind the warning box; the confirm names the real consequence (gone from every day).
 
 ## 6. Edge cases
 
@@ -90,15 +94,15 @@ None at runtime. The question bank is code-resident with deterministic rotation 
 Exact shapes in [`../../architecture/data-model.md`](../../architecture/data-model.md).
 
 **Owned:**
-- `ritualItems`: `{ userId, ritual, kind: do|read|question|roadmap, title, content?, source?, order, createdAt, updatedAt }` — the typed components (ADR 0011). `content` = inline read words or a fixed question; `source` (reads) = `inline` | `blueprint`.
-- `ritualDays`: unchanged (ADR 0009) — per-day check state + completion history, kind-blind.
+- `ritualItems`: `{ userId, ritual: morning|night|any, kind: do|read|question|roadmap, title, content?, source?, order, createdAt, updatedAt }` — the typed components (ADR 0011). `content` = inline read words or a fixed question; `source` (reads) = `inline` | `blueprint`; `ritual: "any"` is a time-indifferent practice (kind `do` only, enforced server-side).
+- `ritualDays`: per-day check state + completion history, kind-blind (ADR 0009). Rows exist per assignment (`morning`, `night`, `any`); `any` rows carry daily checks but are never sealed (`rituals.complete` only accepts morning/night).
 - `roadmapEntries`: `{ userId, day, text, note?, order, doneAt?, createdAt }`, indexed `by_user_day [userId, day, order]` — the roadmap loop's rows, keyed by TARGET day (ADR 0012).
 
 **Writes elsewhere:** `settings.ritualsSeededAt` / `settings.ritualsSeedVersion` (seed + upgrade markers); `interactions` (`ritual_completed`, `ritual_question`); `blueprint` (only via the idempotent adopt).
 
 **Drawn:** `blueprint.content` (blueprint-sourced reads), the clock.
 
-**Code:** `convex/rituals.ts`, `convex/roadmap.ts`, `convex/blueprintDoc.ts`, `lib/ritual.ts` (cutoffs, day keys, spans, `nextRitualDayKey`), `lib/questions.ts` (the bank), `components/today/RitualSequence.tsx` (the spine + edit), `components/today/TodoPanel.tsx` (the rail), `components/today/ImmersiveReader.tsx` (the reader), wired in `components/today/Today.tsx`. Tests: `tests/ritual.test.ts`, `tests/questions.test.ts`, `tests/convex/rituals.test.ts`, `tests/convex/roadmap.test.ts`, `tests/convex/day-log.test.ts`.
+**Code:** `convex/rituals.ts`, `convex/roadmap.ts`, `convex/blueprintDoc.ts`, `lib/ritual.ts` (cutoffs, day keys, spans, `nextRitualDayKey`), `lib/questions.ts` (the bank), `components/today/RitualSequence.tsx` (the spine + edit), `components/today/RitualsRail.tsx` (the rituals rail), `components/today/ImmersiveReader.tsx` (the reader), wired in `components/today/Today.tsx`. Tests: `tests/ritual.test.ts`, `tests/questions.test.ts`, `tests/convex/rituals.test.ts`, `tests/convex/roadmap.test.ts`, `tests/convex/day-log.test.ts`.
 
 ## 9. Open questions
 

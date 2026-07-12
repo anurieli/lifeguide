@@ -3,10 +3,13 @@ import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
 import { getOrCreate as getOrCreateSettings } from "./settings";
+import { ensureBlueprint } from "./blueprintDoc";
 
 // ============================================================================
-// The Daily Ritual: two small user-editable checklists (morning and night) that
-// turn the bookends of the day into a digital ritual. Items are per-user and
+// The Daily Ritual: two ordered sequences of TYPED COMPONENTS (ADR 0011) that
+// bookend the day. The morning is a primer sequence walked top to bottom (read,
+// roadmap, question); the evening builds tomorrow's roadmap; plain "do" steps
+// live on the day's to-do rail beside the sequence. Items are per-user and
 // ordered; check state lives in per-day rows (ritualDays) so it resets each
 // ritual day structurally, while completed rows persist as history. Time logic
 // (which ritual now, which day this is) lives in lib/ritual.ts; the day key is
@@ -14,31 +17,44 @@ import { getOrCreate as getOrCreateSettings } from "./settings";
 // ============================================================================
 
 const RITUAL = v.union(v.literal("morning"), v.literal("night"));
-const KIND = v.union(v.literal("do"), v.literal("read"));
+const KIND = v.union(
+  v.literal("do"),
+  v.literal("read"),
+  v.literal("question"),
+  v.literal("roadmap"),
+);
+const SOURCE = v.union(v.literal("inline"), v.literal("blueprint"));
 
 // A ritual-day key must be the "YYYY-MM-DD" shape lib/ritual.ts produces.
 const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
+// The current seed version: bumping it means new default components exist that
+// upgradeToSeedVersion can offer to older accounts. Fresh seeds start here.
+export const RITUALS_SEED_VERSION = 2;
+
 // The minimal default set, derived from the Blueprint for Living doctrine
 // (docs/research/blueprint-for-living.md). Deliberately small: users delete
-// what they do not want. Everything here is editable after seeding.
+// what they do not want. Everything here is editable after seeding. The morning
+// is the primer sequence (read → roadmap → question) plus one "do"; the evening
+// is the close-out (question) and tomorrow's roadmap builder.
 export const DEFAULT_RITUAL_ITEMS: {
   ritual: "morning" | "night";
-  kind: "do" | "read";
+  kind: "do" | "read" | "question" | "roadmap";
   title: string;
   content?: string;
+  source?: "inline" | "blueprint";
 }[] = [
+  { ritual: "morning", kind: "read", title: "Read the Blueprint", source: "blueprint" },
+  { ritual: "morning", kind: "do", title: "Drink a glass of water" },
+  { ritual: "morning", kind: "roadmap", title: "Walk today's roadmap" },
   {
     ritual: "morning",
-    kind: "read",
-    title: "Read the mantra",
-    content:
-      "Discipline over motivation. Create more than you consume. One small win today, kept like a promise to myself.",
+    kind: "question",
+    title: "Today's one move",
+    content: "What's one small thing today that points at it?",
   },
-  { ritual: "morning", kind: "do", title: "Drink a glass of water" },
-  { ritual: "morning", kind: "do", title: "Plan the day: one move that points at the goal" },
-  { ritual: "night", kind: "do", title: "Check out: wins and lessons from today" },
-  { ritual: "night", kind: "do", title: "Plan tomorrow before bed" },
+  { ritual: "night", kind: "question", title: "Check out" }, // no content → rotating bank
+  { ritual: "night", kind: "roadmap", title: "Set tomorrow's roadmap" },
 ];
 
 async function getOwnedItem(ctx: MutationCtx, userId: Id<"users">, itemId: Id<"ritualItems">) {
@@ -109,15 +125,116 @@ export const seedDefaults = mutation({
           kind: item.kind,
           title: item.title,
           content: item.content,
+          source: item.source,
           order: orders[item.ritual]++,
           createdAt: now,
           updatedAt: now,
         });
       }
     }
-    await ctx.db.patch(settings._id, { ritualsSeededAt: now, updatedAt: now });
+    // A fresh seed is already on the current version, so the upgrade never runs.
+    await ctx.db.patch(settings._id, {
+      ritualsSeededAt: now,
+      ritualsSeedVersion: RITUALS_SEED_VERSION,
+      updatedAt: now,
+    });
   },
 });
+
+// One-shot upgrade to the typed-component seed (v2, ADR 0011): offers the new
+// question/roadmap components to accounts seeded before they existed. Only
+// touches a ritual that still has at least one item (an emptied ritual stays
+// empty — delete-all is honored), only appends kinds the ritual does not already
+// have, and never edits existing items. Marked done via settings.ritualsSeedVersion,
+// so deleting the added components later also sticks.
+export const upgradeToSeedVersion = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    const settings = await getOrCreateSettings(ctx, userId);
+    if ((settings.ritualsSeedVersion ?? 1) >= RITUALS_SEED_VERSION) return;
+    const now = Date.now();
+    const additions: Record<
+      "morning" | "night",
+      { kind: "question" | "roadmap"; title: string; content?: string }[]
+    > = {
+      morning: [
+        { kind: "roadmap", title: "Walk today's roadmap" },
+        {
+          kind: "question",
+          title: "Today's one move",
+          content: "What's one small thing today that points at it?",
+        },
+      ],
+      night: [
+        { kind: "question", title: "Check out" },
+        { kind: "roadmap", title: "Set tomorrow's roadmap" },
+      ],
+    };
+    for (const ritual of ["morning", "night"] as const) {
+      const items = await itemsFor(ctx, userId, ritual);
+      if (items.length === 0) continue; // emptied on purpose; stays empty
+      let order = Math.max(...items.map((i) => i.order)) + 1;
+      const have = new Set(items.map((i) => i.kind));
+      for (const add of additions[ritual]) {
+        if (have.has(add.kind)) continue;
+        await ctx.db.insert("ritualItems", {
+          userId,
+          ritual,
+          kind: add.kind,
+          title: add.title,
+          content: add.content,
+          order: order++,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+    await ctx.db.patch(settings._id, {
+      ritualsSeedVersion: RITUALS_SEED_VERSION,
+      updatedAt: now,
+    });
+  },
+});
+
+// "Add the Blueprint": ensure the Blueprint document exists (seeding it if this
+// account never adopted one) and ensure the morning ritual opens with a read step
+// that resolves from it. Idempotent — an existing blueprint-sourced read step (in
+// either ritual) makes this a no-op, so repeated taps never duplicate.
+export const adoptBlueprintRead = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    await ensureBlueprint(ctx, userId);
+    const all = await ctx.db
+      .query("ritualItems")
+      .withIndex("by_user_ritual", (q) => q.eq("userId", userId))
+      .collect();
+    if (all.some((i) => i.kind === "read" && i.source === "blueprint")) return;
+    const morning = all.filter((i) => i.ritual === "morning");
+    const now = Date.now();
+    await ctx.db.insert("ritualItems", {
+      userId,
+      ritual: "morning",
+      kind: "read",
+      title: "Read the Blueprint",
+      source: "blueprint",
+      // The read opens the morning: slot in ahead of everything.
+      order: morning.length === 0 ? 0 : Math.min(...morning.map((i) => i.order)) - 1,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+const DEFAULT_TITLES: Record<string, string> = {
+  do: "New step",
+  read: "Something to read",
+  question: "A question to sit with",
+  roadmap: "The roadmap",
+};
 
 export const addItem = mutation({
   args: {
@@ -125,6 +242,7 @@ export const addItem = mutation({
     kind: KIND,
     title: v.string(),
     content: v.optional(v.string()),
+    source: v.optional(SOURCE),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -135,8 +253,9 @@ export const addItem = mutation({
       userId,
       ritual: args.ritual,
       kind: args.kind,
-      title: args.title.trim() || (args.kind === "read" ? "Something to read" : "New step"),
+      title: args.title.trim() || DEFAULT_TITLES[args.kind],
       content: args.content,
+      source: args.kind === "read" ? args.source : undefined, // source is a read-only concept
       order: siblings.length === 0 ? 0 : Math.max(...siblings.map((s) => s.order)) + 1,
       createdAt: now,
       updatedAt: now,

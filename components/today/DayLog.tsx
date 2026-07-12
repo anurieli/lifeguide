@@ -6,6 +6,7 @@ import { Check, Moon, Sun } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import {
   lastNRitualDayKeys,
+  nextRitualDayKey,
   ritualDayKey,
   ritualDayRange,
   RitualType,
@@ -43,6 +44,19 @@ function entryView(e: { type: string; payload: string; at: number }): {
     return { ritual: "morning", label: "Today's one move", text: e.payload };
   if (e.type === "checkin_evening")
     return { ritual: "night", label: "Tonight", text: e.payload };
+  if (e.type === "ritual_question") {
+    try {
+      const p = JSON.parse(e.payload) as { ritual?: RitualType; question?: string; answer?: string };
+      if (!p.answer) return null;
+      return {
+        ritual: p.ritual === "night" ? "night" : "morning",
+        label: p.question || "A question",
+        text: p.answer,
+      };
+    } catch {
+      return null;
+    }
+  }
   if (e.type === "ritual_completed") {
     try {
       const p = JSON.parse(e.payload) as { ritual?: RitualType };
@@ -90,10 +104,11 @@ function PartRow({
 export function DayLog({ onJump }: { onJump: (mode: "am" | "pm") => void }) {
   // Computed once per mount: the queries want stable args, and a page left open
   // across the 4am rollover simply refreshes on the next visit.
-  const { dayKey, range, weekKeys } = useMemo(() => {
+  const { dayKey, nextDayKey, range, weekKeys } = useMemo(() => {
     const now = new Date();
     return {
       dayKey: ritualDayKey(now),
+      nextDayKey: nextRitualDayKey(now),
       range: ritualDayRange(now),
       weekKeys: lastNRitualDayKeys(now, HISTORY_DAYS),
     };
@@ -103,6 +118,8 @@ export function DayLog({ onJump }: { onJump: (mode: "am" | "pm") => void }) {
   const morningDay = useQuery(api.rituals.day, { ritual: "morning", day: dayKey });
   const nightDay = useQuery(api.rituals.day, { ritual: "night", day: dayKey });
   const history = useQuery(api.rituals.history, { sinceDay: weekKeys[0] });
+  const todayRoadmap = useQuery(api.roadmap.forDay, { day: dayKey });
+  const tomorrowRoadmap = useQuery(api.roadmap.forDay, { day: nextDayKey });
   const events = useQuery(api.interactions.forRange, {
     sinceMs: range.sinceMs,
     untilMs: range.untilMs,
@@ -121,12 +138,9 @@ export function DayLog({ onJump }: { onJump: (mode: "am" | "pm") => void }) {
   const pm = counts("night");
   const morningSealedAt = morningDay?.completedAt;
   const nightSealedAt = nightDay?.completedAt;
-  const lastOf = (type: string) => {
-    const of = events.filter((e) => e.type === type);
-    return of.length ? of[of.length - 1] : undefined;
-  };
-  const oneMove = lastOf("checkin_morning");
-  const tonight = lastOf("checkin_evening");
+  const todayDone = (todayRoadmap ?? []).filter((r) => r.doneAt).length;
+  const todayTotal = (todayRoadmap ?? []).length;
+  const tomorrowTotal = (tomorrowRoadmap ?? []).length;
 
   const entries = events
     .slice()
@@ -166,9 +180,9 @@ export function DayLog({ onJump }: { onJump: (mode: "am" | "pm") => void }) {
         />
         <PartRow
           ritual="morning"
-          title="Today's one move"
-          done={!!oneMove}
-          detail={oneMove ? timeOf(oneMove.at) : undefined}
+          title="Today's roadmap"
+          done={todayTotal > 0 && todayDone === todayTotal}
+          detail={todayTotal > 0 ? `${todayDone}/${todayTotal}` : "none set"}
           onClick={() => onJump("am")}
         />
         <PartRow
@@ -186,9 +200,13 @@ export function DayLog({ onJump }: { onJump: (mode: "am" | "pm") => void }) {
         />
         <PartRow
           ritual="night"
-          title="Tonight's reflection"
-          done={!!tonight}
-          detail={tonight ? timeOf(tonight.at) : undefined}
+          title="Tomorrow's roadmap"
+          done={tomorrowTotal > 0}
+          detail={
+            tomorrowTotal > 0
+              ? `${tomorrowTotal} thing${tomorrowTotal === 1 ? "" : "s"}`
+              : "not set"
+          }
           onClick={() => onJump("pm")}
         />
       </div>
@@ -251,32 +269,6 @@ export function DayLog({ onJump }: { onJump: (mode: "am" | "pm") => void }) {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-// The daily mantras, gathered from every "read" ritual step (morning and night),
-// visible regardless of which beat is toggled. The words are edited where they
-// live: in the ritual card's edit mode.
-export function MantraCard() {
-  const items = useQuery(api.rituals.list, {});
-  const mantras = (items ?? []).filter((i) => i.kind === "read" && (i.content ?? "").trim());
-  if (mantras.length === 0) return null;
-  return (
-    <div className="bg-card border border-line rounded-[18px] p-[22px] mb-[18px]">
-      <div className="text-[11px] tracking-[0.16em] uppercase text-ink-mute mb-2.5">
-        Daily mantras
-      </div>
-      {mantras.map((m) => (
-        <div key={m._id} className="flex items-start gap-3 py-1.5">
-          <span className="pt-1 flex-shrink-0">
-            <RitualIcon ritual={m.ritual} className="w-3.5 h-3.5 text-ink-mute" />
-          </span>
-          <span className="text-[14.5px] leading-relaxed italic text-ink-soft border-l-2 border-gold/50 pl-3">
-            {m.content}
-          </span>
-        </div>
-      ))}
     </div>
   );
 }

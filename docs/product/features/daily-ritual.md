@@ -19,7 +19,9 @@ No streaks, no scores, no guilt: an unfinished day simply passes; a finished one
 
 **Evening.** The Evening tab centers on two components: **Check out** (a reflection question drawn from a rotating bank — a different honest question each night) and **Set tomorrow's roadmap** (the fast builder: type a line, enter, next; optional "+ where / info" per entry; reorder with arrows). A quiet count confirms "3 things set for tomorrow morning." **Close the day** seals it.
 
-**Everything is his.** Edit (top-right) manages every component of that ritual in one place: rename, reorder, delete, rewrite inline mantra words or a fixed question, add any kind (+ to-do, + something to read, + question, + roadmap, + read from the Blueprint). A question left without fixed words rotates through the bank. A brand-new user is seeded the default set below; deleting everything leaves it deleted.
+**Answering is frictionless.** A `question` step is one always-live field: type or speak, and the answer saves the moment you click out of it (or when a voice take lands) — no Save button. Voice persists the same way ([VoiceField](voice-field.md)'s `onCommit` fires on blur and after shaping). Editing an existing answer is just editing the field and clicking out again.
+
+**Everything is his.** Edit (top-right) manages every component of that ritual in one place: rename, reorder, delete, rewrite inline mantra words, add any kind (+ to-do, + something to read, + question, + roadmap, + read from the Blueprint). For a `question` step the one editable field IS the question itself (writing `content`, the fixed prompt) — the step's title tracks it so the label stays meaningful; leave it empty to rotate through the bank, and edit mode shows tonight's rotating question inline. A brand-new user is seeded the default set below; deleting everything leaves it deleted.
 
 **Defaults (new accounts):** morning — Read the Blueprint (from [the Blueprint document](the-blueprint.md)), Drink a glass of water (rail), Walk today's roadmap, Today's one move (fixed question). Night — Check out (rotating question), Set tomorrow's roadmap.
 
@@ -38,7 +40,7 @@ Tapping a read step opens a full-screen, in-page overlay ([ADR 0013](../../decis
 | Offer v2 components | First open of an older account | `rituals.upgradeToSeedVersion`: appends missing question/roadmap kinds to non-empty rituals, once (ADR 0011) | System | writes `ritualItems`, `settings.ritualsSeedVersion` |
 | Walk / check a component | Tap the circle | `rituals.setChecked` in today's `ritualDays` row | Manual | writes `ritualDays.checkedIds` |
 | Read (immersive) | Tap Read on a `read` step | Opens the overlay; scroll-to-end auto-checks the step (ADR 0013) | Manual | writes `ritualDays.checkedIds` |
-| Answer the question | Type/speak + Save on a `question` step | Publishes `ritual_question` `{ritual, day, itemId, question, answer}` to the Bus and checks the step; answer shows in place and in the [Today log](dashboard.md) | Manual (voice via VoiceField) | writes `interactions`, `ritualDays.checkedIds` |
+| Answer the question | Type/speak on a `question` step, then click out (auto-saves on blur — no Save button) | Publishes `ritual_question` `{ritual, day, itemId, question, answer}` to the Bus and checks the step; a non-empty, changed answer only. Answer shows in place and in the [Today log](dashboard.md) | Manual (voice via VoiceField) | writes `interactions`, `ritualDays.checkedIds` |
 | Rotate the question | A `question` step with no fixed words | `questionForDay(bank, dayKey)` — deterministic per ritual day (`lib/questions.ts`) | System | none |
 | Build tomorrow's roadmap | Evening `roadmap` step: type, enter | `roadmap.add` targeting `nextRitualDayKey(now)` (ADR 0012); `+ where / info` sets `note`; arrows reorder; ✕ removes | Manual | writes `roadmapEntries` |
 | Walk today's roadmap | Morning `roadmap` step: tap an entry | `roadmap.setDone`; walking the last entry auto-checks the component | Manual | writes `roadmapEntries.doneAt`, `ritualDays.checkedIds` |
@@ -46,7 +48,7 @@ Tapping a read step opens a full-screen, in-page overlay ([ADR 0013](../../decis
 | Check a rail to-do | Tap in the day's to-dos panel | Same `rituals.setChecked` — one check state, so the seal counts the rail | Manual | writes `ritualDays.checkedIds` |
 | Quick-add a to-do | Enter in the rail's input | `rituals.addItem(kind "do")` | Manual | writes `ritualItems` |
 | Seal the ritual | All components + to-dos checked → confirm | `rituals.complete`: verifies against current items, stamps `completedAt`, publishes `ritual_completed` | Manual | writes `ritualDays`, `interactions` |
-| Edit the ritual | edit → inline | `rituals.addItem` (any kind, `source` for reads) / `updateItem` (title, inline words, fixed question) / `removeItem` / `moveItem` | Manual | writes `ritualItems` |
+| Edit the ritual | edit → inline | `rituals.addItem` (any kind, `source` for reads) / `updateItem` (title, inline words; for a `question` the primary field edits `content` and syncs `title`) / `removeItem` / `moveItem` | Manual | writes `ritualItems` |
 | Adopt the Blueprint read | edit-mode button / Settings card | `rituals.adoptBlueprintRead`: ensures the [Blueprint document](the-blueprint.md) exists and prepends one blueprint-sourced read to the morning; idempotent | Manual | writes `blueprint?`, `ritualItems` |
 | Read completion history | Today's log renders | `rituals.history(sinceDay)` feeds the keeping-up strip | System | reads `ritualDays` |
 
@@ -65,7 +67,7 @@ No Coach path yet (§9); the Coach sees completions and answers through the Bus.
 
 - **Unseeded / fresh day / in progress / all-checked / sealed / empty ritual / editing:** as v1 (empty day rows are created on first check; gold at all-checked; `completedAt` locks checks; delete-all invites, never re-seeds).
 - **Sequence position:** the first unchecked spine component carries the "current" wash; sealed or fully-walked rituals have none.
-- **Question answered:** the answer replaces the input in place, with a quiet edit; re-answering logs a new event (history keeps both, the step shows the latest).
+- **Question answered:** the field stays live, seeded with the saved answer; it auto-saves on blur (and after a voice take). Re-editing then clicking out logs a new event (history keeps both, the step shows the latest); an empty or unchanged blur logs nothing.
 - **Roadmap, morning, nothing set:** "No roadmap was set last night. Set the first thing now:" — the fast input is right there.
 - **Roadmap, evening:** the builder always shows the count set for tomorrow; entries reorder/remove inline.
 - **Reader open:** page scroll locked, close always visible; finish confirmation then release.

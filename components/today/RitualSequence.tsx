@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { ArrowDown, ArrowUp, BookOpen, Check, Plus, X } from "lucide-react";
 import { api } from "@/convex/_generated/api";
@@ -87,6 +87,9 @@ function StepCircle({
 }
 
 // --- The question component: a prompt answered in place -------------------
+// One field, always live: type or speak, and the answer saves the moment you
+// click out (or when a voice take lands). No Save button — VoiceField's onCommit
+// fires on blur and after shaping, so an answer is never stranded behind a click.
 
 function QuestionStep({
   item,
@@ -101,58 +104,60 @@ function QuestionStep({
   sealed: boolean;
   onAnswer: (answer: string) => Promise<void>;
 }) {
-  const [draft, setDraft] = useState("");
-  const [rewriting, setRewriting] = useState(false);
-  const showInput = (!answer || rewriting) && !sealed;
+  const [draft, setDraft] = useState(answer ?? "");
+  // While the person is mid-edit we hold their draft; otherwise we mirror the
+  // persisted answer (it loads in async, or another device answers).
+  const dirtyRef = useRef(false);
+  useEffect(() => {
+    if (!dirtyRef.current) setDraft(answer ?? "");
+  }, [answer]);
+
+  const commit = useCallback(
+    async (next: string) => {
+      const trimmed = next.trim();
+      dirtyRef.current = false;
+      // Nothing meaningful, or unchanged → don't log an empty/duplicate answer.
+      if (!trimmed || trimmed === (answer ?? "").trim()) return;
+      await onAnswer(trimmed);
+    },
+    [answer, onAnswer],
+  );
+
+  if (sealed) {
+    return (
+      <div className="min-w-0 flex-1">
+        <div className="text-[15px] text-ink mb-1">{question}</div>
+        {answer ? (
+          <div className="text-[14.5px] text-ink-soft leading-relaxed">{answer}</div>
+        ) : (
+          <div className="text-[13.5px] text-ink-mute">Not answered.</div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="min-w-0 flex-1">
       <div className="text-[15px] text-ink mb-1">{question}</div>
-      {showInput ? (
-        <div className="mt-2">
-          <VoiceField
-            meta={{
-              id: `ritual.question.${item._id}`,
-              question,
-              descriptor: "Say it however it comes out.",
-              placeholder: "Say it however it comes out…",
-              intent: "capture an honest, plain answer to this reflection question",
-            }}
-            value={draft}
-            onChange={setDraft}
-            rows={2}
-            inputClassName={FIELD_CLASS}
-          />
-          <button
-            onClick={async () => {
-              await onAnswer(draft.trim());
-              setDraft("");
-              setRewriting(false);
-            }}
-            disabled={!draft.trim()}
-            className="mt-2 bg-ink text-white rounded-xl px-4 py-2 text-sm disabled:opacity-40"
-          >
-            Save
-          </button>
-        </div>
-      ) : answer ? (
-        <div className="text-[14.5px] text-ink-soft leading-relaxed">
-          {answer}
-          {!sealed && (
-            <button
-              onClick={() => {
-                setDraft(answer);
-                setRewriting(true);
-              }}
-              className="ml-2 text-xs text-ink-mute hover:text-ink"
-            >
-              edit
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="text-[13.5px] text-ink-mute">Not answered.</div>
-      )}
+      <div className="mt-2">
+        <VoiceField
+          meta={{
+            id: `ritual.question.${item._id}`,
+            question,
+            descriptor: "Say it however it comes out.",
+            placeholder: "Say it however it comes out…",
+            intent: "capture an honest, plain answer to this reflection question",
+          }}
+          value={draft}
+          onChange={(next) => {
+            dirtyRef.current = true;
+            setDraft(next);
+          }}
+          onCommit={commit}
+          rows={2}
+          inputClassName={FIELD_CLASS}
+        />
+      </div>
     </div>
   );
 }
@@ -444,15 +449,35 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
                   <span className="text-[10px] tracking-[0.1em] uppercase text-ink-mute border border-line rounded-full px-2 py-0.5 flex-shrink-0">
                     {KIND_LABEL[item.kind]}
                   </span>
-                  <input
-                    defaultValue={item.title}
-                    onBlur={(e) => {
-                      const title = e.target.value.trim();
-                      if (title && title !== item.title)
-                        void updateItem({ itemId: item._id, title });
-                    }}
-                    className={EDIT_FIELD}
-                  />
+                  {item.kind === "question" ? (
+                    // A question step's one editable thing IS the question. Editing
+                    // it writes `content` (the fixed prompt); the title tracks it so
+                    // the step's label stays meaningful. Empty → rotate the bank.
+                    <input
+                      defaultValue={item.content ?? ""}
+                      placeholder="The question asked here — leave empty to rotate through the bank"
+                      onBlur={(e) => {
+                        const q = e.target.value;
+                        if (q !== (item.content ?? ""))
+                          void updateItem({
+                            itemId: item._id,
+                            content: q,
+                            title: q.trim() || "Reflection question",
+                          });
+                      }}
+                      className={EDIT_FIELD}
+                    />
+                  ) : (
+                    <input
+                      defaultValue={item.title}
+                      onBlur={(e) => {
+                        const title = e.target.value.trim();
+                        if (title && title !== item.title)
+                          void updateItem({ itemId: item._id, title });
+                      }}
+                      className={EDIT_FIELD}
+                    />
+                  )}
                 </div>
                 {item.kind === "read" &&
                   (item.source === "blueprint" ? (
@@ -471,16 +496,13 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
                       className={`${EDIT_FIELD} mt-1.5 resize-none leading-relaxed`}
                     />
                   ))}
-                {item.kind === "question" && (
-                  <input
-                    defaultValue={item.content ?? ""}
-                    placeholder="A fixed question — or leave empty to rotate through the bank"
-                    onBlur={(e) => {
-                      if (e.target.value !== (item.content ?? ""))
-                        void updateItem({ itemId: item._id, content: e.target.value });
-                    }}
-                    className={`${EDIT_FIELD} mt-1.5`}
-                  />
+                {item.kind === "question" && !item.content?.trim() && (
+                  <div className="text-[12.5px] text-ink-mute mt-1.5 pl-1">
+                    Rotating through the bank — tonight:{" "}
+                    <span className="text-ink-soft">
+                      “{questionForDay(ritual === "morning" ? "morning" : "evening", dayKey)}”
+                    </span>
+                  </div>
                 )}
               </div>
               <button

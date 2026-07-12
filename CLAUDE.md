@@ -55,6 +55,12 @@ mockup/
 
 Everything else (prd, architecture, feature docs, design, decisions, research, plans, roadmap) was removed and is being rebuilt to the evolved vision; it all remains in git history. The working model for rebuilding the Journal and the Core is the original Life Blueprint app at `~/lifeguide`. See [`docs/README.md`](docs/README.md).
 
+## Coach Knowledge Base (pulled from the developer's Brain Vault)
+
+The canonical coaching content the Coach draws from — the **mantra pool**, the **Life Blueprint** backbone, and the **daily-conduct doctrine** — is the **Coach Knowledge Base**, kept in [`docs/product/coach-knowledge-base/`](docs/product/coach-knowledge-base/). Its **canonical source is the developer's Brain Vault** (LifeGuide notes at `~/brain-vault/01-Projects/lifeguide/lifeguide-notes/`); the copies in this repo are **pulled from there** to seed the app. When directed to sync, treat the vault as the source of truth and this repo as the copy.
+
+It is distinct from each user's **Personal Knowledge Base** (per-user, client-side, editable) — that is seeded from the Coach KB but diverges per person and never writes back to the canon. The Coach KB is owner-authored and belongs behind owner-gated admin (ADR 0006).
+
 ## Feature docs must be COMPLETE (when we rebuild them)
 Every feature doc (one per component, the units) must describe **all** of: purpose, user-facing behavior, every function/action, dynamics and interactions with other components, states, edge cases, AI involvement, data touched, and open questions. "All possible uses, functions, and dynamics" is the bar. If a behavior exists, it is written down.
 

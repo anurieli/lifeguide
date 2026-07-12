@@ -46,6 +46,7 @@ The rebuild is complete. The set below is written fresh to the evolved vision; n
 - [`product/prd.md`](product/prd.md): the v1 requirements, the index that ties the feature docs together.
 - [`product/concept-and-soul.md`](product/concept-and-soul.md): the why (seed 1; the "evolved system" section is the source of truth).
 - [`product/blueprint/the-life-blueprint.md`](product/blueprint/the-life-blueprint.md): the recovered Blueprint, the Core's backbone (3 sections, 18 questions).
+- [`product/coach-knowledge-base/`](product/coach-knowledge-base/mantras.md): the **Coach Knowledge Base** — the canon the Coach draws from (mantra pool, blueprint, doctrine). Canonical source is the developer's Brain Vault; repo copies are pulled from there. See [`../CLAUDE.md`](../CLAUDE.md#coach-knowledge-base-pulled-from-the-developers-brain-vault).
 - [`product/features/`](product/features/README.md): one doc per element (Vision Board, Future Self, Journal, Pillars & Goals, Core, Coach, Guide, Dashboard, Settings).
 
 **Architecture**

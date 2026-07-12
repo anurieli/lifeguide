@@ -7,6 +7,12 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-12 · Vision board: Inbox peek pinned to the pill
+
+Third round on the Inbox dropdown, per Ariel: the hover peek popup now shows **only while the pointer is over the pill itself** and vanishes the instant it leaves. Previously the hover zone was the pill's whole wrapper (which grows to include the popup below it), so the peek lingered while the mouse wandered under the pill. The `onMouseEnter`/`onMouseLeave` pair moved from the wrapper `div` to the pill `button` in `components/whiteboard/Inbox.tsx`; the popup itself stays `pointer-events-none`, so it can never hold itself open.
+
+**Docs touched:** `docs/product/features/vision-board.md` (§2: peek pinned to the pill).
+
 ## 2026-07-12 · Capture v3.1: the surface is called Thoughts, the pen says "Think out loud", demo thoughts
 
 Same-day polish on v3 from Ariel's live feedback. **Naming:** the merged capture tab is **Thoughts**, not "Dumps" (the entries underneath are still `sessions`); the icon returns to the booklet (`NotebookPen` — "a session is a booklet"), the list heading, back link, entry-name aria and Coach context line follow. **The pen:** the desktop create action is a **scribbler pen** (`PenLine`) instead of a ➕ — in the rail *and* now in the Thoughts list header, so a fresh entry never requires leaving the surface; hover reads **"Think out loud"** (the phone keeps its center ➕, same label). **Demo thoughts:** the empty state offers "Show me two example thoughts" and a quiet "Add demo thoughts" link sits under a populated list; `sessions.seedDemo` builds two fully packed entries — voice takes with transcripts and playable files, photos, typed passages — as ordinary sessions/captures (extraction pre-done, digest stamped, `sourceMeta.demo: true`, no ingest, no model calls) that can be opened, appended to, or swiped away. The media is painted client-side and uploaded like any capture file: a dependency-free WAV synthesizer (`lib/demoWav.ts`, soft two-note hum, 8kHz mono) and canvas-drawn sunrise/notebook photos (`components/sessions/demoMedia.ts`). No schema changes. 162 tests green (4 new: seedDemo structure + digest-covered refresh + auth/media guards, WAV well-formedness + fade envelope), tsc clean, lint clean, `next build` passes.

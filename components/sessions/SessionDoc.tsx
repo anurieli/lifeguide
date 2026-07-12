@@ -160,7 +160,7 @@ export function SessionDoc({
       <div className="text-center py-16">
         <p className="text-[14px] text-ink-mute">This entry is gone.</p>
         <button type="button" onClick={onBack} className="mt-3 text-[13px] text-gold">
-          Back to dumps
+          Back to thoughts
         </button>
       </div>
     );
@@ -200,7 +200,7 @@ export function SessionDoc({
               month: "long",
               day: "numeric",
             })}
-            aria-label="Name this dump"
+            aria-label="Name this thought"
             className="w-full bg-transparent text-[14px] text-ink font-medium outline-none placeholder:text-ink-mute"
           />
           <div className="text-[11.5px] text-ink-mute">

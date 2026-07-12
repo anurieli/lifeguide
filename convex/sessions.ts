@@ -26,6 +26,132 @@ export const create = mutation({
   },
 });
 
+// Demo thoughts: two fully packed entries (voice takes, photos, typed passages)
+// so the surface can be seen lived-in before it is. Everything is real data —
+// ordinary sessions and captures the person can open, append to, or swipe away.
+// Members land with extraction already done and the digest stamped, so no ingest
+// runs and no model is called over demo text. The voice/photo files are painted
+// client-side (components/sessions/demoMedia.ts) and uploaded before this call.
+const DEMO_ENTRIES = [
+  {
+    title: "Walk in — saying yes to less",
+    summary:
+      "A walk-and-talk about overcommitting, narrowed down to the three things this week that are actually his.",
+    ageMs: 2 * 24 * 3_600_000,
+    members: [
+      {
+        kind: "voice" as const,
+        voiceIndex: 0,
+        durationMs: 24_000,
+        transcript:
+          "Okay — thinking out loud on the walk in. The thing that's been eating at me isn't the workload, it's that I keep saying yes to things that aren't mine to carry. Every yes is a small no to the stuff I said matters.",
+      },
+      {
+        kind: "text" as const,
+        text: "Three things that are actually mine this week:\n1. Finish the portfolio page\n2. Call grandpa\n3. Gym Tuesday and Thursday",
+      },
+      {
+        kind: "photo" as const,
+        photoIndex: 0,
+        description:
+          "A sunrise over a dark horizon, the sky going from deep blue to warm gold.",
+      },
+      {
+        kind: "text" as const,
+        text: "Noticing: the anxious hum shows up on days I skip the morning walk. Two for two now. Keep the walk.",
+      },
+    ],
+  },
+  {
+    title: "Late night — putting the loop down",
+    summary:
+      "A pre-sleep dump that turns a looping idea into a weekend-sized plan with a concrete first step for the morning.",
+    ageMs: 5 * 3_600_000,
+    members: [
+      {
+        kind: "text" as const,
+        text: "Can't sleep. Brain's loud. Putting it here so it stops looping.",
+      },
+      {
+        kind: "voice" as const,
+        voiceIndex: 1,
+        durationMs: 31_000,
+        transcript:
+          "The site for dad's woodworking again. I keep treating it like some huge project — it's a landing page, six photos and a contact form. That's a weekend, not a mountain. If I sketch it tomorrow morning it stops being a thing I carry around.",
+      },
+      {
+        kind: "photo" as const,
+        photoIndex: 1,
+        description: "A notebook page with pen scribbles and a gold underline.",
+      },
+      {
+        kind: "text" as const,
+        text: "Tomorrow starts with: water, walk, then the site sketch. Nothing else until that's done.",
+      },
+    ],
+  },
+];
+
+export const seedDemo = mutation({
+  args: {
+    voiceFileIds: v.array(v.id("_storage")),
+    photoFileIds: v.array(v.id("_storage")),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    if (args.voiceFileIds.length < 2 || args.photoFileIds.length < 2)
+      throw new Error("Expected two voice files and two photos");
+    const now = Date.now();
+    const ids = [];
+    for (const entry of DEMO_ENTRIES) {
+      const startedAt = now - entry.ageMs;
+      const sessionId = await ctx.db.insert("sessions", {
+        userId,
+        device: "desktop" as const,
+        startedAt,
+        updatedAt: startedAt,
+      });
+      let createdAt = startedAt;
+      for (const m of entry.members) {
+        createdAt += 90_000; // members ~90s apart, like a real sitting
+        const sourceMeta = JSON.stringify({
+          device: "desktop",
+          demo: true,
+          ...(m.kind === "voice"
+            ? { durationMs: m.durationMs, recordingStartedAt: createdAt - m.durationMs }
+            : {}),
+        });
+        await ctx.db.insert("captures", {
+          userId,
+          sessionId,
+          source: m.kind === "voice" ? ("audio" as const) : m.kind === "photo" ? ("upload" as const) : ("paste" as const),
+          rawType: m.kind === "voice" ? ("audio" as const) : m.kind === "photo" ? ("image" as const) : ("text" as const),
+          ...(m.kind === "text" ? { rawText: m.text } : {}),
+          ...(m.kind === "voice" ? { rawFileId: args.voiceFileIds[m.voiceIndex] } : {}),
+          ...(m.kind === "photo" ? { rawFileId: args.photoFileIds[m.photoIndex] } : {}),
+          ...(m.kind === "voice" ? { extractedText: m.transcript } : {}),
+          ...(m.kind === "photo" ? { extractedText: m.description } : {}),
+          extraction: { status: "done" as const, at: createdAt },
+          sourceMeta,
+          isActive: true,
+          createdAt,
+        });
+      }
+      // Digest stamped done at `now` (>= updatedAt), so opening a demo entry
+      // never schedules a real digest run over the demo text.
+      await ctx.db.patch(sessionId, {
+        title: entry.title,
+        summary: entry.summary,
+        digest: { status: "done" as const, at: now },
+        updatedAt: createdAt,
+      });
+      ids.push(sessionId);
+    }
+    return ids;
+  },
+});
+
 // List rows with derived display fields: pinned entries first (most recently pinned
 // on top), then the rest newest-first. Personal volumes are small; reading each
 // session's captures here is fine and keeps storage clean of derived data.

@@ -5,7 +5,8 @@ import {
   Sun,
   Gem,
   LayoutGrid,
-  Brain,
+  NotebookPen,
+  PenLine,
   Plus,
   Settings as SettingsIcon,
   User,
@@ -15,13 +16,14 @@ import { useAuthActions } from "@convex-dev/auth/react";
 
 export type View = "today" | "core" | "board" | "sessions" | "settings";
 
-// Thoughts and Sessions merged into one surface (ADR 0010): Dumps is the single
-// home of capture — the list of living entries — on the phone and the desktop.
+// Thoughts and Sessions merged into one surface (ADR 0010). The tab is labeled
+// Thoughts — the entries underneath are still sessions — with the booklet icon
+// (a session is a booklet).
 const ITEMS: { key: View; label: string; Icon: typeof Sun }[] = [
   { key: "today", label: "Today", Icon: Sun },
   { key: "core", label: "Core", Icon: Gem },
   { key: "board", label: "Board", Icon: LayoutGrid },
-  { key: "sessions", label: "Dumps", Icon: Brain },
+  { key: "sessions", label: "Thoughts", Icon: NotebookPen },
 ];
 
 const item = (key: View) => ITEMS.find((i) => i.key === key)!;
@@ -190,7 +192,7 @@ export function Rail({
   return (
     <>
       {/* Phone: a five-slot bottom bar, evenly spread so the ➕ sits dead center:
-          Today · Board · ➕ · Dumps · account. Core is desktop-only. */}
+          Today · Board · ➕ · Thoughts · account. Core is desktop-only. */}
       <div className="md:hidden fixed bottom-0 inset-x-0 h-[64px] grid grid-cols-5 items-center px-1 border-t border-line bg-card z-50">
         {(["today", "board"] as const).map((key) => {
           const { label, Icon } = item(key);
@@ -209,7 +211,7 @@ export function Rail({
           <button
             type="button"
             onClick={onRecord}
-            aria-label="Start a new dump"
+            aria-label="Think out loud"
             className="-translate-y-4 w-16 h-16 rounded-full bg-accent text-white shadow-lg flex items-center justify-center active:scale-95 transition"
           >
             <Plus className="w-8 h-8" strokeWidth={2.25} />
@@ -226,8 +228,9 @@ export function Rail({
         </div>
       </div>
 
-      {/* Desktop: the vertical left rail. The ➕ is the same main action as the
-          phone's: one click, a fresh dump, ready to type or speak into. */}
+      {/* Desktop: the vertical left rail. The scribbler pen is the same main
+          action as the phone's ➕: one click, a fresh entry, ready to type or
+          speak into. Hover says what it's for. */}
       <div className="hidden md:flex w-[84px] h-screen flex-col items-center py-[18px] border-r border-line bg-card flex-shrink-0">
         <div className="font-extrabold text-xl text-ink mb-7">L</div>
         <div className="flex flex-1 flex-col gap-1.5 items-center">
@@ -243,10 +246,11 @@ export function Rail({
           <button
             type="button"
             onClick={onRecord}
-            aria-label="Start a new dump"
+            aria-label="Think out loud"
+            title="Think out loud"
             className="mt-2 w-12 h-12 rounded-full bg-accent text-white shadow-md flex items-center justify-center hover:opacity-90 active:scale-95 transition"
           >
-            <Plus className="w-6 h-6" strokeWidth={2.25} />
+            <PenLine className="w-[22px] h-[22px]" strokeWidth={2.25} />
           </button>
         </div>
         <AccountMenu onNav={onNav} opensUpward={false} />

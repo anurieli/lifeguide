@@ -1,85 +1,144 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { ArrowLeft, ImagePlus, Loader2, Mic, Send, Square } from "lucide-react";
-import { useAudioRecorder } from "@/hooks/useAudioRecorder";
+import { ArrowLeft, ImagePlus, Loader2, Mic, Square } from "lucide-react";
+import { RecordedAudio, useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useBlobUpload } from "@/hooks/useBlobUpload";
 import { currentDevice, formatElapsed } from "@/components/thoughts/utils";
 
 const MIN_RECORDING_MS = 1000;
 
 /**
- * The living entry: the session's captures rendered as one flowing document
- * (spoken passages, typed text, photos, in order), with a pinned strip at the
- * bottom to keep adding to it. Leaving an entry that has no content deletes it.
+ * The living entry: one continuous document. Captures render in the order they
+ * were added (spoken passages, typed text, photos); a borderless editor trails
+ * the content, so tapping anywhere on the page just starts typing (committed as
+ * a text capture on blur). The mic and photo controls float bottom-right; a take
+ * records inline while the rest of the page stays usable. Opened via ➕, the
+ * document starts recording on arrival. Leaving an entry with no content deletes it.
  */
 export function SessionDoc({
   sessionId,
   onBack,
+  autoRecord,
+  onAutoRecordConsumed,
 }: {
   sessionId: Id<"sessions">;
   onBack: () => void;
+  autoRecord: boolean;
+  onAutoRecordConsumed: () => void;
 }) {
   const doc = useQuery(api.sessions.get, { sessionId });
   const createCapture = useMutation(api.captures.create);
   const reprocess = useMutation(api.captures.reprocess);
   const setDoing = useMutation(api.sessions.setDoing);
   const deleteIfEmpty = useMutation(api.sessions.deleteIfEmpty);
+  const touchOpened = useMutation(api.sessions.touchOpened);
   const uploadBlob = useBlobUpload();
   const recorder = useAudioRecorder();
 
   const [text, setText] = useState("");
   const [doingDraft, setDoingDraft] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  // A finished take whose save failed stays here, so retry never re-records.
+  const [failedTake, setFailedTake] = useState<(RecordedAudio & { startedAt: number }) | null>(
+    null,
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const recordStartedAtRef = useRef(0);
+
+  // Visit metadata: stamp lastOpenedAt whenever the document is opened.
+  useEffect(() => {
+    void touchOpened({ sessionId });
+  }, [touchOpened, sessionId]);
+
+  // The ➕ flow: this document was created to be spoken into, so recording starts
+  // on arrival. The ref guards StrictMode's dev double-invoke (refs survive it).
+  const autoStartRef = useRef(false);
+  useEffect(() => {
+    if (!autoRecord || autoStartRef.current) return;
+    autoStartRef.current = true;
+    onAutoRecordConsumed();
+    recordStartedAtRef.current = Date.now();
+    void recorder.start();
+  }, [autoRecord, onAutoRecordConsumed, recorder.start]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // No husks: leaving an entry that never got content removes it. This runs on the
   // explicit back action, not effect cleanup — StrictMode's dev double-mount would
   // fire an unmount cleanup immediately and delete a just-opened empty entry.
   // The server re-checks emptiness, so this never races an in-flight append.
   const goBack = () => {
-    void deleteIfEmpty({ sessionId });
+    const trimmed = text.trim();
+    if (trimmed) {
+      // A typed thought must never be lost: commit it instead of husk-checking.
+      setText("");
+      void append({ source: "paste", rawType: "text", rawText: trimmed });
+    } else {
+      void deleteIfEmpty({ sessionId });
+    }
     onBack();
   };
 
   const append = useCallback(
-    async (args: Omit<Parameters<typeof createCapture>[0], "sessionId" | "sourceMeta">) => {
+    async (
+      args: Omit<Parameters<typeof createCapture>[0], "sessionId" | "sourceMeta"> & {
+        sourceMeta?: Record<string, unknown>;
+      },
+    ) => {
+      const { sourceMeta, ...rest } = args;
       await createCapture({
-        ...args,
+        ...rest,
         sessionId,
-        sourceMeta: JSON.stringify({ device: currentDevice() }),
+        sourceMeta: JSON.stringify({ device: currentDevice(), ...sourceMeta }),
       });
     },
     [createCapture, sessionId],
   );
 
-  const sendText = () => {
+  // Typing commits on blur: the page itself is the input, no send button.
+  const commitText = () => {
     const trimmed = text.trim();
-    if (!trimmed || uploading) return;
+    if (!trimmed) return;
     setText("");
+    if (editorRef.current) editorRef.current.style.height = "auto";
     void append({ source: "paste", rawType: "text", rawText: trimmed }).catch(() =>
-      // A thought must never be silently lost: put it back in the box.
+      // A thought must never be silently lost: put it back on the page.
       setText(trimmed),
     );
+  };
+
+  const saveTake = async (take: RecordedAudio & { startedAt: number }) => {
+    setUploading(true);
+    try {
+      const rawFileId = await uploadBlob(take.blob, take.mimeType);
+      await append({
+        source: "audio",
+        rawType: "audio",
+        rawFileId,
+        sourceMeta: {
+          durationMs: take.durationMs,
+          recordingStartedAt: take.startedAt || undefined,
+        },
+      });
+      setFailedTake(null);
+    } catch {
+      // The audio must never be lost: keep the blob for a retry without re-recording.
+      setFailedTake(take);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const micTap = async () => {
     if (recorder.recording) {
       const result = await recorder.stop();
       if (!result || result.durationMs < MIN_RECORDING_MS) return;
-      setUploading(true);
-      try {
-        const rawFileId = await uploadBlob(result.blob, result.mimeType);
-        await append({ source: "audio", rawType: "audio", rawFileId });
-      } catch {
-        // Swallow: matches the stream composer; the take could not be saved.
-      } finally {
-        setUploading(false);
-      }
+      await saveTake({ ...result, startedAt: recordStartedAtRef.current });
     } else {
+      recordStartedAtRef.current = Date.now();
       void recorder.start();
     }
   };
@@ -103,6 +162,10 @@ export function SessionDoc({
     }
   };
 
+  const focusEditor = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) editorRef.current?.focus();
+  };
+
   if (doc === undefined) {
     return <p className="text-center text-[13px] text-ink-mute py-10">Loading…</p>;
   }
@@ -110,7 +173,7 @@ export function SessionDoc({
     return (
       <div className="text-center py-16">
         <p className="text-[14px] text-ink-mute">This entry is gone.</p>
-        <button type="button" onClick={goBack} className="mt-3 text-[13px] text-gold">
+        <button type="button" onClick={onBack} className="mt-3 text-[13px] text-gold">
           Back to sessions
         </button>
       </div>
@@ -121,7 +184,7 @@ export function SessionDoc({
   const started = new Date(session.startedAt);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col relative">
       <div className="flex items-center gap-3 px-5 py-3.5 border-b border-line md:px-8">
         <button
           type="button"
@@ -156,11 +219,16 @@ export function SessionDoc({
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-5 md:px-8">
-        <div className="max-w-[680px] mx-auto flex flex-col gap-5">
-          {captures.length === 0 && (
-            <p className="text-[13.5px] text-ink-mute text-center py-8">
-              An empty page. Speak or write below.
+      {/* The page: content in order, then the trailing editor. Clicking empty
+          space anywhere lands the caret, like a notes document. */}
+      <div
+        className="flex-1 overflow-y-auto px-5 py-5 pb-36 md:px-8 cursor-text"
+        onClick={focusEditor}
+      >
+        <div className="max-w-[680px] mx-auto flex flex-col gap-5" onClick={focusEditor}>
+          {captures.length === 0 && !recorder.recording && !text && (
+            <p className="text-[13.5px] text-ink-mute py-2 pointer-events-none select-none">
+              Speak, or tap anywhere and write.
             </p>
           )}
           {captures.map((c) => (
@@ -206,88 +274,94 @@ export function SessionDoc({
               )}
             </div>
           ))}
-        </div>
-      </div>
-
-      <div className="border-t border-line px-5 py-3.5 md:px-8 bg-paper">
-        <div className="max-w-[680px] mx-auto flex items-end gap-2">
-          {recorder.recording ? (
-            <div className="flex-1 flex items-center justify-center gap-4 py-1">
+          {failedTake && !recorder.recording && !uploading && (
+            <p className="text-[13px] text-ink-mute">
+              That take didn&apos;t save; it&apos;s still here.{" "}
+              <button
+                type="button"
+                onClick={() => void saveTake(failedTake)}
+                className="text-gold"
+              >
+                Try again
+              </button>
+            </p>
+          )}
+          {/* A live take renders in-flow, part of the document as it happens. */}
+          {recorder.recording && (
+            <div className="flex items-center gap-2.5 pointer-events-none select-none">
               <span className="w-2.5 h-2.5 rounded-full bg-gold animate-pulse" />
               <span className="text-[14px] tabular-nums text-ink-soft">
                 {formatElapsed(recorder.elapsedMs)}
               </span>
-              <button
-                type="button"
-                onClick={() => void micTap()}
-                disabled={uploading}
-                aria-label="Stop recording"
-                className="w-12 h-12 rounded-full bg-gold/15 border-[1.5px] border-gold text-gold flex items-center justify-center disabled:opacity-50"
-              >
-                {uploading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Square className="w-4 h-4" fill="currentColor" strokeWidth={0} />
-                )}
-              </button>
+              <span className="text-[12.5px] text-ink-mute">Listening…</span>
             </div>
-          ) : (
-            <>
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => {
-                  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                    e.preventDefault();
-                    sendText();
-                  }
-                }}
-                rows={1}
-                placeholder="Write here…"
-                className="flex-1 resize-none bg-card border border-line-2 rounded-xl px-3.5 py-2.5 text-[14.5px] text-ink placeholder:text-ink-mute outline-none focus:border-gold max-h-40"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                aria-label="Add a photo"
-                className="w-10 h-10 rounded-full bg-card border border-line-2 text-ink-mute hover:text-gold flex items-center justify-center disabled:opacity-40"
-              >
-                {uploading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <ImagePlus className="w-4 h-4" />
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => void micTap()}
-                disabled={uploading || !recorder.supported}
-                aria-label="Continue with voice"
-                className="w-12 h-12 rounded-full bg-card border border-line-2 text-ink-mute hover:text-gold flex items-center justify-center disabled:opacity-40"
-              >
-                <Mic className="w-5 h-5" />
-              </button>
-              <button
-                type="button"
-                onClick={sendText}
-                disabled={!text.trim() || uploading}
-                aria-label="Send"
-                className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center disabled:opacity-30"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </>
           )}
+          <textarea
+            ref={editorRef}
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              e.target.style.height = "auto";
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
+            onBlur={commitText}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                commitText();
+              }
+            }}
+            rows={2}
+            aria-label="Write in this entry"
+            className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink outline-none overflow-hidden"
+          />
         </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => void onFile(e)}
-        />
       </div>
+
+      {/* The controls: floating, out of the document's way. Mic is the primary. */}
+      <div className="absolute bottom-5 right-5 md:bottom-8 md:right-8 flex flex-col items-center gap-2.5">
+        {recorder.error && !recorder.recording && (
+          <span className="text-[11px] text-ink-mute bg-card border border-line rounded-full px-2.5 py-1">
+            Mic unavailable. Tap the page and type.
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          aria-label="Add a photo"
+          className="w-11 h-11 rounded-full bg-card border border-line-2 shadow-md text-ink-mute hover:text-gold flex items-center justify-center disabled:opacity-40"
+        >
+          <ImagePlus className="w-[18px] h-[18px]" />
+        </button>
+        <button
+          type="button"
+          onClick={() => void micTap()}
+          disabled={uploading || !recorder.supported}
+          aria-label={recorder.recording ? "Stop recording" : "Record"}
+          className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center disabled:opacity-50 active:scale-95 transition ${
+            recorder.recording
+              ? "bg-gold/15 border-[1.5px] border-gold text-gold"
+              : "bg-accent text-white"
+          }`}
+        >
+          {uploading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : recorder.recording ? (
+            <Square className="w-4 h-4" fill="currentColor" strokeWidth={0} />
+          ) : (
+            <Mic className="w-6 h-6" />
+          )}
+        </button>
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => void onFile(e)}
+      />
     </div>
   );
 }

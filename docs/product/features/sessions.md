@@ -1,6 +1,6 @@
 # Sessions (the living entry)
 
-**Status:** built (v1) · **Element of:** Sessions (feeds the Core) · **Owns:** `sessions` (container rows); members are `captures` rows via `captures.sessionId`
+**Status:** built (v2, 2026-07-12) · **Element of:** Sessions (feeds the Core) · **Owns:** `sessions` (container rows); members are `captures` rows via `captures.sessionId`
 
 > A session is one living journal entry: a brain dump you keep adding to. Tap record and talk; the take lands as an entry you can reopen tomorrow to speak more, type into, or drop photos on. Every piece stays a raw, immutable capture; the entry is the document view over them, titled by AI for the chronological list. On the phone, this is the app's main action.
 
@@ -10,20 +10,28 @@ The observation contract says: let the thought out first, structure later. The T
 
 ## 2. User-facing behavior
 
-**Starting one (phone).** The bottom bar's big center ● starts recording immediately: no form, a timer, a stop button. Stop saves the take and opens the entry; a too-short take (~1s) or the X saves nothing. If the mic is denied, "Type instead" opens an empty entry.
+**Starting one (phone).** The bottom bar's big center ➕ creates a fresh session and lands inside its empty document, already recording (no separate recording screen). Tapping ➕ always starts a NEW entry; appending to an old one goes through the list. If the mic is denied, a small note says "Mic unavailable. Tap the page and type." and the document stays fully usable. A too-short take (~1s) saves nothing.
 
-**The entry (document view).** The session's captures render in order as one flowing document: spoken passages as text (with a quiet inline player; "Listening back…" while transcribing; on failure, "the recording is safe" + Try again), typed passages, photos. A strip at the bottom continues the entry: write, add a photo, or record more. A small "What were you doing?" field holds context. Entries are never closed; reopening one days later and appending is the intended use.
+**The entry (one continuous document).** The session's captures render in order as one flowing page: spoken passages as text (with a quiet inline player; "Listening back…" while transcribing; on failure, "the recording is safe" + Try again), typed passages, photos. There is no composer strip and no send button: tap anywhere on the page and type; the paragraph commits as a text capture on blur (Cmd/Ctrl+Enter also commits). The mic (primary) and photo controls float bottom-right; a live take shows in-flow as a pulsing timer while the rest of the page stays usable, so you can type and drop photos mid-recording. A small "What were you doing?" field holds context. Entries are never closed; reopening one days later and appending is the intended use.
 
-**The list.** The Sessions tab is the chronological archive, newest first: relative time, voice/photo count glyphs, the AI title, and a one-sentence AI summary (until the digest runs, the entry's first words). Tap to open.
+**The list.** The Sessions tab is the archive: pinned entries first, then newest by activity; relative time, a pin glyph, voice/photo count glyphs, the AI title, and a one-sentence AI summary (until the digest runs, the entry's first words). Tap to open. Swipe left to pin/unpin. Swipe right to delete: the row parks open with a Delete button, a second tap confirms. "Select" enters multi-select; picking 2+ entries shows "Merge N into one".
 
-**Desktop.** Sessions is a rail tab; recording continues via each entry's strip or the Thought Stream composer (loose thoughts). Desktop remains the command center; the phone bar carries only Today · ● Record · Sessions · Talk.
+**Merging.** Merge folds the selected sessions into the earliest-started one: every element keeps its own timestamp, so the merged document reads in the chronological order each piece was added, interleaved across the original entries. The stale title/summary are cleared and the digest re-synthesizes over the combined content.
+
+**Deleting.** Deleting removes the entry from the archive view only: the container row is deleted, member captures are soft-deleted (`isActive: false`) with their raw artifacts and `sessionId` intact, so nothing raw is ever lost and future retroactive passes still see what belonged together.
+
+**Desktop.** Sessions is a rail tab; the same document behavior applies, and pin/delete appear as hover actions on list rows (no swipe). Desktop remains the command center. The phone bar carries only Today · ➕ · Sessions: the Talk/Listener tab and the Atmosphere music player are desktop-only now; the phone is capture-first.
 
 ## 3. Functions / actions
 
 | Action | Trigger | What it does | Data touched |
 |---|---|---|---|
-| Start a take | ● (phone bar) | Records one whole audio file; stop creates the session + its first capture (`sourceMeta` carries device + durationMs); hands off to the entry | `sessions` (create), `captures` (create), `_storage` |
-| Append (voice/text/photo) | Entry strip | `captures.create` with `sessionId` (ownership-checked); bumps `sessions.updatedAt` | `captures`, `sessions.updatedAt` |
+| Start an entry | ➕ (phone bar) | `sessions.create`, opens the empty document, auto-starts an inline take; stop uploads the whole file as the first capture (`sourceMeta` carries device, durationMs, recordingStartedAt) | `sessions` (create), `captures` (create), `_storage` |
+| Append (voice/text/photo) | In the document: tap-and-type (commits on blur), floating mic, floating photo | `captures.create` with `sessionId` (ownership-checked); bumps `sessions.updatedAt` | `captures`, `sessions.updatedAt` |
+| Pin / unpin | Swipe left (phone), hover pin (desktop) | `sessions.setPinned`; pinned entries lead the list | `sessions.pinnedAt` |
+| Delete | Swipe right + confirm tap (phone), hover trash + confirm (desktop) | `sessions.remove`: deletes the container, soft-deletes members (raw kept, `sessionId` kept) | `sessions` (delete), `captures.isActive` |
+| Merge | Select 2+ in the list → Merge | `sessions.merge`: re-parents every member onto the earliest-started session, deletes the emptied rows, clears title/summary, re-digests | `sessions`, `captures.sessionId` |
+| Visit stamp | Opening a document | `sessions.touchOpened` writes `lastOpenedAt` (no `updatedAt` bump; reading must not resort the list) | `sessions.lastOpenedAt` |
 | Ingest + distill members | Auto | Unchanged Thought Stream pipeline per capture | `captures.extractedText/extraction/distilled` |
 | Digest | ~30s after a member's ingest completes | AI writes `title` + `summary` onto the session (idempotent; last append wins; skipped while any member is still ingesting) | `sessions.title/summary/digest` |
 | Set context | "What were you doing?" field | Saves `doing` (≤200 chars) | `sessions.doing` |
@@ -42,9 +50,11 @@ The observation contract says: let the thought out first, structure later. The T
 ## 5. States and edge cases
 
 - **No AI keys:** entries and captures land; digest no-ops with fallback title; transcription errors show with retry; nothing is lost.
-- **Failed save of a take (network):** the RecordTake surface keeps the finished blob in memory and says so; stop retries the upload. Killing the app mid-take still loses it (accepted v1; crash-recovery buffer is a parked follow-up).
+- **Failed save of a take (network):** the document keeps the finished blob in memory and shows "That take didn't save; it's still here" with Try again, so retry never re-records. Killing the app mid-take still loses it (accepted; crash-recovery buffer is a parked follow-up).
 - **Failed transcription:** the audio file is stored regardless; the entry says "the recording is safe" with Try again.
-- **Empty session:** only reachable via "Type instead" then bailing, or soft-deleting every member elsewhere; `deleteIfEmpty` clears it on the entry's back action, and the list sweeps any zero-count row on render.
+- **Typed text pending on leave:** the back action commits a non-empty draft as a capture instead of husk-checking; a failed commit puts the text back on the page.
+- **Empty session:** the ➕ flow creates the container before any content, so bailing out immediately is the common path; `deleteIfEmpty` clears it on the entry's back action, and the list sweeps any zero-count row on render.
+- **Swipe vs tap vs scroll:** rows use `touch-action: pan-y` (vertical scroll stays native); a horizontal swipe suppresses the click that browsers fire after touchend, so a swipe never opens the entry.
 - **Digest burst:** several appends in a row cost one model call (each ingest completion schedules a run 30s out; runs skip while any member is pending, and overwrite idempotently).
 - **iOS Safari:** `useAudioRecorder` negotiates audio/mp4; ingest maps the extension. On-phone QA tracked in `TO-CHECK.md`.
 
@@ -54,7 +64,7 @@ One new node, `sessionDigest` (`convex/ai/config.ts`): OpenRouter, JSON `{title,
 
 ## 7. Data touched
 
-`sessions { userId, title?, summary?, doing?, device: phone|desktop, digest?{status: pending|done|error, at?}, startedAt, updatedAt }` (index `by_user_updated`); `captures.sessionId?` (index `by_session [sessionId, createdAt]`). See [`../../architecture/data-model.md`](../../architecture/data-model.md) and [ADR 0008](../../decisions/0008-sessions-as-container-over-captures.md).
+`sessions { userId, title?, summary?, doing?, device: phone|desktop, digest?{status: pending|done|error, at?}, startedAt, updatedAt, pinnedAt?, lastOpenedAt? }` (index `by_user_updated`); `captures.sessionId?` (index `by_session [sessionId, createdAt]`). Element-level metadata rides on each capture: `createdAt` (exact add time), and for audio `sourceMeta` JSON carries `device`, `durationMs`, `recordingStartedAt`. See [`../../architecture/data-model.md`](../../architecture/data-model.md) and [ADR 0008](../../decisions/0008-sessions-as-container-over-captures.md).
 
 ## 8. Open questions
 

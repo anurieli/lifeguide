@@ -2,13 +2,17 @@
 
 Features that are done but haven't been manually verified yet.
 
-### Sessions + mobile capture (ARI-24)
-- [ ] **One-tap take (real iPhone):** tap ● in the bottom bar, speak 2+ minutes, stop. The entry opens; transcript fills in ("Listening back…" then text); the audio plays inline, from desktop too; the transcript matches what was said.
-- [ ] **Living entry:** in the open entry, type a line, add a photo, record a second take. All land in order. Next day, reopen and append; the list row's AI title/subtext refresh (~30s after ingest completes).
-- [ ] **Digest fallback:** with no AI keys, the list shows the first-words fallback instead of a title; no errors surface.
-- [ ] **Failure never loses audio:** kill the network after stopping a take (before upload completes): the failure notice shows and tapping stop retries with the kept blob. Break transcription (no OPENAI key): the entry shows "Transcription failed, the recording is safe" and Try again works once the key is back.
-- [ ] **No husks:** open record, tap X immediately (and: deny the mic → Type instead → leave without typing). The Sessions list gains nothing.
-- [ ] **Mobile bar:** at ~390px only Today · ● · Sessions · Talk (+ avatar). Core/Board/Thoughts are absent on the phone, present on desktop; the desktop rail gains a Sessions tab.
+### Sessions + mobile capture v2 (ARI-24)
+- [ ] **➕ flow (real iPhone):** tap the center ➕. A fresh entry opens ALREADY recording (timer pulsing in the page); speak 2+ minutes, tap stop. Transcript fills in ("Listening back…" then text); the audio plays inline, from desktop too; the transcript matches what was said.
+- [ ] **One continuous document:** while a take is recording, tap the page and type a line, and add a photo. Everything lands in chronological order after stop. No "Write here" box, no send button: typing commits when you tap away.
+- [ ] **Bar layout:** at ~390px the bar is Today · ➕ (dead center, raised) · Sessions (+ avatar). No Talk tab, no music orb anywhere on the phone. Core/Board/Thoughts absent on the phone, present on desktop.
+- [ ] **Sessions tab always lists:** from inside an entry, tapping Sessions returns to the list; tapping ➕ again starts a brand-new entry (never appends to the open one); tapping an old row opens it for appending (no auto-record).
+- [ ] **Swipe left = pin:** the row shows the pin glyph and jumps to the top of the list; swipe left again unpins. Vertical scrolling through the list still feels native.
+- [ ] **Swipe right = delete:** the row parks open with a red Delete; tapping Delete removes the entry, tapping the row instead closes it. After deleting, the entry's captures no longer show in the Thought Stream either (soft-deleted, raw kept server-side).
+- [ ] **Merge:** Select → tap 2+ entries → "Merge N into one". The merged document interleaves all elements in the order each was added, and a fresh AI title/summary lands (~30s). The other rows are gone.
+- [ ] **Failure never loses audio:** kill the network, stop a take: "That take didn't save; it's still here" + Try again works with the kept blob (no re-record). Break transcription (no OPENAI key): "Transcription failed, the recording is safe" + Try again works once the key is back.
+- [ ] **No husks:** tap ➕, deny the mic (or just leave immediately via back/Today). The Sessions list gains nothing.
+- [ ] **Mic denied:** after denying, the note "Mic unavailable. Tap the page and type." shows and typing/photos still work.
 - [ ] **Inspiration from phone:** add a photo inside an entry on the phone; confirm it appears distilled in the board Inbox on desktop.
 - [ ] **Loose captures unaffected:** the Thought Stream composer, board intake, and board voice brain dump all still work exactly as before (no sessionId, no session created).
 

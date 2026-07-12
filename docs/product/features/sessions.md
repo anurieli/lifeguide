@@ -29,7 +29,7 @@ The observation contract says: let the thought out first, structure later. The T
 | Set context | "What were you doing?" field | Saves `doing` (≤200 chars) | `sessions.doing` |
 | List / open | Sessions tab | `sessions.list` (derived preview + counts) / `sessions.get` (ordered members, file URLs resolved) | read-only |
 | Retry transcription | Entry's Try again | Existing `captures.reprocess`; digest refreshes after | `captures.extraction`, then as ingest |
-| No husks | Leaving an entry | `sessions.deleteIfEmpty` removes a container with no active members (raw captures are never touched by session deletion; an empty container holds none) | `sessions` (delete) |
+| No husks | Back action in an entry; sweep when the list renders | `sessions.deleteIfEmpty` removes a container with no active members; the server re-checks emptiness, so it never races an append (raw captures are never touched; an empty container holds none) | `sessions` (delete) |
 
 ## 4. Dynamics with other elements
 
@@ -44,7 +44,7 @@ The observation contract says: let the thought out first, structure later. The T
 - **No AI keys:** entries and captures land; digest no-ops with fallback title; transcription errors show with retry; nothing is lost.
 - **Failed save of a take (network):** the RecordTake surface keeps the finished blob in memory and says so; stop retries the upload. Killing the app mid-take still loses it (accepted v1; crash-recovery buffer is a parked follow-up).
 - **Failed transcription:** the audio file is stored regardless; the entry says "the recording is safe" with Try again.
-- **Empty session:** only reachable via "Type instead" then bailing, or soft-deleting every member elsewhere; `deleteIfEmpty` on exit clears it.
+- **Empty session:** only reachable via "Type instead" then bailing, or soft-deleting every member elsewhere; `deleteIfEmpty` clears it on the entry's back action, and the list sweeps any zero-count row on render.
 - **Digest burst:** several appends in a row cost one model call (each ingest completion schedules a run 30s out; runs skip while any member is pending, and overwrite idempotently).
 - **iOS Safari:** `useAudioRecorder` negotiates audio/mp4; ingest maps the extension. On-phone QA tracked in `TO-CHECK.md`.
 

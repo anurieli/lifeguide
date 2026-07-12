@@ -106,7 +106,7 @@ Analysis / AI comments on entries (Mindsera's blue layer), decomposition into at
 ## 11. Implementation deviations (locked at build, 2026-07-12)
 
 - **Sessions is its own rail view on desktop too**, not a sub-tab inside Thoughts (simpler shell; the stream stays the flat view, Sessions the grouped one).
-- **Sessions are created with their first capture** (or on "Type instead"), and the document view calls `deleteIfEmpty` on exit; this replaces the spec's exit-time empty-session cleanup wording (husks are near-impossible by construction).
+- **Sessions are created with their first capture** (or on "Type instead"); husk cleanup is `deleteIfEmpty` fired on the entry's explicit back action plus a sweep when the list renders. NOT effect cleanup: React StrictMode's dev double-mount fires unmount cleanup immediately and would delete a just-opened empty entry (found live during verification). The server re-checks emptiness before deleting, so neither path races an in-flight append.
 - **The session chip on Thought Stream cards is deferred** to a follow-up; membership is stored (`captures.sessionId`) but not yet surfaced on stream cards.
 - The RecordTake surface **keeps a finished take in memory after a failed save** so stop retries without re-recording (strengthens the "never lose audio" rule beyond the spec's wording).
 

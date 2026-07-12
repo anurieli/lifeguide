@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import { ImagePlus, Loader2, Mic, Send, Square } from "lucide-react";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
+import { useBlobUpload } from "@/hooks/useBlobUpload";
 import { deviceMeta, formatElapsed, isBareUrl, urlRawType } from "./utils";
 
 // Anything shorter than this is almost certainly an accidental tap, not a thought.
@@ -18,9 +18,9 @@ const MIN_RECORDING_MS = 1000;
  * fills in.
  */
 export function Composer() {
-  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const createCapture = useMutation(api.captures.create);
   const recorder = useAudioRecorder();
+  const uploadBlob = useBlobUpload();
 
   const [text, setText] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -34,20 +34,6 @@ export function Composer() {
     ta.style.height = `${ta.scrollHeight}px`;
   }, []);
   useEffect(() => autosize(), [text, autosize]);
-
-  const uploadBlob = useCallback(
-    async (blob: Blob, contentType: string): Promise<Id<"_storage">> => {
-      const url = await generateUploadUrl();
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": contentType },
-        body: blob,
-      });
-      const { storageId } = await res.json();
-      return storageId as Id<"_storage">;
-    },
-    [generateUploadUrl],
-  );
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();

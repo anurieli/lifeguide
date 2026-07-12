@@ -41,6 +41,7 @@ Every capture stamps `sourceMeta` (device: phone or desktop) so the when/where/h
 ## 4. Dynamics with other components
 
 - **Vision Board.** Same `captures` table. Board adds still distill and place as before (their ingest is a pass-through for text, real extraction for links/images, which the board also benefits from). Thoughts recorded in the stream are not auto-placed on the board; placement stays a board/Coach concern.
+- **Sessions (the living entry).** A capture may carry `sessionId`, marking it a member of a session ([`sessions.md`](sessions.md)); the entry's document view renders members in order, and each member's ingest completion also refreshes the session's AI digest. Loose captures are unaffected. A session chip on stream cards is a deferred follow-up.
 - **The Center / file system on the human.** Not yet wired: stream thoughts do not yet file into `coreFiles`. This is the next loop (see Open questions).
 - **Voice brain dump on the board** (`voice.brainDump`) still splits a live transcript into multiple text captures; those flow through the same ingest (skipped extraction) and appear in the stream too. One table, one history.
 - **Mirror / interactions.** Unchanged for now; the stream is upstream signal.
@@ -60,7 +61,7 @@ Three AI nodes (see `convex/ai/config.ts`): `voiceTranscribe` (Whisper, OpenAI-p
 
 ## 7. Data touched
 
-`captures` (extended: `rawType` gains `audio` and `file`; new `sourceMeta`, `extractedText`, `extraction{status,error,meta,at}`), `_storage` (audio blobs, images, files, all permanent). See [`../../architecture/data-model.md`](../../architecture/data-model.md).
+`captures` (extended: `rawType` gains `audio` and `file`; new `sourceMeta`, `extractedText`, `extraction{status,error,meta,at}`, and `sessionId` for session membership), `_storage` (audio blobs, images, files, all permanent). See [`../../architecture/data-model.md`](../../architecture/data-model.md).
 
 ## 8. Open questions
 

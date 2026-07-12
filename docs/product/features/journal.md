@@ -1,6 +1,6 @@
 # Journal / Sessions
 
-**Status:** spec (not built as the Journal; the current "Today" ritual screen is its seed) · **Element of:** the Sessions stream · **Owns:** `sessions`, `prompts`
+**Status:** spec (not built as the Journal; the current "Today" ritual screen is its seed) · **Element of:** the Sessions stream · **Owns:** `prompts`; its beats open and write into the live `sessions` table, owned by [Sessions](sessions.md) (see ADR 0008)
 
 > The Journal is the whole Sessions stream: a chronological feed of beats (morning, night, triggered), each a feed of adaptive prompts whose job is to draw out who you are and check you are still on track. It is not a blank diary.
 
@@ -33,7 +33,7 @@ Both paths are first-class. Manually, he opens the Journal and answers. Through 
 
 ## 4. Dynamics and interactions with other elements
 
-**Owns** `sessions` and `prompts`, and nothing else. Per the ownership rule in [`../../architecture/context-bus.md`](../../architecture/context-bus.md), it holds no copy of any other element's data.
+**Owns** `prompts`, and nothing else; the `sessions` table it writes into is live and owned by [Sessions](sessions.md) (the beats are front doors that open entries there, per ADR 0008). Per the ownership rule in [`../../architecture/context-bus.md`](../../architecture/context-bus.md), it holds no copy of any other element's data.
 
 **Publishes** to the **Sessions stream**: on completion it writes a `session.completed` interaction carrying the distilled `summary` (recent state, momentum, drift). The Coach folds that, through its core-curation pass, into the Core; the Journal never writes the Mirror itself.
 

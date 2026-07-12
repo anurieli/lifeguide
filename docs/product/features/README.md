@@ -10,8 +10,9 @@ The element model these hang off is [`../../architecture/elements-and-context.md
 |---|---|---|---|
 | [Vision Board](vision-board.md) | `surfaces, nodes, edges, captures` | Core | partial (board built; Coach co-build proposed) |
 | [Thought Stream](thought-stream.md) | ingest pipeline over `captures` (table shared with the board) | Sessions → Core | built (v1) |
+| [Sessions (the living entry)](sessions.md) | `sessions` (container; members via `captures.sessionId`) | Sessions → Core | built (v1) |
 | [Future Self](future-self.md) | `futureSelf` | Core | proposed |
-| [Journal / Sessions](journal.md) | `sessions, prompts` | Sessions | proposed (Today ritual is the seed) |
+| [Journal](journal.md) | `prompts` (its beats open the live `sessions`) | Sessions | proposed (Today ritual is the seed) |
 | [Pillars & Goals](pillars-and-goals.md) | `pillars, goals` | Core, Sessions | partial (pillars built; goals proposed) |
 | [File system on the human](file-system-on-the-human.md) | `pillars` (folders), `coreFiles` (files) | Core | partial (store + seed built; person-map UI proposed) |
 | [The Core](core.md) | `mirror` | is the Core | partial |

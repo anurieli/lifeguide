@@ -26,11 +26,11 @@ export function Inbox({
     return (
       <div
         onPointerDown={(e) => e.stopPropagation()}
-        onMouseEnter={() => setPeeking(true)}
-        onMouseLeave={() => setPeeking(false)}
         className="fixed top-5 right-5 z-20 flex flex-col items-end"
       >
         <button
+          onMouseEnter={() => setPeeking(true)}
+          onMouseLeave={() => setPeeking(false)}
           onClick={() => {
             setPeeking(false);
             setOpen(true);

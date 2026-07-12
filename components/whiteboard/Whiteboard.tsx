@@ -19,7 +19,7 @@ import { SelectionActions } from "./SelectionActions";
 import { CanvasMenu } from "./CanvasMenu";
 import { Legend } from "./Legend";
 import { BrainDump } from "@/components/voice/BrainDump";
-import { Rect, rectsOverlap } from "@/lib/geometry";
+import { Rect, boardCentroid, rectsOverlap } from "@/lib/geometry";
 import { useSelection } from "@/hooks/useSelection";
 import {
   SelectionMods,
@@ -33,7 +33,10 @@ const VIDEO_HOSTS = /(youtube\.com|youtu\.be|tiktok\.com|instagram\.com|vimeo\.c
 // Gap added between cards during a Gather layout (world px).
 const GATHER_GAP = 20;
 
-export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
+// `active` is whether the board tab is the one on screen: the board stays
+// mounted across nav (canvas state survives), so accessing it is a prop flip,
+// not a mount — and each access re-centers on the whole board.
+export function Whiteboard({ surfaceId, active }: { surfaceId: SurfaceId; active: boolean }) {
   const { vp, pan, zoomAt, panTo } = useViewport();
   const { nodes, create, move, resize, setText, remove, morph } = useNodes(surfaceId);
   const { edges, connect, remove: removeEdge } = useEdges(surfaceId);
@@ -524,33 +527,54 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
     setGathering(false);
   }, [nodes, gathering, move, panTo]);
 
-  // ---- Center on nearest ------------------------------------------------
-  // Find the node whose center is closest (Euclidean, world space) to the
-  // current viewport center, then animate the viewport to that node.
-  const handleCenterNearest = useCallback(() => {
-    if (nodes.length === 0) return;
-    const sw = window.innerWidth;
-    const sh = window.innerHeight;
-    // Current viewport center in world coordinates.
-    const vcx = (sw / 2 - vp.x) / vp.scale;
-    const vcy = (sh / 2 - vp.y) / vp.scale;
+  // ---- Center on the board ----------------------------------------------
+  // The toolbar's center button lands on the whole board: the average of every
+  // card's center (was: nearest card to the current viewport center).
+  const handleCenterBoard = useCallback(() => {
+    const c = boardCentroid(nodes);
+    if (!c) return;
+    panTo(c.x, c.y, window.innerWidth, window.innerHeight);
+  }, [nodes, panTo]);
 
-    let nearest = nodes[0];
-    let bestDist = Infinity;
-    for (const n of nodes) {
-      const nx = n.position.x + n.dimensions.width / 2;
-      const ny = n.position.y + n.dimensions.height / 2;
-      const dist = Math.hypot(nx - vcx, ny - vcy);
-      if (dist < bestDist) {
-        bestDist = dist;
-        nearest = n;
-      }
+  // Accessing the board lands on the same point as the center button. The
+  // board stays mounted across nav, so "access" is `active` flipping true —
+  // and on a restored board tab, the first load of a non-empty node list.
+  const centeredOnAccess = useRef(false);
+  const hasNodes = nodes.length > 0;
+  useEffect(() => {
+    if (!active) {
+      centeredOnAccess.current = false;
+      return;
     }
+    if (centeredOnAccess.current || !hasNodes) return;
+    centeredOnAccess.current = true;
+    handleCenterBoard();
+  }, [active, hasNodes, handleCenterBoard]);
 
-    const cx = nearest.position.x + nearest.dimensions.width / 2;
-    const cy = nearest.position.y + nearest.dimensions.height / 2;
-    panTo(cx, cy, sw, sh);
-  }, [nodes, vp, panTo]);
+  // ---- Center on a just-placed capture -----------------------------------
+  // Placing from the Inbox keeps the spiral placement, but the viewport
+  // follows: when the placed node lands in the reactive list, center on it.
+  const pendingCenterNodeId = useRef<string | null>(null);
+  const handlePlace = useCallback(
+    async (captureId: Id<"captures">) => {
+      const nodeId = await place({ captureId, surfaceId });
+      if (nodeId) pendingCenterNodeId.current = nodeId as string;
+    },
+    [place, surfaceId],
+  );
+  useEffect(() => {
+    const id = pendingCenterNodeId.current;
+    if (!id) return;
+    const n = nodes.find((node) => node._id === id);
+    if (!n) return; // not in the list yet; the next nodes update retries
+    pendingCenterNodeId.current = null;
+    panTo(
+      n.position.x + n.dimensions.width / 2,
+      n.position.y + n.dimensions.height / 2,
+      window.innerWidth,
+      window.innerHeight,
+    );
+  }, [nodes, panTo]);
 
   // ---- Minimap pan callback --------------------------------------------
   // When the user clicks the minimap, pan the viewport so that world point
@@ -664,7 +688,7 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
 
       <Inbox
         captures={inbox}
-        onPlace={(c) => void place({ captureId: c._id, surfaceId })}
+        onPlace={(c) => void handlePlace(c._id)}
         onDismiss={(c) => void softDelete({ captureId: c._id })}
       />
 
@@ -674,7 +698,7 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
       <Toolbar
         onAdd={() => void addCard()}
         onGather={() => void handleGather()}
-        onCenterNearest={handleCenterNearest}
+        onCenterBoard={handleCenterBoard}
         onBrainDump={() => setBrainDumpOpen(true)}
         gathering={gathering}
       />

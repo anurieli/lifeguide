@@ -7,6 +7,18 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-12 · Vision board: the camera follows a placed capture; centering means the whole board
+
+Two navigation fixes per Ariel. **Placing follows:** clicking a capture in the Inbox still places it at its spiral-assigned spot, but the viewport now animates to the new card the moment it lands in the reactive node list — what was just placed is never off-screen. **Centering is the whole board:** the toolbar's crosshair no longer jumps to the nearest card; it lands on the **board centroid**, the average of every card's center (`boardCentroid` in `lib/geometry.ts`, unit-tested), and the same landing now happens on **every access of the board** — the surface stays mounted across nav, so `AppShell` passes `active` and the Whiteboard re-centers when its tab flips in (or, on a restored board tab, when a non-empty node list first loads; an empty board has no centroid and waits for its first card). All three paths share the existing `panTo` animation. 326 tests green (2 new centroid tests), tsc clean, lint clean.
+
+**Docs touched:** `docs/product/features/vision-board.md` (navigation/overview, actions table, empty-board edge case).
+
+## 2026-07-12 · Dev tooling: ignore Claude Code session worktrees
+
+`.claude/worktrees/` added to `.gitignore`: the remote-session worktree directory is a local working area (a nested checkout), not repo content, and was tripping clean-tree checks as untracked files.
+
+**Docs touched:** none (dev tooling; this entry).
+
 ## 2026-07-12 · Capture v3.1: the surface is called Thoughts, the pen says "Think out loud", demo thoughts
 
 Same-day polish on v3 from Ariel's live feedback. **Naming:** the merged capture tab is **Thoughts**, not "Dumps" (the entries underneath are still `sessions`); the icon returns to the booklet (`NotebookPen` — "a session is a booklet"), the list heading, back link, entry-name aria and Coach context line follow. **The pen:** the desktop create action is a **scribbler pen** (`PenLine`) instead of a ➕ — in the rail *and* now in the Thoughts list header, so a fresh entry never requires leaving the surface; hover reads **"Think out loud"** (the phone keeps its center ➕, same label). **Demo thoughts:** the empty state offers "Show me two example thoughts" and a quiet "Add demo thoughts" link sits under a populated list; `sessions.seedDemo` builds two fully packed entries — voice takes with transcripts and playable files, photos, typed passages — as ordinary sessions/captures (extraction pre-done, digest stamped, `sourceMeta.demo: true`, no ingest, no model calls) that can be opened, appended to, or swiped away. The media is painted client-side and uploaded like any capture file: a dependency-free WAV synthesizer (`lib/demoWav.ts`, soft two-note hum, 8kHz mono) and canvas-drawn sunrise/notebook photos (`components/sessions/demoMedia.ts`). No schema changes. 162 tests green (4 new: seedDemo structure + digest-covered refresh + auth/media guards, WAV well-formedness + fade envelope), tsc clean, lint clean, `next build` passes.

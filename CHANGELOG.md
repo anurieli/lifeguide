@@ -7,6 +7,12 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-12 · Vision board: Inbox is now a collapsed dropdown
+
+The board's Inbox tray no longer sits fully expanded over the canvas. It now docks top-right as a quiet pill — "Inbox · N ideas to place" — collapsed by default (per Ariel's ask and the calm-interaction principle: the canvas is the one thing, the Inbox a helper at the edge). **Hovering** the pill peeks a read-only popup of what's inside (up to five capture titles, then "+N more"); **clicking** expands the familiar full tray where each capture can be placed on the board or dismissed, and clicking the header (chevron) collapses it again. The tray still disappears entirely when empty, and collapsed/peeking/expanded are ephemeral UI state — nothing persisted, no schema touched. All in `components/whiteboard/Inbox.tsx`. Also resolved two git conflict markers that had been committed into `docs/product/features/vision-board.md` (§7 image generation, §9 open questions), merging both variants' content. tsc clean, lint clean (pre-existing warnings only), 144 tests green.
+
+**Docs touched:** `docs/product/features/vision-board.md` (§2 inbox tray dropdown behavior, §5 tray UI states, conflict-marker cleanup), `docs/design/screens.md` (Board: Inbox as collapsed pill).
+
 ## 2026-07-12 · Vision board: dot-grid background no longer scales with zoom
 
 The Whiteboard's dot-grid background previously multiplied its `backgroundSize` by the viewport scale, so zooming in blew the dots up and zooming out shrank them into a moiré haze. The grid is now **screen-space**: constant 24px dot size and spacing at every zoom level, with only panning shifting the pattern (`backgroundPosition` still tracks `vp.x/vp.y`). Zoom now changes the cards, never the paper. One-line change in `components/whiteboard/Whiteboard.tsx`.

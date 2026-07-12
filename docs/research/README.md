@@ -17,6 +17,14 @@ A note is **not** the source of truth. It is the place to think before committin
 
 Start at [`wiki/index.md`](wiki/index.md). The wiki blends the old research-note index with source-grounded synthesis.
 
+## Seed doctrines
+
+Synthesized doctrine documents that seed product features. Unlike raw notes, these are already synthesized; they stay here (not in a feature doc) because they are content/doctrine, not spec.
+
+| Note | What it is | Seeds |
+|---|---|---|
+| [`blueprint-for-living.md`](blueprint-for-living.md) | The 8-pillar daily-conduct doctrine (pillar → practice → payoff), synthesized 2026-07-12 from Ariel's "Blueprint" reel folder. Canonical copy in Brain Vault. | The [Daily Ritual](../product/features/daily-ritual.md) default items; Coach doctrine layer (future) |
+
 ## Raw Internal Notes
 
 | Note | Question | Status | Tracks |

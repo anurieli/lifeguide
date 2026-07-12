@@ -7,6 +7,12 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-12 · Vision board: card hover controls stay a constant screen size at any zoom
+
+Follow-up to the screen-space background: a card's hover chrome lived inside the zoom-transformed layer, so the delete ×, the connect handle, and the add-image button scaled with the board — shrinking to un-tappable specks when zoomed out and ballooning when zoomed in. Each control now **counter-scales by `1/scale`**, anchored to its card corner (× at top-right 8px out, connect dot centered on the bottom edge, add-image 6px inside the bottom-right), so it holds a fixed screen size while only the card content scales — matching how the background dots behave. Also swapped these controls' `transition` for `transition-opacity` so the counter-scale tracks zoom instantly instead of lagging the card through the 150ms transform transition. All in `components/whiteboard/NodeCard.tsx`.
+
+**Docs touched:** `docs/product/features/vision-board.md` (§Pan and zoom: screen-constant card controls).
+
 ## 2026-07-12 · Vision board: Inbox is now a collapsed dropdown
 
 The board's Inbox tray no longer sits fully expanded over the canvas. It now docks top-right as a quiet pill — "Inbox · N ideas to place" — collapsed by default (per Ariel's ask and the calm-interaction principle: the canvas is the one thing, the Inbox a helper at the edge). **Hovering** the pill peeks a read-only popup of what's inside (up to five capture titles, then "+N more"); **clicking** expands the familiar full tray where each capture can be placed on the board or dismissed, and clicking the header (chevron) collapses it again. The tray still disappears entirely when empty, and collapsed/peeking/expanded are ephemeral UI state — nothing persisted, no schema touched. All in `components/whiteboard/Inbox.tsx`. Also resolved two git conflict markers that had been committed into `docs/product/features/vision-board.md` (§7 image generation, §9 open questions), merging both variants' content. tsc clean, lint clean (pre-existing warnings only), 144 tests green.

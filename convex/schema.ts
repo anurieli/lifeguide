@@ -201,7 +201,10 @@ export default defineSchema({
   // optional per-kind fields — never by rewriting rows.
   ritualItems: defineTable({
     userId: v.id("users"),
-    ritual: v.union(v.literal("morning"), v.literal("night")),
+    // "any" = a ritual practice indifferent to the time of day: it lives on the
+    // rituals rail, is checkable every day, and belongs to neither seal. Only
+    // "do" items may be "any"; sequence components always belong to a bookend.
+    ritual: v.union(v.literal("morning"), v.literal("night"), v.literal("any")),
     kind: v.union(
       v.literal("do"),
       v.literal("read"),
@@ -253,7 +256,9 @@ export default defineSchema({
   // persist as the completion history. `completedAt` is set once, by the explicit confirm.
   ritualDays: defineTable({
     userId: v.id("users"),
-    ritual: v.union(v.literal("morning"), v.literal("night")),
+    // "any" rows carry the daily check state of time-indifferent rituals; they
+    // are never sealed (completedAt stays unset — only morning/night complete).
+    ritual: v.union(v.literal("morning"), v.literal("night"), v.literal("any")),
     day: v.string(),
     checkedIds: v.array(v.id("ritualItems")),
     completedAt: v.optional(v.number()),

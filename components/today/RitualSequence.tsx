@@ -19,9 +19,9 @@ import { ImmersiveReader } from "@/components/today/ImmersiveReader";
 // ============================================================================
 // The ritual as an ORDERED PRIMER SEQUENCE (ADR 0011), not a checklist. The
 // spine walks the typed components top to bottom — read, roadmap, question —
-// with the first unwalked step held as "current". Plain "do" steps live on the
-// day's to-do rail (TodoPanel) but still count toward the seal: the ritual is
-// finished when every component of every kind is done.
+// with the first unwalked step held as "current". Plain "do" practices live on
+// the rituals rail (RitualsRail) but morning/night ones still count toward the
+// seal: the ritual is finished when every component of every kind is done.
 // ============================================================================
 
 const COPY: Record<RitualType, { label: string; done: string; seal: string; sealed: string }> = {
@@ -40,7 +40,7 @@ const COPY: Record<RitualType, { label: string; done: string; seal: string; seal
 };
 
 const KIND_LABEL: Record<string, string> = {
-  do: "to-do",
+  do: "ritual",
   read: "read",
   question: "question",
   roadmap: "roadmap",
@@ -516,10 +516,10 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
           ))}
           <div className="flex gap-2 mt-3 flex-wrap">
             <button
-              onClick={() => addItem({ ritual, kind: "do", title: "New step" })}
+              onClick={() => addItem({ ritual, kind: "do", title: "New ritual" })}
               className="inline-flex items-center gap-1 border border-line rounded-full px-3.5 py-1.5 text-[13px] text-ink-soft hover:border-gold"
             >
-              <Plus className="w-3.5 h-3.5" /> to-do
+              <Plus className="w-3.5 h-3.5" /> ritual
             </button>
             <button
               onClick={() =>
@@ -638,8 +638,8 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
 
           {spine.length === 0 && mine.length > 0 && (
             <div className="text-[14px] text-ink-mute py-2">
-              Your steps for this ritual live on the day&apos;s to-dos. Add a read, a question, or
-              the roadmap here to give it a spine.
+              Your practices for this bookend live on the rituals rail. Add a read, a question,
+              or the roadmap here to give it a spine.
             </div>
           )}
 

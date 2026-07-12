@@ -393,3 +393,58 @@ describe("rituals: adopting the Blueprint read", () => {
     expect(reads).toHaveLength(1);
   });
 });
+
+describe("rituals: time-indifferent practices (the rituals rail)", () => {
+  it("an 'any' practice checks against its own day row and blocks no seal", async () => {
+    const { asUser } = await setup();
+    await asUser.mutation(api.rituals.seedDefaults, {});
+    const anyId = await asUser.mutation(api.rituals.addItem, {
+      ritual: "any",
+      kind: "do",
+      title: "10 minute walk",
+    });
+    await asUser.mutation(api.rituals.setChecked, {
+      ritual: "any",
+      day: DAY,
+      itemId: anyId,
+      checked: true,
+    });
+    const row = await asUser.query(api.rituals.day, { ritual: "any", day: DAY });
+    expect(row!.checkedIds).toEqual([anyId]);
+    // Sealing the morning ignores the unchecked-tomorrow / any-practice entirely.
+    await checkAll(asUser, "morning");
+    await asUser.mutation(api.rituals.setChecked, {
+      ritual: "any",
+      day: DAY,
+      itemId: anyId,
+      checked: false,
+    });
+    await asUser.mutation(api.rituals.complete, { ritual: "morning", day: DAY });
+  });
+
+  it("only plain 'do' practices can be time-indifferent", async () => {
+    const { asUser } = await setup();
+    await expect(
+      asUser.mutation(api.rituals.addItem, { ritual: "any", kind: "question", title: "nope" }),
+    ).rejects.toThrow("time-indifferent");
+  });
+
+  it("deleting a practice removes it from the profile (every day), not just today", async () => {
+    const { asUser } = await setup();
+    const anyId = await asUser.mutation(api.rituals.addItem, {
+      ritual: "any",
+      kind: "do",
+      title: "gone",
+    });
+    await asUser.mutation(api.rituals.setChecked, {
+      ritual: "any",
+      day: DAY,
+      itemId: anyId,
+      checked: true,
+    });
+    await asUser.mutation(api.rituals.removeItem, { itemId: anyId });
+    const items = await asUser.query(api.rituals.list, {});
+    expect(items.find((i) => i._id === anyId)).toBeUndefined();
+    // Stale id in the day row is ignored by completion logic (long-standing rule).
+  });
+});

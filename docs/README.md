@@ -24,7 +24,7 @@ What actually works in code today (`~/Desktop/Life Board/LifeGuide`, Convex depl
 - [x] **Core** — the Life Blueprint: 3 sections, 18 questions, malleability colors, editable, autosaved (`coreResponses` + `lib/blueprint.ts`).
 - [x] **Board** — vision board (nodes/edges), unified "Add anything" card, capture → AI distillation (OpenRouter, OpenAI fallback).
 - [x] **Thought Stream** — the one-spot capture valve (speak / type / link / photo) with the async ingest pipeline (Whisper transcription, link fetch + extraction, image vision) and durable, re-analyzable raw storage. First slice of the MVP capture spine.
-- [x] **Sessions** — the living entry: the phone bar's center ➕ opens a fresh session already recording; the entry is one continuous tap-and-type document (inline takes, photos); the list is AI-titled with pin (swipe left), delete (swipe right), and multi-select merge; the phone bar is Today · ➕ · Sessions (`sessions` + `captures.sessionId`, ADR 0008).
+- [x] **Sessions** — the living entry: the phone bar's center ➕ opens a fresh session already recording; the entry is one continuous tap-and-type document (inline takes with pause/discard, photos); a take keeps recording in the background across navigation; the list is AI-titled with pin (swipe left), delete (swipe right), and multi-select merge; the phone bar is Today · Board · ➕ · Sessions (`sessions` + `captures.sessionId`, ADR 0008).
 - [x] **Guide** — the Mirror (synthesized reflection) + north star + pillars.
 - [x] **Coach** — context-aware dock; **conversation persists** to `messages`/`threads`.
 - [x] **Settings** — rhythm, tone, pillars, plus AI models and per-profile keys.

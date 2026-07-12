@@ -55,6 +55,12 @@ const AUTO_KEY = "lifeguide.music.auto";
 const MOOD_KEY = "lifeguide.music.mood"; // last mood the user chose — remembered across sessions
 const DEFAULT_VOLUME = 0.62;
 
+// Atmosphere is desktop-only. The orb is hidden below md, so without this gate
+// the engine would still autoplay on the phone (armed on the first tap) with no
+// visible control anywhere to stop it.
+const isPhoneViewport = () =>
+  typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+
 export function MusicProvider({ children }: { children: ReactNode }) {
   const settings = useQuery(api.settings.get, {});
 
@@ -199,6 +205,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   // Start (or resume) the active element with a fade-in. Gesture-gated.
   const attemptPlay = useCallback(() => {
+    if (isPhoneViewport()) return; // the phone stays silent
     const a = getActive();
     if (!a) return;
     ensureGraph();
@@ -330,6 +337,20 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       setPlaying(false);
     }
   }, [enabled, playing]);
+
+  // Crossing into the phone breakpoint mid-play (resize/rotate) -> silence too.
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const onChange = () => {
+      if (mq.matches) {
+        aRef.current?.pause();
+        bRef.current?.pause();
+        setPlaying(false);
+      }
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   const togglePlay = useCallback(() => {
     interactedRef.current = true;

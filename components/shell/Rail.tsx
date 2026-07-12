@@ -16,40 +16,61 @@ import { useAuthActions } from "@convex-dev/auth/react";
 
 export type View = "today" | "core" | "board" | "dump" | "sessions" | "settings";
 
-// `mobile` marks the tabs that survive on the phone bar (Today, Sessions); the rest
-// live on the desktop rail only (Core, Board, Thoughts). The phone is for capture
-// and the day; the desktop is the command center.
-const ITEMS: { key: View; label: string; Icon: typeof Sun; mobile: boolean }[] = [
-  { key: "today", label: "Today", Icon: Sun, mobile: true },
-  { key: "core", label: "Core", Icon: Gem, mobile: false },
-  { key: "board", label: "Board", Icon: LayoutGrid, mobile: false },
-  { key: "dump", label: "Thoughts", Icon: AudioLines, mobile: false },
-  { key: "sessions", label: "Sessions", Icon: NotebookPen, mobile: true },
+const ITEMS: { key: View; label: string; Icon: typeof Sun }[] = [
+  { key: "today", label: "Today", Icon: Sun },
+  { key: "core", label: "Core", Icon: Gem },
+  { key: "board", label: "Board", Icon: LayoutGrid },
+  { key: "dump", label: "Thoughts", Icon: AudioLines },
+  { key: "sessions", label: "Sessions", Icon: NotebookPen },
 ];
 
-// One nav target. Vertical pill on the desktop rail; an evenly-spread tab on the
-// mobile bottom bar (where it flexes to fill the row). `mobile: false` tabs render
-// only on the desktop rail.
-function NavButton({
+const item = (key: View) => ITEMS.find((i) => i.key === key)!;
+
+// A desktop rail pill. Active is the solid accent block; the rail has room for it.
+function RailButton({
   Icon,
   label,
   active,
-  mobile,
   onClick,
 }: {
   Icon: typeof Sun;
   label: string;
   active: boolean;
-  mobile: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`${mobile ? "flex" : "hidden md:flex"} flex-1 md:flex-none flex-col items-center justify-center gap-1 rounded-2xl text-[10.5px] transition h-[52px] md:w-[60px] md:h-[58px] ${
+      className={`flex flex-col items-center justify-center gap-1 rounded-2xl text-[10.5px] transition w-[60px] h-[58px] ${
         active
           ? "bg-accent text-white"
           : "text-ink-mute hover:bg-paper-2 hover:text-ink-soft"
+      }`}
+    >
+      <Icon className="w-[21px] h-[21px]" strokeWidth={2} />
+      {label}
+    </button>
+  );
+}
+
+// A phone bar tab. Active is a light tint only: on the bar, the ➕ is the one
+// dark element; a solid accent tab would read as a slab across the row.
+function BarTab({
+  Icon,
+  label,
+  active,
+  onClick,
+}: {
+  Icon: typeof Sun;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-center justify-center gap-1 rounded-2xl text-[10.5px] h-[52px] mx-1 transition ${
+        active ? "bg-accent/10 text-accent" : "text-ink-mute"
       }`}
     >
       <Icon className="w-[21px] h-[21px]" strokeWidth={2} />
@@ -82,14 +103,14 @@ function MenuItem({
   );
 }
 
-export function Rail({
-  view,
+// The avatar + its popup. Self-contained so the mobile bar and the desktop rail
+// can each mount their own without sharing anchor refs across breakpoints.
+function AccountMenu({
   onNav,
-  onRecord,
+  opensUpward,
 }: {
-  view: View;
   onNav: (v: View) => void;
-  onRecord: () => void;
+  opensUpward: boolean;
 }) {
   const { signOut } = useAuthActions();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -108,74 +129,119 @@ export function Rail({
   }, [menuOpen]);
 
   return (
-    <div className="fixed bottom-0 inset-x-0 h-[64px] flex-row items-center px-2 border-t border-line z-50 md:static md:inset-auto md:w-[84px] md:h-screen md:flex-col md:items-center md:py-[18px] md:px-0 md:border-t-0 md:border-r md:flex-shrink-0 bg-card flex">
-      <div className="hidden md:block font-extrabold text-xl text-ink mb-7">L</div>
-      <div className="flex flex-1 flex-row md:flex-col gap-1 md:gap-1.5 items-center justify-around md:justify-start">
-        {ITEMS.map(({ key, label, Icon, mobile }) => (
-          <NavButton
-            key={key}
-            Icon={Icon}
-            label={label}
-            active={view === key}
-            mobile={mobile}
-            onClick={() => onNav(key)}
-          />
-        ))}
-      </div>
-      {/* One tap, a fresh entry: the phone's main action, dead center of the bar
-          (absolutely centered on the screen, independent of the tabs and avatar).
-          Desktop records inside a session or via the Thoughts composer. */}
+    <div ref={anchorRef} className="relative flex items-center">
       <button
-        type="button"
-        onClick={onRecord}
-        aria-label="Start a new session"
-        className="md:hidden absolute left-1/2 -translate-x-1/2 -top-4 w-16 h-16 rounded-full bg-accent text-white shadow-lg flex items-center justify-center z-10 active:scale-95 transition"
+        onClick={() => setMenuOpen((o) => !o)}
+        title="Account"
+        className={`w-9 h-9 rounded-full bg-gradient-to-br from-[#2A3344] to-[#4A5670] text-white font-semibold text-sm flex items-center justify-center transition ${
+          menuOpen ? "ring-2 ring-accent/60" : "hover:opacity-90"
+        }`}
       >
-        <Plus className="w-8 h-8" strokeWidth={2.25} />
+        A
       </button>
 
-      <div ref={anchorRef} className="relative flex items-center">
-        <button
-          onClick={() => setMenuOpen((o) => !o)}
-          title="Account"
-          className={`w-9 h-9 rounded-full bg-gradient-to-br from-[#2A3344] to-[#4A5670] text-white font-semibold text-sm flex items-center justify-center transition ${
-            menuOpen ? "ring-2 ring-accent/60" : "hover:opacity-90"
+      {menuOpen && (
+        <div
+          className={`absolute w-44 bg-card border border-line rounded-xl shadow-xl py-1.5 z-[60] ${
+            opensUpward ? "right-0 bottom-[120%]" : "left-[48px] bottom-0"
           }`}
         >
-          A
-        </button>
-
-        {menuOpen && (
-          <div className="absolute right-0 bottom-[120%] md:left-[48px] md:right-auto md:bottom-0 w-44 bg-card border border-line rounded-xl shadow-xl py-1.5 z-[60]">
-            <div className="px-3 pt-1 pb-1.5 text-[11px] tracking-[0.14em] uppercase text-ink-mute">
-              You
-            </div>
-            <MenuItem
-              Icon={SettingsIcon}
-              label="Settings"
-              onClick={() => {
-                onNav("settings");
-                setMenuOpen(false);
-              }}
-            />
-            <MenuItem
-              Icon={User}
-              label="Account"
-              onClick={() => {
-                onNav("settings");
-                setMenuOpen(false);
-              }}
-            />
-            <div className="h-px bg-line my-1" />
-            <MenuItem
-              Icon={LogOut}
-              label="Sign out"
-              danger
-              onClick={() => void signOut()}
-            />
+          <div className="px-3 pt-1 pb-1.5 text-[11px] tracking-[0.14em] uppercase text-ink-mute">
+            You
           </div>
-        )}
-      </div>
+          <MenuItem
+            Icon={SettingsIcon}
+            label="Settings"
+            onClick={() => {
+              onNav("settings");
+              setMenuOpen(false);
+            }}
+          />
+          <MenuItem
+            Icon={User}
+            label="Account"
+            onClick={() => {
+              onNav("settings");
+              setMenuOpen(false);
+            }}
+          />
+          <div className="h-px bg-line my-1" />
+          <MenuItem
+            Icon={LogOut}
+            label="Sign out"
+            danger
+            onClick={() => void signOut()}
+          />
+        </div>
+      )}
     </div>
+  );
+}
+
+export function Rail({
+  view,
+  onNav,
+  onRecord,
+}: {
+  view: View;
+  onNav: (v: View) => void;
+  onRecord: () => void;
+}) {
+  return (
+    <>
+      {/* Phone: a five-slot bottom bar, evenly spread so the ➕ sits dead center:
+          Today · Board · ➕ · Sessions · account. Core and Thoughts are desktop-only. */}
+      <div className="md:hidden fixed bottom-0 inset-x-0 h-[64px] grid grid-cols-5 items-center px-1 border-t border-line bg-card z-50">
+        {(["today", "board"] as const).map((key) => {
+          const { label, Icon } = item(key);
+          return (
+            <BarTab
+              key={key}
+              Icon={Icon}
+              label={label}
+              active={view === key}
+              onClick={() => onNav(key)}
+            />
+          );
+        })}
+        {/* One tap, a fresh entry: the phone's main action, raised above the bar. */}
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={onRecord}
+            aria-label="Start a new session"
+            className="-translate-y-4 w-16 h-16 rounded-full bg-accent text-white shadow-lg flex items-center justify-center active:scale-95 transition"
+          >
+            <Plus className="w-8 h-8" strokeWidth={2.25} />
+          </button>
+        </div>
+        <BarTab
+          Icon={item("sessions").Icon}
+          label={item("sessions").label}
+          active={view === "sessions"}
+          onClick={() => onNav("sessions")}
+        />
+        <div className="flex justify-center">
+          <AccountMenu onNav={onNav} opensUpward />
+        </div>
+      </div>
+
+      {/* Desktop: the vertical left rail, unchanged. */}
+      <div className="hidden md:flex w-[84px] h-screen flex-col items-center py-[18px] border-r border-line bg-card flex-shrink-0">
+        <div className="font-extrabold text-xl text-ink mb-7">L</div>
+        <div className="flex flex-1 flex-col gap-1.5 items-center">
+          {ITEMS.map(({ key, label, Icon }) => (
+            <RailButton
+              key={key}
+              Icon={Icon}
+              label={label}
+              active={view === key}
+              onClick={() => onNav(key)}
+            />
+          ))}
+        </div>
+        <AccountMenu onNav={onNav} opensUpward={false} />
+      </div>
+    </>
   );
 }

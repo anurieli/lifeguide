@@ -12,7 +12,9 @@ The observation contract says: let the thought out first, structure later. The T
 
 **Starting one (phone).** The bottom bar's big center ➕ creates a fresh session and lands inside its empty document, already recording (no separate recording screen). Tapping ➕ always starts a NEW entry; appending to an old one goes through the list. If the mic is denied, a small note says "Mic unavailable. Tap the page and type." and the document stays fully usable. A too-short take (~1s) saves nothing.
 
-**The entry (one continuous document).** The session's captures render in order as one flowing page: spoken passages as text (with a quiet inline player; "Listening back…" while transcribing; on failure, "the recording is safe" + Try again), typed passages, photos. There is no composer strip and no send button: tap anywhere on the page and type; the paragraph commits as a text capture on blur (Cmd/Ctrl+Enter also commits). The mic (primary) and photo controls float bottom-right; a live take shows in-flow as a pulsing timer while the rest of the page stays usable, so you can type and drop photos mid-recording. A small "What were you doing?" field holds context. Entries are never closed; reopening one days later and appending is the intended use.
+**The entry (one continuous document).** The session's captures render in order as one flowing page: spoken passages as text (with a quiet inline player; "Listening back…" while transcribing; on failure, "the recording is safe" + Try again), typed passages, photos. There is no composer strip and no send button: tap anywhere on the page and type; the paragraph commits as a text capture on blur (Cmd/Ctrl+Enter also commits). The mic (primary) and photo controls float bottom-right; a live take shows in-flow as a pulsing timer while the rest of the page stays usable, so you can type and drop photos mid-recording. While a take is live the mic swaps for one slim pill: discard (✕, two-tap "Sure?" confirm) · pause/resume (the timer freezes; paused stretches add no audio and no time) · save (■). A small "What were you doing?" field holds context. Entries are never closed; reopening one days later and appending is the intended use.
+
+**Recording survives leaving the screen.** The live take belongs to the shell (`RecordingProvider`), not the document: navigate to Today, the Board, or the list mid-take and it keeps recording. Anywhere outside the live entry, a quiet pill floats top-center (gold dot · elapsed · "Recording"/"Paused"); tapping it returns to the entry. Starting a new take anywhere (➕, or the mic in another entry) saves the current one into its own session first; there is only ever one live take.
 
 **The list.** The Sessions tab is the archive: pinned entries first, then newest by activity; relative time, a pin glyph, voice/photo count glyphs, the AI title, and a one-sentence AI summary (until the digest runs, the entry's first words). Tap to open. Swipe left to pin/unpin. Swipe right to delete: the row parks open with a Delete button, a second tap confirms. "Select" enters multi-select; picking 2+ entries shows "Merge N into one".
 
@@ -20,14 +22,17 @@ The observation contract says: let the thought out first, structure later. The T
 
 **Deleting.** Deleting removes the entry from the archive view only: the container row is deleted, member captures are soft-deleted (`isActive: false`) with their raw artifacts and `sessionId` intact, so nothing raw is ever lost and future retroactive passes still see what belonged together.
 
-**Desktop.** Sessions is a rail tab; the same document behavior applies, and pin/delete appear as hover actions on list rows (no swipe). Desktop remains the command center. The phone bar carries only Today · ➕ · Sessions: the Talk/Listener tab and the Atmosphere music player are desktop-only now; the phone is capture-first.
+**Desktop.** Sessions is a rail tab; the same document behavior applies, and pin/delete appear as hover actions on list rows (no swipe). Desktop remains the command center. The phone bar is five even slots, Today · Board · ➕ · Sessions · account, with the ➕ the only dark element (active tabs get a light tint, never a solid block); Core, Thoughts, the Talk/Listener tab, and the Atmosphere music player (the audio engine itself, not just the orb) are desktop-only; the phone is capture-first.
 
 ## 3. Functions / actions
 
 | Action | Trigger | What it does | Data touched |
 |---|---|---|---|
-| Start an entry | ➕ (phone bar) | `sessions.create`, opens the empty document, auto-starts an inline take; stop uploads the whole file as the first capture (`sourceMeta` carries device, durationMs, recordingStartedAt) | `sessions` (create), `captures` (create), `_storage` |
+| Start an entry | ➕ (phone bar) | `sessions.create`, opens the empty document, auto-starts a take owned by `RecordingProvider`; save uploads the whole file as the first capture (`sourceMeta` carries device, durationMs, recordingStartedAt) | `sessions` (create), `captures` (create), `_storage` |
 | Append (voice/text/photo) | In the document: tap-and-type (commits on blur), floating mic, floating photo | `captures.create` with `sessionId` (ownership-checked); bumps `sessions.updatedAt` | `captures`, `sessions.updatedAt` |
+| Pause / resume a take | The live pill's ⏸/▶ | `MediaRecorder.pause()/resume()`; paused time adds no audio and no elapsed | none (in-memory) |
+| Discard a take | The live pill's ✕, two-tap confirm | Stops and throws the audio away; the entry stays open (husk rules apply if it stays empty) | none (in-memory) |
+| Background take | Navigating anywhere mid-take | Recording continues (provider outlives the document); a top-center pill shows elapsed and returns to the entry | none until save |
 | Pin / unpin | Swipe left (phone), hover pin (desktop) | `sessions.setPinned`; pinned entries lead the list | `sessions.pinnedAt` |
 | Delete | Swipe right + confirm tap (phone), hover trash + confirm (desktop) | `sessions.remove`: deletes the container, soft-deletes members (raw kept, `sessionId` kept) | `sessions` (delete), `captures.isActive` |
 | Merge | Select 2+ in the list → Merge | `sessions.merge`: re-parents every member onto the earliest-started session, deletes the emptied rows, clears title/summary, re-digests | `sessions`, `captures.sessionId` |
@@ -37,7 +42,7 @@ The observation contract says: let the thought out first, structure later. The T
 | Set context | "What were you doing?" field | Saves `doing` (≤200 chars) | `sessions.doing` |
 | List / open | Sessions tab | `sessions.list` (derived preview + counts) / `sessions.get` (ordered members, file URLs resolved) | read-only |
 | Retry transcription | Entry's Try again | Existing `captures.reprocess`; digest refreshes after | `captures.extraction`, then as ingest |
-| No husks | Back action in an entry; sweep when the list renders | `sessions.deleteIfEmpty` removes a container with no active members; the server re-checks emptiness, so it never races an append (raw captures are never touched; an empty container holds none) | `sessions` (delete) |
+| No husks | Back action in an entry; sweep when the list renders | `sessions.deleteIfEmpty` removes a container with no active members; the server re-checks emptiness, so it never races an append (raw captures are never touched; an empty container holds none). The entry a live take is recording into is exempt from both paths | `sessions` (delete) |
 
 ## 4. Dynamics with other elements
 
@@ -50,7 +55,8 @@ The observation contract says: let the thought out first, structure later. The T
 ## 5. States and edge cases
 
 - **No AI keys:** entries and captures land; digest no-ops with fallback title; transcription errors show with retry; nothing is lost.
-- **Failed save of a take (network):** the document keeps the finished blob in memory and shows "That take didn't save; it's still here" with Try again, so retry never re-records. Killing the app mid-take still loses it (accepted; crash-recovery buffer is a parked follow-up).
+- **Failed save of a take (network):** the finished blob is kept in memory (by the provider, so it survives leaving the document) and the entry shows "That take didn't save; it's still here" with Try again, so retry never re-records. Killing the app mid-take still loses it (accepted; crash-recovery buffer is a parked follow-up).
+- **Mic dies mid-session (or never starts):** a synchronous `MediaRecorder.start()` failure is caught and surfaces as the mic-unavailable note instead of an unhandled error; the take target clears so no zombie "Recording" pill survives.
 - **Failed transcription:** the audio file is stored regardless; the entry says "the recording is safe" with Try again.
 - **Typed text pending on leave:** the back action commits a non-empty draft as a capture instead of husk-checking; a failed commit puts the text back on the page.
 - **Empty session:** the ➕ flow creates the container before any content, so bailing out immediately is the common path; `deleteIfEmpty` clears it on the entry's back action, and the list sweeps any zero-count row on render.

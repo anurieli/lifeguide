@@ -20,23 +20,31 @@ export type RecordedAudio = { blob: Blob; mimeType: string; durationMs: number }
 export type AudioRecorderState = {
   supported: boolean;
   recording: boolean;
+  paused: boolean;
+  /** Time actually recorded: paused stretches don't count. */
   elapsedMs: number;
   error: string | null;
   start: () => Promise<boolean>;
+  pause: () => void;
+  resume: () => void;
   /** Stop capture and release the mic. Resolves null if nothing was captured. */
   stop: () => Promise<RecordedAudio | null>;
+  /** Stop capture, discard everything, release the mic. */
+  cancel: () => Promise<void>;
 };
 
 /**
  * Records the mic as a single, complete file (start → speak → stop → one blob).
  * No chunking, no live transcript — the caller uploads the blob and the server
- * transcribes it in the background.
+ * transcribes it in the background. Pause/resume ride MediaRecorder's own
+ * pause(), so a paused stretch adds no audio and no elapsed time.
  */
 export function useAudioRecorder(): AudioRecorderState {
   const [supported] = useState(
     () => typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia,
   );
   const [recording, setRecording] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +52,9 @@ export function useAudioRecorder(): AudioRecorderState {
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const mimeRef = useRef<string>("audio/webm");
-  const startedAtRef = useRef(0);
+  // Recorded time = accumulated finished runs + the current run (if not paused).
+  const accumulatedMsRef = useRef(0);
+  const runStartedAtRef = useRef(0);
   const tickRef = useRef<number | null>(null);
 
   const releaseMic = useCallback(() => {
@@ -57,10 +67,18 @@ export function useAudioRecorder(): AudioRecorderState {
     tickRef.current = null;
   }, []);
 
+  const startTicker = useCallback(() => {
+    stopTicker();
+    tickRef.current = window.setInterval(() => {
+      setElapsedMs(accumulatedMsRef.current + (Date.now() - runStartedAtRef.current));
+    }, 250);
+  }, [stopTicker]);
+
   const start = useCallback(async (): Promise<boolean> => {
     if (!supported) return false;
     setError(null);
     setElapsedMs(0);
+    setPaused(false);
     const mime = pickMime();
     mimeRef.current = mime;
     try {
@@ -92,21 +110,58 @@ export function useAudioRecorder(): AudioRecorderState {
       if (e.data && e.data.size) chunksRef.current.push(e.data);
     };
     recRef.current = rec;
-    rec.start();
-    startedAtRef.current = Date.now();
+    try {
+      rec.start();
+    } catch {
+      // A dead stream (mic yanked between getUserMedia and here) throws sync.
+      recRef.current = null;
+      releaseMic();
+      setError("unavailable");
+      return false;
+    }
+    accumulatedMsRef.current = 0;
+    runStartedAtRef.current = Date.now();
     setRecording(true);
-    tickRef.current = window.setInterval(() => {
-      setElapsedMs(Date.now() - startedAtRef.current);
-    }, 250);
+    startTicker();
     return true;
-  }, [supported, releaseMic]);
+  }, [supported, releaseMic, startTicker]);
+
+  const pause = useCallback(() => {
+    const rec = recRef.current;
+    if (!rec || rec.state !== "recording") return;
+    try {
+      rec.pause();
+    } catch {
+      return;
+    }
+    accumulatedMsRef.current += Date.now() - runStartedAtRef.current;
+    stopTicker();
+    setElapsedMs(accumulatedMsRef.current);
+    setPaused(true);
+  }, [stopTicker]);
+
+  const resume = useCallback(() => {
+    const rec = recRef.current;
+    if (!rec || rec.state !== "paused") return;
+    try {
+      rec.resume();
+    } catch {
+      return;
+    }
+    runStartedAtRef.current = Date.now();
+    setPaused(false);
+    startTicker();
+  }, [startTicker]);
 
   const stop = useCallback(async (): Promise<RecordedAudio | null> => {
     stopTicker();
     const rec = recRef.current;
+    const wasPaused = rec?.state === "paused";
     setRecording(false);
+    setPaused(false);
     if (!rec) return null;
-    const durationMs = Date.now() - startedAtRef.current;
+    const durationMs =
+      accumulatedMsRef.current + (wasPaused ? 0 : Date.now() - runStartedAtRef.current);
     const blob = await new Promise<Blob>((resolve) => {
       rec.onstop = () => resolve(new Blob(chunksRef.current, { type: mimeRef.current }));
       if (rec.state !== "inactive") rec.stop();
@@ -116,6 +171,27 @@ export function useAudioRecorder(): AudioRecorderState {
     releaseMic();
     if (!blob.size) return null;
     return { blob, mimeType: mimeRef.current, durationMs };
+  }, [stopTicker, releaseMic]);
+
+  const cancel = useCallback(async (): Promise<void> => {
+    stopTicker();
+    setRecording(false);
+    setPaused(false);
+    setElapsedMs(0);
+    const rec = recRef.current;
+    recRef.current = null;
+    if (rec && rec.state !== "inactive") {
+      await new Promise<void>((resolve) => {
+        rec.onstop = () => resolve();
+        try {
+          rec.stop();
+        } catch {
+          resolve();
+        }
+      });
+    }
+    chunksRef.current = [];
+    releaseMic();
   }, [stopTicker, releaseMic]);
 
   // Release the mic if the component unmounts mid-recording.
@@ -131,5 +207,5 @@ export function useAudioRecorder(): AudioRecorderState {
     };
   }, [stopTicker, releaseMic]);
 
-  return { supported, recording, elapsedMs, error, start, stop };
+  return { supported, recording, paused, elapsedMs, error, start, pause, resume, stop, cancel };
 }

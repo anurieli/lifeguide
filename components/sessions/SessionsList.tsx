@@ -7,6 +7,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Camera, Check, Loader2, Merge, Mic, Pin, Trash2 } from "lucide-react";
 import { formatRelativeTime } from "@/components/thoughts/utils";
+import { useRecording } from "./RecordingProvider";
 
 type Row = FunctionReturnType<typeof api.sessions.list>[number];
 
@@ -208,6 +209,7 @@ export function SessionsList({ onOpen }: { onOpen: (id: Id<"sessions">) => void 
   const rows = useQuery(api.sessions.list, {});
   const deleteIfEmpty = useMutation(api.sessions.deleteIfEmpty);
   const mergeSessions = useMutation(api.sessions.merge);
+  const recordingInto = useRecording().sessionId;
 
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<Id<"sessions">>>(new Set());
@@ -215,15 +217,17 @@ export function SessionsList({ onOpen }: { onOpen: (id: Id<"sessions">) => void 
 
   // Husk sweep: an empty entry can survive if the person left it without the back
   // action (e.g. switched rail tabs mid-take). The server re-checks emptiness
-  // before deleting, so this never removes an entry with content.
+  // before deleting, so this never removes an entry with content. The entry a
+  // live take is recording into is exempt: its content is still in the air.
   useEffect(() => {
     if (!rows) return;
     for (const s of rows) {
+      if (s._id === recordingInto) continue;
       if (s.counts.voice + s.counts.text + s.counts.photo === 0) {
         void deleteIfEmpty({ sessionId: s._id });
       }
     }
-  }, [rows, deleteIfEmpty]);
+  }, [rows, deleteIfEmpty, recordingInto]);
 
   const toggleSelected = (id: Id<"sessions">) => {
     setSelectedIds((prev) => {

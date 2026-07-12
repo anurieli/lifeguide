@@ -4,31 +4,25 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { ArrowLeft, ImagePlus, Loader2, Mic, Square } from "lucide-react";
-import { RecordedAudio, useAudioRecorder } from "@/hooks/useAudioRecorder";
+import { ArrowLeft, ImagePlus, Loader2, Mic, Pause, Play, Square, X } from "lucide-react";
+import { useRecording } from "./RecordingProvider";
 import { useBlobUpload } from "@/hooks/useBlobUpload";
 import { currentDevice, formatElapsed } from "@/components/thoughts/utils";
-
-const MIN_RECORDING_MS = 1000;
 
 /**
  * The living entry: one continuous document. Captures render in the order they
  * were added (spoken passages, typed text, photos); a borderless editor trails
  * the content, so tapping anywhere on the page just starts typing (committed as
- * a text capture on blur). The mic and photo controls float bottom-right; a take
- * records inline while the rest of the page stays usable. Opened via ➕, the
- * document starts recording on arrival. Leaving an entry with no content deletes it.
+ * a text capture on blur). The controls float bottom-right; the live take itself
+ * belongs to RecordingProvider, so it keeps recording if the person navigates
+ * away. Leaving an entry with no content deletes it.
  */
 export function SessionDoc({
   sessionId,
   onBack,
-  autoRecord,
-  onAutoRecordConsumed,
 }: {
   sessionId: Id<"sessions">;
   onBack: () => void;
-  autoRecord: boolean;
-  onAutoRecordConsumed: () => void;
 }) {
   const doc = useQuery(api.sessions.get, { sessionId });
   const createCapture = useMutation(api.captures.create);
@@ -37,34 +31,28 @@ export function SessionDoc({
   const deleteIfEmpty = useMutation(api.sessions.deleteIfEmpty);
   const touchOpened = useMutation(api.sessions.touchOpened);
   const uploadBlob = useBlobUpload();
-  const recorder = useAudioRecorder();
+  const rec = useRecording();
+  // This entry is the one the live take is landing in.
+  const isLive = rec.sessionId === sessionId;
 
   const [text, setText] = useState("");
   const [doingDraft, setDoingDraft] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  // A finished take whose save failed stays here, so retry never re-records.
-  const [failedTake, setFailedTake] = useState<(RecordedAudio & { startedAt: number }) | null>(
-    null,
-  );
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
-  const recordStartedAtRef = useRef(0);
 
   // Visit metadata: stamp lastOpenedAt whenever the document is opened.
   useEffect(() => {
     void touchOpened({ sessionId });
   }, [touchOpened, sessionId]);
 
-  // The ➕ flow: this document was created to be spoken into, so recording starts
-  // on arrival. The ref guards StrictMode's dev double-invoke (refs survive it).
-  const autoStartRef = useRef(false);
+  // The discard confirmation is a two-tap guard; let it disarm on its own.
   useEffect(() => {
-    if (!autoRecord || autoStartRef.current) return;
-    autoStartRef.current = true;
-    onAutoRecordConsumed();
-    recordStartedAtRef.current = Date.now();
-    void recorder.start();
-  }, [autoRecord, onAutoRecordConsumed, recorder.start]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!confirmDiscard) return;
+    const t = window.setTimeout(() => setConfirmDiscard(false), 2500);
+    return () => window.clearTimeout(t);
+  }, [confirmDiscard]);
 
   // No husks: leaving an entry that never got content removes it. This runs on the
   // explicit back action, not effect cleanup — StrictMode's dev double-mount would
@@ -76,7 +64,8 @@ export function SessionDoc({
       // A typed thought must never be lost: commit it instead of husk-checking.
       setText("");
       void append({ source: "paste", rawType: "text", rawText: trimmed });
-    } else {
+    } else if (!isLive) {
+      // A live take is still landing here; the entry is not a husk.
       void deleteIfEmpty({ sessionId });
     }
     onBack();
@@ -110,39 +99,6 @@ export function SessionDoc({
     );
   };
 
-  const saveTake = async (take: RecordedAudio & { startedAt: number }) => {
-    setUploading(true);
-    try {
-      const rawFileId = await uploadBlob(take.blob, take.mimeType);
-      await append({
-        source: "audio",
-        rawType: "audio",
-        rawFileId,
-        sourceMeta: {
-          durationMs: take.durationMs,
-          recordingStartedAt: take.startedAt || undefined,
-        },
-      });
-      setFailedTake(null);
-    } catch {
-      // The audio must never be lost: keep the blob for a retry without re-recording.
-      setFailedTake(take);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const micTap = async () => {
-    if (recorder.recording) {
-      const result = await recorder.stop();
-      if (!result || result.durationMs < MIN_RECORDING_MS) return;
-      await saveTake({ ...result, startedAt: recordStartedAtRef.current });
-    } else {
-      recordStartedAtRef.current = Date.now();
-      void recorder.start();
-    }
-  };
-
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -160,6 +116,15 @@ export function SessionDoc({
     } finally {
       setUploading(false);
     }
+  };
+
+  const discardTake = () => {
+    if (!confirmDiscard) {
+      setConfirmDiscard(true);
+      return;
+    }
+    setConfirmDiscard(false);
+    void rec.cancel();
   };
 
   const focusEditor = (e: React.MouseEvent) => {
@@ -182,6 +147,7 @@ export function SessionDoc({
 
   const { session, captures } = doc;
   const started = new Date(session.startedAt);
+  const busy = rec.uploading || uploading;
 
   return (
     <div className="h-full flex flex-col relative">
@@ -226,7 +192,7 @@ export function SessionDoc({
         onClick={focusEditor}
       >
         <div className="max-w-[680px] mx-auto flex flex-col gap-5" onClick={focusEditor}>
-          {captures.length === 0 && !recorder.recording && !text && (
+          {captures.length === 0 && !isLive && !text && (
             <p className="text-[13.5px] text-ink-mute py-2 pointer-events-none select-none">
               Speak, or tap anywhere and write.
             </p>
@@ -274,12 +240,12 @@ export function SessionDoc({
               )}
             </div>
           ))}
-          {failedTake && !recorder.recording && !uploading && (
+          {rec.failedTake?.sessionId === sessionId && !isLive && !busy && (
             <p className="text-[13px] text-ink-mute">
               That take didn&apos;t save; it&apos;s still here.{" "}
               <button
                 type="button"
-                onClick={() => void saveTake(failedTake)}
+                onClick={() => void rec.retryFailed()}
                 className="text-gold"
               >
                 Try again
@@ -287,13 +253,17 @@ export function SessionDoc({
             </p>
           )}
           {/* A live take renders in-flow, part of the document as it happens. */}
-          {recorder.recording && (
+          {isLive && rec.recording && (
             <div className="flex items-center gap-2.5 pointer-events-none select-none">
-              <span className="w-2.5 h-2.5 rounded-full bg-gold animate-pulse" />
+              <span
+                className={`w-2.5 h-2.5 rounded-full bg-gold ${rec.paused ? "" : "animate-pulse"}`}
+              />
               <span className="text-[14px] tabular-nums text-ink-soft">
-                {formatElapsed(recorder.elapsedMs)}
+                {formatElapsed(rec.elapsedMs)}
               </span>
-              <span className="text-[12.5px] text-ink-mute">Listening…</span>
+              <span className="text-[12.5px] text-ink-mute">
+                {rec.paused ? "Paused" : "Listening…"}
+              </span>
             </div>
           )}
           <textarea
@@ -318,9 +288,10 @@ export function SessionDoc({
         </div>
       </div>
 
-      {/* The controls: floating, out of the document's way. Mic is the primary. */}
-      <div className="absolute bottom-5 right-5 md:bottom-8 md:right-8 flex flex-col items-center gap-2.5">
-        {recorder.error && !recorder.recording && (
+      {/* The controls: floating, out of the document's way. Idle: photo + mic.
+          Live: one slim pill — discard · pause/resume · save. */}
+      <div className="absolute bottom-5 right-5 md:bottom-8 md:right-8 flex flex-col items-end gap-2.5">
+        {rec.error && !rec.recording && (
           <span className="text-[11px] text-ink-mute bg-card border border-line rounded-full px-2.5 py-1">
             Mic unavailable. Tap the page and type.
           </span>
@@ -334,25 +305,52 @@ export function SessionDoc({
         >
           <ImagePlus className="w-[18px] h-[18px]" />
         </button>
-        <button
-          type="button"
-          onClick={() => void micTap()}
-          disabled={uploading || !recorder.supported}
-          aria-label={recorder.recording ? "Stop recording" : "Record"}
-          className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center disabled:opacity-50 active:scale-95 transition ${
-            recorder.recording
-              ? "bg-gold/15 border-[1.5px] border-gold text-gold"
-              : "bg-accent text-white"
-          }`}
-        >
-          {uploading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : recorder.recording ? (
-            <Square className="w-4 h-4" fill="currentColor" strokeWidth={0} />
-          ) : (
-            <Mic className="w-6 h-6" />
-          )}
-        </button>
+        {isLive && rec.recording ? (
+          <div className="flex items-center gap-1 bg-card border border-line-2 rounded-full shadow-lg p-1">
+            <button
+              type="button"
+              onClick={discardTake}
+              aria-label={confirmDiscard ? "Tap again to discard" : "Discard recording"}
+              className={`h-10 rounded-full flex items-center justify-center transition ${
+                confirmDiscard
+                  ? "px-3 text-[12px] font-medium text-red-500"
+                  : "w-10 text-ink-mute hover:text-red-500"
+              }`}
+            >
+              {confirmDiscard ? "Sure?" : <X className="w-[18px] h-[18px]" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => (rec.paused ? rec.resume() : rec.pause())}
+              aria-label={rec.paused ? "Resume recording" : "Pause recording"}
+              className="w-10 h-10 rounded-full text-ink-soft hover:text-ink flex items-center justify-center"
+            >
+              {rec.paused ? (
+                <Play className="w-[18px] h-[18px]" fill="currentColor" strokeWidth={0} />
+              ) : (
+                <Pause className="w-[18px] h-[18px]" fill="currentColor" strokeWidth={0} />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => void rec.finish()}
+              aria-label="Save recording"
+              className="w-11 h-11 rounded-full bg-gold/15 border-[1.5px] border-gold text-gold flex items-center justify-center active:scale-95 transition"
+            >
+              <Square className="w-3.5 h-3.5" fill="currentColor" strokeWidth={0} />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void rec.start(sessionId)}
+            disabled={busy || !rec.supported}
+            aria-label="Record"
+            className="w-14 h-14 rounded-full bg-accent text-white shadow-lg flex items-center justify-center disabled:opacity-50 active:scale-95 transition"
+          >
+            {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mic className="w-6 h-6" />}
+          </button>
+        )}
       </div>
 
       <input

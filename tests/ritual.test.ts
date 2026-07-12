@@ -3,6 +3,7 @@ import {
   activeRitual,
   ritualDayKey,
   ritualDayRange,
+  nextRitualDayKey,
   lastNRitualDayKeys,
   isRitualComplete,
   DAY_ROLLOVER_HOUR,
@@ -68,6 +69,33 @@ describe("ritualDayRange (the day's absolute span)", () => {
     expect(ritualDayKey(new Date(sinceMs))).toBe(ritualDayKey(d));
     expect(ritualDayKey(new Date(untilMs - 1))).toBe(ritualDayKey(d));
     expect(ritualDayKey(new Date(untilMs))).not.toBe(ritualDayKey(d));
+  });
+});
+
+describe("nextRitualDayKey (the roadmap's target morning, ADR 0012)", () => {
+  it("an entry at 23:00 and one at 1:30am target the SAME upcoming morning", () => {
+    // Monday 23:00 and Tuesday 1:30am are the same evening (4am rollover):
+    // both roadmaps land on Tuesday.
+    expect(nextRitualDayKey(at(2026, 7, 13, 23))).toBe("2026-07-14");
+    expect(nextRitualDayKey(at(2026, 7, 14, 1, 30))).toBe("2026-07-14");
+  });
+
+  it("after the 4am rollover, the target moves to the following day", () => {
+    expect(nextRitualDayKey(at(2026, 7, 14, DAY_ROLLOVER_HOUR))).toBe("2026-07-15");
+  });
+
+  it("crosses month and year boundaries", () => {
+    expect(nextRitualDayKey(at(2026, 7, 31, 22))).toBe("2026-08-01");
+    expect(nextRitualDayKey(at(2026, 12, 31, 23))).toBe("2027-01-01");
+  });
+
+  it("is always exactly one day after ritualDayKey", () => {
+    for (const d of [at(2026, 7, 13, 9), at(2026, 7, 13, 23), at(2026, 7, 14, 2)]) {
+      const [y, m, day] = ritualDayKey(d).split("-").map(Number);
+      const plusOne = new Date(y, m - 1, day + 1);
+      const expected = `${plusOne.getFullYear()}-${String(plusOne.getMonth() + 1).padStart(2, "0")}-${String(plusOne.getDate()).padStart(2, "0")}`;
+      expect(nextRitualDayKey(d)).toBe(expected);
+    }
   });
 });
 

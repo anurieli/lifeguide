@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { Compass } from "lucide-react";
+import { Compass, Moon, Sun } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { View } from "@/components/shell/Rail";
 import { filledCount } from "@/lib/levels";
 import { activeRitual } from "@/lib/ritual";
 import { VoiceField } from "@/components/voice/VoiceField";
 import { RitualCard } from "@/components/today/RitualCard";
+import { DayLog, MantraCard } from "@/components/today/DayLog";
 
 const FIELD_CLASS =
   "w-full border border-line-2 rounded-xl p-3 pr-12 text-[14.5px] resize-none outline-none bg-paper text-ink placeholder:text-ink-mute focus:border-gold transition";
@@ -86,7 +87,7 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
     (nodes ?? []).filter((n) => n.pillars.includes(tagFor(name))).length;
 
   const tab = (active: boolean) =>
-    `px-4 py-[7px] rounded-full text-[13px] transition ${active ? "bg-accent text-white" : "text-ink-mute"}`;
+    `inline-flex items-center gap-1.5 px-4 py-[7px] rounded-full text-[13px] transition ${active ? "bg-accent text-white" : "text-ink-mute"}`;
 
   return (
     <div
@@ -180,10 +181,10 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
         {/* the day's ritual */}
         <div className="inline-flex bg-card border border-line rounded-full p-1 mb-4">
           <button className={tab(mode === "am")} onClick={() => setMode("am")}>
-            ☀️ Morning
+            <Sun className="w-3.5 h-3.5" strokeWidth={2.2} /> Morning
           </button>
           <button className={tab(mode === "pm")} onClick={() => setMode("pm")}>
-            🌙 Evening
+            <Moon className="w-3.5 h-3.5" strokeWidth={2.2} /> Evening
           </button>
         </div>
 
@@ -244,6 +245,10 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
             </button>
           </div>
         )}
+
+        <MantraCard />
+
+        <DayLog onJump={setMode} />
 
         {/* coach nudge */}
         <div className="flex gap-3 items-start text-ink-soft text-[15px] px-1 py-1.5 mb-10">

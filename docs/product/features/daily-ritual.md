@@ -31,6 +31,7 @@ Both rituals are always reachable: the toggle switches between Morning and Eveni
 | Edit a step / the mantra text | edit mode → type, blur | `rituals.updateItem` (title, content) | Manual | writes `ritualItems` |
 | Delete a step | edit mode → ✕ | `rituals.removeItem` (hard delete; stale ids in past `checkedIds` are ignored) | Manual | deletes `ritualItems` |
 | Reorder | edit mode → ↑ / ↓ | `rituals.moveItem` swaps `order` with the neighbor | Manual | writes `ritualItems.order` |
+| Read completion history | Today's log renders | `rituals.history(sinceDay)`: both rituals' `ritualDays` rows from a day key onward, with completion state — feeds the [Dashboard](dashboard.md)'s keeping-up strip | System | reads `ritualDays` |
 
 No Coach path yet (see §9); the Coach can already *see* completions through the Bus.
 
@@ -79,13 +80,13 @@ Exact shapes in [`../../architecture/data-model.md`](../../architecture/data-mod
 
 **Drawn:** nothing.
 
-**Code:** `convex/rituals.ts` (functions + `DEFAULT_RITUAL_ITEMS`), `lib/ritual.ts` (cutoffs, day key, completion logic), `components/today/RitualCard.tsx` (the card), wired in `components/today/Today.tsx`. Tests: `tests/ritual.test.ts`, `tests/convex/rituals.test.ts`.
+**Code:** `convex/rituals.ts` (functions + `DEFAULT_RITUAL_ITEMS`), `lib/ritual.ts` (cutoffs, day key + day span, completion logic), `components/today/RitualCard.tsx` (the card), `components/today/DayLog.tsx` (the Today's log + mantras card, which read this element's tables), wired in `components/today/Today.tsx`. Tests: `tests/ritual.test.ts`, `tests/convex/rituals.test.ts`, `tests/convex/day-log.test.ts`.
 
 ## 9. Open questions
 
 - **User-adjustable cutoffs:** `NIGHT_START_HOUR` (17:00) and `DAY_ROLLOVER_HOUR` (4:00) are centralized in `lib/ritual.ts` precisely so they can move into `settings` later. When?
 - **Coach involvement:** should the Coach propose steps from the doctrine, or nudge on an unsealed evening? Must clear the earned-interruption bar.
-- **History surface:** completions are recorded but nothing renders them yet. A quiet month view? Deliberately not a streak counter.
+- **History surface:** partially answered 2026-07-12 — the [Dashboard](dashboard.md)'s Today's log renders a quiet last-7-days strip (sun/moon dots per sealed ritual, via `rituals.history`). Still deliberately not a streak counter. A quiet month view remains open.
 - **Un-seal:** is a sealed day truly immutable, or should unchecking reopen it?
 - **Journal handoff:** when the Journal's beats ship, does a "Check out" ritual step open the night beat directly?
 - **Drag reorder:** arrows work everywhere; drag-and-drop would be nicer on desktop but heavier on touch.

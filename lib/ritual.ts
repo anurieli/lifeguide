@@ -44,6 +44,19 @@ export function ritualDayRange(d: Date): { sinceMs: number; untilMs: number } {
   };
 }
 
+// The ritual day AFTER the one this moment belongs to — the upcoming morning the
+// evening roadmap builder targets (ADR 0012). An entry added at 23:00 and one added
+// at 1:30am both belong to the same evening (4am rollover), so both target the same
+// next morning.
+export function nextRitualDayKey(d: Date): string {
+  const shifted = new Date(d.getTime() - DAY_ROLLOVER_HOUR * 60 * 60 * 1000);
+  const next = new Date(shifted.getFullYear(), shifted.getMonth(), shifted.getDate() + 1);
+  const y = next.getFullYear();
+  const m = String(next.getMonth() + 1).padStart(2, "0");
+  const day = String(next.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 // The last n ritual-day keys ending on (and including) the day `d` belongs to,
 // oldest first. Feeds the quiet "keeping up" strip on the Today log.
 export function lastNRitualDayKeys(d: Date, n: number): string[] {

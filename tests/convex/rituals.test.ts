@@ -25,18 +25,23 @@ async function checkAll(
 }
 
 describe("rituals: items", () => {
-  it("seedDefaults seeds both rituals once, ordered, and is idempotent", async () => {
+  it("seedDefaults seeds both rituals once, ordered and typed, and is idempotent", async () => {
     const { asUser } = await setup();
     await asUser.mutation(api.rituals.seedDefaults, {});
     await asUser.mutation(api.rituals.seedDefaults, {});
     const items = await asUser.query(api.rituals.list, {});
     const morning = items.filter((i) => i.ritual === "morning");
     const night = items.filter((i) => i.ritual === "night");
-    expect(morning).toHaveLength(3);
+    expect(morning).toHaveLength(4);
     expect(night).toHaveLength(2);
-    expect(morning.map((i) => i.order)).toEqual([0, 1, 2]);
+    expect(morning.map((i) => i.order)).toEqual([0, 1, 2, 3]);
+    // The morning opens with the Blueprint read; the sequence carries roadmap + question.
     expect(morning[0].kind).toBe("read");
-    expect(morning[0].content).toBeTruthy();
+    expect(morning[0].source).toBe("blueprint");
+    expect(morning.map((i) => i.kind)).toEqual(["read", "do", "roadmap", "question"]);
+    // The evening question carries no fixed prompt: it draws from the rotating bank.
+    expect(night.map((i) => i.kind)).toEqual(["question", "roadmap"]);
+    expect(night[0].content).toBeUndefined();
   });
 
   it("never re-seeds after the user deletes everything", async () => {
@@ -90,7 +95,12 @@ describe("rituals: items", () => {
     const after = (await asUser.query(api.rituals.list, {}))
       .filter((i) => i.ritual === "morning")
       .sort((a, b) => a.order - b.order);
-    expect(after.map((i) => i._id)).toEqual([before[0]._id, before[2]._id, before[1]._id]);
+    expect(after.map((i) => i._id)).toEqual([
+      before[0]._id,
+      before[2]._id,
+      before[1]._id,
+      before[3]._id,
+    ]);
   });
 
   it("rejects touching another user's items", async () => {
@@ -233,6 +243,34 @@ describe("rituals: check state and completion", () => {
     await asUser.mutation(api.rituals.complete, { ritual: "night", day: DAY });
   });
 
+  it("completion counts every typed component — question and roadmap included", async () => {
+    const { asUser } = await setup();
+    await asUser.mutation(api.rituals.seedDefaults, {});
+    // Check everything in the morning EXCEPT the roadmap component.
+    const morning = (await asUser.query(api.rituals.list, {})).filter(
+      (i) => i.ritual === "morning",
+    );
+    for (const item of morning.filter((i) => i.kind !== "roadmap")) {
+      await asUser.mutation(api.rituals.setChecked, {
+        ritual: "morning",
+        day: DAY,
+        itemId: item._id,
+        checked: true,
+      });
+    }
+    await expect(
+      asUser.mutation(api.rituals.complete, { ritual: "morning", day: DAY }),
+    ).rejects.toThrow("Ritual not finished");
+    const roadmap = morning.find((i) => i.kind === "roadmap")!;
+    await asUser.mutation(api.rituals.setChecked, {
+      ritual: "morning",
+      day: DAY,
+      itemId: roadmap._id,
+      checked: true,
+    });
+    await asUser.mutation(api.rituals.complete, { ritual: "morning", day: DAY });
+  });
+
   it("rejects malformed day keys", async () => {
     const { asUser } = await setup();
     const itemId = await asUser.mutation(api.rituals.addItem, {
@@ -248,5 +286,110 @@ describe("rituals: check state and completion", () => {
         checked: true,
       }),
     ).rejects.toThrow("Bad day key");
+  });
+});
+
+// A legacy v1 account: seeded before typed components existed (do/read only,
+// ritualsSeededAt set, no ritualsSeedVersion).
+async function legacyV1Account() {
+  const { t, asUser, userId } = await setup();
+  await t.run(async (ctx) => {
+    const now = 1;
+    const rows = [
+      { ritual: "morning", kind: "read", title: "Read the mantra", content: "old words", order: 0 },
+      { ritual: "morning", kind: "do", title: "Drink a glass of water", order: 1 },
+      { ritual: "night", kind: "do", title: "Check out: wins and lessons", order: 0 },
+    ] as const;
+    for (const r of rows) {
+      await ctx.db.insert("ritualItems", { userId, ...r, createdAt: now, updatedAt: now });
+    }
+    await ctx.db.insert("settings", {
+      userId,
+      morningCheckin: true,
+      eveningCheckin: true,
+      dailyExercise: "intention",
+      coachTone: "balanced",
+      reachingOut: "earned",
+      ritualsSeededAt: now,
+      updatedAt: now,
+    });
+  });
+  return { t, asUser, userId };
+}
+
+describe("rituals: the v2 typed-component upgrade", () => {
+  it("appends the missing question/roadmap components without touching existing items", async () => {
+    const { asUser } = await legacyV1Account();
+    await asUser.mutation(api.rituals.upgradeToSeedVersion, {});
+    const items = await asUser.query(api.rituals.list, {});
+    const morning = items.filter((i) => i.ritual === "morning").sort((a, b) => a.order - b.order);
+    const night = items.filter((i) => i.ritual === "night").sort((a, b) => a.order - b.order);
+    // Existing items untouched, new kinds appended after them.
+    expect(morning.map((i) => i.kind)).toEqual(["read", "do", "roadmap", "question"]);
+    expect(morning[0].content).toBe("old words");
+    expect(night.map((i) => i.kind)).toEqual(["do", "question", "roadmap"]);
+  });
+
+  it("is one-shot: deleting the added components sticks across re-runs", async () => {
+    const { asUser } = await legacyV1Account();
+    await asUser.mutation(api.rituals.upgradeToSeedVersion, {});
+    const added = (await asUser.query(api.rituals.list, {})).filter(
+      (i) => i.kind === "question" || i.kind === "roadmap",
+    );
+    for (const item of added) await asUser.mutation(api.rituals.removeItem, { itemId: item._id });
+    await asUser.mutation(api.rituals.upgradeToSeedVersion, {});
+    const after = await asUser.query(api.rituals.list, {});
+    expect(after.filter((i) => i.kind === "question" || i.kind === "roadmap")).toHaveLength(0);
+  });
+
+  it("leaves an emptied ritual empty (delete-all is honored)", async () => {
+    const { asUser } = await legacyV1Account();
+    const night = (await asUser.query(api.rituals.list, {})).filter((i) => i.ritual === "night");
+    for (const item of night) await asUser.mutation(api.rituals.removeItem, { itemId: item._id });
+    await asUser.mutation(api.rituals.upgradeToSeedVersion, {});
+    const after = await asUser.query(api.rituals.list, {});
+    expect(after.filter((i) => i.ritual === "night")).toHaveLength(0);
+    // ...while the still-populated morning got its components.
+    expect(after.filter((i) => i.ritual === "morning").map((i) => i.kind).sort()).toEqual(
+      ["do", "question", "read", "roadmap"],
+    );
+  });
+
+  it("no-ops on a fresh v2 seed (no duplicate components)", async () => {
+    const { asUser } = await setup();
+    await asUser.mutation(api.rituals.seedDefaults, {});
+    await asUser.mutation(api.rituals.upgradeToSeedVersion, {});
+    const items = await asUser.query(api.rituals.list, {});
+    expect(items.filter((i) => i.kind === "roadmap")).toHaveLength(2); // one per ritual
+    expect(items.filter((i) => i.kind === "question")).toHaveLength(2);
+  });
+});
+
+describe("rituals: adopting the Blueprint read", () => {
+  it("creates the Blueprint document and prepends a blueprint-sourced read to the morning", async () => {
+    const { asUser } = await legacyV1Account();
+    await asUser.mutation(api.rituals.adoptBlueprintRead, {});
+    const doc = await asUser.query(api.blueprintDoc.get, {});
+    expect(doc).not.toBeNull();
+    expect(doc!.content).toContain("The Body");
+    const morning = (await asUser.query(api.rituals.list, {}))
+      .filter((i) => i.ritual === "morning")
+      .sort((a, b) => a.order - b.order);
+    expect(morning[0].kind).toBe("read");
+    expect(morning[0].source).toBe("blueprint");
+  });
+
+  it("is idempotent, and re-adoption never clobbers an edited document", async () => {
+    const { asUser } = await legacyV1Account();
+    await asUser.mutation(api.rituals.adoptBlueprintRead, {});
+    await asUser.mutation(api.blueprintDoc.update, { content: "my own doctrine" });
+    await asUser.mutation(api.rituals.adoptBlueprintRead, {});
+    await asUser.mutation(api.blueprintDoc.adopt, {});
+    const doc = await asUser.query(api.blueprintDoc.get, {});
+    expect(doc!.content).toBe("my own doctrine");
+    const reads = (await asUser.query(api.rituals.list, {})).filter(
+      (i) => i.kind === "read" && i.source === "blueprint",
+    );
+    expect(reads).toHaveLength(1);
   });
 });

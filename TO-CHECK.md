@@ -124,3 +124,15 @@ Features that are done but haven't been manually verified yet.
 - [ ] Record a dump on the phone specifically, since mic permissions and audio format differ on iOS Safari
 - [ ] Paste a YouTube link, confirm the title lands and the receipt reflects the video's topic
 - [ ] Hover a thought card and delete it, confirm it disappears without a confirm dialog
+
+### Daily Ritual (morning/night checklists on Today)
+- [ ] **Phone viewport (~390px):** open Today on the iPhone; the ritual card sits above the one-move/tonight prompt, rows are comfortably tappable, the mantra text reads well, nothing overflows or wraps oddly
+- [ ] **Time cutoff:** open the app in the morning and confirm the Morning tab + Morning ritual show by default; open after 5pm and confirm it lands on Evening + Night ritual (before 4am should also land on Evening)
+- [ ] **First-open seeding:** on an account that has never had rituals, confirm the morning list arrives with 3 steps (mantra read, water, plan the day) and the night list with 2 (check out, plan tomorrow)
+- [ ] **Check and completion moment:** tick every morning step; the card turns gold and offers a single "Seal the morning" button; confirm sealing shows the calm "Morning sealed · [time]" banner and the boxes become read-only
+- [ ] **Daily reset:** the next ritual day (after 4am), confirm all boxes are empty again while yesterday stayed sealed
+- [ ] **Past-midnight boundary:** with the night ritual partly checked before midnight, confirm the checks are still there just after midnight (the day rolls over at 4am, not 12am)
+- [ ] **Editing:** tap edit; rename a step, rewrite the mantra text, reorder with the arrows, delete a step, add a new step and a new "something to read"; tap done and confirm the list reflects everything
+- [ ] **Delete-all is honored:** delete every step of one ritual, reload, and confirm the defaults do NOT come back (empty state invites you to add a step)
+- [ ] **Late-added step:** after checking everything but before sealing, add a new step; confirm the seal offer disappears until the new step is checked too
+- [ ] **Two rituals independent:** seal the morning, switch to Evening, confirm the night list is untouched and unsealed

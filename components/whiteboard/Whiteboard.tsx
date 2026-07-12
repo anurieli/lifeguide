@@ -568,7 +568,9 @@ export function Whiteboard({ surfaceId }: { surfaceId: SurfaceId }) {
       style={{
         cursor: isPanning ? "grabbing" : marqueeRect ? "crosshair" : "default",
         backgroundImage: "radial-gradient(circle, #E7E1D4 1px, transparent 1px)",
-        backgroundSize: `${24 * vp.scale}px ${24 * vp.scale}px`,
+        // Screen-space grid: constant dot size/spacing at every zoom level;
+        // only pan shifts the pattern.
+        backgroundSize: "24px 24px",
         backgroundPosition: `${vp.x}px ${vp.y}px`,
       }}
       onPointerDown={onDown}

@@ -30,6 +30,35 @@ export function ritualDayKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+// The absolute local-time span of the ritual day this moment belongs to: from 4am
+// to the next 4am. Used to pull the day's log entries (interactions) by timestamp.
+// Built from calendar fields (not +24h) so DST days keep their true length.
+export function ritualDayRange(d: Date): { sinceMs: number; untilMs: number } {
+  const shifted = new Date(d.getTime() - DAY_ROLLOVER_HOUR * 60 * 60 * 1000);
+  const y = shifted.getFullYear();
+  const m = shifted.getMonth();
+  const day = shifted.getDate();
+  return {
+    sinceMs: new Date(y, m, day, DAY_ROLLOVER_HOUR).getTime(),
+    untilMs: new Date(y, m, day + 1, DAY_ROLLOVER_HOUR).getTime(),
+  };
+}
+
+// The last n ritual-day keys ending on (and including) the day `d` belongs to,
+// oldest first. Feeds the quiet "keeping up" strip on the Today log.
+export function lastNRitualDayKeys(d: Date, n: number): string[] {
+  const shifted = new Date(d.getTime() - DAY_ROLLOVER_HOUR * 60 * 60 * 1000);
+  const keys: string[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const day = new Date(shifted.getFullYear(), shifted.getMonth(), shifted.getDate() - i);
+    const y = day.getFullYear();
+    const m = String(day.getMonth() + 1).padStart(2, "0");
+    const dd = String(day.getDate()).padStart(2, "0");
+    keys.push(`${y}-${m}-${dd}`);
+  }
+  return keys;
+}
+
 // A ritual is complete when every one of its items is checked. An empty ritual is
 // never complete (nothing was done). Stale checked ids (items deleted after being
 // checked) are ignored.

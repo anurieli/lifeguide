@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   activeRitual,
   ritualDayKey,
+  ritualDayRange,
+  lastNRitualDayKeys,
   isRitualComplete,
   DAY_ROLLOVER_HOUR,
   NIGHT_START_HOUR,
@@ -44,6 +46,42 @@ describe("ritualDayKey (the day boundary)", () => {
 
   it("zero-pads month and day", () => {
     expect(ritualDayKey(at(2026, 3, 5, 12))).toBe("2026-03-05");
+  });
+});
+
+describe("ritualDayRange (the day's absolute span)", () => {
+  it("spans 4am to the next 4am for a daytime moment", () => {
+    const { sinceMs, untilMs } = ritualDayRange(at(2026, 7, 12, 9));
+    expect(sinceMs).toBe(at(2026, 7, 12, DAY_ROLLOVER_HOUR).getTime());
+    expect(untilMs).toBe(at(2026, 7, 13, DAY_ROLLOVER_HOUR).getTime());
+  });
+
+  it("keeps the small hours inside the previous day's span", () => {
+    const { sinceMs, untilMs } = ritualDayRange(at(2026, 7, 13, 1, 30));
+    expect(sinceMs).toBe(at(2026, 7, 12, DAY_ROLLOVER_HOUR).getTime());
+    expect(untilMs).toBe(at(2026, 7, 13, DAY_ROLLOVER_HOUR).getTime());
+  });
+
+  it("agrees with ritualDayKey at both edges", () => {
+    const d = at(2026, 7, 12, 15);
+    const { sinceMs, untilMs } = ritualDayRange(d);
+    expect(ritualDayKey(new Date(sinceMs))).toBe(ritualDayKey(d));
+    expect(ritualDayKey(new Date(untilMs - 1))).toBe(ritualDayKey(d));
+    expect(ritualDayKey(new Date(untilMs))).not.toBe(ritualDayKey(d));
+  });
+});
+
+describe("lastNRitualDayKeys (the keeping-up strip)", () => {
+  it("ends on today's key, oldest first", () => {
+    expect(lastNRitualDayKeys(at(2026, 7, 12, 9), 3)).toEqual([
+      "2026-07-10",
+      "2026-07-11",
+      "2026-07-12",
+    ]);
+  });
+
+  it("respects the 4am rollover and month boundaries", () => {
+    expect(lastNRitualDayKeys(at(2026, 8, 1, 2), 2)).toEqual(["2026-07-30", "2026-07-31"]);
   });
 });
 

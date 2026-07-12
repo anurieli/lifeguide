@@ -13,6 +13,7 @@ The element model these hang off is [`../../architecture/elements-and-context.md
 | [Sessions (the living entry)](sessions.md) | `sessions` (container; members via `captures.sessionId`) | Sessions → Core | built (v1) |
 | [Future Self](future-self.md) | `futureSelf` | Core | proposed |
 | [Journal](journal.md) | `prompts` (its beats open the live `sessions`) | Sessions | proposed (Today ritual is the seed) |
+| [Daily Ritual](daily-ritual.md) | `ritualItems`, `ritualDays` | Sessions (publishes `ritual_completed`) | built |
 | [Pillars & Goals](pillars-and-goals.md) | `pillars, goals` | Core, Sessions | partial (pillars built; goals proposed) |
 | [File system on the human](file-system-on-the-human.md) | `pillars` (folders), `coreFiles` (files) | Core | partial (store + seed built; person-map UI proposed) |
 | [The Core](core.md) | `mirror` | is the Core | partial |

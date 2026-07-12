@@ -44,6 +44,7 @@ import type * as nodes from "../nodes.js";
 import type * as owner from "../owner.js";
 import type * as pillars from "../pillars.js";
 import type * as placement from "../placement.js";
+import type * as rituals from "../rituals.js";
 import type * as sessions from "../sessions.js";
 import type * as settings from "../settings.js";
 import type * as surfaces from "../surfaces.js";
@@ -93,6 +94,7 @@ declare const fullApi: ApiFromModules<{
   owner: typeof owner;
   pillars: typeof pillars;
   placement: typeof placement;
+  rituals: typeof rituals;
   sessions: typeof sessions;
   settings: typeof settings;
   surfaces: typeof surfaces;

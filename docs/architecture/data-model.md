@@ -21,6 +21,7 @@ Every table is multi-tenant: every row carries `userId` and every query/mutation
 | The Coach | `threads`, `messages` | live (reserved, lightly used) |
 | Mirror / Context Bus | `interactions` + the assembler | live |
 | Feedback Widget | `feedback` | live |
+| Daily Ritual | `ritualItems`, `ritualDays` | live |
 | (system) | `profiles`, `settings`, `apiKeys`, `authTables` | live |
 
 Ownership is stark: no element stores a copy of another's data. Cross-element needs are met by **drawing** through the Context Bus at act-time, never by holding (see [`context-bus.md`](context-bus.md)).
@@ -50,8 +51,17 @@ The folders of the **file system on the human** — the regions of a person (see
 ### coreFiles (the files on the human)
 The durable textual units that make up a person, each living inside a pillar (folder). `{ userId, pillarId, name, content, kind, status: active|pending, note?, supersedes?, sourceSessionId?, createdAt, updatedAt }`, indexed `by_user_pillar` (`[userId, pillarId, status]`) and `by_session` (`[sourceSessionId]`). `kind` is the type of thing captured (`value|belief|fact|dream|fear|tension|pattern|state`). `status: "active"` is held truth; `status: "pending"` is a proposed change that **contradicts** an existing file (`supersedes` points at it, `note` says why) and is waiting on the person to decide — never silently overwritten. Written by the **Center** during its post-call fan-out (`convex/center.ts` via internal mutations in `convex/coreFiles.ts`); the **filing report** reads `bySession`. See [`../product/features/the-center.md`](../product/features/the-center.md).
 
+### ritualItems / ritualDays (the Daily Ritual)
+The two checklists that bookend the day (see [`../product/features/daily-ritual.md`](../product/features/daily-ritual.md)).
+
+`ritualItems { userId, ritual: morning|night, kind: do|read, title, content?, order, createdAt, updatedAt }`, indexed `by_user_ritual [userId, ritual, order]`. One row per step of a ritual, user-editable (add/edit/delete/reorder). `kind: "do"` is a plain checkbox task; `kind: "read"` displays `content` (a mantra or short text) inline and checking it marks it read. New users are seeded with a minimal default set (`DEFAULT_RITUAL_ITEMS` in `convex/rituals.ts`, derived from [`../research/blueprint-for-living.md`](../research/blueprint-for-living.md)); seeding is one-shot per user via `settings.ritualsSeededAt`, so deleting every item sticks.
+
+`ritualDays { userId, ritual: morning|night, day: "YYYY-MM-DD", checkedIds: Id<ritualItems>[], completedAt? }`, indexed `by_user_ritual_day [userId, ritual, day]`. One row per ritual per **ritual day**: the live check state while the day is open, and the completion record once `completedAt` is stamped by the explicit confirm (`rituals.complete`, which also publishes a `ritual_completed` interaction). The `day` key is computed client-side from local time with a **4am rollover** (`lib/ritual.ts`, [ADR 0009](../decisions/0009-ritual-day-boundary.md)); daily reset is structural because each new day is a new, initially absent row. Stale ids in `checkedIds` (items deleted later) are ignored by completion logic.
+
 ### settings
-Per-user app settings. `{ userId, onboardedAt?, morningCheckin, eveningCheckin, dailyExercise: intention|gratitude|free, coachTone: gentle|balanced|direct, reachingOut: leave|earned|often, northStar?, blueprintStatus?, level?, musicEnabled?, musicAutoplay?, musicDefaultMood?, updatedAt }`.
+Per-user app settings. `{ userId, onboardedAt?, morningCheckin, eveningCheckin, dailyExercise: intention|gratitude|free, coachTone: gentle|balanced|direct, reachingOut: leave|earned|often, northStar?, blueprintStatus?, level?, musicEnabled?, musicAutoplay?, musicDefaultMood?, ritualsSeededAt?, updatedAt }`.
+
+`ritualsSeededAt?` marks the one-shot seeding of the Daily Ritual defaults (see `ritualItems` above); once set, `rituals.seedDefaults` never inserts again.
 
 The three `music*` fields are the durable preferences for **Atmosphere** (the ambient music system, see [`../product/features/atmosphere.md`](../product/features/atmosphere.md)): `musicEnabled?` (master switch; absent/`true` = on, only explicit `false` hides the player), `musicAutoplay?` (start on app load, gesture permitting), and `musicDefaultMood?` (`inspiration|deep-thinking|focus|calm-reset` — what plays first each session). Live playback state (the mood sounding right now, volume, AUTO) is **not** stored here; it is ephemeral client state (React + `localStorage`).
 

@@ -6,7 +6,9 @@ import { Compass } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { View } from "@/components/shell/Rail";
 import { filledCount } from "@/lib/levels";
+import { activeRitual } from "@/lib/ritual";
 import { VoiceField } from "@/components/voice/VoiceField";
+import { RitualCard } from "@/components/today/RitualCard";
 
 const FIELD_CLASS =
   "w-full border border-line-2 rounded-xl p-3 pr-12 text-[14.5px] resize-none outline-none bg-paper text-ink placeholder:text-ink-mute focus:border-gold transition";
@@ -60,7 +62,10 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
   const log = useMutation(api.interactions.log);
   const update = useMutation(api.settings.update);
 
-  const [mode, setMode] = useState<"am" | "pm">(new Date().getHours() < 17 ? "am" : "pm");
+  // The tab the person lands on follows the time of day (cutoffs live in lib/ritual.ts).
+  const [mode, setMode] = useState<"am" | "pm">(
+    activeRitual(new Date()) === "morning" ? "am" : "pm",
+  );
   const [amText, setAmText] = useState("");
   const [pmText, setPmText] = useState("");
   const [amSaved, setAmSaved] = useState(false);
@@ -181,6 +186,8 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
             🌙 Evening
           </button>
         </div>
+
+        <RitualCard ritual={mode === "am" ? "morning" : "night"} />
 
         {mode === "am" ? (
           <div className="bg-card border border-line rounded-[18px] p-[22px] mb-[18px]">

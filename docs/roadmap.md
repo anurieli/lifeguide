@@ -26,6 +26,7 @@ This is live and verified (see [`../CHANGELOG.md`](../CHANGELOG.md)). It is the 
 - **App shell + rail nav.** The Today/Board/Guide/Settings rail, the docked Coach.
 - **Onboarding (rebuilt 2026-06-03).** The five-step wizard is replaced with a real first-pass Core draw: the Door question, a one-question text interview (skip + circle-back policy), a voice interview (OpenAI Realtime mini via WebRTC), a QR phone handoff (join token), synthesis into `coreResponses`, and blueprint status/level tracking. See [`product/features/onboarding.md`](product/features/onboarding.md) and [`product/features/interview.md`](product/features/interview.md).
 - **Today ritual.** The morning/evening beats wired to the interactions log.
+- **Daily Ritual (2026-07-12).** The editable morning/night checklists on Today: doctrine-seeded defaults, "do" + mantra "read" steps, time-of-day selection, per-day check state (4am rollover, ADR 0009), seal-the-day completions publishing `ritual_completed`. See [`product/features/daily-ritual.md`](product/features/daily-ritual.md).
 - **Partial Guide / Settings.** Guide renders the north star, the live Mirror, pillar blocks, and the blueprint progress marker; Settings persists rhythm/tone and manages pillars.
 - **Thin Coach.** Single-turn `coach.ask` with persisted threads/messages; assembles the Mirror plus the current surface. Not yet the real curator.
 - **The Core.** The Life Blueprint surface: 3 sections, 18 questions, editable answers in `coreResponses`.

@@ -190,6 +190,32 @@ export default defineSchema({
     .index("by_user_pillar", ["userId", "pillarId", "status"])
     .index("by_session", ["sourceSessionId"]),
 
+  // One step of the user's morning or night ritual (see docs/product/features/daily-ritual.md).
+  // "do" is a plain checkbox task; "read" displays `content` (a mantra or short text) and
+  // marking it read completes it. Ordered per ritual via `order`; user-editable.
+  ritualItems: defineTable({
+    userId: v.id("users"),
+    ritual: v.union(v.literal("morning"), v.literal("night")),
+    kind: v.union(v.literal("do"), v.literal("read")),
+    title: v.string(),
+    content: v.optional(v.string()), // the text to read (kind "read")
+    order: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user_ritual", ["userId", "ritual", "order"]),
+
+  // The check state + completion record of one ritual on one ritual day. `day` is a local
+  // "YYYY-MM-DD" key computed client-side with the 4am rollover (lib/ritual.ts, ADR 0009).
+  // Check state "resets" daily because each day gets a fresh row; rows with `completedAt`
+  // persist as the completion history. `completedAt` is set once, by the explicit confirm.
+  ritualDays: defineTable({
+    userId: v.id("users"),
+    ritual: v.union(v.literal("morning"), v.literal("night")),
+    day: v.string(),
+    checkedIds: v.array(v.id("ritualItems")),
+    completedAt: v.optional(v.number()),
+  }).index("by_user_ritual_day", ["userId", "ritual", "day"]),
+
   // Per-user app settings: onboarding state, daily rhythm, Coach behavior, and the north star.
   settings: defineTable({
     userId: v.id("users"),
@@ -218,6 +244,9 @@ export default defineSchema({
         v.literal("calm-reset"),
       ),
     ),
+    // Set once when the Daily Ritual defaults were seeded for this user, so deleting
+    // every ritual item stays deleted (rituals.seedDefaults never re-seeds).
+    ritualsSeededAt: v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
   // Per-profile AI provider keys. A user's own key (e.g. their OpenRouter key) is

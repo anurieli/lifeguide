@@ -14,7 +14,7 @@ const MOOD = v.union(
   v.literal("calm-reset"),
 );
 
-async function getOrCreate(ctx: MutationCtx, userId: Id<"users">) {
+export async function getOrCreate(ctx: MutationCtx, userId: Id<"users">) {
   const existing = await ctx.db
     .query("settings")
     .withIndex("by_user", (q) => q.eq("userId", userId))

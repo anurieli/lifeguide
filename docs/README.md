@@ -21,6 +21,7 @@ What actually works in code today (`~/Desktop/Life Board/LifeGuide`, Convex depl
 - [x] **Auth** — Convex Auth with **Google** (durable, cross-device) + Anonymous ("just look around"). No Supabase.
 - [x] **Onboarding** — 5-step flow; completion persists (`settings.onboardedAt`).
 - [x] **Today** — AM/PM ritual, north star, one-move capture.
+- [x] **Daily Ritual** (2026-07-12): editable morning/night checklists on Today ("do" steps + inline mantra "read" steps), time-of-day selection, per-day check state with a 4am rollover (ADR 0009), seal-the-day completion history, doctrine-seeded defaults. See [`product/features/daily-ritual.md`](product/features/daily-ritual.md).
 - [x] **Core** — the Life Blueprint: 3 sections, 18 questions, malleability colors, editable, autosaved (`coreResponses` + `lib/blueprint.ts`).
 - [x] **Board** — vision board (nodes/edges), unified "Add anything" card, capture → AI distillation (OpenRouter, OpenAI fallback).
 - [x] **Thought Stream** — the one-spot capture valve (speak / type / link / photo) with the async ingest pipeline (Whisper transcription, link fetch + extraction, image vision) and durable, re-analyzable raw storage. First slice of the MVP capture spine.

@@ -1,6 +1,7 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useEffect } from "react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Camera, Mic } from "lucide-react";
@@ -9,6 +10,19 @@ import { formatRelativeTime } from "@/components/thoughts/utils";
 /** Chronological entries, newest first: date/time, AI title + subtext (or fallback). */
 export function SessionsList({ onOpen }: { onOpen: (id: Id<"sessions">) => void }) {
   const rows = useQuery(api.sessions.list, {});
+  const deleteIfEmpty = useMutation(api.sessions.deleteIfEmpty);
+
+  // Husk sweep: an empty entry can survive if the person left it without the back
+  // action (e.g. switched rail tabs mid-"Type instead"). The server re-checks
+  // emptiness before deleting, so this never removes an entry with content.
+  useEffect(() => {
+    if (!rows) return;
+    for (const s of rows) {
+      if (s.counts.voice + s.counts.text + s.counts.photo === 0) {
+        void deleteIfEmpty({ sessionId: s._id });
+      }
+    }
+  }, [rows, deleteIfEmpty]);
 
   return (
     <div className="h-full overflow-y-auto">

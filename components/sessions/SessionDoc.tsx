@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -36,11 +36,14 @@ export function SessionDoc({
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // No husks: leaving an entry that never got content removes it.
-  useEffect(() => {
-    return () => void deleteIfEmpty({ sessionId });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId]);
+  // No husks: leaving an entry that never got content removes it. This runs on the
+  // explicit back action, not effect cleanup — StrictMode's dev double-mount would
+  // fire an unmount cleanup immediately and delete a just-opened empty entry.
+  // The server re-checks emptiness, so this never races an in-flight append.
+  const goBack = () => {
+    void deleteIfEmpty({ sessionId });
+    onBack();
+  };
 
   const append = useCallback(
     async (args: Omit<Parameters<typeof createCapture>[0], "sessionId" | "sourceMeta">) => {
@@ -107,7 +110,7 @@ export function SessionDoc({
     return (
       <div className="text-center py-16">
         <p className="text-[14px] text-ink-mute">This entry is gone.</p>
-        <button type="button" onClick={onBack} className="mt-3 text-[13px] text-gold">
+        <button type="button" onClick={goBack} className="mt-3 text-[13px] text-gold">
           Back to sessions
         </button>
       </div>
@@ -122,7 +125,7 @@ export function SessionDoc({
       <div className="flex items-center gap-3 px-5 py-3.5 border-b border-line md:px-8">
         <button
           type="button"
-          onClick={onBack}
+          onClick={goBack}
           aria-label="Back"
           className="text-ink-mute hover:text-ink"
         >

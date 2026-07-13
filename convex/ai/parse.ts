@@ -3,6 +3,7 @@
 // without a model or the Convex runtime.
 
 export type Distilled = { title: string; essence: string; pillars: string[] };
+export type BoardWorthy = { verdict: boolean; reason: string };
 
 // The canonical pillar tag vocabulary the distiller may assign (lowercase).
 export const PILLAR_TAGS = [
@@ -15,20 +16,24 @@ export const PILLAR_TAGS = [
   "spirit",
 ];
 
-export function parseDistilled(raw: string): Distilled {
-  let obj: Record<string, unknown> = {};
+function tolerantJson(raw: string): Record<string, unknown> {
   try {
-    obj = JSON.parse(raw) as Record<string, unknown>;
+    return JSON.parse(raw) as Record<string, unknown>;
   } catch {
     const m = raw.match(/\{[\s\S]*\}/);
     if (m) {
       try {
-        obj = JSON.parse(m[0]) as Record<string, unknown>;
+        return JSON.parse(m[0]) as Record<string, unknown>;
       } catch {
-        obj = {};
+        return {};
       }
     }
   }
+  return {};
+}
+
+export function parseDistilled(raw: string): Distilled {
+  const obj = tolerantJson(raw);
 
   const title = typeof obj.title === "string" && obj.title.trim() ? obj.title.trim().slice(0, 80) : "Untitled";
   const essence = typeof obj.essence === "string" ? obj.essence.trim().slice(0, 400) : "";
@@ -44,4 +49,15 @@ export function parseDistilled(raw: string): Distilled {
     : [];
 
   return { title, essence, pillars };
+}
+
+// The vision sieve's verdict, read from the same distill response. Defaults to NOT
+// board-worthy: on garbage or a missing field, an ambient capture stays out of the
+// board Inbox rather than leaking in (explicit target="board" captures never need this).
+export function parseBoardWorthy(raw: string): BoardWorthy {
+  const obj = tolerantJson(raw);
+  const verdict = obj.board_worthy === true;
+  const reason =
+    typeof obj.board_reason === "string" ? obj.board_reason.trim().slice(0, 200) : "";
+  return { verdict, reason };
 }

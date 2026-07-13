@@ -344,8 +344,11 @@ export function SessionDoc({
       </div>
 
       {/* The controls: floating, out of the document's way. Idle: photo + mic.
-          Live: one slim pill — discard · pause/resume · save. */}
-      <div className="absolute bottom-5 right-5 md:bottom-8 md:right-8 flex flex-col items-end gap-2.5">
+          Live: one slim pill — discard · pause/resume · save. On desktop the
+          bottom-right corner itself belongs to the global Coach cluster (talk FAB
+          + chat bubble, fixed at right-6), so this column sits just left of it,
+          on the same baseline; the live pill grows leftward, away from the Coach. */}
+      <div className="absolute bottom-5 right-5 md:bottom-6 md:right-24 flex flex-col items-end gap-2.5">
         {rec.error && !rec.recording && (
           <span className="text-[11px] text-ink-mute bg-card border border-line rounded-full px-2.5 py-1">
             Mic unavailable. Tap the page and type.

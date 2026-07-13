@@ -134,10 +134,11 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
         )}
         {view === "settings" && <Settings />}
       </main>
-      {/* You, always in the corner: the account avatar, fixed top-right on every
-          page (it used to live in the mobile bar and at the rail's foot). */}
-      <div className="fixed top-3 right-4 z-[55]">
-        <AccountMenu onNav={setView} opensUpward={false} />
+      {/* Mobile only: the account avatar sits fixed in the top-right corner, since
+          Goals took its old slot in the bottom bar. On desktop it lives at the foot
+          of the rail (see Rail.tsx), so this is hidden there. */}
+      <div className="md:hidden fixed top-3 right-4 z-[55]">
+        <AccountMenu onNav={setView} placement="corner" />
       </div>
       {/* A take recording in the background: one quiet pill that leads back to it. */}
       {rec.sessionId && !viewingLiveEntry && (

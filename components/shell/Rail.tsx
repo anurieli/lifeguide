@@ -107,14 +107,16 @@ function MenuItem({
   );
 }
 
-// The avatar + its popup. Exported: AppShell mounts one fixed in the top-right
-// corner of every page (the mobile bar slot it used to occupy now holds Goals).
+// The avatar + its popup. Two homes: on desktop it sits at the foot of the rail
+// ("rail", menu opens up and to the right); on mobile AppShell mounts it fixed in
+// the top-right corner ("corner", menu opens downward) since Goals took its old
+// slot in the bottom bar.
 export function AccountMenu({
   onNav,
-  opensUpward,
+  placement,
 }: {
   onNav: (v: View) => void;
-  opensUpward: boolean;
+  placement: "rail" | "corner";
 }) {
   const { signOut } = useAuthActions();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -147,7 +149,7 @@ export function AccountMenu({
       {menuOpen && (
         <div
           className={`absolute w-44 bg-card border border-line rounded-xl shadow-xl py-1.5 z-[60] ${
-            opensUpward ? "right-0 bottom-[120%]" : "right-0 top-[120%]"
+            placement === "rail" ? "left-[48px] bottom-0" : "right-0 top-[120%]"
           }`}
         >
           <div className="px-3 pt-1 pb-1.5 text-[11px] tracking-[0.14em] uppercase text-ink-mute">
@@ -259,6 +261,7 @@ export function Rail({
             <PenLine className="w-[22px] h-[22px]" strokeWidth={2.25} />
           </button>
         </div>
+        <AccountMenu onNav={onNav} placement="rail" />
       </div>
     </>
   );

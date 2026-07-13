@@ -5,6 +5,7 @@ import {
   ritualDayRange,
   nextRitualDayKey,
   lastNRitualDayKeys,
+  ritualOpensAtLabel,
   isRitualComplete,
   DAY_ROLLOVER_HOUR,
   NIGHT_START_HOUR,
@@ -18,6 +19,13 @@ describe("activeRitual (time-of-day selection)", () => {
     expect(activeRitual(at(2026, 7, 12, DAY_ROLLOVER_HOUR))).toBe("morning"); // 4:00 exactly
     expect(activeRitual(at(2026, 7, 12, 8, 30))).toBe("morning");
     expect(activeRitual(at(2026, 7, 12, NIGHT_START_HOUR - 1, 59))).toBe("morning"); // 16:59
+  });
+
+  it("locks the OTHER beat with the hour it opens (the toggle hint)", () => {
+    // At any morning moment, the night is locked and opens at 5:00 PM.
+    expect(ritualOpensAtLabel("night")).toBe("5:00 PM"); // NIGHT_START_HOUR = 17
+    // At any night moment, the morning is locked and opens at 4:00 AM.
+    expect(ritualOpensAtLabel("morning")).toBe("4:00 AM"); // DAY_ROLLOVER_HOUR = 4
   });
 
   it("selects night in the evening and through the small hours", () => {

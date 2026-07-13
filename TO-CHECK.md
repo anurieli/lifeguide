@@ -136,3 +136,17 @@ Features that are done but haven't been manually verified yet.
 - [ ] **Delete-all is honored:** delete every step of one ritual, reload, and confirm the defaults do NOT come back (empty state invites you to add a step)
 - [ ] **Late-added step:** after checking everything but before sealing, add a new step; confirm the seal offer disappears until the new step is checked too
 - [ ] **Two rituals independent:** seal the morning, switch to Evening, confirm the night list is untouched and unsealed
+
+### Goals tab (Orbit board) + avatar moved top-right
+- [ ] On desktop, confirm the rail shows a Goals tab (target icon) between Board and Thoughts, and it opens the board
+- [ ] Create a New Big Thing, open its card, set a why, switch status and area chips, confirm the card reflects all of it
+- [ ] Add a task inside a goal, then complete it from the card, confirm the open count drops
+- [ ] Use the queue: capture a task to Inbox, confirm the count updates; complete it and see "Inbox zero. Nice."
+- [ ] Add a task from the Today tab of the queue, confirm it appears with a gold "today" tag
+- [ ] On a task's ⋯ menu, mark it waiting, confirm it shows in the Waiting tab with day aging; unmark it
+- [ ] File an Inbox task to a goal via the ⋯ menu, confirm it moves onto that goal's card count
+- [ ] In Settings → Goals & Todoist, paste your real Todoist API token and save; back on Goals, hit "Sync Todoist" and confirm your projects arrive as cards and tasks land in the right places (Todoist Inbox tasks go to the queue's Inbox)
+- [ ] With Todoist connected, complete a synced task in LifeGuide and confirm it closes in the Todoist app; add a task in a synced goal and confirm it appears in Todoist
+- [ ] On your phone, confirm the bottom bar reads Today · Board · ➕ · Sessions · Goals (Goals where the avatar used to be)
+- [ ] Confirm the avatar now floats in the top-right corner on every page (phone and desktop) and its menu opens downward with Settings / Account / Sign out
+- [ ] Open the Board (whiteboard), confirm its Inbox pill sits left of the avatar and neither covers the other; in Core's Zen mode, confirm "Exit Zen" is visible left of the avatar

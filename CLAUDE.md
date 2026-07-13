@@ -55,6 +55,12 @@ mockup/
 
 Everything else (prd, architecture, feature docs, design, decisions, research, plans, roadmap) was removed and is being rebuilt to the evolved vision; it all remains in git history. The working model for rebuilding the Journal and the Core is the original Life Blueprint app at `~/lifeguide`. See [`docs/README.md`](docs/README.md).
 
+## Coach Knowledge Base (pulled from the developer's Brain Vault)
+
+The canonical coaching content the Coach draws from — the **mantra pool**, the **Life Blueprint** backbone, and the **daily-conduct doctrine** — is the **Coach Knowledge Base**, kept in [`docs/product/coach-knowledge-base/`](docs/product/coach-knowledge-base/). Its **canonical source is the developer's Brain Vault** (LifeGuide notes at `~/brain-vault/01-Projects/lifeguide/lifeguide-notes/`); the copies in this repo are **pulled from there** to seed the app. When directed to sync, treat the vault as the source of truth and this repo as the copy.
+
+It is distinct from each user's **Personal Knowledge Base** (per-user, client-side, editable) — that is seeded from the Coach KB but diverges per person and never writes back to the canon. The Coach KB is owner-authored and belongs behind owner-gated admin (ADR 0006).
+
 ## Feature docs must be COMPLETE (when we rebuild them)
 Every feature doc (one per component, the units) must describe **all** of: purpose, user-facing behavior, every function/action, dynamics and interactions with other components, states, edge cases, AI involvement, data touched, and open questions. "All possible uses, functions, and dynamics" is the bar. If a behavior exists, it is written down.
 
@@ -72,4 +78,4 @@ Every feature doc (one per component, the units) must describe **all** of: purpo
 Next.js (App Router) + Convex (real-time backend: reactive DB, file storage, server-side AI actions) + OpenRouter (preferred) with OpenAI as automatic fallback. The live schema is `convex/schema.ts`; the AI client is `convex/ai/openai.ts`.
 
 ## Status
-Built and live in local dev: Convex backend, anonymous multi-tenant auth, the vision board (Whiteboard), capture and distillation on OpenRouter, the app shell (rail nav), the Today ritual, Guide, Settings, and a context-aware Coach (basic). Docs were reset on 2026-06-03; next is rebuilding the spec and the component docs to the evolved vision, seeded by the original Life Blueprint. The clickable prototype lives in `mockup/`.
+Built and live in local dev: Convex backend, anonymous multi-tenant auth, the vision board (Whiteboard), capture and distillation on OpenRouter, the app shell (rail nav), the Today ritual, Guide, Settings, a context-aware Coach (basic), and the Goals board (Orbit: Big Things with a why, Today/Inbox/Waiting triage, optional Todoist sync; see `docs/product/features/goals.md`). Docs were reset on 2026-06-03; next is rebuilding the spec and the component docs to the evolved vision, seeded by the original Life Blueprint. The clickable prototype lives in `mockup/`.

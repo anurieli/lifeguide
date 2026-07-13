@@ -11,7 +11,12 @@ import { aiNodeSummary } from "./ai/config";
 // Note: keys are stored as-is in the DB (gated by userId). Encrypting at rest is
 // a hardening step tracked in docs/architecture/security-privacy.md.
 
-const PROVIDER = v.union(v.literal("openrouter"), v.literal("openai"), v.literal("local"));
+const PROVIDER = v.union(
+  v.literal("openrouter"),
+  v.literal("openai"),
+  v.literal("local"),
+  v.literal("todoist"),
+);
 
 // Save (or replace) the caller's key for a provider.
 export const setKey = mutation({

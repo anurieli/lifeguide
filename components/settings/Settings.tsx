@@ -96,6 +96,8 @@ export function Settings() {
   const [custom, setCustom] = useState("");
   const [orKey, setOrKey] = useState("");
   const orStatus = (keyStatus ?? []).find((k) => k.provider === "openrouter");
+  const [tdKey, setTdKey] = useState("");
+  const tdStatus = (keyStatus ?? []).find((k) => k.provider === "todoist");
 
   const s = settings;
   const existingNames = new Set((pillars ?? []).map((p) => p.name));
@@ -263,6 +265,46 @@ export function Settings() {
                     if (!orKey.trim()) return;
                     await setKey({ provider: "openrouter", key: orKey.trim() });
                     setOrKey("");
+                  }}
+                  className="bg-ink text-white rounded-lg px-4 py-2 text-sm"
+                >
+                  Save
+                </button>
+              </div>
+            )}
+          </Row>
+        </Group>
+
+        <Group label="Goals & Todoist">
+          <Row
+            title="Your Todoist token"
+            desc={
+              tdStatus
+                ? `Connected (ends ····${tdStatus.last4}). Sync from the Goals tab.`
+                : "Paste your API token (Todoist → Settings → Integrations → Developer) to sync your projects and tasks into Goals."
+            }
+          >
+            {tdStatus ? (
+              <button
+                onClick={() => void clearKey({ provider: "todoist" })}
+                className="border border-line rounded-lg px-4 py-2 text-sm text-ink-soft hover:bg-paper-2 transition"
+              >
+                Disconnect
+              </button>
+            ) : (
+              <div className="flex gap-2 items-center">
+                <input
+                  type="password"
+                  value={tdKey}
+                  onChange={(e) => setTdKey(e.target.value)}
+                  placeholder="Todoist API token…"
+                  className="w-[170px] bg-paper border border-line rounded-lg px-3 py-2 text-sm outline-none text-ink"
+                />
+                <button
+                  onClick={async () => {
+                    if (!tdKey.trim()) return;
+                    await setKey({ provider: "todoist", key: tdKey.trim() });
+                    setTdKey("");
                   }}
                   className="bg-ink text-white rounded-lg px-4 py-2 text-sm"
                 >

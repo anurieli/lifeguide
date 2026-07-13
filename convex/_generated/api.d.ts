@@ -35,6 +35,7 @@ import type * as coreFiles from "../coreFiles.js";
 import type * as edges from "../edges.js";
 import type * as feedback from "../feedback.js";
 import type * as files from "../files.js";
+import type * as goals from "../goals.js";
 import type * as http from "../http.js";
 import type * as interactions from "../interactions.js";
 import type * as interview from "../interview.js";
@@ -50,6 +51,7 @@ import type * as roadmap from "../roadmap.js";
 import type * as sessions from "../sessions.js";
 import type * as settings from "../settings.js";
 import type * as surfaces from "../surfaces.js";
+import type * as todoist from "../todoist.js";
 import type * as users from "../users.js";
 import type * as voice from "../voice.js";
 
@@ -87,6 +89,7 @@ declare const fullApi: ApiFromModules<{
   edges: typeof edges;
   feedback: typeof feedback;
   files: typeof files;
+  goals: typeof goals;
   http: typeof http;
   interactions: typeof interactions;
   interview: typeof interview;
@@ -102,6 +105,7 @@ declare const fullApi: ApiFromModules<{
   sessions: typeof sessions;
   settings: typeof settings;
   surfaces: typeof surfaces;
+  todoist: typeof todoist;
   users: typeof users;
   voice: typeof voice;
 }>;

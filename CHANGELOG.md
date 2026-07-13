@@ -7,6 +7,12 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-13 · Thought document: entry controls sit beside the Coach, not under it (step-aside reverted)
+
+Ariel on the step-aside fix below: "all you did was remove the coach." Correct — hiding the Coach inside the document traded one problem for another; the Coach must stay reachable everywhere. Reverted `stepAside` entirely (`CoachDock` and `AppShell` back to their unconditional selves) and fixed the layout instead: the document's floating capture column (photo + record mic / live pill, `SessionDoc`) moves to `md:bottom-6 md:right-24` on desktop — just left of the Coach talk FAB (`right-6`, 56px wide), on its baseline, with a 16px gap — so the entry's controls and the Coach cluster sit side by side and nothing stacks. The live recording pill is right-aligned in that column, so it grows leftward, away from the Coach. Mobile unchanged (`bottom-5 right-5`; the Coach has no floating buttons there). tsc + lint clean, 190 tests green.
+
+**Docs touched:** `docs/product/features/sessions.md` (§2 controls beside the Coach), `docs/product/features/coach.md` (§2 the corner is the Coach's on every surface), `docs/design/screens.md` (§The docked Coach side-by-side rule).
+
 ## 2026-07-13 · Thought document: the Coach cluster steps aside so the entry's own controls own the corner
 
 Ariel's screenshot of an open thought entry: the document's floating capture controls (photo + record mic, `SessionDoc`, `absolute bottom-right`) and the global Coach cluster (talk FAB at `bottom-6 right-6` + chat bubble at `bottom-[88px]`, `z-[75]`, `CoachDock`) share the same corner on desktop, so the Coach buttons sat on top of the entry's — two stacked mic circles, the photo button half-buried. Fix: `CoachDock` takes a `stepAside` prop; the shell sets it while a thought document is open (`view === "sessions" && activeSessionId !== null`), which hides both floating buttons and folds an open chat panel away (state survives — the dock and the panel return as-is the moment the person leaves the document). The dock stays mounted so a draft message and an in-flight reply aren't lost. Changes in `components/coach/CoachDock.tsx` and `components/shell/AppShell.tsx`. tsc + lint clean, tests green.

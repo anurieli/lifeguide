@@ -7,6 +7,7 @@ import { BLUEPRINT, type Malleability } from "@/lib/blueprint";
 import { VoiceField } from "@/components/voice/VoiceField";
 import { ZenCore } from "./ZenCore";
 import { ConversationalCore } from "./ConversationalCore";
+import { PageHeader } from "@/components/shell/PageHeader";
 
 type CoreMode = "grid" | "zen" | "conversational";
 
@@ -121,13 +122,12 @@ export function Core() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-[760px] mx-auto px-5 py-8 md:px-8 md:py-10">
-        <div className="flex items-start justify-between gap-4">
+        <PageHeader align="items-start" className="gap-4" actions={<ZenButton onClick={() => setMode("zen")} />}>
           <div className="text-[11px] tracking-[0.16em] uppercase text-gold mb-2">
             The Blueprint · who you are
           </div>
-          <ZenButton onClick={() => setMode("zen")} />
-        </div>
-        <h1 className="text-[30px] tracking-tight text-ink mb-2">Your Core</h1>
+          <h1 className="text-[30px] tracking-tight text-ink mb-2">Your Core</h1>
+        </PageHeader>
         <p className="text-[15px] text-ink-soft leading-relaxed mb-8 max-w-[560px]">
           The enduring layer beneath your days: who you are, who you&apos;re becoming, and what you
           stand for. Edit anything, anytime. The colored dot shows how settled each piece should be.

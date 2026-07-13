@@ -7,6 +7,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Camera, Check, Loader2, Merge, Mic, PenLine, Pin, Trash2 } from "lucide-react";
 import { formatRelativeTime } from "@/components/thoughts/utils";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { useRecording } from "./RecordingProvider";
 import { useBlobUpload } from "@/hooks/useBlobUpload";
 import { usePressSwipeUp } from "@/hooks/usePressSwipeUp";
@@ -297,32 +298,36 @@ export function SessionsList({
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-[680px] mx-auto px-5 py-6 md:px-8">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-[19px] font-semibold text-ink">Thoughts</h1>
-          <div className="flex items-center gap-3">
-            {rows && rows.length > 1 && (
+        <PageHeader
+          className="mb-4"
+          actions={
+            <>
+              {rows && rows.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
+                  className="text-[13px] text-ink-mute hover:text-ink"
+                >
+                  {selectMode ? "Cancel" : "Select"}
+                </button>
+              )}
+              {/* The scribbler pen: a fresh entry from right here.
+                  Press + swipe up and it's already recording. */}
               <button
                 type="button"
-                onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
-                className="text-[13px] text-ink-mute hover:text-ink"
+                onClick={onNew}
+                {...penSwipe}
+                aria-label="Think out loud"
+                title="Think out loud"
+                className="w-9 h-9 rounded-full bg-accent text-white shadow-md flex items-center justify-center hover:opacity-90 active:scale-95 transition"
               >
-                {selectMode ? "Cancel" : "Select"}
+                <PenLine className="w-[17px] h-[17px]" strokeWidth={2.25} />
               </button>
-            )}
-            {/* The scribbler pen: a fresh entry from right here.
-                Press + swipe up and it's already recording. */}
-            <button
-              type="button"
-              onClick={onNew}
-              {...penSwipe}
-              aria-label="Think out loud"
-              title="Think out loud"
-              className="w-9 h-9 rounded-full bg-accent text-white shadow-md flex items-center justify-center hover:opacity-90 active:scale-95 transition"
-            >
-              <PenLine className="w-[17px] h-[17px]" strokeWidth={2.25} />
-            </button>
-          </div>
-        </div>
+            </>
+          }
+        >
+          <h1 className="text-[19px] font-semibold text-ink">Thoughts</h1>
+        </PageHeader>
         {rows === undefined ? (
           <p className="text-center text-[13px] text-ink-mute py-10">Loading…</p>
         ) : rows.length === 0 ? (

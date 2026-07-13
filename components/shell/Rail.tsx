@@ -109,9 +109,9 @@ function MenuItem({
 }
 
 // The avatar + its popup. Two homes: on desktop it sits at the foot of the rail
-// ("rail", menu opens up and to the right); on mobile AppShell mounts it fixed in
-// the top-right corner ("corner", menu opens downward) since Goals took its old
-// slot in the bottom bar.
+// ("rail", menu opens up and to the right); on mobile every page heading bakes
+// its own instance into the row's far right via PageHeader ("corner", menu
+// opens downward) since Goals took its old slot in the bottom bar.
 export function AccountMenu({
   onNav,
   placement,
@@ -203,7 +203,7 @@ export function Rail({
     <>
       {/* Phone: a five-slot bottom bar, evenly spread so the ➕ sits dead center:
           Today · Board · ➕ · Thoughts · Goals. Core is desktop-only; the account
-          avatar lives fixed in the top-right corner (see AppShell). */}
+          avatar is baked into each page heading (see PageHeader). */}
       <div className="md:hidden fixed bottom-0 inset-x-0 h-[calc(64px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] grid grid-cols-5 items-center px-1 border-t border-line bg-card z-50">
         {(["today", "board"] as const).map((key) => {
           const { label, Icon } = item(key);

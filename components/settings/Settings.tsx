@@ -6,6 +6,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 import { BlueprintCard } from "@/components/settings/BlueprintCard";
 import { convexErrorMessage } from "@/lib/convexError";
+import { PageHeader } from "@/components/shell/PageHeader";
 
 const PALETTE = ["#B8945A", "#4F7A4A", "#3A5C86", "#5B4B7A", "#2F6E6A", "#1E3A5F"];
 
@@ -154,8 +155,10 @@ export function Settings() {
   return (
     <div className="h-full overflow-auto bg-paper">
       <div className="max-w-[640px] mx-auto px-5 pt-8 pb-20 md:px-10 md:pt-11">
-        <div className="text-[12px] tracking-[0.18em] uppercase text-ink-mute mb-2">Settings</div>
-        <h2 className="text-[30px] tracking-tight text-ink mb-4">How I treat you</h2>
+        <PageHeader align="items-start" className="mb-4">
+          <div className="text-[12px] tracking-[0.18em] uppercase text-ink-mute mb-2">Settings</div>
+          <h2 className="text-[30px] tracking-tight text-ink">How I treat you</h2>
+        </PageHeader>
 
         <Group label="Daily rhythm">
           <Row title="Morning check-in" desc="A direction to wake to">

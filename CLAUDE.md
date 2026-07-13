@@ -71,6 +71,9 @@ Every feature doc (one per component, the units) must describe **all** of: purpo
 - **Foundation-first.** Build the shared spine before surfaces; surfaces are thin plugins.
 - **DRY docs.** Link, don't duplicate. One canonical home per concept; the glossary anchors terms.
 
+## Git & PR conventions
+- **No "Generated with/by Claude Code" lines** — not in commit messages, not in PR titles or bodies, not the 🤖 badge. The ONLY agent attribution allowed is the Claude session link line (`https://claude.ai/code/session_…`). (Ariel, 2026-07-12.)
+
 ## Stack
 Next.js (App Router) + Convex (real-time backend: reactive DB, file storage, server-side AI actions) + OpenRouter (preferred) with OpenAI as automatic fallback. The live schema is `convex/schema.ts`; the AI client is `convex/ai/openai.ts`.
 

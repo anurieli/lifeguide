@@ -10,7 +10,7 @@ The Goals tab reframes a flat task list as a small set of **Big Things**, the pr
 ## Where it lives
 
 - **Desktop:** a `Goals` tab in the left rail (Target icon), between Board and Thoughts.
-- **Mobile:** the fifth slot of the bottom bar (`Today · Board · ➕ · Sessions · Goals`): it took the place of the account avatar.
+- **Mobile:** the fifth slot of the bottom bar (`Today · Board · ➕ · Thoughts · Goals`): it took the place of the account avatar.
 - **The account avatar** moved to a fixed top-right corner button on every page (all breakpoints, `AppShell`), opening Settings / Account / Sign out. The whiteboard Inbox pill and the Zen "Exit Zen" button shifted left to clear it.
 
 ## User-facing behavior

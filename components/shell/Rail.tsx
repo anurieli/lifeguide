@@ -5,9 +5,9 @@ import {
   Sun,
   Gem,
   LayoutGrid,
-  AudioLines,
-  Plus,
   NotebookPen,
+  PenLine,
+  Plus,
   Target,
   Settings as SettingsIcon,
   User,
@@ -15,22 +15,17 @@ import {
 } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 
-export type View =
-  | "today"
-  | "core"
-  | "board"
-  | "goals"
-  | "dump"
-  | "sessions"
-  | "settings";
+export type View = "today" | "core" | "board" | "goals" | "sessions" | "settings";
 
+// Thoughts and Sessions merged into one surface (ADR 0010). The tab is labeled
+// Thoughts — the entries underneath are still sessions — with the booklet icon
+// (a session is a booklet).
 const ITEMS: { key: View; label: string; Icon: typeof Sun }[] = [
   { key: "today", label: "Today", Icon: Sun },
   { key: "core", label: "Core", Icon: Gem },
   { key: "board", label: "Board", Icon: LayoutGrid },
   { key: "goals", label: "Goals", Icon: Target },
-  { key: "dump", label: "Thoughts", Icon: AudioLines },
-  { key: "sessions", label: "Sessions", Icon: NotebookPen },
+  { key: "sessions", label: "Thoughts", Icon: NotebookPen },
 ];
 
 const item = (key: View) => ITEMS.find((i) => i.key === key)!;
@@ -199,9 +194,9 @@ export function Rail({
   return (
     <>
       {/* Phone: a five-slot bottom bar, evenly spread so the ➕ sits dead center:
-          Today · Board · ➕ · Sessions · Goals. Core and Thoughts are desktop-only;
-          the account avatar lives fixed in the top-right corner (see AppShell). */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 h-[64px] grid grid-cols-5 items-center px-1 border-t border-line bg-card z-50">
+          Today · Board · ➕ · Thoughts · Goals. Core is desktop-only; the account
+          avatar lives fixed in the top-right corner (see AppShell). */}
+      <div className="md:hidden fixed bottom-0 inset-x-0 h-[calc(64px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] grid grid-cols-5 items-center px-1 border-t border-line bg-card z-50">
         {(["today", "board"] as const).map((key) => {
           const { label, Icon } = item(key);
           return (
@@ -219,7 +214,7 @@ export function Rail({
           <button
             type="button"
             onClick={onRecord}
-            aria-label="Start a new session"
+            aria-label="Think out loud"
             className="-translate-y-4 w-16 h-16 rounded-full bg-accent text-white shadow-lg flex items-center justify-center active:scale-95 transition"
           >
             <Plus className="w-8 h-8" strokeWidth={2.25} />
@@ -239,8 +234,9 @@ export function Rail({
         })}
       </div>
 
-      {/* Desktop: the vertical left rail. The account avatar moved to the fixed
-          top-right corner (AppShell), so the rail is nav only. */}
+      {/* Desktop: the vertical left rail. The scribbler pen is the same main
+          action as the phone's ➕: one click, a fresh entry, ready to type or
+          speak into. Hover says what it's for. */}
       <div className="hidden md:flex w-[84px] h-screen flex-col items-center py-[18px] border-r border-line bg-card flex-shrink-0">
         <div className="font-extrabold text-xl text-ink mb-7">L</div>
         <div className="flex flex-1 flex-col gap-1.5 items-center">
@@ -253,6 +249,15 @@ export function Rail({
               onClick={() => onNav(key)}
             />
           ))}
+          <button
+            type="button"
+            onClick={onRecord}
+            aria-label="Think out loud"
+            title="Think out loud"
+            className="mt-2 w-12 h-12 rounded-full bg-accent text-white shadow-md flex items-center justify-center hover:opacity-90 active:scale-95 transition"
+          >
+            <PenLine className="w-[22px] h-[22px]" strokeWidth={2.25} />
+          </button>
         </div>
       </div>
     </>

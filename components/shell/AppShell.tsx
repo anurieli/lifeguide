@@ -9,19 +9,20 @@ import { Today } from "@/components/today/Today";
 import { Goals } from "@/components/goals/Goals";
 import { Core } from "@/components/core/Core";
 import { Whiteboard } from "@/components/whiteboard/Whiteboard";
+import { MobileBoard } from "@/components/whiteboard/MobileBoard";
 import { Settings } from "@/components/settings/Settings";
 import { CoachDock } from "@/components/coach/CoachDock";
 import { SpeakSurface } from "@/components/voice/SpeakSurface";
 import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
 import { MusicProvider } from "@/components/music/MusicProvider";
 import { AtmospherePlayer } from "@/components/music/AtmospherePlayer";
-import { ThoughtStream } from "@/components/thoughts/ThoughtStream";
 import { Sessions } from "@/components/sessions/Sessions";
 import { RecordingProvider, useRecording } from "@/components/sessions/RecordingProvider";
 import { currentDevice, formatElapsed } from "@/components/thoughts/utils";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 const VIEW_STORAGE_KEY = "lifeguide.activeView";
-const VIEWS: View[] = ["today", "core", "board", "goals", "dump", "sessions", "settings"];
+const VIEWS: View[] = ["today", "core", "board", "goals", "sessions", "settings"];
 
 function clientLog(event: string, meta?: Record<string, unknown>) {
   if (process.env.NODE_ENV === "production") return;
@@ -52,13 +53,16 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   const [activeSessionId, setActiveSessionId] = useState<Id<"sessions"> | null>(null);
   const createSession = useMutation(api.sessions.create);
   const rec = useRecording();
+  const isMobile = useIsMobile();
 
   // Restore the last-viewed tab after mount. Done in an effect (not a lazy
   // useState initializer) so server and first client render agree — reading
   // localStorage during render would cause a hydration mismatch.
   useEffect(() => {
     const saved = window.localStorage.getItem(VIEW_STORAGE_KEY);
-    if (saved && VIEWS.includes(saved as View)) setView(saved as View);
+    // "dump" was the retired flat-stream tab; its home is the Thoughts surface now.
+    if (saved === "dump") setView("sessions");
+    else if (saved && VIEWS.includes(saved as View)) setView(saved as View);
   }, []);
 
   // Remember the active tab so a refresh returns here instead of Today.
@@ -71,16 +75,19 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
     setSpeakOpen(true);
   };
 
-  // The ➕ flow: every tap starts a FRESH session and lands inside its empty
-  // document, already recording. Appending to an old entry goes through the list.
+  // The pen/➕ flow: every tap starts a FRESH entry and lands inside its empty
+  // document. On the phone it's already recording; on desktop the mic waits one
+  // click away (keyboard-first, and auto-arming the mic would throw a permission
+  // prompt in the person's face). Appending to an old entry goes through the list.
   // The take itself lives in RecordingProvider, so it keeps running wherever
   // the person navigates next.
   const startSession = async () => {
     clientLog("session.start", { view });
-    const id = await createSession({ device: currentDevice() });
+    const device = currentDevice();
+    const id = await createSession({ device });
     setActiveSessionId(id);
     setView("sessions");
-    void rec.start(id);
+    if (device === "phone") void rec.start(id);
   };
 
   const jumpToRecording = () => {
@@ -102,18 +109,28 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
         }}
         onRecord={() => void startSession()}
       />
-      {/* Leave room for the fixed bottom bar on mobile; full height on desktop. */}
-      <main className="flex-1 relative h-[calc(100dvh-64px)] md:h-screen overflow-hidden">
-        {/* Board stays mounted so canvas state (viewport, in-flight edits) survives nav. */}
-        <div className={view === "board" ? "absolute inset-0" : "hidden"}>
-          <Whiteboard surfaceId={surfaceId} />
-        </div>
+      {/* Leave room for the fixed bottom bar on mobile (plus the phone's safe-area
+          inset, so a home-indicator PWA doesn't clip content); full height on desktop. */}
+      <main className="flex-1 relative h-[calc(100dvh-64px-env(safe-area-inset-bottom))] md:h-screen overflow-hidden">
+        {/* On a phone the board is a plain vertical list (no pan/zoom canvas). On
+            desktop the spatial board stays mounted so canvas state (viewport,
+            in-flight edits) survives nav; `active` tells it when it's on screen. */}
+        {isMobile ? (
+          view === "board" && <MobileBoard surfaceId={surfaceId} />
+        ) : (
+          <div className={view === "board" ? "absolute inset-0" : "hidden"}>
+            <Whiteboard surfaceId={surfaceId} active={view === "board"} />
+          </div>
+        )}
         {view === "today" && <Today onNavigate={setView} />}
         {view === "core" && <Core />}
         {view === "goals" && <Goals />}
-        {view === "dump" && <ThoughtStream />}
         {view === "sessions" && (
-          <Sessions activeSessionId={activeSessionId} onOpenSession={setActiveSessionId} />
+          <Sessions
+            activeSessionId={activeSessionId}
+            onOpenSession={setActiveSessionId}
+            onNew={() => void startSession()}
+          />
         )}
         {view === "settings" && <Settings />}
       </main>

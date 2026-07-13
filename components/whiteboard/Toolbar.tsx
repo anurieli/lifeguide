@@ -5,7 +5,7 @@ import { Plus, Layers, Crosshair, Mic } from "lucide-react";
 interface ToolbarProps {
   onAdd: () => void;
   onGather: () => void;
-  onCenterNearest: () => void;
+  onCenterBoard: () => void;
   onBrainDump: () => void;
   // True while the gather animation / mutation is in flight.
   gathering?: boolean;
@@ -14,7 +14,7 @@ interface ToolbarProps {
 // Board toolbar: one primary action (add) + navigation aids (gather, center) +
 // brain dump (speak to populate the board).
 // Stays bottom-center, stops pointer events from falling through to the pan layer.
-export function Toolbar({ onAdd, onGather, onCenterNearest, onBrainDump, gathering }: ToolbarProps) {
+export function Toolbar({ onAdd, onGather, onCenterBoard, onBrainDump, gathering }: ToolbarProps) {
   return (
     <div
       onPointerDown={(e) => e.stopPropagation()}
@@ -38,10 +38,10 @@ export function Toolbar({ onAdd, onGather, onCenterNearest, onBrainDump, gatheri
         <Plus className="w-[18px] h-[18px]" /> Add anything
       </button>
 
-      {/* Center on nearest node */}
+      {/* Center on the whole board (the average of every card's center) */}
       <button
-        onClick={onCenterNearest}
-        title="Center on nearest card"
+        onClick={onCenterBoard}
+        title="Center the board"
         className="bg-card border border-line text-ink-soft rounded-full w-11 h-11 flex items-center justify-center shadow hover:bg-paper-2 transition"
       >
         <Crosshair className="w-[18px] h-[18px]" />

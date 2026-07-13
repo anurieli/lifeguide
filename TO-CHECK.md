@@ -2,6 +2,33 @@
 
 Features that are done but haven't been manually verified yet.
 
+### Ritual beats locked to the clock
+- [ ] **Morning window (before 5pm):** open Today — Morning tab is active (sun), Evening tab is a padlock, muted, and tapping it does nothing; the hint reads "The night ritual opens at 5:00 PM"; only the morning sequence card renders
+- [ ] **Night window (after 5pm / before 4am):** Evening is active (moon), Morning is a padlock with "opens at 4:00 AM"; only the night sequence card renders; you cannot reopen the morning
+- [ ] **Log rows are read-only:** in Today's log, the parts-of-the-day rows no longer switch beats when tapped (nothing to jump to)
+- [ ] **Submissions still tracked across the boundary:** answer the morning question, then after 5pm confirm that answer still shows in Today's log even though the morning beat is now locked
+
+### Rituals rail v2 (one list, time markers, anytime)
+- [ ] **One list, one add:** the right panel says "Rituals", shows ONE flat list (no Morning/Night headers) with a sun/moon/sun-moon marker per practice, and exactly ONE "+ Add a ritual" at the bottom; opening it shows the input + morning/night/anytime picker; the ✕ closes it
+- [ ] **Anytime practice:** add one as "Anytime"; it shows the sun-moon marker, checks and unchecks today, and does NOT block sealing either the morning or the night
+- [ ] **Warned delete:** hover a practice → ✕ appears; clicking shows the warning ("removed from all rituals — every day"); Keep it cancels; Delete removes it from the list permanently (reload to confirm)
+- [ ] **Seals still count their own:** a morning practice left unchecked still blocks "Seal the morning"; checking it on the rail updates the sequence card's count live
+- [ ] **Phone:** the rail renders as a card under the sequence; the add form and picker are comfortably tappable
+
+### Today v2: ordered ritual sequence, roadmap loop, Blueprint reader, to-do rail
+- [ ] **Phone first (~390px):** the sequence card walks read → to-dos-elsewhere → roadmap → question comfortably; the day's to-dos render as a card under the sequence (no right rail); nothing overflows; inputs are tappable at 7am size
+- [ ] **Desktop rail:** at a wide window the day's to-dos sit in a sticky right panel; checking there updates the sequence card's x/y count and the seal state live
+- [ ] **Evening roadmap (fast entry):** on the Evening tab, type a line in "Set tomorrow's roadmap", hit enter, type the next — each lands instantly, numbered; "+ where / info" attaches a note; arrows reorder; ✕ removes; the count reads "N things set for tomorrow morning"
+- [ ] **The 4am handoff:** entries set at 23:00 AND entries added at 1:30am both appear in the SAME next morning's "Walk today's roadmap" (the ritual day rolls at 4am)
+- [ ] **Morning roadmap:** the list set last night shows in order; tapping an entry strikes it done; walking the last one auto-checks the roadmap step; "Add to today…" appends late entries
+- [ ] **Immersive reader:** tap Read on "Read the Blueprint" — the doctrine fills the screen in-page, the page behind doesn't scroll, the ✕ is always visible; scrolling to the end shows "Read ✓", auto-checks the step, and releases; closing early checks nothing; works on iOS Safari without scroll weirdness
+- [ ] **Blueprint editing loop:** Settings → The Blueprint → Open; edit a line, Save; back on Today, tap Read and confirm tomorrow's words are YOUR edit (the read resolves live from the document)
+- [ ] **Adopt idempotence (prod account):** tap "Read it each morning" twice / re-open the card — exactly one blueprint read step in the morning, the edited document never resets
+- [ ] **v2 upgrade on the real account:** on first load the existing rituals gain "Walk today's roadmap" + "Today's one move" (morning) and "Check out" + "Set tomorrow's roadmap" (night) APPENDED after the old steps, old steps untouched; delete any of them, reload, they stay gone
+- [ ] **Rotating question:** the evening "Check out" shows a bank question; confirm it's the same all evening and different after 4am/tomorrow; a fixed-text question (morning one-move) never rotates
+- [ ] **Question answers in the log:** answer a question (typed, then voice) — the answer shows in place with edit, and appears timestamped in Today's log; the log's parts show Today's roadmap x/y and Tomorrow's roadmap count
+- [ ] **Seal still seals:** with everything walked AND rail to-dos checked, the gold seal appears; sealing locks checks, roadmap taps, and question inputs for the day
+
 ### Sessions + mobile capture v2 (ARI-24)
 - [ ] **➕ flow (real iPhone):** tap the center ➕. A fresh entry opens ALREADY recording (timer pulsing in the page); speak 2+ minutes, tap stop. Transcript fills in ("Listening back…" then text); the audio plays inline, from desktop too; the transcript matches what was said.
 - [ ] **One continuous document:** while a take is recording, tap the page and type a line, and add a photo. Everything lands in chronological order after stop. No "Write here" box, no send button: typing commits when you tap away.

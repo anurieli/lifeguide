@@ -35,3 +35,6 @@ yarn-error.log*
 *.tsbuildinfo
 .superpowers/
 .gstack/
+
+# Claude Code session worktrees (local working areas, never content)
+.claude/worktrees/

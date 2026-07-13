@@ -7,7 +7,12 @@ import { Id } from "@/convex/_generated/dataModel";
 import { ArrowLeft, ImagePlus, Loader2, Mic, Pause, Play, Square, X } from "lucide-react";
 import { useRecording } from "./RecordingProvider";
 import { useBlobUpload } from "@/hooks/useBlobUpload";
-import { currentDevice, formatElapsed } from "@/components/thoughts/utils";
+import {
+  currentDevice,
+  formatElapsed,
+  isBareUrl,
+  urlRawType,
+} from "@/components/thoughts/utils";
 
 /**
  * The living entry: one continuous document. Captures render in the order they
@@ -28,6 +33,8 @@ export function SessionDoc({
   const createCapture = useMutation(api.captures.create);
   const reprocess = useMutation(api.captures.reprocess);
   const setDoing = useMutation(api.sessions.setDoing);
+  const setTitle = useMutation(api.sessions.setTitle);
+  const refreshDigest = useMutation(api.sessions.refreshDigest);
   const deleteIfEmpty = useMutation(api.sessions.deleteIfEmpty);
   const touchOpened = useMutation(api.sessions.touchOpened);
   const uploadBlob = useBlobUpload();
@@ -36,16 +43,20 @@ export function SessionDoc({
   const isLive = rec.sessionId === sessionId;
 
   const [text, setText] = useState("");
+  const [titleDraft, setTitleDraft] = useState<string | null>(null);
   const [doingDraft, setDoingDraft] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
 
-  // Visit metadata: stamp lastOpenedAt whenever the document is opened.
+  // Every visit re-anchors the entry: stamp lastOpenedAt, and refresh the digest
+  // so the name + living description cover whatever landed since last time
+  // (the server skips when they already do).
   useEffect(() => {
     void touchOpened({ sessionId });
-  }, [touchOpened, sessionId]);
+    void refreshDigest({ sessionId });
+  }, [touchOpened, refreshDigest, sessionId]);
 
   // The discard confirmation is a two-tap guard; let it disarm on its own.
   useEffect(() => {
@@ -63,11 +74,14 @@ export function SessionDoc({
     if (trimmed) {
       // A typed thought must never be lost: commit it instead of husk-checking.
       setText("");
-      void append({ source: "paste", rawType: "text", rawText: trimmed });
+      void append(textCaptureArgs(trimmed));
     } else if (!isLive) {
       // A live take is still landing here; the entry is not a husk.
       void deleteIfEmpty({ sessionId });
     }
+    // Leaving re-updates the name + description over whatever this sitting added
+    // (no-ops on an entry that was just husk-deleted or is already covered).
+    void refreshDigest({ sessionId });
     onBack();
   };
 
@@ -87,13 +101,20 @@ export function SessionDoc({
     [createCapture, sessionId],
   );
 
+  // A pasted bare URL becomes a link capture (ingest fetches and reads it),
+  // exactly as the old Thought Stream composer treated it.
+  const textCaptureArgs = (trimmed: string) =>
+    isBareUrl(trimmed)
+      ? ({ source: "paste", rawType: urlRawType(trimmed), rawUrl: trimmed } as const)
+      : ({ source: "paste", rawType: "text", rawText: trimmed } as const);
+
   // Typing commits on blur: the page itself is the input, no send button.
   const commitText = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
     setText("");
     if (editorRef.current) editorRef.current.style.height = "auto";
-    void append({ source: "paste", rawType: "text", rawText: trimmed }).catch(() =>
+    void append(textCaptureArgs(trimmed)).catch(() =>
       // A thought must never be silently lost: put it back on the page.
       setText(trimmed),
     );
@@ -139,7 +160,7 @@ export function SessionDoc({
       <div className="text-center py-16">
         <p className="text-[14px] text-ink-mute">This entry is gone.</p>
         <button type="button" onClick={onBack} className="mt-3 text-[13px] text-gold">
-          Back to sessions
+          Back to thoughts
         </button>
       </div>
     );
@@ -161,10 +182,27 @@ export function SessionDoc({
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex-1 min-w-0">
-          <div className="text-[14px] text-ink font-medium truncate">
-            {session.title ??
-              started.toLocaleDateString(undefined, { month: "long", day: "numeric" })}
-          </div>
+          {/* The name is yours: typing here locks it against the AI (titleEditedAt);
+              left blank, the digest keeps naming the entry. */}
+          <input
+            value={titleDraft ?? session.title ?? ""}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={() => {
+              if (titleDraft !== null) {
+                void setTitle({ sessionId, title: titleDraft });
+                setTitleDraft(null);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
+            placeholder={started.toLocaleDateString(undefined, {
+              month: "long",
+              day: "numeric",
+            })}
+            aria-label="Name this thought"
+            className="w-full bg-transparent text-[14px] text-ink font-medium outline-none placeholder:text-ink-mute"
+          />
           <div className="text-[11.5px] text-ink-mute">
             {started.toLocaleString(undefined, {
               month: "short",
@@ -173,6 +211,13 @@ export function SessionDoc({
               minute: "2-digit",
             })}
           </div>
+          {/* The living description: re-synthesized as content lands and on every
+              open/leave. This line is what an agent traversing entries pulls. */}
+          {session.summary && (
+            <div className="text-[11.5px] text-ink-mute italic truncate">
+              {session.summary}
+            </div>
+          )}
         </div>
         <input
           value={doingDraft ?? session.doing ?? ""}
@@ -233,6 +278,16 @@ export function SessionDoc({
                 <p className="text-[15px] leading-relaxed text-ink whitespace-pre-wrap">
                   {c.rawText}
                 </p>
+              )}
+              {(c.rawType === "link" || c.rawType === "video_link") && c.rawUrl && (
+                <a
+                  href={c.rawUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[14px] text-gold underline underline-offset-2 break-all"
+                >
+                  {c.rawUrl}
+                </a>
               )}
               {c.rawType === "image" && c.fileUrl && (
                 // eslint-disable-next-line @next/next/no-img-element

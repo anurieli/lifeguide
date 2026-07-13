@@ -26,11 +26,11 @@ export function Inbox({
     return (
       <div
         onPointerDown={(e) => e.stopPropagation()}
-        onMouseEnter={() => setPeeking(true)}
-        onMouseLeave={() => setPeeking(false)}
         className="fixed top-5 right-16 z-20 flex flex-col items-end"
       >
         <button
+          onMouseEnter={() => setPeeking(true)}
+          onMouseLeave={() => setPeeking(false)}
           onClick={() => {
             setPeeking(false);
             setOpen(true);
@@ -67,6 +67,10 @@ export function Inbox({
   return (
     <div
       onPointerDown={(e) => e.stopPropagation()}
+      // Keep scrolling the inbox from also panning the board underneath: the
+      // board root's onWheel would otherwise fire as the event bubbles up.
+      onWheel={(e) => e.stopPropagation()}
+      onMouseLeave={() => setOpen(false)}
       className="fixed top-5 right-16 w-80 max-h-[80vh] overflow-y-auto z-20 bg-card/95 backdrop-blur border border-line rounded-2xl shadow-lg p-3"
     >
       <button
@@ -114,7 +118,6 @@ function CaptureRow({
     capture.rawFileId ? { fileId: capture.rawFileId } : "skip",
   );
   const d = capture.distilled;
-  const pending = !d && capture.rawType !== "image";
 
   return (
     <div className="group relative rounded-xl border border-line bg-paper/60 p-3">
@@ -151,11 +154,6 @@ function CaptureRow({
             <span className="text-ink-soft">Image</span>
           ) : (
             <span className="line-clamp-2">{capture.rawText ?? capture.rawUrl}</span>
-          )}
-          {pending && (
-            <div className="text-[11px] text-ink-mute mt-1 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 animate-pulse" /> distilling…
-            </div>
           )}
         </div>
       )}

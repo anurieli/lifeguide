@@ -138,8 +138,9 @@ export default defineSchema({
   // capture. See docs/superpowers/specs/2026-07-12-mobile-capture-sessions-design.md.
   sessions: defineTable({
     userId: v.id("users"),
-    title: v.optional(v.string()), // AI digest; UI falls back to first words
-    summary: v.optional(v.string()), // AI one-liner for the list view
+    title: v.optional(v.string()), // person-entered name, else AI digest; UI falls back to first words
+    titleEditedAt: v.optional(v.number()), // set when the person named the entry; the digest never overwrites a person's name
+    summary: v.optional(v.string()), // AI living description, refreshed as content lands and on open/leave; what an agent traversing sessions pulls
     doing: v.optional(v.string()), // optional "what I was doing", person-entered
     device: v.union(v.literal("phone"), v.literal("desktop")), // where it was opened
     digest: v.optional(
@@ -190,19 +191,64 @@ export default defineSchema({
     .index("by_user_pillar", ["userId", "pillarId", "status"])
     .index("by_session", ["sourceSessionId"]),
 
-  // One step of the user's morning or night ritual (see docs/product/features/daily-ritual.md).
-  // "do" is a plain checkbox task; "read" displays `content` (a mantra or short text) and
-  // marking it read completes it. Ordered per ritual via `order`; user-editable.
+  // One typed component of the user's morning or night ritual (ADR 0011; see
+  // docs/product/features/daily-ritual.md). A ritual is an ordered list of typed
+  // components. Kinds: "do" (plain checkbox task, lives on the to-do rail), "read"
+  // (a readout — inline `content`, or the Blueprint document when source="blueprint"),
+  // "question" (a reflection prompt: fixed `content`, or drawn from the rotating bank
+  // in lib/questions.ts when absent), "roadmap" (the evening builder / morning display
+  // of tomorrow's roadmap, ADR 0012). New kinds are added by widening this union +
+  // optional per-kind fields — never by rewriting rows.
   ritualItems: defineTable({
     userId: v.id("users"),
-    ritual: v.union(v.literal("morning"), v.literal("night")),
-    kind: v.union(v.literal("do"), v.literal("read")),
+    // "any" = a ritual practice indifferent to the time of day: it lives on the
+    // rituals rail, is checkable every day, and belongs to neither seal. Only
+    // "do" items may be "any"; sequence components always belong to a bookend.
+    ritual: v.union(v.literal("morning"), v.literal("night"), v.literal("any")),
+    kind: v.union(
+      v.literal("do"),
+      v.literal("read"),
+      v.literal("question"),
+      v.literal("roadmap"),
+    ),
     title: v.string(),
-    content: v.optional(v.string()), // the text to read (kind "read")
+    content: v.optional(v.string()), // read: inline text · question: fixed prompt
+    // read only: where the words come from. Absent/"inline" = `content`;
+    // "blueprint" = resolved live from the user's Blueprint document.
+    source: v.optional(v.union(v.literal("inline"), v.literal("blueprint"))),
     order: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_user_ritual", ["userId", "ritual", "order"]),
+
+  // One entry of a day's roadmap: what tomorrow starts with, captured the evening
+  // before (ADR 0012). `day` is the TARGET ritual day key (the morning it belongs
+  // to), so an entry added at 23:00 and one at 1:30am both land on the upcoming
+  // morning. `note` carries the where / the info needed to just execute.
+  roadmapEntries: defineTable({
+    userId: v.id("users"),
+    day: v.string(), // "YYYY-MM-DD" ritual day key (lib/ritual.ts)
+    text: v.string(), // what to do
+    note: v.optional(v.string()), // where / info needed
+    order: v.number(),
+    doneAt: v.optional(v.number()), // tapped done the next morning
+    createdAt: v.number(),
+  }).index("by_user_day", ["userId", "day", "order"]),
+
+  // The Blueprint for Life: the person's editable conduct doctrine (how a day is
+  // lived), one document per user, seeded from the 8-pillar doctrine. A knowledge-base
+  // entity at the pillar level, deliberately NOT a coreFiles row: the Core is the
+  // person (character); the Blueprint is conduct. Ritual "read" steps with
+  // source="blueprint" resolve their words from here, so an edit in Settings changes
+  // what is read tomorrow morning. See docs/product/features/the-blueprint.md.
+  blueprint: defineTable({
+    userId: v.id("users"),
+    title: v.string(),
+    content: v.string(), // markdown, fully user-editable
+    seedVersion: v.number(), // which seed it was adopted from; edits never re-seeded
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
 
   // The check state + completion record of one ritual on one ritual day. `day` is a local
   // "YYYY-MM-DD" key computed client-side with the 4am rollover (lib/ritual.ts, ADR 0009).
@@ -210,7 +256,9 @@ export default defineSchema({
   // persist as the completion history. `completedAt` is set once, by the explicit confirm.
   ritualDays: defineTable({
     userId: v.id("users"),
-    ritual: v.union(v.literal("morning"), v.literal("night")),
+    // "any" rows carry the daily check state of time-indifferent rituals; they
+    // are never sealed (completedAt stays unset — only morning/night complete).
+    ritual: v.union(v.literal("morning"), v.literal("night"), v.literal("any")),
     day: v.string(),
     checkedIds: v.array(v.id("ritualItems")),
     completedAt: v.optional(v.number()),
@@ -247,6 +295,10 @@ export default defineSchema({
     // Set once when the Daily Ritual defaults were seeded for this user, so deleting
     // every ritual item stays deleted (rituals.seedDefaults never re-seeds).
     ritualsSeededAt: v.optional(v.number()),
+    // The typed-component upgrade marker (ADR 0011): 2 once question/roadmap
+    // components were offered to this account's non-empty rituals. One-shot, so
+    // deleting the added components sticks.
+    ritualsSeedVersion: v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
   // Per-profile AI provider keys. A user's own key (e.g. their OpenRouter key) is

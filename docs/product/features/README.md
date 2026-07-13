@@ -9,11 +9,12 @@ The element model these hang off is [`../../architecture/elements-and-context.md
 | Element | Owns | Feeds | Status |
 |---|---|---|---|
 | [Vision Board](vision-board.md) | `surfaces, nodes, edges, captures` | Core | partial (board built; Coach co-build proposed) |
-| [Thought Stream](thought-stream.md) | ingest pipeline over `captures` (table shared with the board) | Sessions → Core | built (v1) |
-| [Sessions (the living entry)](sessions.md) | `sessions` (container; members via `captures.sessionId`) | Sessions → Core | built (v1) |
+| [Thought Stream](thought-stream.md) | ingest pipeline over `captures` (table shared with the board) | Sessions → Core | pipeline live; surface merged into the Thoughts tab (ADR 0010) |
+| [Sessions (the living entry) / Thoughts](sessions.md) | `sessions` (container; members via `captures.sessionId`) | Sessions → Core | built (v3: the app's single capture surface) |
 | [Future Self](future-self.md) | `futureSelf` | Core | proposed |
 | [Journal](journal.md) | `prompts` (its beats open the live `sessions`) | Sessions | proposed (Today ritual is the seed) |
-| [Daily Ritual](daily-ritual.md) | `ritualItems`, `ritualDays` | Sessions (publishes `ritual_completed`) | built |
+| [Daily Ritual](daily-ritual.md) | `ritualItems`, `ritualDays`, `roadmapEntries` | Sessions (publishes `ritual_completed`, `ritual_question`) | built (v2, typed components) |
+| [The Blueprint](the-blueprint.md) | `blueprint` | Daily Ritual (the morning read resolves from it) | built |
 | [Pillars & Goals](pillars-and-goals.md) | `pillars, goals` | Core, Sessions | partial (pillars built; goals proposed) |
 | [File system on the human](file-system-on-the-human.md) | `pillars` (folders), `coreFiles` (files) | Core | partial (store + seed built; person-map UI proposed) |
 | [The Core](core.md) | `mirror` | is the Core | partial |

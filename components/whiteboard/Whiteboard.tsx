@@ -249,7 +249,12 @@ export function Whiteboard({ surfaceId, active }: { surfaceId: SurfaceId; active
     }
   };
   // Trackpad two-finger / plain wheel pans; ⌘-scroll or pinch (ctrlKey) zooms.
+  // Only the bare canvas pans/zooms: a wheel over a card, a textarea, or an
+  // overlay (Inbox, Toolbar, Minimap, …) must scroll *that* element and never
+  // leak into a board pan. Those all sit inside child elements, so the board
+  // only reacts when the wheel lands directly on the background surface.
   const onWheel = (e: React.WheelEvent) => {
+    if (e.target !== e.currentTarget) return;
     if (e.ctrlKey || e.metaKey) {
       zoomAt(e.deltaY < 0 ? 1.06 : 0.94, e.clientX, e.clientY);
     } else {

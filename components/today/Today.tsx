@@ -9,7 +9,6 @@ import { filledCount } from "@/lib/levels";
 import { activeRitual, ritualOpensAtLabel } from "@/lib/ritual";
 import { RitualSequence } from "@/components/today/RitualSequence";
 import { RitualsRail } from "@/components/today/RitualsRail";
-import { DayLog } from "@/components/today/DayLog";
 
 const PILLAR_COLOR: Record<string, string> = {
   lifestyle: "#B8945A",
@@ -205,8 +204,6 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
           <div className="lg:hidden mb-[18px]">
             <RitualsRail />
           </div>
-
-          <DayLog />
 
           {/* coach nudge */}
           <div className="flex gap-3 items-start text-ink-soft text-[15px] px-1 py-1.5 mb-10">

@@ -193,7 +193,7 @@ export function Rail({
     <>
       {/* Phone: a five-slot bottom bar, evenly spread so the ➕ sits dead center:
           Today · Board · ➕ · Thoughts · account. Core is desktop-only. */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 h-[64px] grid grid-cols-5 items-center px-1 border-t border-line bg-card z-50">
+      <div className="md:hidden fixed bottom-0 inset-x-0 h-[calc(64px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] grid grid-cols-5 items-center px-1 border-t border-line bg-card z-50">
         {(["today", "board"] as const).map((key) => {
           const { label, Icon } = item(key);
           return (

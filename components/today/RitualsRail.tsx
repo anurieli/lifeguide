@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Check, Moon, Plus, Sun, SunMoon, X } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { ritualDayKey } from "@/lib/ritual";
+import { lastNRitualDayKeys, ritualDayKey } from "@/lib/ritual";
 
 // ============================================================================
 // The Rituals rail: the person's permanent ritual practices (kind "do"), one
@@ -19,6 +19,8 @@ import { ritualDayKey } from "@/lib/ritual";
 // ============================================================================
 
 type RailRitual = "morning" | "night" | "any";
+
+const HISTORY_DAYS = 7;
 
 const EDIT_FIELD =
   "w-full bg-paper border border-line rounded-lg px-3 py-2 text-[13.5px] text-ink outline-none focus:border-gold transition";
@@ -34,10 +36,12 @@ const GROUP_ORDER: RailRitual[] = ["morning", "any", "night"];
 
 export function RitualsRail() {
   const dayKey = useMemo(() => ritualDayKey(new Date()), []);
+  const weekKeys = useMemo(() => lastNRitualDayKeys(new Date(), HISTORY_DAYS), []);
   const items = useQuery(api.rituals.list, {});
   const morningDay = useQuery(api.rituals.day, { ritual: "morning", day: dayKey });
   const nightDay = useQuery(api.rituals.day, { ritual: "night", day: dayKey });
   const anyDay = useQuery(api.rituals.day, { ritual: "any", day: dayKey });
+  const history = useQuery(api.rituals.history, { sinceDay: weekKeys[0] });
   const setChecked = useMutation(api.rituals.setChecked);
   const addItem = useMutation(api.rituals.addItem);
   const removeItem = useMutation(api.rituals.removeItem);
@@ -63,6 +67,11 @@ export function RitualsRail() {
     night: { checked: new Set(nightDay?.checkedIds ?? []), sealed: !!nightDay?.completedAt },
     any: { checked: new Set(anyDay?.checkedIds ?? []), sealed: false }, // "any" is never sealed
   };
+
+  // The quiet last-7-days strip: did the morning and night rituals get sealed?
+  const sealedOn = new Set(
+    (history ?? []).filter((h) => h.completedAt).map((h) => `${h.ritual}:${h.day}`),
+  );
 
   const submit = async () => {
     const t = text.trim();
@@ -200,6 +209,38 @@ export function RitualsRail() {
           <Plus className="w-3.5 h-3.5" /> Add a ritual
         </button>
       )}
+
+      {/* keeping up — the quiet last-7-days strip. No score, no streak; just the
+          record of which mornings and nights got sealed. */}
+      <div className="border-t border-line pt-3.5 mt-3.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] tracking-[0.16em] uppercase text-ink-mute">Keeping up</span>
+          <div className="flex gap-2.5">
+            {weekKeys.map((key) => {
+              const isToday = key === dayKey;
+              return (
+                <div key={key} className="flex flex-col items-center gap-1">
+                  <span className={`text-[10px] ${isToday ? "text-ink" : "text-ink-mute"}`}>
+                    {new Date(`${key}T12:00:00`).toLocaleDateString([], { weekday: "narrow" })}
+                  </span>
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      sealedOn.has(`morning:${key}`) ? "bg-gold" : "border border-line-2"
+                    }`}
+                    title="Morning ritual"
+                  />
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      sealedOn.has(`night:${key}`) ? "bg-accent" : "border border-line-2"
+                    }`}
+                    title="Night ritual"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

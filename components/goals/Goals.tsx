@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id, Doc } from "@/convex/_generated/dataModel";
+import { convexErrorMessage } from "@/lib/convexError";
 import {
   Plus,
   RefreshCw,
@@ -449,8 +450,8 @@ export function Goals({ onNavigate }: { onNavigate?: (v: "settings") => void }) 
     try {
       const r = await syncTodoist();
       setSyncNote(`Synced ${r.projects} projects, ${r.tasks} tasks`);
-    } catch {
-      setSyncNote("Sync failed — check your token in Settings");
+    } catch (e) {
+      setSyncNote(convexErrorMessage(e, "Sync failed — check your token in Settings"));
     } finally {
       setSyncing(false);
     }

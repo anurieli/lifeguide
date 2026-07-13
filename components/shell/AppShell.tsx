@@ -105,8 +105,9 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
         }}
         onRecord={() => void startSession()}
       />
-      {/* Leave room for the fixed bottom bar on mobile; full height on desktop. */}
-      <main className="flex-1 relative h-[calc(100dvh-64px)] md:h-screen overflow-hidden">
+      {/* Leave room for the fixed bottom bar on mobile (plus the phone's safe-area
+          inset, so a home-indicator PWA doesn't clip content); full height on desktop. */}
+      <main className="flex-1 relative h-[calc(100dvh-64px-env(safe-area-inset-bottom))] md:h-screen overflow-hidden">
         {/* Board stays mounted so canvas state (viewport, in-flight edits) survives nav;
             `active` tells it when it's the surface on screen (each access re-centers). */}
         <div className={view === "board" ? "absolute inset-0" : "hidden"}>

@@ -227,13 +227,13 @@ export function RitualsRail() {
                     className={`w-2 h-2 rounded-full ${
                       sealedOn.has(`morning:${key}`) ? "bg-gold" : "border border-line-2"
                     }`}
-                    title="Morning ritual"
+                    title="Morning scroll"
                   />
                   <span
                     className={`w-2 h-2 rounded-full ${
                       sealedOn.has(`night:${key}`) ? "bg-accent" : "border border-line-2"
                     }`}
-                    title="Night ritual"
+                    title="Night scroll"
                   />
                 </div>
               );

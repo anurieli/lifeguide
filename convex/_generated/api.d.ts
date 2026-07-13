@@ -42,6 +42,7 @@ import type * as interview from "../interview.js";
 import type * as lib_transcript from "../lib/transcript.js";
 import type * as messages from "../messages.js";
 import type * as mirror from "../mirror.js";
+import type * as morningNote from "../morningNote.js";
 import type * as nodes from "../nodes.js";
 import type * as owner from "../owner.js";
 import type * as pillars from "../pillars.js";
@@ -96,6 +97,7 @@ declare const fullApi: ApiFromModules<{
   "lib/transcript": typeof lib_transcript;
   messages: typeof messages;
   mirror: typeof mirror;
+  morningNote: typeof morningNote;
   nodes: typeof nodes;
   owner: typeof owner;
   pillars: typeof pillars;

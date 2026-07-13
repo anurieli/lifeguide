@@ -26,13 +26,13 @@ import { ImmersiveReader } from "@/components/today/ImmersiveReader";
 
 const COPY: Record<RitualType, { label: string; done: string; seal: string; sealed: string }> = {
   morning: {
-    label: "Morning ritual",
+    label: "Morning scroll",
     done: "Every step done. The day is yours.",
     seal: "Seal the morning",
     sealed: "Morning sealed",
   },
   night: {
-    label: "Night ritual",
+    label: "Night scroll",
     done: "Every step done. Nothing left to carry.",
     seal: "Close the day",
     sealed: "Day closed",
@@ -162,6 +162,60 @@ function QuestionStep({
   );
 }
 
+// --- The note to morning-you: the hinge between the two scrolls -----------
+// Written (and rewritten) freely at night, addressed to the next morning; the
+// morning scroll opens with it. Saves on blur, empty tears it up (morningNote.set).
+
+function NoteToMorning({ targetDay, sealed }: { targetDay: string; sealed: boolean }) {
+  const note = useQuery(api.morningNote.forDay, { day: targetDay });
+  const set = useMutation(api.morningNote.set);
+  const [draft, setDraft] = useState("");
+  const dirtyRef = useRef(false);
+  useEffect(() => {
+    if (!dirtyRef.current) setDraft(note?.text ?? "");
+  }, [note]);
+
+  if (note === undefined) return null;
+
+  if (sealed) {
+    if (!note?.text) return null;
+    return (
+      <div className="mt-4 pt-3 border-t border-dashed border-line">
+        <div className="text-[12px] text-ink-mute mb-1">
+          <span className="text-gold">✳</span> Left for the morning
+        </div>
+        <div className="text-[14px] text-ink-soft leading-relaxed whitespace-pre-wrap">
+          {note.text}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 pt-3 border-t border-dashed border-line">
+      <div className="flex items-center gap-1.5 text-[12px] text-ink-mute mb-1.5">
+        <span className="text-gold text-[14px] leading-none">✳</span>
+        A note for morning-you
+        <span className="text-ink-mute/60">— it opens tomorrow&apos;s scroll</span>
+      </div>
+      <textarea
+        value={draft}
+        onChange={(e) => {
+          dirtyRef.current = true;
+          setDraft(e.target.value);
+        }}
+        onBlur={() => {
+          dirtyRef.current = false;
+          if (draft.trim() !== (note?.text ?? "")) void set({ day: targetDay, text: draft });
+        }}
+        rows={2}
+        placeholder="Anything you want to wake up to — a reminder, a warning, a word."
+        className={`${EDIT_FIELD} resize-none leading-relaxed`}
+      />
+    </div>
+  );
+}
+
 // --- The roadmap component: evening builder, morning spine ----------------
 
 function RoadmapStep({
@@ -200,7 +254,7 @@ function RoadmapStep({
         {building
           ? "What does tomorrow start with? Type it, hit enter, next."
           : entries.length > 0
-            ? "Set last night. Walk it, top to bottom."
+            ? "Left by last-night you. Walk it, top to bottom."
             : "No roadmap was set last night. Set the first thing now:"}
       </div>
 
@@ -305,6 +359,7 @@ function RoadmapStep({
           {entries.length} thing{entries.length === 1 ? "" : "s"} set for tomorrow morning.
         </div>
       )}
+      {building && <NoteToMorning targetDay={targetDay} sealed={sealed} />}
     </div>
   );
 }
@@ -326,6 +381,11 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
   const dayState = useQuery(api.rituals.day, { ritual, day: dayKey });
   const events = useQuery(api.interactions.forRange, { sinceMs, untilMs });
   const blueprint = useQuery(api.blueprintDoc.get, {});
+  // The note last-night you left for this morning — it opens the morning scroll.
+  const morningNote = useQuery(
+    api.morningNote.forDay,
+    ritual === "morning" ? { day: dayKey } : "skip",
+  );
 
   const seed = useMutation(api.rituals.seedDefaults);
   const upgrade = useMutation(api.rituals.upgradeToSeedVersion);
@@ -561,6 +621,17 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
         </div>
       ) : (
         <div>
+          {ritual === "morning" && morningNote?.text && (
+            <div className="mt-2 mb-1.5 rounded-xl border border-gold/50 bg-gold/[0.06] px-4 py-3">
+              <div className="flex items-center gap-1.5 text-[11px] tracking-[0.16em] uppercase text-[#8A6A2E] mb-1.5">
+                <span className="text-[13px] tracking-normal leading-none">✳</span>
+                From last-night you
+              </div>
+              <div className="text-[15px] text-ink leading-relaxed whitespace-pre-wrap">
+                {morningNote.text}
+              </div>
+            </div>
+          )}
           {spine.map((item) => {
             const isChecked = checked.has(item._id);
             const isCurrent = item._id === currentId;

@@ -177,7 +177,7 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
               ) : (
                 <Lock className="w-3 h-3" strokeWidth={2.2} />
               )}
-              Morning
+              Morning scroll
             </button>
             <button
               className={tab(mode === "pm", mode !== "pm")}
@@ -189,13 +189,13 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
               ) : (
                 <Lock className="w-3 h-3" strokeWidth={2.2} />
               )}
-              Evening
+              Night scroll
             </button>
           </div>
           <div className="text-[12.5px] text-ink-mute mb-4">
             {mode === "am"
-              ? `The night ritual opens at ${lockedOpensAt}.`
-              : `The morning ritual opens at ${lockedOpensAt}.`}
+              ? `The night scroll opens at ${lockedOpensAt}.`
+              : `The morning scroll opens at ${lockedOpensAt}.`}
           </div>
 
           <RitualSequence ritual={active} />

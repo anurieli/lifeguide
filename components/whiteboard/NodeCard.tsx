@@ -46,6 +46,11 @@ type Props = {
 // threshold; below it the gesture is treated as a click (so selection sticks).
 const DRAG_THRESHOLD_PX = 3;
 
+// Text/quote cards are content-sized: their height always fits what's typed so
+// the text never scrolls inside a fixed frame. Width stays as stored; height
+// floors here so a near-empty card still feels like a card.
+const MIN_TEXT_HEIGHT = 80;
+
 const modsFrom = (e: React.PointerEvent): SelectionMods => ({
   shift: e.shiftKey,
   meta: e.metaKey || e.ctrlKey,
@@ -151,6 +156,27 @@ export function NodeCard({
   useEffect(() => {
     if (autoFocus) taRef.current?.focus();
   }, [autoFocus]);
+
+  const isTextual = node.type === "text" || node.type === "quote";
+
+  // Grow (or shrink) the card to exactly fit the textarea's content so text
+  // never scrolls inside a fixed frame. Measures at auto-height, then floors to
+  // MIN_TEXT_HEIGHT and persists through the same debounced resize path.
+  const autosizeText = useCallback(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    const needed = Math.max(MIN_TEXT_HEIGHT, ta.scrollHeight);
+    ta.style.height = ""; // revert to the h-full class; the card frame drives height
+    if (Math.abs(needed - dims.height) > 1) handleResize(dims.width, needed);
+  }, [dims.width, dims.height, handleResize]);
+
+  // Fit on mount and whenever the persisted text changes from elsewhere
+  // (e.g. distillation writing back into the card).
+  useEffect(() => {
+    if (isTextual) autosizeText();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [node.text, isTextual]);
 
   const fileUrl = useQuery(
     api.files.getUrl,
@@ -261,6 +287,7 @@ export function NodeCard({
           ref={taRef}
           defaultValue={node.text ?? ""}
           onBlur={onBlur}
+          onInput={autosizeText}
           onPaste={onPaste}
           onKeyDown={onTextKeyDown}
           placeholder={isQuote ? "A quote that hit you…" : "Type, paste, drop a link, or / for AI…"}

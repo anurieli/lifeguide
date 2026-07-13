@@ -211,7 +211,7 @@ export function ZenCore({
           double up. Calm, never bombarding. */}
       <button
         onClick={onExit}
-        className={`absolute top-4 right-16 z-20 text-[10.5px] tracking-[0.22em] uppercase text-ink-mute transition-all duration-500 hover:text-ink hover:opacity-100 ${
+        className={`absolute top-4 right-6 z-20 text-[10.5px] tracking-[0.22em] uppercase text-ink-mute transition-all duration-500 hover:text-ink hover:opacity-100 ${
           headerShown ? "opacity-0 pointer-events-none" : "opacity-30"
         }`}
       >

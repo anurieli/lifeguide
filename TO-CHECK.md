@@ -2,6 +2,12 @@
 
 Features that are done but haven't been manually verified yet.
 
+### Ritual beats locked to the clock
+- [ ] **Morning window (before 5pm):** open Today — Morning tab is active (sun), Evening tab is a padlock, muted, and tapping it does nothing; the hint reads "The night ritual opens at 5:00 PM"; only the morning sequence card renders
+- [ ] **Night window (after 5pm / before 4am):** Evening is active (moon), Morning is a padlock with "opens at 4:00 AM"; only the night sequence card renders; you cannot reopen the morning
+- [ ] **Log rows are read-only:** in Today's log, the parts-of-the-day rows no longer switch beats when tapped (nothing to jump to)
+- [ ] **Submissions still tracked across the boundary:** answer the morning question, then after 5pm confirm that answer still shows in Today's log even though the morning beat is now locked
+
 ### Rituals rail v2 (one list, time markers, anytime)
 - [ ] **One list, one add:** the right panel says "Rituals", shows ONE flat list (no Morning/Night headers) with a sun/moon/sun-moon marker per practice, and exactly ONE "+ Add a ritual" at the bottom; opening it shows the input + morning/night/anytime picker; the ✕ closes it
 - [ ] **Anytime practice:** add one as "Anytime"; it shows the sun-moon marker, checks and unchecks today, and does NOT block sealing either the morning or the night

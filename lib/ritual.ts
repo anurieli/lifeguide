@@ -14,10 +14,24 @@ export const DAY_ROLLOVER_HOUR = 4;
 export const NIGHT_START_HOUR = 17;
 
 // Which ritual the moment calls for: morning from the rollover until the evening
-// cutoff, night from the cutoff through the small hours.
+// cutoff, night from the cutoff through the small hours. This is the ONLY ritual
+// you can reach right now — at 17:00 the morning locks, at 4:00 the night locks
+// (Ariel, 2026-07-12): you only ever act on the beat you are actually in.
 export function activeRitual(d: Date): RitualType {
   const h = d.getHours();
   return h >= NIGHT_START_HOUR || h < DAY_ROLLOVER_HOUR ? "night" : "morning";
+}
+
+// Format an hour (0–23) as a friendly local "h:00 AM/PM" for the locked-beat hint.
+function hourLabel(hour: number): string {
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h12}:00 ${hour < 12 ? "AM" : "PM"}`;
+}
+
+// When the OTHER (currently-locked) ritual opens, for the toggle's hint. The night
+// unlocks at NIGHT_START_HOUR; the morning unlocks at the DAY_ROLLOVER_HOUR.
+export function ritualOpensAtLabel(locked: RitualType): string {
+  return hourLabel(locked === "night" ? NIGHT_START_HOUR : DAY_ROLLOVER_HOUR);
 }
 
 // The ritual day this moment belongs to, as a local "YYYY-MM-DD" key. Hours before

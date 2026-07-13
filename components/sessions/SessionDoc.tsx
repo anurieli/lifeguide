@@ -446,15 +446,11 @@ export function SessionDoc({
                   <button
                     type="button"
                     onClick={() => void rec.start(sessionId)}
-                    disabled={busy || !rec.supported}
+                    disabled={!rec.supported}
                     aria-label="Record"
                     className="w-9 h-9 rounded-full bg-accent text-white shadow-md flex items-center justify-center disabled:opacity-40 active:scale-95 transition"
                   >
-                    {busy ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Mic className="w-4 h-4" />
-                    )}
+                    <Mic className="w-4 h-4" />
                   </button>
                   <button
                     type="button"

@@ -8,6 +8,7 @@ import { Rail, View } from "./Rail";
 import { Today } from "@/components/today/Today";
 import { Core } from "@/components/core/Core";
 import { Whiteboard } from "@/components/whiteboard/Whiteboard";
+import { MobileBoard } from "@/components/whiteboard/MobileBoard";
 import { Settings } from "@/components/settings/Settings";
 import { CoachDock } from "@/components/coach/CoachDock";
 import { SpeakSurface } from "@/components/voice/SpeakSurface";
@@ -17,6 +18,7 @@ import { AtmospherePlayer } from "@/components/music/AtmospherePlayer";
 import { Sessions } from "@/components/sessions/Sessions";
 import { RecordingProvider, useRecording } from "@/components/sessions/RecordingProvider";
 import { currentDevice, formatElapsed } from "@/components/thoughts/utils";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 const VIEW_STORAGE_KEY = "lifeguide.activeView";
 const VIEWS: View[] = ["today", "core", "board", "sessions", "settings"];
@@ -50,6 +52,7 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   const [activeSessionId, setActiveSessionId] = useState<Id<"sessions"> | null>(null);
   const createSession = useMutation(api.sessions.create);
   const rec = useRecording();
+  const isMobile = useIsMobile();
 
   // Restore the last-viewed tab after mount. Done in an effect (not a lazy
   // useState initializer) so server and first client render agree — reading
@@ -107,11 +110,16 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
       />
       {/* Leave room for the fixed bottom bar on mobile; full height on desktop. */}
       <main className="flex-1 relative h-[calc(100dvh-64px)] md:h-screen overflow-hidden">
-        {/* Board stays mounted so canvas state (viewport, in-flight edits) survives nav;
-            `active` tells it when it's the surface on screen (each access re-centers). */}
-        <div className={view === "board" ? "absolute inset-0" : "hidden"}>
-          <Whiteboard surfaceId={surfaceId} active={view === "board"} />
-        </div>
+        {/* On a phone the board is a plain vertical list (no pan/zoom canvas). On
+            desktop the spatial board stays mounted so canvas state (viewport,
+            in-flight edits) survives nav; `active` tells it when it's on screen. */}
+        {isMobile ? (
+          view === "board" && <MobileBoard surfaceId={surfaceId} />
+        ) : (
+          <div className={view === "board" ? "absolute inset-0" : "hidden"}>
+            <Whiteboard surfaceId={surfaceId} active={view === "board"} />
+          </div>
+        )}
         {view === "today" && <Today onNavigate={setView} />}
         {view === "core" && <Core />}
         {view === "sessions" && (

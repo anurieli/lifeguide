@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { action } from "../_generated/server";
 import { api, internal } from "../_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { aiForTask } from "./openai";
+import { chatComplete } from "./openai";
 import { ALL_KEYS } from "../../lib/levels";
 import { BLUEPRINT } from "../../lib/blueprint";
 
@@ -102,18 +102,18 @@ export const synthesizeInterview = action({
 
     let drafted: Record<string, string | null> | null = null;
     try {
-      // Call synthesis model
-      const { client, model, temperature } = await aiForTask(ctx, "synthesis", userId);
-      const res = await client.chat.completions.create({
-        model,
-        temperature,
-        response_format: { type: "json_object" },
+      // Call synthesis model (logged per ADR 0017)
+      const raw = await chatComplete(ctx, {
+        taskId: "synthesis",
+        fn: "ai/synthesizeInterview.synthesizeInterview",
+        userId,
+        jsonMode: true,
         messages: [
           { role: "system", content: buildSystemPrompt() },
           { role: "user", content: transcriptText || "(no transcript)" },
         ],
       });
-      drafted = parseSynthesisJson(res.choices[0]?.message?.content ?? "{}");
+      drafted = parseSynthesisJson(raw || "{}");
     } catch {
       // No API key or model unavailable — synthesis skipped, but levels still recomputed below.
     }

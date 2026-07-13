@@ -71,4 +71,4 @@ Three AI nodes (see `convex/ai/config.ts`): `voiceTranscribe` (Whisper, OpenAI-p
 - **Document parsing** (`file` rawType): PDFs and docs are stored but not yet read.
 - **Video links:** we capture title/description; pulling transcripts is a follow-up.
 - **When/where metadata:** `sourceMeta` holds device today; location and richer context ("what I was doing") are deliberate future adds, consent-first.
-- **The Brain Dump Lab** (`components/brain-dump/BrainDumpLab.tsx`) lost its nav slot to this surface; its idea-graph experiment stays in the codebase pending a decision.
+- **The Brain Dump Lab** lost its nav slot to this surface and was then deleted outright on 2026-07-13 (ADR 0016) — it had no reachable route and the decision landed: toss it. It lives in git history.

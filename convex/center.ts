@@ -15,7 +15,7 @@ import { action } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { aiForTask } from "./ai/openai";
+import { aiForTask, chatComplete } from "./ai/openai";
 import { buildPillarSynthesisPrompt, parsePillarSynthesis } from "../agents/center/synthesis";
 import { planFileOps, type ExistingFile } from "../lib/center";
 
@@ -38,12 +38,13 @@ export const synthesizeSession = action({
       return { created: 0, updated: 0, pending: 0, pillarsTouched: 0 };
     }
 
+    // Availability precheck only — the per-pillar calls below go through chatComplete
+    // so each of the ~8 fanned-out calls is logged individually (ADR 0017).
     const ai = await aiForTask(ctx, "center", userId).catch(() => null);
     if (!ai) {
       // No key / model unavailable — nothing to file, but don't crash the call's end.
       return { created: 0, updated: 0, pending: 0, pillarsTouched: 0, error: "ai_unavailable" as const };
     }
-    const { client, model, temperature } = ai;
 
     let created = 0;
     let updated = 0;
@@ -61,16 +62,17 @@ export const synthesizeSession = action({
             files.map((f) => ({ name: f.name, kind: f.kind, content: f.content })),
             transcript,
           );
-          const res = await client.chat.completions.create({
-            model,
-            temperature,
-            response_format: { type: "json_object" },
+          const raw = await chatComplete(ctx, {
+            taskId: "center",
+            fn: "center.synthesizeSession",
+            userId,
+            jsonMode: true,
             messages: [
               { role: "system", content: system },
               { role: "user", content: user },
             ],
           });
-          ops = parsePillarSynthesis(res.choices[0]?.message?.content ?? "{}");
+          ops = parsePillarSynthesis(raw || "{}");
         } catch {
           return; // this pillar contributed nothing this session
         }

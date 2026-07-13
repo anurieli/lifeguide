@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { Doc } from "../_generated/dataModel";
-import { aiForTask } from "./openai";
+import { chatComplete } from "./openai";
 import { parseBoardWorthy, parseDistilled } from "./parse";
 
 // Distill a capture into {title, essence, pillars}. Scheduled by captures.create.
@@ -19,18 +19,15 @@ export const distillCapture = internalAction({
     if (!input) return; // nothing textual to distill yet (e.g. a bare image) — placed as-is
 
     // Uses the user's own provider key if they saved one, else the deployment env key.
-    const { client, model, temperature, system } = await aiForTask(ctx, "distill", capture.userId);
-    const res = await client.chat.completions.create({
-      model,
-      temperature,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system! },
-        { role: "user", content: input },
-      ],
-    });
-
-    const raw = res.choices[0]?.message?.content ?? "{}";
+    // chatComplete prepends the config system prompt and logs the call (ADR 0017).
+    const raw =
+      (await chatComplete(ctx, {
+        taskId: "distill",
+        fn: "ai/distill.distillCapture",
+        userId: capture.userId,
+        jsonMode: true,
+        messages: [{ role: "user", content: input }],
+      })) || "{}";
     const distilled = parseDistilled(raw);
     // The vision sieve rides the same response: ambient captures (no explicit
     // target) only reach the board Inbox if this verdict says they're a piece

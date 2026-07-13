@@ -25,7 +25,7 @@ Alongside: the board's paste catcher now attaches **only while the board is the 
 
 ## Consequences
 
-- Pre-existing unplaced captures have neither `target` nor a verdict, so they **disappear from the board Inbox** (they remain on the Thought stream, untouched). This is the desired cleanup of the current junk tray; any of them can earn a verdict via `captures.reprocess`, which re-runs distillation.
+- Pre-existing unplaced captures have neither `target` nor a verdict, so they **disappear from the board Inbox** (they remain on the Thought stream, untouched). This is the desired cleanup of the current junk tray; any of them can earn a verdict via `captures.reprocess`, which re-runs distillation. `captures.reverdictPreSieveInbox` automates exactly this for the whole stale set — it runs once per app load (from `useCaptures`) and queues a reprocess for every unplaced capture still missing both `target` and `boardWorthy`, so anything genuinely board-worthy resurfaces on its own without bypassing the sieve.
 - Bare images with no extractable text and no explicit target never distill, so they no longer wait in the tray; board-pasted images are unaffected (`target: "board"`).
 - The sieve is a static prompt for now and will be wrong in person-specific ways. The self-learning loop — 👍/👎 marks on inbox cards feeding per-user good/bad example pools into the sieve prompt at runtime — is designed and parked as **ARI-28** (gate decision 2026-07-13: slice 2).
 - MobileBoard's inbox section uses the same query, so both surfaces obey the same gate for free.

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 import { BlueprintCard } from "@/components/settings/BlueprintCard";
@@ -45,6 +45,16 @@ function Seg<T extends string>({
       ))}
     </div>
   );
+}
+
+// Convex wraps thrown Error messages from actions/mutations with request-id and
+// stack-trace noise (e.g. "[Request ID: …] Server Error\nUncaught Error: <msg>\n
+// at handler (…)"). Pull just the human-readable message back out for display.
+function convexErrorMessage(e: unknown, fallback: string): string {
+  const raw = e instanceof Error ? e.message : String(e);
+  const match = raw.match(/Uncaught Error:\s*(.*)/);
+  const line = (match ? match[1] : raw).split("\n")[0].trim();
+  return line || fallback;
 }
 
 function Row({
@@ -91,12 +101,15 @@ export function Settings() {
   const keyStatus = useQuery(api.aiKeys.status, {});
   const setKey = useMutation(api.aiKeys.setKey);
   const clearKey = useMutation(api.aiKeys.clearKey);
+  const saveTodoistToken = useAction(api.todoist.saveToken);
   const { signOut } = useAuthActions();
   const [modal, setModal] = useState(false);
   const [custom, setCustom] = useState("");
   const [orKey, setOrKey] = useState("");
   const orStatus = (keyStatus ?? []).find((k) => k.provider === "openrouter");
   const [tdKey, setTdKey] = useState("");
+  const [tdSaving, setTdSaving] = useState(false);
+  const [tdError, setTdError] = useState<string | null>(null);
   const tdStatus = (keyStatus ?? []).find((k) => k.provider === "todoist");
 
   const s = settings;
@@ -292,24 +305,42 @@ export function Settings() {
                 Disconnect
               </button>
             ) : (
-              <div className="flex gap-2 items-center">
-                <input
-                  type="password"
-                  value={tdKey}
-                  onChange={(e) => setTdKey(e.target.value)}
-                  placeholder="Todoist API token…"
-                  className="w-[170px] bg-paper border border-line rounded-lg px-3 py-2 text-sm outline-none text-ink"
-                />
-                <button
-                  onClick={async () => {
-                    if (!tdKey.trim()) return;
-                    await setKey({ provider: "todoist", key: tdKey.trim() });
-                    setTdKey("");
-                  }}
-                  className="bg-ink text-white rounded-lg px-4 py-2 text-sm"
-                >
-                  Save
-                </button>
+              <div className="flex flex-col items-end gap-1.5">
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="password"
+                    value={tdKey}
+                    onChange={(e) => {
+                      setTdKey(e.target.value);
+                      if (tdError) setTdError(null);
+                    }}
+                    placeholder="Todoist API token…"
+                    className="w-[170px] bg-paper border border-line rounded-lg px-3 py-2 text-sm outline-none text-ink"
+                  />
+                  <button
+                    onClick={async () => {
+                      const token = tdKey.trim();
+                      if (!token || tdSaving) return;
+                      setTdSaving(true);
+                      setTdError(null);
+                      try {
+                        // Tests the token against the real Todoist API before
+                        // saving it, so a bad token is caught right here.
+                        await saveTodoistToken({ token });
+                        setTdKey("");
+                      } catch (e) {
+                        setTdError(convexErrorMessage(e, "Couldn't connect to Todoist."));
+                      } finally {
+                        setTdSaving(false);
+                      }
+                    }}
+                    disabled={tdSaving}
+                    className="bg-ink text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50"
+                  >
+                    {tdSaving ? "Testing…" : "Save"}
+                  </button>
+                </div>
+                {tdError && <div className="text-[12px] text-red-500 max-w-[260px] text-right">{tdError}</div>}
               </div>
             )}
           </Row>

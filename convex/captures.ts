@@ -43,6 +43,40 @@ export const inbox = query({
   },
 });
 
+// One-time repair for ADR 0015: captures distilled before the vision sieve existed
+// have neither `target` nor `boardWorthy`, so the inbox filter above drops them —
+// per the ADR, that's the *intended* junk-tray cleanup, not a bug. What the ADR
+// promises as the escape hatch is that any of them "can earn a verdict via
+// captures.reprocess." This re-runs distillation on exactly that stale set so the
+// sieve actually judges them, instead of either leaving them stuck forever or
+// bypassing the sieve to force them all back in. Safe to call more than once: a
+// capture that's already been re-verdicted (boardWorthy set either way) is excluded.
+export const reverdictPreSieveInbox = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return { queued: 0 };
+    const unplaced = await ctx.db
+      .query("captures")
+      .withIndex("by_user_unplaced", (q) => q.eq("userId", userId).eq("placedAt", undefined))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+    const stale = unplaced.filter(
+      (c) => c.target === undefined && c.boardWorthy === undefined && c.distilled !== undefined,
+    );
+    for (const c of stale) {
+      await ctx.db.patch(c._id, {
+        extraction: {
+          status: NEEDS_EXTRACTION.has(c.rawType) ? ("pending" as const) : ("skipped" as const),
+          at: Date.now(),
+        },
+      });
+      await ctx.scheduler.runAfter(0, internal.ai.ingest.ingestCapture, { captureId: c._id });
+    }
+    return { queued: stale.length };
+  },
+});
+
 // Server-only read for the distill action (runs without an authenticated user).
 export const getByIdInternal = internalQuery({
   args: { captureId: v.id("captures") },

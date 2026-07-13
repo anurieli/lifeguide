@@ -220,7 +220,7 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
         onSpeak={openSpeak}
         stepAside={view === "sessions" && activeSessionId !== null}
       />
-      <FeedbackWidget view={view} />
+      <FeedbackWidget view={view} coachOpen={coachOpen} />
       {/* Atmosphere: ambient music, desktop only. The phone stays capture-first. */}
       <div className="hidden md:block">
         <AtmospherePlayer />

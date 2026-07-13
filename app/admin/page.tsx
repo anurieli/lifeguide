@@ -268,6 +268,19 @@ export default function AdminPage() {
                           <ImageIcon className="w-3.5 h-3.5" /> no snapshot
                         </span>
                       )}
+                      {(f.imageUrls ?? []).map((u, i) => (
+                        <a
+                          key={u}
+                          href={u}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block w-[56px] h-[56px] rounded-md border border-line overflow-hidden bg-paper-2 flex-shrink-0"
+                          title={`Open attached photo ${i + 1}`}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={u} alt={`attached photo ${i + 1}`} className="w-full h-full object-cover" />
+                        </a>
+                      ))}
                       {replyHref ? (
                         <a
                           href={replyHref}

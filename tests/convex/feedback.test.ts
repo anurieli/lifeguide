@@ -30,6 +30,23 @@ describe("feedback", () => {
     expect(all[0].text).toBe(BASE.text);
     expect(all[0].errors.length).toBe(1);
     expect(all[0].shotUrl).toBeNull();
+    expect(all[0].imageUrls).toEqual([]);
+  });
+
+  it("submit with attached photos resolves imageUrls in listAll", async () => {
+    const t = convexTest(schema);
+    const userId = await t.run(async (ctx) => ctx.db.insert("users", {}));
+    const imageId = await t.run(async (ctx) =>
+      ctx.storage.store(new Blob(["fake-png"], { type: "image/png" })),
+    );
+    const asUser = t.withIdentity({ subject: userId });
+
+    await asUser.mutation(api.feedback.submit, { ...BASE, imageIds: [imageId] });
+
+    const row = (await asUser.query(api.feedback.listAll, {}))[0];
+    expect(row.imageIds).toEqual([imageId]);
+    expect(row.imageUrls.length).toBe(1);
+    expect(typeof row.imageUrls[0]).toBe("string");
   });
 
   it("listAll returns rows newest-first", async () => {

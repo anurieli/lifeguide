@@ -81,29 +81,34 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
   },
 
   // The Coach's conversational reply. Live (system prompt is built per-call in coach.ts).
+  // The Coach IS the product's power tool — it reasons over the person's full context and
+  // must be perceptive and warm, not generic. Sonnet is the right tier (opus latency would
+  // hurt a per-turn chat); it runs every conversational turn, so we don't go higher.
   coachReply: {
     label: "Coach reply",
     provider: "openrouter",
-    model: "openai/gpt-4o-mini",
+    model: "anthropic/claude-sonnet-5",
     temperature: 0.7,
     wired: true,
   },
 
   // Re-synthesize the Mirror from accumulated signal (the core-curation pass). Proposed.
-  // A stronger model is the natural choice here; flip the model when this lands.
+  // This is the deepest synthesis in the app — it writes "who you are" from all accumulated
+  // signal — and it runs rarely, so the strongest model is the natural (and affordable) choice.
   curate: {
     label: "Core curation",
     provider: "openrouter",
-    model: "openai/gpt-4o-mini",
+    model: "anthropic/claude-opus-4.8",
     temperature: 0.3,
     wired: false,
   },
 
   // Choose the next adaptive Journal prompts from Core + Goals. Proposed.
+  // Must feel perceptive and personal, not templated — a strong reasoning model earns its keep.
   journalPrompts: {
     label: "Journal prompts",
     provider: "openrouter",
-    model: "openai/gpt-4o-mini",
+    model: "anthropic/claude-sonnet-5",
     temperature: 0.6,
     wired: false,
   },
@@ -115,16 +120,18 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
   voice: {
     label: "Voice interview (realtime)",
     provider: "openai",
-    model: "gpt-realtime-mini",
+    model: "gpt-realtime",
     temperature: 0.7,
     wired: true,
   },
 
   // Synthesize completed voice interview transcript into blueprint answers. Live.
+  // One-shot and high-stakes — this becomes the person's first Core — so a strong model here
+  // is cheap insurance against a weak first impression. Runs once per onboarding.
   synthesis: {
     label: "Interview synthesis",
     provider: "openrouter",
-    model: "openai/gpt-4o-mini",
+    model: "anthropic/claude-sonnet-5",
     temperature: 0.3,
     wired: true,
   },
@@ -135,7 +142,7 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
   center: {
     label: "Center · per-pillar filing",
     provider: "openrouter",
-    model: "openai/gpt-4o-mini",
+    model: "anthropic/claude-haiku-4.5",
     temperature: 0.3,
     wired: true,
   },
@@ -235,7 +242,7 @@ Rules:
   brainDumpGraph: {
     label: "Brain dump · idea graph",
     provider: "openrouter",
-    model: "openai/gpt-4o-mini",
+    model: "anthropic/claude-haiku-4.5",
     temperature: 0.25,
     wired: true,
   },

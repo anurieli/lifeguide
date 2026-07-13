@@ -151,12 +151,15 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
           </span>
         </button>
       )}
+      {/* Inside an open thought document the entry's capture controls (photo + record)
+          own the bottom-right corner; the Coach cluster steps aside until the person leaves. */}
       <CoachDock
         view={view}
         surfaceId={surfaceId}
         open={coachOpen}
         onToggle={() => setCoachOpen((o) => !o)}
         onSpeak={openSpeak}
+        stepAside={view === "sessions" && activeSessionId !== null}
       />
       <FeedbackWidget view={view} />
       {/* Atmosphere: ambient music, desktop only. The phone stays capture-first. */}

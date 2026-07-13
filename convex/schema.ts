@@ -319,15 +319,68 @@ export default defineSchema({
 
   // Per-profile AI provider keys. A user's own key (e.g. their OpenRouter key) is
   // used for their AI calls in preference to the deployment env key. Server-only:
-  // `key` is never returned to the client (see convex/aiKeys.ts).
+  // `key` is never returned to the client (see convex/aiKeys.ts). "todoist" rides
+  // the same table: it is the user's Todoist API token for the Goals sync.
   apiKeys: defineTable({
     userId: v.id("users"),
-    provider: v.union(v.literal("openrouter"), v.literal("openai"), v.literal("local")),
+    provider: v.union(
+      v.literal("openrouter"),
+      v.literal("openai"),
+      v.literal("local"),
+      v.literal("todoist"),
+    ),
     key: v.string(),
     last4: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_user_provider", ["userId", "provider"]),
+
+  // Goals (the Orbit board): Big Things — the few projects/goals the board is
+  // organized around, each carrying a "why" so priorities stay honest. A goal
+  // with parentId set is a sub-project (part) of a Big Thing. Seeded from
+  // _source-apps/goal-manager/Orbit-PRD.md.
+  goals: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    parentId: v.optional(v.id("goals")),
+    // big = a card on the board; shelf = a quick everyday list (Groceries, Someday).
+    kind: v.union(v.literal("big"), v.literal("shelf")),
+    status: v.union(v.literal("active"), v.literal("planning"), v.literal("ongoing")),
+    area: v.union(v.literal("business"), v.literal("personal"), v.literal("people")),
+    why: v.optional(v.string()),
+    sortOrder: v.number(),
+    archived: v.optional(v.boolean()),
+    // Two-way Todoist link: set when this goal mirrors a Todoist project.
+    todoistProjectId: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_todoist", ["userId", "todoistProjectId"]),
+
+  // Tasks on the Goals board. goalId unset = the Inbox (unfiled capture bucket).
+  // "waiting" is the Orbit Phase-1 task state: blocked on someone/something,
+  // surfaced in its own view with aging.
+  goalTasks: defineTable({
+    userId: v.id("users"),
+    goalId: v.optional(v.id("goals")),
+    content: v.string(),
+    description: v.optional(v.string()),
+    dueDate: v.optional(v.string()), // YYYY-MM-DD
+    priority: v.optional(v.number()), // Todoist convention: 1 normal … 4 urgent
+    checked: v.boolean(),
+    completedAt: v.optional(v.number()),
+    waiting: v.optional(v.boolean()),
+    waitingOn: v.optional(v.string()), // free text who/what until People ships
+    waitingSince: v.optional(v.number()),
+    sortOrder: v.number(),
+    todoistTaskId: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_goal", ["userId", "goalId"])
+    .index("by_user_todoist", ["userId", "todoistTaskId"]),
 
   // The Core: the user's answers to the fixed Life Blueprint (3 sections, 18 questions). The
   // question/section skeleton lives in code (lib/blueprint.ts, recovered from the original app);

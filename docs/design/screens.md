@@ -55,7 +55,7 @@
 ## The docked Coach
 **Purpose:** talk-first interaction on every surface (rules 3, 4). One presence, context-aware, acts from far away.
 **On it:** a round gold-ringed FAB that opens a dark panel: header with the per-surface context line ("sees your board · knows you"), a message thread (gold user bubbles, dark coach bubbles), and an input. Present on every app surface, scoped to the current one.
-**One thing:** the conversation. It sits beside the work, never over it.
+**One thing:** the conversation. It sits beside the work, never over it — including the work's own controls: the Coach cluster owns the bottom-right corner on every surface, and a surface with floating controls of its own (the open thought document's photo + record buttons) places them just left of the cluster on the FAB's baseline, so the two groups sit side by side and never stack (2026-07-13; an earlier same-day fix that hid the Coach inside the document was reverted — the Coach never disappears).
 **Mobile (< `md`):** there is no FAB — the Coach is **embedded in the bottom bar** as its own tab. Tapping it slides up a full-width dark sheet that fills the screen above the bar; tapping again dismisses it. Open state is shared (lifted to `AppShell`) so the desktop FAB and the mobile tab drive the same panel.
 **Status:** built. [`components/coach/CoachDock.tsx`](../../components/coach/CoachDock.tsx). Acting "from far away" (Coach editing the board/goals directly) is partial-to-proposed.
 

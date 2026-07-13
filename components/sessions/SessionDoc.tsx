@@ -13,14 +13,17 @@ import {
   isBareUrl,
   urlRawType,
 } from "@/components/thoughts/utils";
+import { caretPosition, CaretPos } from "./caret";
 
 /**
  * The living entry: one continuous document. Captures render in the order they
  * were added (spoken passages, typed text, photos); a borderless editor trails
  * the content, so tapping anywhere on the page just starts typing (committed as
- * a text capture on blur). The controls float bottom-right; the live take itself
- * belongs to RecordingProvider, so it keeps recording if the person navigates
- * away. Leaving an entry with no content deletes it.
+ * a text capture on blur). On desktop the mic + photo pair rides the text caret
+ * (a horizontal row just right of where you're writing; with no caret it rests
+ * below the last content); on the phone the controls float bottom-right. The
+ * live take itself belongs to RecordingProvider, so it keeps recording if the
+ * person navigates away. Leaving an entry with no content deletes it.
  */
 export function SessionDoc({
   sessionId,
@@ -47,6 +50,9 @@ export function SessionDoc({
   const [doingDraft, setDoingDraft] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  // Where the text caret sits inside the trailing editor (desktop: the capture
+  // pair rides it). null = no caret; the pair rests below the last content.
+  const [caret, setCaret] = useState<CaretPos | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
 
@@ -152,6 +158,11 @@ export function SessionDoc({
     if (e.target === e.currentTarget) editorRef.current?.focus();
   };
 
+  const trackCaret = () => {
+    const ta = editorRef.current;
+    if (ta) setCaret(caretPosition(ta));
+  };
+
   if (doc === undefined) {
     return <p className="text-center text-[13px] text-ink-mute py-10">Loading…</p>;
   }
@@ -169,6 +180,45 @@ export function SessionDoc({
   const { session, captures } = doc;
   const started = new Date(session.startedAt);
   const busy = rec.uploading || uploading;
+
+  // The live-take pill — discard · pause/resume · save — shared by the desktop
+  // caret row and the phone's floating corner.
+  const takePill = (
+    <div className="flex items-center gap-1 bg-card border border-line-2 rounded-full shadow-lg p-1">
+      <button
+        type="button"
+        onClick={discardTake}
+        aria-label={confirmDiscard ? "Tap again to discard" : "Discard recording"}
+        className={`h-10 rounded-full flex items-center justify-center transition ${
+          confirmDiscard
+            ? "px-3 text-[12px] font-medium text-red-500"
+            : "w-10 text-ink-mute hover:text-red-500"
+        }`}
+      >
+        {confirmDiscard ? "Sure?" : <X className="w-[18px] h-[18px]" />}
+      </button>
+      <button
+        type="button"
+        onClick={() => (rec.paused ? rec.resume() : rec.pause())}
+        aria-label={rec.paused ? "Resume recording" : "Pause recording"}
+        className="w-10 h-10 rounded-full text-ink-soft hover:text-ink flex items-center justify-center"
+      >
+        {rec.paused ? (
+          <Play className="w-[18px] h-[18px]" fill="currentColor" strokeWidth={0} />
+        ) : (
+          <Pause className="w-[18px] h-[18px]" fill="currentColor" strokeWidth={0} />
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={() => void rec.finish()}
+        aria-label="Save recording"
+        className="w-11 h-11 rounded-full bg-gold/15 border-[1.5px] border-gold text-gold flex items-center justify-center active:scale-95 transition"
+      >
+        <Square className="w-3.5 h-3.5" fill="currentColor" strokeWidth={0} />
+      </button>
+    </div>
+  );
 
   return (
     <div className="h-full flex flex-col relative">
@@ -321,34 +371,97 @@ export function SessionDoc({
               </span>
             </div>
           )}
-          <textarea
-            ref={editorRef}
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              e.target.style.height = "auto";
-              e.target.style.height = `${e.target.scrollHeight}px`;
-            }}
-            onBlur={commitText}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
+          <div className="relative">
+            <textarea
+              ref={editorRef}
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value);
+                e.target.style.height = "auto";
+                e.target.style.height = `${e.target.scrollHeight}px`;
+                trackCaret();
+              }}
+              onFocus={trackCaret}
+              onSelect={trackCaret}
+              onBlur={() => {
+                setCaret(null);
                 commitText();
+              }}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  commitText();
+                }
+              }}
+              rows={2}
+              aria-label="Write in this entry"
+              className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink outline-none overflow-hidden"
+            />
+            {/* Desktop: mic + photo ride the caret — a horizontal pair just right
+                of where the person is writing, one click from the thought. With no
+                caret the pair rests here in flow, below the last content. mousedown
+                is swallowed so tapping a button doesn't blur the editor and move
+                the row out from under the click. */}
+            <div
+              className="hidden md:flex items-center gap-2"
+              style={
+                caret
+                  ? {
+                      position: "absolute",
+                      left: Math.max(
+                        0,
+                        Math.min(
+                          caret.left + 12,
+                          (editorRef.current?.clientWidth ?? 680) - 96,
+                        ),
+                      ),
+                      top: caret.top + caret.lineHeight / 2 - 18,
+                    }
+                  : undefined
               }
-            }}
-            rows={2}
-            aria-label="Write in this entry"
-            className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink outline-none overflow-hidden"
-          />
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              {isLive && rec.recording ? (
+                takePill
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void rec.start(sessionId)}
+                    disabled={busy || !rec.supported}
+                    aria-label="Record"
+                    className="w-9 h-9 rounded-full bg-accent text-white shadow-md flex items-center justify-center disabled:opacity-40 active:scale-95 transition"
+                  >
+                    {busy ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Mic className="w-4 h-4" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    aria-label="Add a photo"
+                    className="w-9 h-9 rounded-full bg-card border border-line-2 shadow-sm text-ink-mute hover:text-gold flex items-center justify-center disabled:opacity-40"
+                  >
+                    <ImagePlus className="w-4 h-4" />
+                  </button>
+                  {rec.error && !rec.recording && (
+                    <span className="text-[11px] text-ink-mute whitespace-nowrap">
+                      Mic unavailable — just write.
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* The controls: floating, out of the document's way. Idle: photo + mic.
-          Live: one slim pill — discard · pause/resume · save. On desktop the
-          bottom-right corner itself belongs to the global Coach cluster (talk FAB
-          + chat bubble, fixed at right-6), so this column sits just left of it,
-          on the same baseline; the live pill grows leftward, away from the Coach. */}
-      <div className="absolute bottom-5 right-5 md:bottom-6 md:right-24 flex flex-col items-end gap-2.5">
+      {/* Phone: the controls float bottom-right (there's no caret to ride on a
+          touch keyboard flow). Idle: photo + mic. Live: the shared slim pill. */}
+      <div className="absolute bottom-5 right-5 flex flex-col items-end gap-2.5 md:hidden">
         {rec.error && !rec.recording && (
           <span className="text-[11px] text-ink-mute bg-card border border-line rounded-full px-2.5 py-1">
             Mic unavailable. Tap the page and type.
@@ -364,40 +477,7 @@ export function SessionDoc({
           <ImagePlus className="w-[18px] h-[18px]" />
         </button>
         {isLive && rec.recording ? (
-          <div className="flex items-center gap-1 bg-card border border-line-2 rounded-full shadow-lg p-1">
-            <button
-              type="button"
-              onClick={discardTake}
-              aria-label={confirmDiscard ? "Tap again to discard" : "Discard recording"}
-              className={`h-10 rounded-full flex items-center justify-center transition ${
-                confirmDiscard
-                  ? "px-3 text-[12px] font-medium text-red-500"
-                  : "w-10 text-ink-mute hover:text-red-500"
-              }`}
-            >
-              {confirmDiscard ? "Sure?" : <X className="w-[18px] h-[18px]" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => (rec.paused ? rec.resume() : rec.pause())}
-              aria-label={rec.paused ? "Resume recording" : "Pause recording"}
-              className="w-10 h-10 rounded-full text-ink-soft hover:text-ink flex items-center justify-center"
-            >
-              {rec.paused ? (
-                <Play className="w-[18px] h-[18px]" fill="currentColor" strokeWidth={0} />
-              ) : (
-                <Pause className="w-[18px] h-[18px]" fill="currentColor" strokeWidth={0} />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => void rec.finish()}
-              aria-label="Save recording"
-              className="w-11 h-11 rounded-full bg-gold/15 border-[1.5px] border-gold text-gold flex items-center justify-center active:scale-95 transition"
-            >
-              <Square className="w-3.5 h-3.5" fill="currentColor" strokeWidth={0} />
-            </button>
-          </div>
+          takePill
         ) : (
           <button
             type="button"

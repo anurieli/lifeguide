@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Rail, View } from "./Rail";
+import { Rail, AccountMenu, View } from "./Rail";
 import { Today } from "@/components/today/Today";
+import { Goals } from "@/components/goals/Goals";
 import { Core } from "@/components/core/Core";
 import { Whiteboard } from "@/components/whiteboard/Whiteboard";
 import { Settings } from "@/components/settings/Settings";
@@ -20,7 +21,7 @@ import { RecordingProvider, useRecording } from "@/components/sessions/Recording
 import { currentDevice, formatElapsed } from "@/components/thoughts/utils";
 
 const VIEW_STORAGE_KEY = "lifeguide.activeView";
-const VIEWS: View[] = ["today", "core", "board", "dump", "sessions", "settings"];
+const VIEWS: View[] = ["today", "core", "board", "goals", "dump", "sessions", "settings"];
 
 function clientLog(event: string, meta?: Record<string, unknown>) {
   if (process.env.NODE_ENV === "production") return;
@@ -109,12 +110,18 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
         </div>
         {view === "today" && <Today onNavigate={setView} />}
         {view === "core" && <Core />}
+        {view === "goals" && <Goals />}
         {view === "dump" && <ThoughtStream />}
         {view === "sessions" && (
           <Sessions activeSessionId={activeSessionId} onOpenSession={setActiveSessionId} />
         )}
         {view === "settings" && <Settings />}
       </main>
+      {/* You, always in the corner: the account avatar, fixed top-right on every
+          page (it used to live in the mobile bar and at the rail's foot). */}
+      <div className="fixed top-3 right-4 z-[55]">
+        <AccountMenu onNav={setView} opensUpward={false} />
+      </div>
       {/* A take recording in the background: one quiet pill that leads back to it. */}
       {rec.sessionId && !viewingLiveEntry && (
         <button

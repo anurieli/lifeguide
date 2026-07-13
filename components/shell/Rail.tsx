@@ -8,18 +8,27 @@ import {
   AudioLines,
   Plus,
   NotebookPen,
+  Target,
   Settings as SettingsIcon,
   User,
   LogOut,
 } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 
-export type View = "today" | "core" | "board" | "dump" | "sessions" | "settings";
+export type View =
+  | "today"
+  | "core"
+  | "board"
+  | "goals"
+  | "dump"
+  | "sessions"
+  | "settings";
 
 const ITEMS: { key: View; label: string; Icon: typeof Sun }[] = [
   { key: "today", label: "Today", Icon: Sun },
   { key: "core", label: "Core", Icon: Gem },
   { key: "board", label: "Board", Icon: LayoutGrid },
+  { key: "goals", label: "Goals", Icon: Target },
   { key: "dump", label: "Thoughts", Icon: AudioLines },
   { key: "sessions", label: "Sessions", Icon: NotebookPen },
 ];
@@ -103,9 +112,9 @@ function MenuItem({
   );
 }
 
-// The avatar + its popup. Self-contained so the mobile bar and the desktop rail
-// can each mount their own without sharing anchor refs across breakpoints.
-function AccountMenu({
+// The avatar + its popup. Exported: AppShell mounts one fixed in the top-right
+// corner of every page (the mobile bar slot it used to occupy now holds Goals).
+export function AccountMenu({
   onNav,
   opensUpward,
 }: {
@@ -143,7 +152,7 @@ function AccountMenu({
       {menuOpen && (
         <div
           className={`absolute w-44 bg-card border border-line rounded-xl shadow-xl py-1.5 z-[60] ${
-            opensUpward ? "right-0 bottom-[120%]" : "left-[48px] bottom-0"
+            opensUpward ? "right-0 bottom-[120%]" : "right-0 top-[120%]"
           }`}
         >
           <div className="px-3 pt-1 pb-1.5 text-[11px] tracking-[0.14em] uppercase text-ink-mute">
@@ -190,7 +199,8 @@ export function Rail({
   return (
     <>
       {/* Phone: a five-slot bottom bar, evenly spread so the ➕ sits dead center:
-          Today · Board · ➕ · Sessions · account. Core and Thoughts are desktop-only. */}
+          Today · Board · ➕ · Sessions · Goals. Core and Thoughts are desktop-only;
+          the account avatar lives fixed in the top-right corner (see AppShell). */}
       <div className="md:hidden fixed bottom-0 inset-x-0 h-[64px] grid grid-cols-5 items-center px-1 border-t border-line bg-card z-50">
         {(["today", "board"] as const).map((key) => {
           const { label, Icon } = item(key);
@@ -215,18 +225,22 @@ export function Rail({
             <Plus className="w-8 h-8" strokeWidth={2.25} />
           </button>
         </div>
-        <BarTab
-          Icon={item("sessions").Icon}
-          label={item("sessions").label}
-          active={view === "sessions"}
-          onClick={() => onNav("sessions")}
-        />
-        <div className="flex justify-center">
-          <AccountMenu onNav={onNav} opensUpward />
-        </div>
+        {(["sessions", "goals"] as const).map((key) => {
+          const { label, Icon } = item(key);
+          return (
+            <BarTab
+              key={key}
+              Icon={Icon}
+              label={label}
+              active={view === key}
+              onClick={() => onNav(key)}
+            />
+          );
+        })}
       </div>
 
-      {/* Desktop: the vertical left rail, unchanged. */}
+      {/* Desktop: the vertical left rail. The account avatar moved to the fixed
+          top-right corner (AppShell), so the rail is nav only. */}
       <div className="hidden md:flex w-[84px] h-screen flex-col items-center py-[18px] border-r border-line bg-card flex-shrink-0">
         <div className="font-extrabold text-xl text-ink mb-7">L</div>
         <div className="flex flex-1 flex-col gap-1.5 items-center">
@@ -240,7 +254,6 @@ export function Rail({
             />
           ))}
         </div>
-        <AccountMenu onNav={onNav} opensUpward={false} />
       </div>
     </>
   );

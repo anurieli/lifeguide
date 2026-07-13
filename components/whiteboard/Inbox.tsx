@@ -28,7 +28,7 @@ export function Inbox({
         onPointerDown={(e) => e.stopPropagation()}
         onMouseEnter={() => setPeeking(true)}
         onMouseLeave={() => setPeeking(false)}
-        className="fixed top-5 right-5 z-20 flex flex-col items-end"
+        className="fixed top-5 right-16 z-20 flex flex-col items-end"
       >
         <button
           onClick={() => {
@@ -67,7 +67,7 @@ export function Inbox({
   return (
     <div
       onPointerDown={(e) => e.stopPropagation()}
-      className="fixed top-5 right-5 w-80 max-h-[80vh] overflow-y-auto z-20 bg-card/95 backdrop-blur border border-line rounded-2xl shadow-lg p-3"
+      className="fixed top-5 right-16 w-80 max-h-[80vh] overflow-y-auto z-20 bg-card/95 backdrop-blur border border-line rounded-2xl shadow-lg p-3"
     >
       <button
         onClick={() => setOpen(false)}

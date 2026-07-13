@@ -14,6 +14,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { usePressSwipeUp } from "@/hooks/usePressSwipeUp";
 
 export type View = "today" | "core" | "board" | "goals" | "sessions" | "settings";
 
@@ -188,11 +189,16 @@ export function Rail({
   view,
   onNav,
   onRecord,
+  onQuickRecord,
 }: {
   view: View;
   onNav: (v: View) => void;
   onRecord: () => void;
+  /** Press-and-swipe-up on the main action: recording starts right there. */
+  onQuickRecord: () => void;
 }) {
+  const plusSwipe = usePressSwipeUp(onQuickRecord);
+  const penSwipe = usePressSwipeUp(onQuickRecord);
   return (
     <>
       {/* Phone: a five-slot bottom bar, evenly spread so the ➕ sits dead center:
@@ -211,11 +217,13 @@ export function Rail({
             />
           );
         })}
-        {/* One tap, a fresh entry: the phone's main action, raised above the bar. */}
+        {/* One tap, a fresh entry: the phone's main action, raised above the bar.
+            Press + swipe up instead, and it's recording before you let go. */}
         <div className="flex justify-center">
           <button
             type="button"
             onClick={onRecord}
+            {...plusSwipe}
             aria-label="Think out loud"
             className="-translate-y-4 w-16 h-16 rounded-full bg-accent text-white shadow-lg flex items-center justify-center active:scale-95 transition"
           >
@@ -254,6 +262,7 @@ export function Rail({
           <button
             type="button"
             onClick={onRecord}
+            {...penSwipe}
             aria-label="Think out loud"
             title="Think out loud"
             className="mt-2 w-12 h-12 rounded-full bg-accent text-white shadow-md flex items-center justify-center hover:opacity-90 active:scale-95 transition"

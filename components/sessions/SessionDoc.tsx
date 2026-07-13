@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { ArrowLeft, ImagePlus, Loader2, Mic, Pause, Play, Square, X } from "lucide-react";
+import { ArrowLeft, ImagePlus, Mic, Pause, Play, Square, X } from "lucide-react";
 import { useRecording } from "./RecordingProvider";
 import { useBlobUpload } from "@/hooks/useBlobUpload";
 import {
@@ -44,6 +44,10 @@ export function SessionDoc({
   const rec = useRecording();
   // This entry is the one the live take is landing in.
   const isLive = rec.sessionId === sessionId;
+  // Finished takes still saving into this entry: rendered on the page at once,
+  // the upload running behind them.
+  const pendingHere = rec.pendingTakes.filter((t) => t.sessionId === sessionId);
+  const failedHere = rec.failedTakes.some((t) => t.sessionId === sessionId);
 
   const [text, setText] = useState("");
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
@@ -81,8 +85,8 @@ export function SessionDoc({
       // A typed thought must never be lost: commit it instead of husk-checking.
       setText("");
       void append(textCaptureArgs(trimmed));
-    } else if (!isLive) {
-      // A live take is still landing here; the entry is not a husk.
+    } else if (!isLive && pendingHere.length === 0 && !failedHere) {
+      // A live, saving, or save-failed take is still landing here; not a husk.
       void deleteIfEmpty({ sessionId });
     }
     // Leaving re-updates the name + description over whatever this sitting added
@@ -179,7 +183,6 @@ export function SessionDoc({
 
   const { session, captures } = doc;
   const started = new Date(session.startedAt);
-  const busy = rec.uploading || uploading;
 
   // The live-take pill — discard · pause/resume · save — shared by the desktop
   // caret row and the phone's floating corner.
@@ -287,7 +290,7 @@ export function SessionDoc({
         onClick={focusEditor}
       >
         <div className="max-w-[680px] mx-auto flex flex-col gap-5" onClick={focusEditor}>
-          {captures.length === 0 && !isLive && !text && (
+          {captures.length === 0 && !isLive && !text && pendingHere.length === 0 && (
             <p className="text-[13.5px] text-ink-mute py-2 pointer-events-none select-none">
               Speak, or tap anywhere and write.
             </p>
@@ -345,7 +348,22 @@ export function SessionDoc({
               )}
             </div>
           ))}
-          {rec.failedTake?.sessionId === sessionId && !isLive && !busy && (
+          {/* Takes saving right now: on the page the instant recording stops,
+              upload + transcription running behind them. The real capture row
+              replaces this the moment the server has it. */}
+          {pendingHere.map((t) => (
+            <div
+              key={t.startedAt}
+              className="flex items-center gap-2.5 pointer-events-none select-none"
+            >
+              <span className="w-2.5 h-2.5 rounded-full bg-gold animate-pulse" />
+              <span className="text-[14px] tabular-nums text-ink-soft">
+                {formatElapsed(t.durationMs)}
+              </span>
+              <span className="text-[12.5px] text-ink-mute">Processing…</span>
+            </div>
+          ))}
+          {failedHere && !isLive && (
             <p className="text-[13px] text-ink-mute">
               That take didn&apos;t save; it&apos;s still here.{" "}
               <button
@@ -482,11 +500,11 @@ export function SessionDoc({
           <button
             type="button"
             onClick={() => void rec.start(sessionId)}
-            disabled={busy || !rec.supported}
+            disabled={!rec.supported}
             aria-label="Record"
             className="w-14 h-14 rounded-full bg-accent text-white shadow-lg flex items-center justify-center disabled:opacity-50 active:scale-95 transition"
           >
-            {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mic className="w-6 h-6" />}
+            <Mic className="w-6 h-6" />
           </button>
         )}
       </div>

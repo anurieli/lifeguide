@@ -251,6 +251,19 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_user_day", ["userId", "day", "order"]),
 
+  // A note to tomorrow-morning-you: one short free-form message written during the
+  // night scroll and read at the top of the next morning scroll — the last thing
+  // written at night is the first thing read in the morning. `day` is the TARGET
+  // morning's ritual day key (same convention as roadmapEntries, ADR 0009/0012).
+  // One note per user per morning; editing at night upserts, emptying deletes.
+  morningNotes: defineTable({
+    userId: v.id("users"),
+    day: v.string(), // "YYYY-MM-DD" ritual day key of the morning it addresses
+    text: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user_day", ["userId", "day"]),
+
   // The Blueprint for Life: the person's editable conduct doctrine (how a day is
   // lived), one document per user, seeded from the 8-pillar doctrine. A knowledge-base
   // entity at the pillar level, deliberately NOT a coreFiles row: the Core is the

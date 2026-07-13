@@ -78,6 +78,12 @@ The three `music*` fields are the durable preferences for **Atmosphere** (the am
 ### apiKeys
 Per-profile AI provider keys. `{ userId, provider: openrouter|openai|local, key, last4, createdAt, updatedAt }`, indexed `by_user_provider`. A user's own key wins over the deployment env key for that provider when their AI tasks run (see [`ai-layer.md`](ai-layer.md)). Server-only: `key` is never returned to the client (`convex/aiKeys.ts` exposes only status plus `last4`, and an `internalQuery` for server use). Encryption at rest is a tracked hardening step (see [`security-privacy.md`](security-privacy.md)).
 
+### aiLogs (the universal AI call log — ADR 0017)
+One row per model call, every call, success or failure. `{ userId?, taskId, fn (call site), provider, model, kind: chat|transcription|image|realtime, ok, error?, inputTokens?, outputTokens?, costUsd? (estimate from the dated PRICING snapshot; undefined when unknown), durationMs, at }`, indexed `by_user_at` and `by_at`. Written best-effort by the helpers in `convex/ai/openai.ts` (`chatComplete` / `transcribeLogged` / `logAi`) — a failed log write never breaks the feature. Read by the Settings AI hub (`aiLogs.recent`, `aiLogs.monthSpend`). `realtime` rows mark a voice-session mint; that conversation's usage runs client-side over WebRTC and is unknowable server-side. Unbounded growth; pruning/rollup deferred.
+
+### aiOverrides (per-user model dials — ADR 0017)
+The Settings AI hub's model picker. `{ userId, taskId, provider: openrouter|openai|local, model, updatedAt }`, indexed `by_user_task`. `aiForTask` resolves the person's override before the config default in `convex/ai/config.ts`; deleting the row (the "yours · reset" chip) falls back. Mutations in `convex/aiModels.ts` (`setModel` / `clearModel`; `nodes` returns the registry overlaid with the caller's overrides).
+
 ### interviewSessions (onboarding interviews)
 
 One run of an onboarding experience. The QR phone-handoff encodes `/interview/<_id>` so any device can join the same row.

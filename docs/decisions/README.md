@@ -19,5 +19,7 @@ Architecture Decision Records for LifeGuide. One file per notable decision, numb
 | [0013](0013-immersive-reader-overlay.md) | The immersive reader is a full-screen overlay, not scroll-pinning | accepted (live) | 2026-07-12 |
 | [0014](0014-per-node-model-tiering.md) | Per-node model tiering: match the model to the job | accepted (live) | 2026-07-13 |
 | [0015](0015-vision-sieve-for-the-board-inbox.md) | The vision sieve: intent + verdict gate the board Inbox | accepted (live) | 2026-07-13 |
+| [0016](0016-toss-the-brain-dump-lab.md) | Toss the brain-dump idea-graph lab | accepted (done) | 2026-07-13 |
+| [0017](0017-ai-hub-logging-and-overrides.md) | The AI hub: every call logged, every model a Settings dial | accepted (live) | 2026-07-13 |
 
 See [`../README.md`](../README.md) for the documentation map and the two seeds, and [`../product/concept-and-soul.md`](../product/concept-and-soul.md) for the current source of truth.

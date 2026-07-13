@@ -25,12 +25,16 @@ export function CoachDock({
   open,
   onToggle,
   onSpeak,
+  stepAside = false,
 }: {
   view: View;
   surfaceId: Id<"surfaces">;
   open: boolean;
   onToggle: () => void;
   onSpeak: () => void;
+  /** A surface that is pure capture (the open thought document) sets this; the
+      whole dock — buttons and panel — yields until the person leaves. */
+  stepAside?: boolean;
 }) {
   const ask = useAction(api.coach.ask);
   // Persisted, reactive history. The user turn appears the instant the action commits it,
@@ -69,7 +73,7 @@ export function CoachDock({
     <>
       <div
         className={`fixed z-[61] bg-coach shadow-2xl flex flex-col overflow-hidden transition-all duration-200 inset-x-0 bottom-[64px] h-[80dvh] rounded-t-[18px] md:inset-x-auto md:bottom-[92px] md:right-6 md:w-[380px] md:max-w-[calc(100vw-48px)] md:h-[72vh] md:max-h-[660px] md:rounded-[18px] ${
-          open
+          open && !stepAside
             ? "opacity-100 translate-y-0 pointer-events-auto"
             : "opacity-0 translate-y-4 pointer-events-none"
         }`}
@@ -128,24 +132,28 @@ export function CoachDock({
         </div>
       </div>
 
-      {/* Primary: Talk. The Listener is the headline way to reach the Coach. */}
-      <button
-        onClick={onSpeak}
-        className="hidden md:flex fixed bottom-6 right-6 w-14 h-14 rounded-full bg-coach text-white z-[75] shadow-xl items-center justify-center hover:scale-105 transition"
-        title="Talk to your Coach"
-      >
-        <span className="absolute -inset-1 rounded-full border-2 border-gold opacity-50 animate-ping" />
-        <Mic className="w-[22px] h-[22px]" />
-      </button>
+      {!stepAside && (
+        <>
+          {/* Primary: Talk. The Listener is the headline way to reach the Coach. */}
+          <button
+            onClick={onSpeak}
+            className="hidden md:flex fixed bottom-6 right-6 w-14 h-14 rounded-full bg-coach text-white z-[75] shadow-xl items-center justify-center hover:scale-105 transition"
+            title="Talk to your Coach"
+          >
+            <span className="absolute -inset-1 rounded-full border-2 border-gold opacity-50 animate-ping" />
+            <Mic className="w-[22px] h-[22px]" />
+          </button>
 
-      {/* Secondary: type instead. A small affordance above the talk button. */}
-      <button
-        onClick={onToggle}
-        className="hidden md:flex fixed bottom-[88px] right-[18px] w-9 h-9 rounded-full bg-card border border-line text-ink-soft z-[75] shadow-md items-center justify-center hover:border-gold transition"
-        title={open ? "Close chat" : "Type instead"}
-      >
-        <MessageCircle className="w-[17px] h-[17px]" />
-      </button>
+          {/* Secondary: type instead. A small affordance above the talk button. */}
+          <button
+            onClick={onToggle}
+            className="hidden md:flex fixed bottom-[88px] right-[18px] w-9 h-9 rounded-full bg-card border border-line text-ink-soft z-[75] shadow-md items-center justify-center hover:border-gold transition"
+            title={open ? "Close chat" : "Type instead"}
+          >
+            <MessageCircle className="w-[17px] h-[17px]" />
+          </button>
+        </>
+      )}
     </>
   );
 }

@@ -5,7 +5,7 @@ import { internalAction, type ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { Doc } from "../_generated/dataModel";
 import { toFile } from "openai";
-import { aiForTask } from "./openai";
+import { chatComplete, transcribeLogged } from "./openai";
 import { extractFromHtml, pageToExtractedText } from "../../lib/extractHtml";
 
 // ============================================================================
@@ -107,12 +107,15 @@ async function transcribeAudio(
   const bytes = blob.size;
   const ext = mime.includes("mp4") ? "mp4" : mime.includes("ogg") ? "ogg" : "webm";
 
-  // Whisper is OpenAI-only (OpenRouter exposes no audio endpoint); the
-  // voiceTranscribe task pins the openai provider.
-  const { client, model } = await aiForTask(ctx, "voiceTranscribe", capture.userId);
+  // Transcription is OpenAI-only (OpenRouter exposes no audio endpoint); the
+  // voiceTranscribe task pins the openai provider. Logged per ADR 0017.
   const file = await toFile(Buffer.from(await blob.arrayBuffer()), `dump.${ext}`, { type: mime });
-  const res = await client.audio.transcriptions.create({ file, model });
-  const text = (res.text ?? "").trim();
+  const text = await transcribeLogged(ctx, {
+    taskId: "voiceTranscribe",
+    fn: "ai/ingest.transcribeAudio",
+    userId: capture.userId,
+    file,
+  });
   return {
     text: text || undefined,
     meta: JSON.stringify({ mime, bytes }),
@@ -124,12 +127,12 @@ async function describeImage(ctx: ActionCtx, capture: Doc<"captures">): Promise<
   const url = await ctx.storage.getUrl(capture.rawFileId);
   if (!url) throw new Error("stored image not found");
 
-  const { client, model, temperature, system } = await aiForTask(ctx, "extractImage", capture.userId);
-  const res = await client.chat.completions.create({
-    model,
-    temperature,
+  // chatComplete prepends the extractImage config system prompt and logs the call.
+  const out = await chatComplete(ctx, {
+    taskId: "extractImage",
+    fn: "ai/ingest.describeImage",
+    userId: capture.userId,
     messages: [
-      { role: "system", content: system! },
       {
         role: "user",
         content: [
@@ -144,7 +147,7 @@ async function describeImage(ctx: ActionCtx, capture: Doc<"captures">): Promise<
       },
     ],
   });
-  const text = (res.choices[0]?.message?.content ?? "").trim();
+  const text = out.trim();
   return text ? text.slice(0, EXTRACT_CAP) : undefined;
 }
 

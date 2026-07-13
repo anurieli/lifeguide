@@ -96,11 +96,13 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
 
   // Re-synthesize the Mirror from accumulated signal (the core-curation pass). Proposed.
   // This is the deepest synthesis in the app — it writes "who you are" from all accumulated
-  // signal — and it runs rarely, so the strongest model is the natural (and affordable) choice.
+  // signal — and it runs rarely, so a frontier model is the natural (and affordable) choice.
+  // Ariel's pick (2026-07-13): OpenAI's gpt-5.6-terra tier. Unwired, so this is provisioned
+  // ahead of wiring; A/B against anthropic/claude-opus-4.8 when the pass lands.
   curate: {
     label: "Core curation",
     provider: "openrouter",
-    model: "anthropic/claude-opus-4.8",
+    model: "openai/gpt-5.6-terra-pro",
     temperature: 0.3,
     wired: false,
   },
@@ -118,11 +120,12 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
   // OpenAI Realtime API session for voice-based onboarding interview. Live.
   // GA realtime model id (the Beta `gpt-4o-mini-realtime-preview` was retired and now
   // returns model_not_found at the /v1/realtime/calls SDP exchange). `gpt-realtime-mini`
-  // is the GA "mini" tier; swap to `gpt-realtime` for the stronger model.
+  // is the GA "mini" tier — cheap + fast, Ariel's pick (2026-07-13); swap to
+  // `gpt-realtime` if the onboarding conversation quality ever needs the full model.
   voice: {
     label: "Voice interview (realtime)",
     provider: "openai",
-    model: "gpt-realtime",
+    model: "gpt-realtime-mini",
     temperature: 0.7,
     wired: true,
   },
@@ -149,26 +152,29 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
     wired: true,
   },
 
-  // VoiceField transcription: a short audio segment -> text, via Whisper. Live.
+  // VoiceField transcription: a short audio segment -> text. Live.
   // OpenRouter has no audio endpoint, so this pins the openai provider directly
   // (key = the user's saved OpenAI key, else the deployment's OPENAI_API_KEY). The
   // client records in ~4s chunks and calls convex/voice.transcribe per chunk; the
-  // on-device Web Speech transcript is the disconnect fallback. temperature is
+  // on-device Web Speech transcript is the disconnect fallback. `gpt-4o-transcribe`
+  // replaced `whisper-1` (2026-07-13): whisper is OpenAI's 2022 model and
+  // gpt-4o-transcribe beats it on word-error-rate — the quality pick. temperature is
   // unused by the audio API but the TaskConfig shape requires it.
   voiceTranscribe: {
-    label: "Voice · transcribe (Whisper)",
+    label: "Voice · transcribe",
     provider: "openai",
-    model: "whisper-1",
+    model: "gpt-4o-transcribe",
     temperature: 0,
     wired: true,
   },
 
   // VoiceField: clean a raw spoken transcript into what the field is asking for. Live.
-  // (The raw transcript comes from voiceTranscribe/Whisper, with Web Speech as the
-  // live-display + fallback — see components/voice. This is the server "shape" pass only.)
+  // (The raw transcript comes from voiceTranscribe, with Web Speech as the
+  // live-display + fallback — see components/voice. This is the server clean pass only.)
   // System prompt is built per-call from the field metadata.
-  voiceShape: {
-    label: "Voice · shape transcript",
+  // Renamed from `voiceShape` 2026-07-13 (Ariel: "cleanVoice") — action convex/voice.cleanVoice.
+  cleanVoice: {
+    label: "Voice · clean transcript",
     provider: "openrouter",
     model: "openai/gpt-4o-mini",
     temperature: 0.3,
@@ -238,16 +244,9 @@ Rules:
 - Do NOT return empty segments.`,
   },
 
-  // Experimental tab: maintain the evolving idea graph JSON from transcript chunks.
-  // The tab stores a per-session provider/model/system prompt override, but this entry
-  // keeps the default node visible in Settings.
-  brainDumpGraph: {
-    label: "Brain dump · idea graph",
-    provider: "openrouter",
-    model: "anthropic/claude-haiku-4.5",
-    temperature: 0.25,
-    wired: true,
-  },
+  // (The experimental brain-dump idea-graph lab and its `brainDumpGraph` node were
+  // deleted 2026-07-13 — the lab was unreachable (no route or nav) and Ariel tossed it.
+  // The shipped brain-dump flow is `brainDumpSplit` above. See ADR 0016.)
 
   // Session digest: title + one-line summary for a living journal entry, from its
   // captures' text in order. Debounced ~30s after each member capture's ingest. Live.

@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { aiForTask } from "./openai";
+import { aiForTask, logAi } from "./openai";
 
 // Generate an image for an existing node and file it back onto the board.
 //
@@ -21,13 +21,27 @@ export const generateInto = action({
     const node = await ctx.runQuery(internal.nodes.getInternal, { nodeId });
     if (!node || node.userId !== userId) throw new Error("Node not found");
 
+    const { client, model, provider } = await aiForTask(ctx, "imageGen", userId);
+    const started = Date.now();
     try {
-      const { client, model } = await aiForTask(ctx, "imageGen", userId);
       const res = await client.images.generate({
         model,
         prompt: prompt.trim().slice(0, 1000),
         size: "1024x1024",
         n: 1,
+      });
+      // Every call logged (ADR 0017). gpt-image-1 bills per image, not per token —
+      // ~$0.04 for a medium 1024² — so cost is a flat estimate here.
+      await logAi(ctx, {
+        userId,
+        taskId: "imageGen",
+        fn: "ai/imageGen.generateInto",
+        provider,
+        model,
+        kind: "image",
+        ok: true,
+        costUsd: 0.04,
+        durationMs: Date.now() - started,
       });
       const d = res.data?.[0];
       let blob: Blob;
@@ -42,6 +56,17 @@ export const generateInto = action({
       await ctx.runMutation(internal.nodes.finishGeneratedImage, { nodeId, fileId });
     } catch (e) {
       console.error("image generation failed", e);
+      await logAi(ctx, {
+        userId,
+        taskId: "imageGen",
+        fn: "ai/imageGen.generateInto",
+        provider,
+        model,
+        kind: "image",
+        ok: false,
+        error: e instanceof Error ? e.message.slice(0, 500) : String(e).slice(0, 500),
+        durationMs: Date.now() - started,
+      });
       await ctx.runMutation(internal.nodes.failGeneratedImage, {
         nodeId,
         note: e instanceof Error ? e.message : String(e),

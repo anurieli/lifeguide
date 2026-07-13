@@ -1,5 +1,5 @@
 import { action, internalAction, internalMutation, internalQuery } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
@@ -35,6 +35,43 @@ async function tokenFor(ctx: any, userId: Id<"users">): Promise<string | null> {
     provider: "todoist",
   });
 }
+
+// ── Connect ──────────────────────────────────────────────────────────────────
+
+// Called from Settings when the user hits "Save" on their Todoist token. Tests
+// the token against the real Todoist API right away (a lightweight /projects
+// fetch) before persisting it, so a bad token is caught immediately instead of
+// silently sitting unused. Never logs the token itself — only HTTP status is
+// surfaced, and only a human-readable message reaches the client.
+export const saveToken = action({
+  args: { token: v.string() },
+  handler: async (ctx, args): Promise<{ ok: true }> => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    const token = args.token.trim();
+    if (!token) throw new Error("Empty token");
+
+    let res: Response;
+    try {
+      res = await fetch(`${API}/projects`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      // Network/fetch failure — don't leak internals, don't include the token.
+      throw new Error("Couldn't reach Todoist. Check your connection and try again.");
+    }
+    if (!res.ok) {
+      const message =
+        res.status === 401 || res.status === 403
+          ? "Todoist rejected that token — double-check it's correct and has API access."
+          : `Todoist connection test failed (HTTP ${res.status}). Try again in a moment.`;
+      throw new Error(message);
+    }
+
+    await ctx.runMutation(api.aiKeys.setKey, { provider: "todoist", key: token });
+    return { ok: true };
+  },
+});
 
 // ── Pull ─────────────────────────────────────────────────────────────────────
 

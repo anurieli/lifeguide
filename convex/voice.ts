@@ -5,19 +5,19 @@ import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { toFile } from "openai";
 import { api, internal } from "./_generated/api";
-import { aiForTask } from "./ai/openai";
+import { chatComplete, transcribeLogged } from "./ai/openai";
 import { assembleContext } from "./context/assemble";
 import { ContextFragment } from "./context/types";
 import { Id } from "./_generated/dataModel";
 
 // ============================================================================
 // VoiceField server passes. Three actions turn speech into something useful:
-//   transcribe() — one short audio segment -> text, via Whisper (OpenAI-direct).
-//   shape()      — clean a raw transcript into what the field is asking for.
+//   transcribe() — one short audio segment -> text (OpenAI-direct audio endpoint).
+//   cleanVoice() — clean a raw transcript into what the field is asking for.
 //   prompts()    — generate contextual "say this next" nudges for Prompt Mode.
 // The client records in ~4s chunks and calls transcribe() per chunk, so text
 // lands incrementally and a dropped chunk costs only itself; the on-device Web
-// Speech transcript is the live-display + disconnect fallback. shape/prompts are
+// Speech transcript is the live-display + disconnect fallback. cleanVoice/prompts are
 // field-aware (they receive the field's question/descriptor/intent) and
 // person-aware (they read the Mirror via the Context Bus). See
 // docs/product/features/voice-field.md.
@@ -32,11 +32,11 @@ const fieldArgs = {
 } as const;
 
 /**
- * Transcribe ONE short audio segment (a few seconds of speech) with Whisper.
+ * Transcribe ONE short audio segment (a few seconds of speech).
  * The VoiceField records in ~4s chunks and calls this per chunk so the transcript
  * fills in as the person talks and a single dropped chunk costs only itself.
  *
- * Whisper is OpenAI-only (OpenRouter exposes no audio endpoint), so the
+ * Transcription is OpenAI-only (OpenRouter exposes no audio endpoint), so the
  * "voiceTranscribe" task pins the openai provider; the key is the person's saved
  * OpenAI key, otherwise the deployment's OPENAI_API_KEY. Returns the segment's
  * text (trimmed); "" for a too-small/near-silent segment. A thrown error (no key,
@@ -57,19 +57,23 @@ export const transcribe = action({
     const mime = args.mimeType ?? "audio/webm";
     const ext = mime.includes("mp4") ? "mp4" : mime.includes("ogg") ? "ogg" : "webm";
 
-    const { client, model } = await aiForTask(ctx, "voiceTranscribe", userId);
     const file = await toFile(Buffer.from(args.audio), `segment.${ext}`, { type: mime });
-    const res = await client.audio.transcriptions.create({ file, model });
-    return (res.text ?? "").trim();
+    return await transcribeLogged(ctx, {
+      taskId: "voiceTranscribe",
+      fn: "voice.transcribe",
+      userId,
+      file,
+    });
   },
 });
 
 /**
- * Shape a raw spoken transcript into clean text fitted to the field.
- * Returns the cleaned string. The client keeps the raw transcript and offers a
- * "show raw" toggle — we never silently discard what the person actually said.
+ * Clean a raw spoken transcript into written text fitted to the field.
+ * (Renamed from `shape` 2026-07-13.) Returns the cleaned string. The client keeps
+ * the raw transcript and offers a "show raw" toggle — we never silently discard
+ * what the person actually said.
  */
-export const shape = action({
+export const cleanVoice = action({
   args: { raw: v.string(), ...fieldArgs },
   handler: async (ctx, args): Promise<string> => {
     const userId = await getAuthUserId(ctx);
@@ -78,7 +82,6 @@ export const shape = action({
     const raw = args.raw.trim().slice(0, 4000);
     if (!raw) return "";
 
-    const { client, model, temperature } = await aiForTask(ctx, "voiceShape", userId);
     const system = `You are a silent text editor. You receive a person's raw, spoken-aloud answer to one question and return a cleaned-up written version of THAT SAME answer. You are not a chatbot and you never talk to the person.
 
 The question they were answering: "${args.question}"
@@ -99,15 +102,16 @@ Example —
 Input: "um so i guess like i wanna be more consistent at the gym but i keep skipping mondays you know"
 Output: I want to be more consistent at the gym. Mondays are my weak point — I keep skipping them.`;
 
-    const res = await client.chat.completions.create({
-      model,
-      temperature,
+    const out = await chatComplete(ctx, {
+      taskId: "cleanVoice",
+      fn: "voice.cleanVoice",
+      userId,
       messages: [
         { role: "system", content: system },
         { role: "user", content: raw },
       ],
     });
-    return (res.choices[0]?.message?.content ?? raw).trim();
+    return (out || raw).trim();
   },
 });
 
@@ -144,17 +148,17 @@ Return ONLY a JSON object: {"prompts": ["...", "...", "..."]}.
 - Calm and curious. No pressure, no hype.`;
 
     try {
-      const { client, model, temperature } = await aiForTask(ctx, "voicePrompts", userId);
-      const res = await client.chat.completions.create({
-        model,
-        temperature,
-        response_format: { type: "json_object" },
+      const raw = await chatComplete(ctx, {
+        taskId: "voicePrompts",
+        fn: "voice.prompts",
+        userId,
+        jsonMode: true,
         messages: [
           { role: "system", content: system },
           { role: "user", content: said ? `So far they said: "${said}"` : "(they haven't started yet)" },
         ],
       });
-      const parsed = JSON.parse(res.choices[0]?.message?.content ?? "{}");
+      const parsed = JSON.parse(raw || "{}");
       const list = Array.isArray(parsed?.prompts) ? parsed.prompts : [];
       return list
         .filter((p: unknown): p is string => typeof p === "string" && p.trim().length > 0)

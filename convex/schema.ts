@@ -483,71 +483,49 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_thread", ["threadId", "createdAt"]),
 
-  // Experimental brain-dump lab: one durable workspace for a spoken stream,
-  // its sentence-level transcript, the evolving JSON idea graph, and the
-  // per-session AI engine knobs used to maintain that graph.
-  brainDumpSessions: defineTable({
+  // (brainDumpSessions — the experimental brain-dump idea-graph lab — was removed
+  // 2026-07-13. The lab was unreachable (no route/nav) and Ariel tossed it; the
+  // shipped brain-dump flow lives on captures via voice.brainDump. See ADR 0016.)
+
+  // Universal AI call log (ADR 0017): one row per model call, every call, no matter
+  // what — chat, transcription, image. Written best-effort (a logging failure never
+  // breaks the feature) by the helpers in convex/ai/openai.ts. Cost is a best-effort
+  // estimate from the pricing snapshot in config (undefined when unknown).
+  aiLogs: defineTable({
+    userId: v.optional(v.id("users")),
+    taskId: v.string(), // the AI node id from convex/ai/config.ts
+    fn: v.string(), // the server call site, e.g. "ai/distill.distillCapture"
+    provider: v.string(),
+    model: v.string(),
+    kind: v.union(
+      v.literal("chat"),
+      v.literal("transcription"),
+      v.literal("image"),
+      // realtime rows mark a voice-session mint; usage runs client-side over WebRTC,
+      // so tokens/cost are unknowable server-side — the row is the session marker.
+      v.literal("realtime"),
+    ),
+    ok: v.boolean(),
+    error: v.optional(v.string()),
+    inputTokens: v.optional(v.number()),
+    outputTokens: v.optional(v.number()),
+    costUsd: v.optional(v.number()),
+    durationMs: v.number(),
+    at: v.number(),
+  })
+    .index("by_user_at", ["userId", "at"])
+    .index("by_at", ["at"]),
+
+  // Per-user AI model overrides (ADR 0017): the Settings AI hub lets a person
+  // re-point any node at a different provider/model for THEIR account. An override
+  // row wins over the config default in aiForTask; deleting it falls back.
+  aiOverrides: defineTable({
     userId: v.id("users"),
-    title: v.string(),
-    transcript: v.array(
-      v.object({
-        id: v.string(),
-        text: v.string(),
-        capturedAt: v.number(),
-        source: v.union(v.literal("speech"), v.literal("typed")),
-        status: v.union(v.literal("pending"), v.literal("processed"), v.literal("error")),
-      }),
-    ),
-    graph: v.object({
-      version: v.literal(1),
-      ideas: v.array(
-        v.object({
-          id: v.string(),
-          title: v.string(),
-          summary: v.string(),
-          details: v.array(v.string()),
-          mentions: v.number(),
-          createdAt: v.number(),
-          updatedAt: v.number(),
-        }),
-      ),
-      relations: v.array(
-        v.object({
-          id: v.string(),
-          from: v.string(),
-          to: v.string(),
-          label: v.string(),
-          reason: v.string(),
-          strength: v.number(),
-          createdAt: v.number(),
-        }),
-      ),
-    }),
-    engine: v.object({
-      provider: v.union(v.literal("openrouter"), v.literal("openai"), v.literal("local")),
-      model: v.string(),
-      temperature: v.number(),
-      systemPrompt: v.string(),
-    }),
-    aiCalls: v.optional(
-      v.array(
-        v.object({
-          id: v.string(),
-          kind: v.string(),
-          provider: v.union(v.literal("openrouter"), v.literal("openai"), v.literal("local")),
-          model: v.string(),
-          status: v.union(v.literal("pending"), v.literal("success"), v.literal("error")),
-          inputPreview: v.string(),
-          outputPreview: v.optional(v.string()),
-          error: v.optional(v.string()),
-          startedAt: v.number(),
-          endedAt: v.optional(v.number()),
-        }),
-      ),
-    ),
-    createdAt: v.number(),
+    taskId: v.string(),
+    provider: v.union(v.literal("openrouter"), v.literal("openai"), v.literal("local")),
+    model: v.string(),
     updatedAt: v.number(),
-  }).index("by_user_updated", ["userId", "updatedAt"]),
+  }).index("by_user_task", ["userId", "taskId"]),
 
   // In-app feedback: a quick note from a user, captured with page context (route,
   // metadata, the page's recent JS/console errors, and an optional visual snapshot).

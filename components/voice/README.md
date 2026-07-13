@@ -73,7 +73,7 @@ Same component + different bundle = different behavior, no per-field code.
    ([`lib/useSpeechRecognition.ts`](../../lib/useSpeechRecognition.ts)). No audio leaves
    the device; no server cost. If the browser can't do it, the mic is hidden and the
    field is a plain textarea.
-2. On finish, the raw transcript + `meta` go to **`voice.shape`** (a Convex action) →
+2. On finish, the raw transcript + `meta` go to **`voice.cleanVoice`** (a Convex action) →
    cleaned text. The raw is kept; "show raw" reverts in one tap (never silently
    overwritten).
 3. While listening, **`voice.prompts`** generates contextual nudges from `meta` + the
@@ -81,7 +81,7 @@ Same component + different bundle = different behavior, no per-field code.
    and refreshing as you speak. It's ambient: any failure → no prompts, no error.
 
 Both AI tasks live in [`convex/voice.ts`](../../convex/voice.ts) and are tuned in
-[`convex/ai/config.ts`](../../convex/ai/config.ts) (`voiceShape`, `voicePrompts`) like
+[`convex/ai/config.ts`](../../convex/ai/config.ts) (`cleanVoice`, `voicePrompts`) like
 every other AI node — swap model/provider there without touching this component.
 
 ## Motion / styling

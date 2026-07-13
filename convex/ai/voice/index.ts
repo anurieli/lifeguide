@@ -3,6 +3,7 @@ import { action } from "../../_generated/server";
 import { api, internal } from "../../_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { getVoiceProvider } from "./provider";
+import { logAi } from "../openai";
 import { BLUEPRINT } from "../../../lib/blueprint";
 import { LISTENER_INSTRUCTIONS } from "../../../agents/listener/persona";
 
@@ -30,9 +31,23 @@ export const mintRealtimeSession = action({
     if (!session) throw new Error("Interview session not found or not accessible");
 
     // Mint the realtime session token with the persona that fits this session.
+    const started = Date.now();
     const { clientSecret, model, expiresAt } = await getVoiceProvider().mint(
       instructionsFor(session.experienceId),
     );
+    // Log the mint (ADR 0017). The conversation itself runs client-side over WebRTC,
+    // so per-token usage never reaches the server; this row marks that a realtime
+    // session started, on which model, for whom.
+    await logAi(ctx, {
+      userId,
+      taskId: "voice",
+      fn: "ai/voice.mintRealtimeSession",
+      provider: "openai",
+      model,
+      kind: "realtime",
+      ok: true,
+      durationMs: Date.now() - started,
+    });
 
     // Log telemetry
     await ctx.runMutation(internal.interview.logEvent, {

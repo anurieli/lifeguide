@@ -30,7 +30,7 @@ The Goals tab reframes a flat task list as a small set of **Big Things**, the pr
 A task state, not a list: `waiting` + optional free-text `waitingOn` + `waitingSince`. Surfaced in the Waiting queue tab with day-count aging.
 
 ### Todoist sync (thin, per the PRD's Path 1)
-- The user saves their **Todoist API token** in Settings → "Goals & Todoist" (stored in the `apiKeys` table, provider `todoist`; server-only, never returned to the client: same posture as AI keys).
+- The user saves their **Todoist API token** in Settings → "Goals & Todoist" (stored in the `apiKeys` table, provider `todoist`; server-only, never returned to the client: same posture as AI keys). When no token is set, the board header shows a **"Connect Todoist"** button that jumps straight to Settings (via the `onNavigate` prop); once connected it becomes the "Sync Todoist" button.
 - **Pull: "Sync Todoist"** button on the board header: fetches all projects and active tasks over the Todoist REST API and reconciles. Projects become goals (the Todoist Inbox maps to our Inbox, no card); sub-projects link `parentId`; tasks upsert by `todoistTaskId` (content/description/due/priority refresh; Todoist is authoritative for task content). Linked tasks missing from the active snapshot are marked done here.
 - **Push** (write-through, scheduled from mutations; silent no-op without a token): completing/reopening a linked task closes/reopens it in Todoist; a task added in LifeGuide is created in Todoist (in the linked project or the Todoist Inbox) and linked back.
 - Orbit-only metadata (why, status, area, grouping, order, waiting) never leaves LifeGuide.

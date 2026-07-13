@@ -14,6 +14,7 @@ import {
   FolderInput,
   Archive,
   X,
+  Link2,
 } from "lucide-react";
 
 // The Goals board (Orbit): the few Big Things that matter, each with a why,
@@ -423,7 +424,7 @@ function GoalDetail({
   );
 }
 
-export function Goals() {
+export function Goals({ onNavigate }: { onNavigate?: (v: "settings") => void }) {
   const today = useMemo(localToday, []);
   const board = useQuery(api.goals.board, { today });
   const keyStatus = useQuery(api.aiKeys.status, {});
@@ -485,9 +486,13 @@ export function Goals() {
                 {syncing ? "Syncing…" : "Sync Todoist"}
               </button>
             ) : (
-              <span className="text-[12px] text-ink-mute">
-                Connect Todoist in Settings to sync
-              </span>
+              <button
+                onClick={() => onNavigate?.("settings")}
+                className="border border-line rounded-lg px-3.5 py-2 text-[13px] text-ink-soft hover:bg-paper-2 transition flex items-center gap-2"
+              >
+                <Link2 className="w-3.5 h-3.5" />
+                Connect Todoist
+              </button>
             )}
           </div>
         </div>

@@ -124,7 +124,7 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
         )}
         {view === "today" && <Today onNavigate={setView} />}
         {view === "core" && <Core />}
-        {view === "goals" && <Goals />}
+        {view === "goals" && <Goals onNavigate={setView} />}
         {view === "sessions" && (
           <Sessions
             activeSessionId={activeSessionId}

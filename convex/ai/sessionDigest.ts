@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { aiForTask } from "./openai";
+import { chatComplete } from "./openai";
 import { assembleDigestInput } from "../../lib/sessionDigest";
 
 // The session digest: an AI title + one-line summary for the sessions list.
@@ -25,21 +25,14 @@ export const digestSession = internalAction({
     if (!input) return; // nothing textual yet (e.g. failed transcription, no note)
 
     try {
-      const { client, model, temperature, system } = await aiForTask(
-        ctx,
-        "sessionDigest",
-        data.session.userId,
-      );
-      const res = await client.chat.completions.create({
-        model,
-        temperature,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: system! },
-          { role: "user", content: input },
-        ],
+      const raw = await chatComplete(ctx, {
+        taskId: "sessionDigest",
+        fn: "ai/sessionDigest.digestSession",
+        userId: data.session.userId,
+        jsonMode: true,
+        messages: [{ role: "user", content: input }],
       });
-      const parsed = JSON.parse(res.choices[0]?.message?.content ?? "{}");
+      const parsed = JSON.parse(raw || "{}");
       const title = typeof parsed.title === "string" ? parsed.title.trim().slice(0, 80) : "";
       const summary =
         typeof parsed.summary === "string" ? parsed.summary.trim().slice(0, 200) : "";

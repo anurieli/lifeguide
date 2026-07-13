@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
-import { aiForTask } from "./openai";
+import { chatComplete } from "./openai";
 
 /**
  * Split a free-form brain-dump transcript into distinct, atomic thoughts.
@@ -27,22 +27,14 @@ export const splitDump = internalAction({
     if (text.split(/\s+/).length < 5) return [text];
 
     try {
-      const { client, model, temperature, system } = await aiForTask(
-        ctx,
-        "brainDumpSplit",
-        args.userId,
-      );
-      const res = await client.chat.completions.create({
-        model,
-        temperature,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: system! },
-          { role: "user", content: text },
-        ],
-      });
-
-      const raw = res.choices[0]?.message?.content ?? "{}";
+      const raw =
+        (await chatComplete(ctx, {
+          taskId: "brainDumpSplit",
+          fn: "ai/splitDump.splitDump",
+          userId: args.userId,
+          jsonMode: true,
+          messages: [{ role: "user", content: text }],
+        })) || "{}";
       let parsed: Record<string, unknown> = {};
       try {
         parsed = JSON.parse(raw) as Record<string, unknown>;

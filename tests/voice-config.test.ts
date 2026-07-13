@@ -10,11 +10,16 @@ describe("voice task config", () => {
     expect(TASKS["synthesis"]).toBeDefined();
     expect(TASKS["synthesis"].model.length).toBeGreaterThan(0);
   });
-  it("declares a Whisper transcription task pinned to the openai provider", () => {
-    // Whisper has no OpenRouter endpoint, so VoiceField transcription must go openai-direct.
+  it("declares a transcription task pinned to the openai provider", () => {
+    // Audio has no OpenRouter endpoint, so VoiceField transcription must go openai-direct.
+    // Model: gpt-4o-transcribe (replaced whisper-1, 2026-07-13 — higher accuracy).
     expect(TASKS["voiceTranscribe"]).toBeDefined();
     expect(TASKS["voiceTranscribe"].provider).toBe("openai");
-    expect(TASKS["voiceTranscribe"].model).toMatch(/whisper/);
+    expect(TASKS["voiceTranscribe"].model).toMatch(/transcribe|whisper/);
     expect(TASKS["voiceTranscribe"].wired).toBe(true);
+  });
+  it("declares the cleanVoice node (renamed from voiceShape)", () => {
+    expect(TASKS["cleanVoice"]).toBeDefined();
+    expect(TASKS["voiceShape"]).toBeUndefined();
   });
 });

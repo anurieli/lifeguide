@@ -20,7 +20,7 @@ const PROMPT_ROTATE_MS = 3800; // how long each single prompt holds before the n
  * contract, plus a mic. Transcription runs two layers at once: chunked server-side
  * Whisper (the accurate, cross-browser transcript that becomes the answer) and the
  * browser's Web Speech API (the instant live caption, and the fallback if Whisper
- * is unavailable or its chunks drop). An AI pass then shapes the raw transcript into
+ * is unavailable or its chunks drop). An AI pass then cleans the raw transcript into
  * what the field is asking for. Prompt Mode surfaces ONE AI-generated suggestion at
  * a time, inside the recording surface, related to what's being said (field metadata
  * + the Mirror).
@@ -53,7 +53,7 @@ export function VoiceField({
   /** Hover tooltip on the idle mic — tell the person where this takes them. */
   ctaTooltip?: string;
 }) {
-  const shape = useAction(api.voice.shape);
+  const cleanVoice = useAction(api.voice.cleanVoice);
   const fetchPrompts = useAction(api.voice.prompts);
   const speech = useSpeechRecognition();
   const whisper = useWhisperRecorder();
@@ -159,9 +159,9 @@ export function VoiceField({
     }
     let clean = raw;
     try {
-      clean = (await shape({ raw, ...aiMeta })) || raw;
+      clean = (await cleanVoice({ raw, ...aiMeta })) || raw;
     } catch {
-      clean = raw; // if shaping fails, keep their raw words — never lose the answer
+      clean = raw; // if cleaning fails, keep their raw words — never lose the answer
     }
     const base = baseRef.current;
     // Land the shaped words as plain, regular text — no special "shaped" state.

@@ -2,7 +2,7 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { api } from "./_generated/api";
-import { aiForTask } from "./ai/openai";
+import { chatComplete } from "./ai/openai";
 import { assembleContext } from "./context/assemble";
 import { ContextFragment } from "./context/types";
 
@@ -50,12 +50,13 @@ ${context || "(almost nothing yet, they are just getting started, so be welcomin
 
 Rules: Be concise, usually 2 to 4 sentences. Talk like a real person, not a self-help book. No streaks, guilt, or hype. Ground what you say in what you can actually see above. If they ask you to put something on their board, describe what you would add and where it fits (in this version you cannot place it yourself yet).`;
 
-    // Model + provider for this task come from convex/ai/config.ts; uses the user's
-    // own provider key if they saved one, else the deployment env key.
-    const { client, model, temperature } = await aiForTask(ctx, "coachReply", userId);
-    const res = await client.chat.completions.create({
-      model,
-      temperature,
+    // Model + provider come from convex/ai/config.ts (or the user's Settings override);
+    // uses their own provider key if saved, else the env key. chatComplete logs the
+    // call — tokens, estimated cost, duration — per ADR 0017.
+    const out = await chatComplete(ctx, {
+      taskId: "coachReply",
+      fn: "coach.ask",
+      userId,
       messages: [
         { role: "system", content: system },
         ...history.map((m) => ({
@@ -65,7 +66,7 @@ Rules: Be concise, usually 2 to 4 sentences. Talk like a real person, not a self
         { role: "user", content: args.message },
       ],
     });
-    const reply = res.choices[0]?.message?.content ?? "I'm here.";
+    const reply = out || "I'm here.";
     await ctx.runMutation(api.messages.add, { role: "coach", content: reply });
     return reply;
   },

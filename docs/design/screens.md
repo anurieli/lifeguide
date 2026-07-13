@@ -32,7 +32,7 @@
 
 ## Board (vision)
 **Purpose:** the Vision Board: the life and world you want, the Core's identity context. Capture, connect, and co-build with the Coach.
-**On it:** a pannable, zoomable dotted-grid canvas of nodes (text, quote, image, star) connected by labeled edges; a floating toolbar (Text / Quote / Image / Talk); an Inbox of captures to place, docked top-right as a collapsed dropdown pill ("Inbox · N ideas to place") — hover peeks the contents, click expands to place, hovering off collapses it back.
+**On it:** a pannable, zoomable dotted-grid canvas of nodes (text, quote, image, star) connected by labeled edges; a floating toolbar (Text / Quote / Image / Talk); an Inbox of captures to place, docked top-right as a collapsed dropdown pill ("Inbox · N ideas to place") — hover peeks the contents, click expands to place, hovering off collapses it back. The Inbox is guarded by the **vision sieve** (ADR 0015): only captures deliberately aimed at the board (canvas paste, onboarding seed) or judged vision-worthy during distillation reach it — sessions, dumps, and stray thoughts stay on their own surfaces.
 **One thing:** the canvas. The Inbox and toolbar are quiet helpers at the edges. The board stays mounted across nav so in-flight state survives.
 **Status:** built. [`components/whiteboard/`](../../components/whiteboard/).
 

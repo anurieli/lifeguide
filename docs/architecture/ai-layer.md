@@ -40,6 +40,8 @@ When a capture lands, `captures.create` schedules `distillCapture` (`convex/ai/d
 
 The output is `{ title, essence, pillars[] }`, parsed defensively by the pure `parseDistilled` (`convex/ai/parse.ts`): it tolerates clean JSON, prose-wrapped JSON, and garbage, clamps lengths, and keeps only pillar tags from the fixed vocabulary (`PILLAR_TAGS`). This distilled text is the capture's contribution to the shared context (see `captures` in [`data-model.md`](data-model.md)).
 
+The same response carries the **vision sieve**: two extra fields (`board_worthy`, `board_reason`) in which the model judges whether the capture is a piece of the life the person wants (an aspiration, a want, a vision) or ambient noise (logistics, work notes, prompts to a computer, venting, diary accounts). `parseBoardWorthy` reads them with the same tolerance and **defaults to not worthy** — garbage can only keep something off the board, never leak it on. The verdict lands on `captures.boardWorthy` and gates the board Inbox alongside explicit `target: "board"` intent (ADR 0015). One model call does both jobs; no second pass, no extra latency or cost.
+
 ### 2. Core-curation: the Coach's hard filter (proposed)
 
 The Coach periodically and on meaningful events re-synthesizes the Core (`mirror`) from the accumulated `interactions`, bumping `version`. It strengthens or reshapes the backbone, fills gaps, and surfaces conflicts rather than silently overwriting (the person decides). This is the alignment engine made concrete. See [`context-bus.md`](context-bus.md) (publishing and gap-awareness) and the Core backbone on `mirror.structured` in [`data-model.md`](data-model.md).

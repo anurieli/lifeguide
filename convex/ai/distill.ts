@@ -3,7 +3,7 @@ import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { Doc } from "../_generated/dataModel";
 import { aiForTask } from "./openai";
-import { parseDistilled } from "./parse";
+import { parseBoardWorthy, parseDistilled } from "./parse";
 
 // Distill a capture into {title, essence, pillars}. Scheduled by captures.create.
 // Internal: only the server schedules it; the key never reaches the client.
@@ -30,10 +30,16 @@ export const distillCapture = internalAction({
       ],
     });
 
-    const distilled = parseDistilled(res.choices[0]?.message?.content ?? "{}");
+    const raw = res.choices[0]?.message?.content ?? "{}";
+    const distilled = parseDistilled(raw);
+    // The vision sieve rides the same response: ambient captures (no explicit
+    // target) only reach the board Inbox if this verdict says they're a piece
+    // of the life the person wants (ADR 0014).
+    const boardWorthy = { ...parseBoardWorthy(raw), at: Date.now() };
     await ctx.runMutation(internal.captures.updateDistilled, {
       captureId: args.captureId,
       distilled,
+      boardWorthy,
     });
   },
 });

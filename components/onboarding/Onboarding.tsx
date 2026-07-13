@@ -25,9 +25,11 @@ export function Onboarding() {
   // Called when the user writes something on the Door screen.
   const handleWrote = (text: string) => {
     if (text) {
-      // Fire-and-forget: save north star + vision-board seed capture.
+      // Fire-and-forget: save north star + vision-board seed capture. The seed is
+      // board-bound by design ("show me something that pulls at you"), so it carries
+      // explicit intent and skips the vision sieve.
       void updateSettings({ northStar: text });
-      void createCapture({ source: "paste", rawType: "text", rawText: text });
+      void createCapture({ source: "paste", rawType: "text", rawText: text, target: "board" });
     }
     setPhase("choose");
   };

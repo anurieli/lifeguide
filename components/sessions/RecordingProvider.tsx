@@ -10,7 +10,7 @@ import { currentDevice } from "@/components/thoughts/utils";
 
 const MIN_RECORDING_MS = 1000;
 
-export type FailedTake = RecordedAudio & {
+export type PendingTake = RecordedAudio & {
   startedAt: number;
   sessionId: Id<"sessions">;
 };
@@ -22,12 +22,16 @@ type RecordingValue = {
   recording: boolean;
   paused: boolean;
   elapsedMs: number;
-  /** The entry the live take will land in; null when idle. */
+  /** The entry the live take will land in; null when idle (or still being created). */
   sessionId: Id<"sessions"> | null;
   uploading: boolean;
-  /** A finished take whose save failed stays here, so retry never re-records. */
-  failedTake: FailedTake | null;
-  start: (sessionId: Id<"sessions">) => Promise<void>;
+  /** Finished takes whose save is in flight: already on the page, upload behind them. */
+  pendingTakes: PendingTake[];
+  /** Finished takes whose save failed stay here, so retry never re-records. */
+  failedTakes: PendingTake[];
+  /** Arm the mic for an entry. A promise target starts the mic immediately,
+      before the server has answered with the new entry's id (quick record). */
+  start: (target: Id<"sessions"> | Promise<Id<"sessions">>) => Promise<void>;
   pause: () => void;
   resume: () => void;
   /** Stop and save the take into the entry it was started for. */
@@ -49,7 +53,9 @@ export function useRecording(): RecordingValue {
  * Owns the one live voice take, above the view switch: a recording keeps running
  * while the person navigates anywhere in the app (the whole point of "add things
  * while it records"). The save pipeline lives here too, so a take started in a
- * session document survives that document unmounting.
+ * session document survives that document unmounting. Saves are optimistic:
+ * finishing a take puts it on the page at once (pendingTakes) and uploads behind
+ * it, so the mic is free again immediately.
  */
 export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const recorder = useAudioRecorder();
@@ -57,15 +63,16 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
   const createCapture = useMutation(api.captures.create);
 
   const [sessionId, setSessionId] = useState<Id<"sessions"> | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [failedTake, setFailedTake] = useState<FailedTake | null>(null);
-  // Refs mirror the target so finish() reads the truth even from stale closures.
-  const sessionRef = useRef<Id<"sessions"> | null>(null);
+  const [pendingTakes, setPendingTakes] = useState<PendingTake[]>([]);
+  const [failedTakes, setFailedTakes] = useState<PendingTake[]>([]);
+  // The live take's target entry. Held as a promise so quick record can arm the
+  // mic while the entry is still being created server-side; finish() awaits it.
+  const targetRef = useRef<Promise<Id<"sessions">> | null>(null);
   const startedAtRef = useRef(0);
 
   const save = useCallback(
-    async (take: FailedTake) => {
-      setUploading(true);
+    async (take: PendingTake) => {
+      setPendingTakes((prev) => [...prev, take]);
       try {
         const rawFileId = await uploadBlob(take.blob, take.mimeType);
         await createCapture({
@@ -79,51 +86,71 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
             recordingStartedAt: take.startedAt || undefined,
           }),
         });
-        setFailedTake(null);
       } catch {
         // The audio must never be lost: keep the blob for a retry without re-recording.
-        setFailedTake(take);
+        setFailedTakes((prev) => [...prev, take]);
       } finally {
-        setUploading(false);
+        setPendingTakes((prev) => prev.filter((t) => t !== take));
       }
     },
     [uploadBlob, createCapture],
   );
 
   const finish = useCallback(async () => {
-    const target = sessionRef.current;
-    sessionRef.current = null;
+    const target = targetRef.current;
+    targetRef.current = null;
     setSessionId(null);
     const result = await recorder.stop();
     if (!target || !result || result.durationMs < MIN_RECORDING_MS) return;
-    await save({ ...result, startedAt: startedAtRef.current, sessionId: target });
+    const id = await target.catch(() => null);
+    if (!id) return;
+    // Fire-and-forget: the take shows in its entry immediately (pendingTakes);
+    // the upload runs behind it and a failure lands in failedTakes.
+    void save({ ...result, startedAt: startedAtRef.current, sessionId: id });
   }, [recorder.stop, save]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const start = useCallback(
-    async (target: Id<"sessions">) => {
-      // One live take at a time: starting a new one saves the current one first.
-      if (sessionRef.current) await finish();
-      sessionRef.current = target;
-      setSessionId(target);
-      startedAtRef.current = Date.now();
-      const ok = await recorder.start();
-      if (!ok) {
-        sessionRef.current = null;
-        setSessionId(null);
-      }
-    },
-    [finish, recorder.start], // eslint-disable-line react-hooks/exhaustive-deps
-  );
-
   const cancel = useCallback(async () => {
-    sessionRef.current = null;
+    targetRef.current = null;
     setSessionId(null);
     await recorder.cancel();
   }, [recorder.cancel]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const start = useCallback(
+    async (target: Id<"sessions"> | Promise<Id<"sessions">>) => {
+      // One live take at a time: starting a new one saves the current one first.
+      if (targetRef.current) await finish();
+      const promise = Promise.resolve(target);
+      targetRef.current = promise;
+      startedAtRef.current = Date.now();
+      if (typeof target === "string") {
+        setSessionId(target);
+      } else {
+        // Bind the entry the moment the server answers; if creation failed
+        // the take has nowhere to land, so drop it right away.
+        void promise.then(
+          (id) => {
+            if (targetRef.current === promise) setSessionId(id);
+          },
+          () => {
+            if (targetRef.current === promise) void cancel();
+          },
+        );
+      }
+      const ok = await recorder.start();
+      if (!ok && targetRef.current === promise) {
+        targetRef.current = null;
+        setSessionId(null);
+      }
+    },
+    [finish, cancel, recorder.start], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
   const retryFailed = useCallback(async () => {
-    if (failedTake) await save(failedTake);
-  }, [failedTake, save]);
+    const takes = failedTakes;
+    if (takes.length === 0) return;
+    setFailedTakes([]);
+    await Promise.all(takes.map((t) => save(t)));
+  }, [failedTakes, save]);
 
   return (
     <RecordingContext.Provider
@@ -134,8 +161,9 @@ export function RecordingProvider({ children }: { children: React.ReactNode }) {
         paused: recorder.paused,
         elapsedMs: recorder.elapsedMs,
         sessionId,
-        uploading,
-        failedTake,
+        uploading: pendingTakes.length > 0,
+        pendingTakes,
+        failedTakes,
         start,
         pause: recorder.pause,
         resume: recorder.resume,

@@ -9,6 +9,7 @@ import { Camera, Check, Loader2, Merge, Mic, PenLine, Pin, Trash2 } from "lucide
 import { formatRelativeTime } from "@/components/thoughts/utils";
 import { useRecording } from "./RecordingProvider";
 import { useBlobUpload } from "@/hooks/useBlobUpload";
+import { usePressSwipeUp } from "@/hooks/usePressSwipeUp";
 import { demoPhotoBlob, demoVoiceBlob } from "./demoMedia";
 
 type Row = FunctionReturnType<typeof api.sessions.list>[number];
@@ -210,16 +211,19 @@ function SessionRow({
 export function SessionsList({
   onOpen,
   onNew,
+  onQuickRecord,
 }: {
   onOpen: (id: Id<"sessions">) => void;
   onNew: () => void;
+  onQuickRecord: () => void;
 }) {
   const rows = useQuery(api.sessions.list, {});
   const deleteIfEmpty = useMutation(api.sessions.deleteIfEmpty);
   const mergeSessions = useMutation(api.sessions.merge);
   const seedDemo = useMutation(api.sessions.seedDemo);
   const uploadBlob = useBlobUpload();
-  const recordingInto = useRecording().sessionId;
+  const rec = useRecording();
+  const penSwipe = usePressSwipeUp(onQuickRecord);
 
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<Id<"sessions">>>(new Set());
@@ -248,17 +252,21 @@ export function SessionsList({
 
   // Husk sweep: an empty entry can survive if the person left it without the back
   // action (e.g. switched rail tabs mid-take). The server re-checks emptiness
-  // before deleting, so this never removes an entry with content. The entry a
-  // live take is recording into is exempt: its content is still in the air.
+  // before deleting, so this never removes an entry with content. Exempt: the
+  // entry a live take is recording into, and any entry a finished take is still
+  // saving into (or failed to save into) — their content is still in the air.
   useEffect(() => {
     if (!rows) return;
+    const inTheAir = new Set<Id<"sessions"> | null>([rec.sessionId]);
+    for (const t of rec.pendingTakes) inTheAir.add(t.sessionId);
+    for (const t of rec.failedTakes) inTheAir.add(t.sessionId);
     for (const s of rows) {
-      if (s._id === recordingInto) continue;
+      if (inTheAir.has(s._id)) continue;
       if (s.counts.voice + s.counts.text + s.counts.photo === 0) {
         void deleteIfEmpty({ sessionId: s._id });
       }
     }
-  }, [rows, deleteIfEmpty, recordingInto]);
+  }, [rows, deleteIfEmpty, rec.sessionId, rec.pendingTakes, rec.failedTakes]);
 
   const toggleSelected = (id: Id<"sessions">) => {
     setSelectedIds((prev) => {
@@ -301,10 +309,12 @@ export function SessionsList({
                 {selectMode ? "Cancel" : "Select"}
               </button>
             )}
-            {/* The scribbler pen: a fresh entry from right here. */}
+            {/* The scribbler pen: a fresh entry from right here.
+                Press + swipe up and it's already recording. */}
             <button
               type="button"
               onClick={onNew}
+              {...penSwipe}
               aria-label="Think out loud"
               title="Think out loud"
               className="w-9 h-9 rounded-full bg-accent text-white shadow-md flex items-center justify-center hover:opacity-90 active:scale-95 transition"

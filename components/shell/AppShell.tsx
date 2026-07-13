@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Rail, AccountMenu, View } from "./Rail";
@@ -75,19 +75,68 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
     setSpeakOpen(true);
   };
 
+  // The entry currently on screen, when it holds nothing at all — no captures,
+  // no take saving into it. The ➕ inside it must not spawn a second empty note.
+  // Convex dedupes this subscription with SessionDoc's own identical one.
+  const activeDoc = useQuery(
+    api.sessions.get,
+    view === "sessions" && activeSessionId ? { sessionId: activeSessionId } : "skip",
+  );
+  const emptyActiveEntry =
+    view === "sessions" &&
+    activeSessionId !== null &&
+    activeDoc != null &&
+    activeDoc.captures.length === 0 &&
+    !rec.pendingTakes.some((t) => t.sessionId === activeSessionId) &&
+    !rec.failedTakes.some((t) => t.sessionId === activeSessionId)
+      ? activeSessionId
+      : null;
+
   // The pen/➕ flow: every tap starts a FRESH entry and lands inside its empty
-  // document. On the phone it's already recording; on desktop the mic waits one
-  // click away (keyboard-first, and auto-arming the mic would throw a permission
-  // prompt in the person's face). Appending to an old entry goes through the list.
-  // The take itself lives in RecordingProvider, so it keeps running wherever
-  // the person navigates next.
+  // document — except from inside an entry that is still empty, which it reuses
+  // (a twin empty note would be indistinguishable). On the phone it's already
+  // recording; on desktop the mic waits one click away (keyboard-first, and
+  // auto-arming the mic would throw a permission prompt in the person's face).
+  // Appending to an old entry goes through the list. The take itself lives in
+  // RecordingProvider, so it keeps running wherever the person navigates next.
   const startSession = async () => {
     clientLog("session.start", { view });
     const device = currentDevice();
-    const id = await createSession({ device });
-    setActiveSessionId(id);
-    setView("sessions");
-    if (device === "phone") void rec.start(id);
+    if (emptyActiveEntry) {
+      if (device === "phone") void rec.start(emptyActiveEntry);
+      return;
+    }
+    const created = createSession({ device });
+    // Mic first: on the phone the take starts while the entry is still being
+    // created server-side, so the first words never wait on the round-trip.
+    if (device === "phone") void rec.start(created);
+    try {
+      const id = await created;
+      setActiveSessionId(id);
+      setView("sessions");
+    } catch {
+      if (device === "phone") void rec.cancel();
+    }
+  };
+
+  // ➕ + swipe-up: quick record. The mic arms the instant the gesture commits —
+  // on any device, since the swipe is an explicit ask to record — while the
+  // entry is created and its document loaded in the background. Inside an empty
+  // note the take just lands there; no new note.
+  const quickRecord = () => {
+    clientLog("session.quickrecord", { view });
+    if (emptyActiveEntry) {
+      void rec.start(emptyActiveEntry);
+      return;
+    }
+    const created = createSession({ device: currentDevice() });
+    void rec.start(created);
+    created
+      .then((id) => {
+        setActiveSessionId(id);
+        setView("sessions");
+      })
+      .catch(() => void rec.cancel());
   };
 
   const jumpToRecording = () => {
@@ -108,6 +157,7 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
           setView(v);
         }}
         onRecord={() => void startSession()}
+        onQuickRecord={quickRecord}
       />
       {/* Leave room for the fixed bottom bar on mobile (plus the phone's safe-area
           inset, so a home-indicator PWA doesn't clip content); full height on desktop. */}
@@ -130,6 +180,7 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
             activeSessionId={activeSessionId}
             onOpenSession={setActiveSessionId}
             onNew={() => void startSession()}
+            onQuickRecord={quickRecord}
           />
         )}
         {view === "settings" && <Settings />}

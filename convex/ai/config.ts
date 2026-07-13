@@ -75,7 +75,9 @@ export const TASKS: Record<string, TaskConfig> = {
     system: `You distill a captured artifact (a quote, note, link, or image caption) for a personal life-mapping app, where someone is slowly figuring out who they are and where they're going.
 
 Return ONLY a JSON object, no prose, in this exact shape:
-{"title":"a 3-6 word noun phrase naming the idea","essence":"1-2 plain, warm sentences on what the person likely found meaningful here and why it might matter to who they're becoming","pillars":["0-3 lowercase tags drawn ONLY from: lifestyle, health, relationships, financial, growth, money, spirit"]}
+{"title":"a 3-6 word noun phrase naming the idea","essence":"1-2 plain, warm sentences on what the person likely found meaningful here and why it might matter to who they're becoming","pillars":["0-3 lowercase tags drawn ONLY from: lifestyle, health, relationships, financial, growth, money, spirit"],"board_worthy":true or false,"board_reason":"one short line saying why (or why not)"}
+
+board_worthy is the vision-board sieve: true ONLY if this is a piece of the life this person wants — an aspiration, a want, a dream, a place, a way of living, a person they're becoming, an image of their future. false for everything ambient: logistics, to-dos, work notes, instructions or prompts written to a computer or a person, technical or app-development talk, venting, and plain diary accounts of what happened. When unsure, say false — the board is sacred, not a catch-all.
 
 Be concrete and human. Never invent facts the input doesn't imply. If the input is thin, keep the essence short and honest.`,
   },

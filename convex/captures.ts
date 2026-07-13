@@ -23,18 +23,23 @@ const RAWTYPE = v.union(
 // Raw types whose text must be derived before distillation (vs. already textual).
 const NEEDS_EXTRACTION = new Set(["image", "link", "video_link", "audio", "file"]);
 
-// Unplaced, active captures for the current user — the "to place" inbox tray.
+// The board's "to place" inbox tray. Unplaced + active is necessary but NOT
+// sufficient: a capture must also be board-bound — either the person put it there
+// on purpose (target="board") or the vision sieve judged it a piece of the life
+// they want (boardWorthy.verdict). Ambient captures (sessions, thought stream,
+// dumps) without a positive verdict stay on their own surfaces (ADR 0014).
 export const inbox = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
-    return await ctx.db
+    const unplaced = await ctx.db
       .query("captures")
       .withIndex("by_user_unplaced", (q) => q.eq("userId", userId).eq("placedAt", undefined))
       .filter((q) => q.eq(q.field("isActive"), true))
       .order("desc")
       .collect();
+    return unplaced.filter((c) => c.target === "board" || c.boardWorthy?.verdict === true);
   },
 });
 
@@ -68,6 +73,9 @@ export const create = mutation({
     rawFileId: v.optional(v.id("_storage")),
     sessionId: v.optional(v.id("sessions")),
     sourceMeta: v.optional(v.string()),
+    // "board" = deliberate vision-board intake (canvas paste, onboarding seed);
+    // such captures skip the vision sieve and always surface in the board Inbox.
+    target: v.optional(v.literal("board")),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -171,10 +179,17 @@ export const updateDistilled = internalMutation({
       essence: v.string(),
       pillars: v.array(v.string()),
     }),
+    boardWorthy: v.optional(
+      v.object({ verdict: v.boolean(), reason: v.string(), at: v.number() }),
+    ),
     embedding: v.optional(v.array(v.float64())),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.captureId, { distilled: args.distilled, embedding: args.embedding });
+    await ctx.db.patch(args.captureId, {
+      distilled: args.distilled,
+      ...(args.boardWorthy ? { boardWorthy: args.boardWorthy } : {}),
+      embedding: args.embedding,
+    });
   },
 });
 

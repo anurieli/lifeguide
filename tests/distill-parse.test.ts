@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseDistilled } from "../convex/ai/parse";
+import { parseBoardWorthy, parseDistilled } from "../convex/ai/parse";
 
 describe("parseDistilled", () => {
   it("parses clean JSON", () => {
@@ -36,5 +36,38 @@ describe("parseDistilled", () => {
   it("defaults a blank title to Untitled", () => {
     const d = parseDistilled('{"title":"   ","essence":"e","pillars":[]}');
     expect(d.title).toBe("Untitled");
+  });
+});
+
+describe("parseBoardWorthy (the vision sieve)", () => {
+  it("reads a positive verdict with its reason", () => {
+    const w = parseBoardWorthy(
+      '{"title":"t","essence":"e","pillars":[],"board_worthy":true,"board_reason":"a life he wants"}',
+    );
+    expect(w).toEqual({ verdict: true, reason: "a life he wants" });
+  });
+
+  it("reads a negative verdict", () => {
+    const w = parseBoardWorthy('{"board_worthy":false,"board_reason":"a work note"}');
+    expect(w.verdict).toBe(false);
+  });
+
+  it("defaults to NOT board-worthy when the field is missing", () => {
+    const w = parseBoardWorthy('{"title":"t","essence":"e","pillars":[]}');
+    expect(w.verdict).toBe(false);
+    expect(w.reason).toBe("");
+  });
+
+  it("defaults to NOT board-worthy on garbage", () => {
+    expect(parseBoardWorthy("not json").verdict).toBe(false);
+  });
+
+  it('ignores a stringy "true" — only the boolean counts', () => {
+    expect(parseBoardWorthy('{"board_worthy":"true"}').verdict).toBe(false);
+  });
+
+  it("extracts from prose-wrapped output", () => {
+    const w = parseBoardWorthy('Sure! {"board_worthy":true,"board_reason":"an aspiration"} Done.');
+    expect(w.verdict).toBe(true);
   });
 });

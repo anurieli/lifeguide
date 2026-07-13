@@ -176,8 +176,13 @@ export function Whiteboard({ surfaceId, active }: { surfaceId: SurfaceId; active
     [morph],
   );
 
-  // Type-anywhere capture: paste onto empty board space sends it to the Inbox to distill.
+  // Type-anywhere capture: paste onto empty board space sends it to the Inbox to
+  // distill, marked target="board" — a deliberate act, so it skips the vision sieve.
+  // Attached only while the board is the on-screen surface: the board stays mounted
+  // across nav, and a window-wide listener on a hidden board was silently swallowing
+  // pastes aimed at other surfaces (or other apps' text bound for nowhere).
   useEffect(() => {
+    if (!active) return;
     const onPaste = async (e: ClipboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT")) return;
@@ -188,7 +193,12 @@ export function Whiteboard({ surfaceId, active }: { surfaceId: SurfaceId; active
           const file = item.getAsFile();
           if (file) {
             const fileId = await uploadFile(file);
-            await createCapture({ source: "paste", rawType: "image", rawFileId: fileId });
+            await createCapture({
+              source: "paste",
+              rawType: "image",
+              rawFileId: fileId,
+              target: "board",
+            });
             return;
           }
         }
@@ -202,11 +212,12 @@ export function Whiteboard({ surfaceId, active }: { surfaceId: SurfaceId; active
         rawType: isUrl ? (VIDEO_HOSTS.test(text) ? "video_link" : "link") : "text",
         rawText: isUrl ? undefined : text,
         rawUrl: isUrl ? text : undefined,
+        target: "board",
       });
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-  }, [createCapture, uploadFile]);
+  }, [active, createCapture, uploadFile]);
 
   // ---- Background gestures (this only fires on empty canvas; cards stop
   // propagation so a pointer-down on a card never starts a pan/marquee) -------

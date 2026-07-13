@@ -95,6 +95,22 @@ export default defineSchema({
     // The session (living journal entry) this capture belongs to, if any.
     // Loose captures (board intake, stream composer, voice.brainDump) have none.
     sessionId: v.optional(v.id("sessions")),
+    // Explicit destination intent, recorded at capture time. "board" = the person
+    // deliberately put this on the vision board (canvas paste, onboarding seed) —
+    // it enters the board Inbox unconditionally, bypassing the vision sieve.
+    // Absent = ambient (sessions, thought stream, dumps): only sieve-approved
+    // captures reach the board Inbox (ADR 0014).
+    target: v.optional(v.literal("board")),
+    // The vision sieve's verdict, written by the distill pass: is this a piece of
+    // the life this person wants (an aspiration, a want, a vision) — board-worthy —
+    // or ambient noise (logistics, work notes, venting, diary happenings)?
+    boardWorthy: v.optional(
+      v.object({
+        verdict: v.boolean(),
+        reason: v.string(), // one short line, for the inbox UI + future 👍/👎 learning (ARI-28)
+        at: v.number(),
+      }),
+    ),
     // Client context at capture time, JSON: {"device":"phone"|"desktop", ...}.
     sourceMeta: v.optional(v.string()),
     // The canonical text derived from the raw artifact: the transcript (audio), the

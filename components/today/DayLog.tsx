@@ -14,9 +14,10 @@ import {
 
 // ============================================================================
 // The Today log: the day's journal entry, assembled from what actually happened.
-// Top: the parts of the day (morning ritual, one move, night ritual, tonight) as
-// tasks — sun/moon icon, open circle not done, filled circle done, tap to jump.
-// Middle: everything set down today (check-ins, seals) from `interactions`.
+// Top: the parts of the day (morning ritual, today's roadmap, night ritual,
+// tomorrow's roadmap) — sun/moon icon, open circle not done, filled circle done.
+// Read-only: the beat is locked to the clock, so there is nothing to jump to.
+// Middle: everything set down today (answers, seals) from `interactions`.
 // Bottom: a quiet last-7-days strip. No score, no streak counter — just the record.
 // ============================================================================
 
@@ -69,24 +70,21 @@ function entryView(e: { type: string; payload: string; at: number }): {
   return null; // unknown event types stay out of the journal view
 }
 
+// The parts of the day are a read-only record — there is nothing to jump to now
+// that the beat is locked to the clock, so a row is a plain informational line.
 function PartRow({
   ritual,
   title,
   done,
   detail,
-  onClick,
 }: {
   ritual: RitualType;
   title: string;
   done: boolean;
   detail?: string;
-  onClick: () => void;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center gap-3 py-2.5 text-left border-b border-line last:border-b-0"
-    >
+    <div className="w-full flex items-center gap-3 py-2.5 text-left border-b border-line last:border-b-0">
       <span
         className={`w-[22px] h-[22px] rounded-full border flex items-center justify-center flex-shrink-0 transition ${
           done ? "bg-accent border-accent text-white" : "border-line-2 bg-paper"
@@ -97,11 +95,11 @@ function PartRow({
       <RitualIcon ritual={ritual} />
       <span className={`text-[15px] ${done ? "text-ink-mute" : "text-ink"}`}>{title}</span>
       {detail && <span className="ml-auto text-xs text-ink-mute">{detail}</span>}
-    </button>
+    </div>
   );
 }
 
-export function DayLog({ onJump }: { onJump: (mode: "am" | "pm") => void }) {
+export function DayLog() {
   // Computed once per mount: the queries want stable args, and a page left open
   // across the 4am rollover simply refreshes on the next visit.
   const { dayKey, nextDayKey, range, weekKeys } = useMemo(() => {
@@ -176,14 +174,12 @@ export function DayLog({ onJump }: { onJump: (mode: "am" | "pm") => void }) {
                 ? `${am.done}/${am.total}`
                 : undefined
           }
-          onClick={() => onJump("am")}
         />
         <PartRow
           ritual="morning"
           title="Today's roadmap"
           done={todayTotal > 0 && todayDone === todayTotal}
           detail={todayTotal > 0 ? `${todayDone}/${todayTotal}` : "none set"}
-          onClick={() => onJump("am")}
         />
         <PartRow
           ritual="night"
@@ -196,7 +192,6 @@ export function DayLog({ onJump }: { onJump: (mode: "am" | "pm") => void }) {
                 ? `${pm.done}/${pm.total}`
                 : undefined
           }
-          onClick={() => onJump("pm")}
         />
         <PartRow
           ritual="night"
@@ -207,7 +202,6 @@ export function DayLog({ onJump }: { onJump: (mode: "am" | "pm") => void }) {
               ? `${tomorrowTotal} thing${tomorrowTotal === 1 ? "" : "s"}`
               : "not set"
           }
-          onClick={() => onJump("pm")}
         />
       </div>
 

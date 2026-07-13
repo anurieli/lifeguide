@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { Compass, Moon, Sun } from "lucide-react";
+import { Compass, Lock, Moon, Sun } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { View } from "@/components/shell/Rail";
 import { filledCount } from "@/lib/levels";
-import { activeRitual } from "@/lib/ritual";
+import { activeRitual, ritualOpensAtLabel } from "@/lib/ritual";
 import { RitualSequence } from "@/components/today/RitualSequence";
 import { RitualsRail } from "@/components/today/RitualsRail";
 import { DayLog } from "@/components/today/DayLog";
@@ -44,10 +44,13 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
   const nodes = useQuery(api.nodes.list, surfaceId ? { surfaceId } : "skip");
   const update = useMutation(api.settings.update);
 
-  // The tab the person lands on follows the time of day (cutoffs live in lib/ritual.ts).
-  const [mode, setMode] = useState<"am" | "pm">(
-    activeRitual(new Date()) === "morning" ? "am" : "pm",
-  );
+  // Only the ritual for the current time of day is reachable — at 17:00 the
+  // morning locks, at 4:00 the night locks (Ariel, 2026-07-12). The beat is the
+  // clock's, not a tab the person flips; computed once per mount, like the day
+  // keys, so crossing a cutoff with the page open just needs a revisit.
+  const active = activeRitual(new Date());
+  const mode: "am" | "pm" = active === "morning" ? "am" : "pm";
+  const lockedOpensAt = ritualOpensAtLabel(active === "morning" ? "night" : "morning");
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
 
@@ -63,8 +66,11 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
   const countFor = (name: string) =>
     (nodes ?? []).filter((n) => n.pillars.includes(tagFor(name))).length;
 
-  const tab = (active: boolean) =>
-    `inline-flex items-center gap-1.5 px-4 py-[7px] rounded-full text-[13px] transition ${active ? "bg-accent text-white" : "text-ink-mute"}`;
+  // The current beat is filled; the locked one is muted and unclickable.
+  const tab = (isCurrent: boolean, locked: boolean) =>
+    `inline-flex items-center gap-1.5 px-4 py-[7px] rounded-full text-[13px] transition ${
+      isCurrent ? "bg-accent text-white" : locked ? "text-ink-mute/50 cursor-default" : "text-ink-mute"
+    }`;
 
   return (
     <div
@@ -160,24 +166,47 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
             )}
           </div>
 
-          {/* the day's ritual — an ordered sequence, walked top to bottom */}
-          <div className="inline-flex bg-card border border-line rounded-full p-1 mb-4">
-            <button className={tab(mode === "am")} onClick={() => setMode("am")}>
-              <Sun className="w-3.5 h-3.5" strokeWidth={2.2} /> Morning
+          {/* the day's ritual — locked to the beat you're in; the other opens at its hour */}
+          <div className="inline-flex bg-card border border-line rounded-full p-1 mb-2">
+            <button
+              className={tab(mode === "am", mode !== "am")}
+              disabled={mode !== "am"}
+              aria-disabled={mode !== "am"}
+            >
+              {mode === "am" ? (
+                <Sun className="w-3.5 h-3.5" strokeWidth={2.2} />
+              ) : (
+                <Lock className="w-3 h-3" strokeWidth={2.2} />
+              )}
+              Morning
             </button>
-            <button className={tab(mode === "pm")} onClick={() => setMode("pm")}>
-              <Moon className="w-3.5 h-3.5" strokeWidth={2.2} /> Evening
+            <button
+              className={tab(mode === "pm", mode !== "pm")}
+              disabled={mode !== "pm"}
+              aria-disabled={mode !== "pm"}
+            >
+              {mode === "pm" ? (
+                <Moon className="w-3.5 h-3.5" strokeWidth={2.2} />
+              ) : (
+                <Lock className="w-3 h-3" strokeWidth={2.2} />
+              )}
+              Evening
             </button>
           </div>
+          <div className="text-[12.5px] text-ink-mute mb-4">
+            {mode === "am"
+              ? `The night ritual opens at ${lockedOpensAt}.`
+              : `The morning ritual opens at ${lockedOpensAt}.`}
+          </div>
 
-          <RitualSequence ritual={mode === "am" ? "morning" : "night"} />
+          <RitualSequence ritual={active} />
 
           {/* the rituals rail folds under the sequence on the phone */}
           <div className="lg:hidden mb-[18px]">
             <RitualsRail />
           </div>
 
-          <DayLog onJump={setMode} />
+          <DayLog />
 
           {/* coach nudge */}
           <div className="flex gap-3 items-start text-ink-soft text-[15px] px-1 py-1.5 mb-10">

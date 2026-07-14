@@ -7,14 +7,21 @@ import { Id } from "./_generated/dataModel";
 // Todoist connection for the Goals board. The user's Todoist API token lives in
 // the apiKeys table (provider "todoist", saved from Settings; never returned to
 // the client). Sync model, per the Orbit PRD's "thin sync" recommendation:
-//   Pull: "Sync now" fetches all projects + active tasks over the Todoist REST
-//         API and reconciles them into goals/goalTasks (upsert by todoist id;
+//   Pull: "Sync now" fetches all projects + active tasks over the Todoist API
+//         and reconciles them into goals/goalTasks (upsert by todoist id;
 //         linked tasks that disappeared from Todoist are marked done here).
 //   Push: completing/reopening a linked task and adding a task write through
 //         immediately (scheduled from convex/goals.ts; no-op without a token).
 // Orbit-only metadata (why, status, area) never leaves LifeGuide.
+//
+// API: the unified v1 API (https://api.todoist.com/api/v1). The old REST v2
+// (…/rest/v2) was sunset by Todoist and now returns HTTP 410 Gone, so every
+// call here has to go through v1. The two differences that bite us: list
+// endpoints (/projects, /tasks) return a paginated { results, next_cursor }
+// envelope instead of a bare array, and large accounts span multiple pages —
+// todoistList() below unwraps the envelope and follows the cursor to the end.
 
-const API = "https://api.todoist.com/rest/v2";
+const API = "https://api.todoist.com/api/v1";
 
 async function todoistFetch(token: string, path: string, init?: RequestInit) {
   const res = await fetch(`${API}${path}`, {
@@ -27,6 +34,30 @@ async function todoistFetch(token: string, path: string, init?: RequestInit) {
   });
   if (!res.ok) throw new Error(`Todoist ${path} failed: ${res.status}`);
   return res;
+}
+
+// GET every page of a v1 list endpoint. v1 wraps results as
+// { results: [...], next_cursor: string | null } and caps a page at 200 items;
+// we follow next_cursor until it's null. Tolerates a bare array too, so the
+// helper is robust if Todoist ever unwraps a small response.
+async function todoistList(token: string, resource: string): Promise<any[]> {
+  const items: any[] = [];
+  let cursor: string | null = null;
+  do {
+    const query = new URLSearchParams({ limit: "200" });
+    if (cursor) query.set("cursor", cursor);
+    const body: any = await (
+      await todoistFetch(token, `${resource}?${query.toString()}`)
+    ).json();
+    if (Array.isArray(body)) {
+      items.push(...body);
+      cursor = null;
+    } else {
+      items.push(...(body.results ?? []));
+      cursor = body.next_cursor ?? null;
+    }
+  } while (cursor);
+  return items;
 }
 
 async function tokenFor(ctx: any, userId: Id<"users">): Promise<string | null> {
@@ -84,8 +115,8 @@ export const sync = action({
     const token = await tokenFor(ctx, userId);
     if (!token) throw new Error("No Todoist token saved. Add one in Settings.");
 
-    const projects: any[] = await (await todoistFetch(token, "/projects")).json();
-    const tasks: any[] = await (await todoistFetch(token, "/tasks")).json();
+    const projects: any[] = await todoistList(token, "/projects");
+    const tasks: any[] = await todoistList(token, "/tasks");
 
     await ctx.runMutation(internal.todoist.applySync, {
       userId,
@@ -93,8 +124,8 @@ export const sync = action({
         id: String(p.id),
         name: String(p.name),
         parentId: p.parent_id ? String(p.parent_id) : undefined,
-        isInbox: Boolean(p.is_inbox_project),
-        order: Number(p.order ?? 0),
+        isInbox: Boolean(p.is_inbox_project ?? p.inbox_project),
+        order: Number(p.order ?? p.child_order ?? 0),
       })),
       tasks: tasks.map((t) => ({
         id: String(t.id),
@@ -103,7 +134,7 @@ export const sync = action({
         description: t.description ? String(t.description) : undefined,
         dueDate: t.due?.date ? String(t.due.date).slice(0, 10) : undefined,
         priority: Number(t.priority ?? 1),
-        order: Number(t.order ?? 0),
+        order: Number(t.order ?? t.child_order ?? 0),
       })),
     });
     return { projects: projects.length, tasks: tasks.length };

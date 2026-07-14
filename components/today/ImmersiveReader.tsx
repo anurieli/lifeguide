@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
+import { DailyRead } from "@/components/today/DailyRead";
 
 // ============================================================================
 // The immersive reader for "read" ritual steps: a full-screen in-page overlay
@@ -11,42 +12,6 @@ import { Check, X } from "lucide-react";
 // A visible close affordance means it is never a trap: closing early neither
 // marks nor blocks anything.
 // ============================================================================
-
-// Minimal markdown rendering for doctrine-shaped text: ## / ### headings,
-// *italic-only* payoff lines, everything else a paragraph. No dependency.
-function renderDoctrine(md: string) {
-  const blocks = md.split(/\n{2,}/);
-  return blocks.map((block, i) => {
-    const b = block.trim();
-    if (!b) return null;
-    if (b.startsWith("### "))
-      return (
-        <h3 key={i} className="text-[19px] font-semibold text-ink mt-9 mb-3">
-          {b.slice(4)}
-        </h3>
-      );
-    if (b.startsWith("## "))
-      return (
-        <h2 key={i} className="text-[22px] font-semibold text-ink mt-11 mb-3 tracking-tight">
-          {b.slice(3)}
-        </h2>
-      );
-    if (b.startsWith("*") && b.endsWith("*"))
-      return (
-        <p
-          key={i}
-          className="italic text-ink-soft border-l-2 border-gold/50 pl-4 my-4 leading-[1.85]"
-        >
-          {b.slice(1, -1)}
-        </p>
-      );
-    return (
-      <p key={i} className="text-ink leading-[1.85] my-4">
-        {b}
-      </p>
-    );
-  });
-}
 
 export function ImmersiveReader({
   title,
@@ -119,7 +84,7 @@ export function ImmersiveReader({
         className="flex-1 overflow-y-auto overscroll-contain"
       >
         <div className="max-w-[560px] mx-auto px-6 py-10 md:py-14 text-[17px]">
-          {renderDoctrine(content)}
+          <DailyRead content={content} />
           <div className="h-16" />
         </div>
       </div>

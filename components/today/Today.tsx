@@ -9,6 +9,7 @@ import { filledCount } from "@/lib/levels";
 import { activeRitual, ritualOpensAtLabel } from "@/lib/ritual";
 import { RitualSequence } from "@/components/today/RitualSequence";
 import { RitualsRail } from "@/components/today/RitualsRail";
+import { PageHeader } from "@/components/shell/PageHeader";
 
 const PILLAR_COLOR: Record<string, string> = {
   lifestyle: "#B8945A",
@@ -80,9 +81,11 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
         {/* ——— the main column: the day's spine ——— */}
         <div className="min-w-0 flex-1 max-w-[680px] mx-auto lg:mx-0">
           {/* greeting */}
-          <div className="text-[30px] font-semibold tracking-tight mb-1.5 text-ink">
-            {mode === "am" ? `${greeting()}.` : "Before bed."}
-          </div>
+          <PageHeader align="items-start" className="mb-1.5">
+            <div className="text-[30px] font-semibold tracking-tight text-ink">
+              {mode === "am" ? `${greeting()}.` : "Before bed."}
+            </div>
+          </PageHeader>
           <div className="text-ink-mute mb-7">
             {mode === "am"
               ? "Before the day pulls you anywhere, here is where you are headed."

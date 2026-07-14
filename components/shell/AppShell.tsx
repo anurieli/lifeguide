@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Rail, AccountMenu, View } from "./Rail";
+import { Rail, View } from "./Rail";
+import { ShellNavProvider } from "./PageHeader";
 import { Today } from "@/components/today/Today";
 import { Goals } from "@/components/goals/Goals";
 import { Core } from "@/components/core/Core";
@@ -147,50 +148,52 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
 
   const viewingLiveEntry = view === "sessions" && activeSessionId === rec.sessionId;
 
+  // One nav for the rail, the bottom bar, and every page heading's account menu.
+  const nav = (v: View) => {
+    // The Sessions tab always shows the list, even from inside an entry.
+    if (v === "sessions") setActiveSessionId(null);
+    setView(v);
+  };
+
   return (
     <div className="flex h-[100dvh] bg-paper overflow-hidden">
       <Rail
         view={view}
-        onNav={(v) => {
-          // The Sessions tab always shows the list, even from inside an entry.
-          if (v === "sessions") setActiveSessionId(null);
-          setView(v);
-        }}
+        onNav={nav}
         onRecord={() => void startSession()}
         onQuickRecord={quickRecord}
       />
       {/* Leave room for the fixed bottom bar on mobile (plus the phone's safe-area
           inset, so a home-indicator PWA doesn't clip content); full height on desktop. */}
+      {/* ShellNavProvider feeds every page heading's baked-in account menu (see
+          PageHeader.tsx) — on mobile the avatar lives inside each heading row,
+          not floating over it. */}
       <main className="flex-1 relative h-[calc(100dvh-64px-env(safe-area-inset-bottom))] md:h-screen overflow-hidden">
-        {/* On a phone the board is a plain vertical list (no pan/zoom canvas). On
-            desktop the spatial board stays mounted so canvas state (viewport,
-            in-flight edits) survives nav; `active` tells it when it's on screen. */}
-        {isMobile ? (
-          view === "board" && <MobileBoard surfaceId={surfaceId} />
-        ) : (
-          <div className={view === "board" ? "absolute inset-0" : "hidden"}>
-            <Whiteboard surfaceId={surfaceId} active={view === "board"} />
-          </div>
-        )}
-        {view === "today" && <Today onNavigate={setView} />}
-        {view === "core" && <Core />}
-        {view === "goals" && <Goals onNavigate={setView} />}
-        {view === "sessions" && (
-          <Sessions
-            activeSessionId={activeSessionId}
-            onOpenSession={setActiveSessionId}
-            onNew={() => void startSession()}
-            onQuickRecord={quickRecord}
-          />
-        )}
-        {view === "settings" && <Settings />}
+        <ShellNavProvider onNav={nav}>
+          {/* On a phone the board is a plain vertical list (no pan/zoom canvas). On
+              desktop the spatial board stays mounted so canvas state (viewport,
+              in-flight edits) survives nav; `active` tells it when it's on screen. */}
+          {isMobile ? (
+            view === "board" && <MobileBoard surfaceId={surfaceId} />
+          ) : (
+            <div className={view === "board" ? "absolute inset-0" : "hidden"}>
+              <Whiteboard surfaceId={surfaceId} active={view === "board"} />
+            </div>
+          )}
+          {view === "today" && <Today onNavigate={setView} />}
+          {view === "core" && <Core />}
+          {view === "goals" && <Goals onNavigate={setView} />}
+          {view === "sessions" && (
+            <Sessions
+              activeSessionId={activeSessionId}
+              onOpenSession={setActiveSessionId}
+              onNew={() => void startSession()}
+              onQuickRecord={quickRecord}
+            />
+          )}
+          {view === "settings" && <Settings />}
+        </ShellNavProvider>
       </main>
-      {/* Mobile only: the account avatar sits fixed in the top-right corner, since
-          Goals took its old slot in the bottom bar. On desktop it lives at the foot
-          of the rail (see Rail.tsx), so this is hidden there. */}
-      <div className="md:hidden fixed top-3 right-4 z-[55]">
-        <AccountMenu onNav={setView} placement="corner" />
-      </div>
       {/* A take recording in the background: one quiet pill that leads back to it. */}
       {rec.sessionId && !viewingLiveEntry && (
         <button

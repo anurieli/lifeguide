@@ -5,6 +5,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id, Doc } from "@/convex/_generated/dataModel";
 import { convexErrorMessage } from "@/lib/convexError";
+import { PageHeader } from "@/components/shell/PageHeader";
 import {
   Plus,
   RefreshCw,
@@ -468,35 +469,38 @@ export function Goals({ onNavigate }: { onNavigate?: (v: "settings") => void }) 
   return (
     <div className="h-full overflow-auto bg-paper">
       <div className="max-w-[1080px] mx-auto px-5 pt-8 pb-24 md:px-10 md:pt-11">
-        <div className="flex items-end justify-between gap-3 mb-6 flex-wrap">
-          <div>
-            <div className="text-[11px] tracking-[0.18em] uppercase text-ink-mute mb-1">
-              The big things
-            </div>
-            <h1 className="text-[30px] font-semibold text-ink leading-none">Goals</h1>
+        <PageHeader
+          align="items-end"
+          className="mb-6 flex-wrap"
+          actions={
+            <>
+              {syncNote && <span className="text-[12px] text-ink-mute">{syncNote}</span>}
+              {hasTodoist ? (
+                <button
+                  onClick={() => void runSync()}
+                  disabled={syncing}
+                  className="border border-line rounded-lg px-3.5 py-2 text-[13px] text-ink-soft hover:bg-paper-2 transition flex items-center gap-2 disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
+                  {syncing ? "Syncing…" : "Sync Todoist"}
+                </button>
+              ) : (
+                <button
+                  onClick={() => onNavigate?.("settings")}
+                  className="border border-line rounded-lg px-3.5 py-2 text-[13px] text-ink-soft hover:bg-paper-2 transition flex items-center gap-2"
+                >
+                  <Link2 className="w-3.5 h-3.5" />
+                  Connect Todoist
+                </button>
+              )}
+            </>
+          }
+        >
+          <div className="text-[11px] tracking-[0.18em] uppercase text-ink-mute mb-1">
+            The big things
           </div>
-          <div className="flex items-center gap-3">
-            {syncNote && <span className="text-[12px] text-ink-mute">{syncNote}</span>}
-            {hasTodoist ? (
-              <button
-                onClick={() => void runSync()}
-                disabled={syncing}
-                className="border border-line rounded-lg px-3.5 py-2 text-[13px] text-ink-soft hover:bg-paper-2 transition flex items-center gap-2 disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
-                {syncing ? "Syncing…" : "Sync Todoist"}
-              </button>
-            ) : (
-              <button
-                onClick={() => onNavigate?.("settings")}
-                className="border border-line rounded-lg px-3.5 py-2 text-[13px] text-ink-soft hover:bg-paper-2 transition flex items-center gap-2"
-              >
-                <Link2 className="w-3.5 h-3.5" />
-                Connect Todoist
-              </button>
-            )}
-          </div>
-        </div>
+          <h1 className="text-[30px] font-semibold text-ink leading-none">Goals</h1>
+        </PageHeader>
 
         <div className="flex flex-col lg:flex-row gap-5 items-start">
           {board && <QueuePanel board={board} goals={goals} today={today} />}

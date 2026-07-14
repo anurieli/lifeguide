@@ -6,6 +6,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { SurfaceId, NodeDoc, CaptureDoc } from "@/lib/types";
 import { useNodes } from "@/hooks/useNodes";
 import { useCaptures } from "@/hooks/useCaptures";
+import { PageHeader } from "@/components/shell/PageHeader";
 import {
   Sparkles,
   Plus,
@@ -32,12 +33,12 @@ export function MobileBoard({ surfaceId }: { surfaceId: SurfaceId }) {
   return (
     <div className="h-full overflow-y-auto bg-paper">
       <div className="mx-auto max-w-lg px-4 pb-24 pt-5">
-        <header className="mb-4">
+        <PageHeader align="items-start" className="mb-4">
           <h1 className="text-lg font-semibold text-ink">Vision Board</h1>
           <p className="text-xs text-ink-mute mt-0.5">
             The life you want, one card at a time.
           </p>
-        </header>
+        </PageHeader>
 
         {/* Inbox: captures still waiting to be placed. */}
         {inbox.length > 0 && (

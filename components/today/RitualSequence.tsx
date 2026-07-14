@@ -451,7 +451,7 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
   const readContent = (item: Item) =>
     item.source === "blueprint" ? blueprint?.content ?? "" : item.content ?? "";
 
-  const hasBlueprintRead = items.some((i) => i.kind === "read" && i.source === "blueprint");
+  const hasBlueprintRead = mine.some((i) => i.kind === "read" && i.source === "blueprint");
 
   return (
     <div
@@ -609,9 +609,9 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
                 <Plus className="w-3.5 h-3.5" /> roadmap
               </button>
             )}
-            {!hasBlueprintRead && ritual === "morning" && (
+            {!hasBlueprintRead && (
               <button
-                onClick={() => adoptBlueprint({})}
+                onClick={() => adoptBlueprint({ ritual })}
                 className="inline-flex items-center gap-1 border border-gold rounded-full px-3.5 py-1.5 text-[13px] text-[#8A6A2E] hover:bg-gold/5"
               >
                 <BookOpen className="w-3.5 h-3.5" /> read from the Blueprint

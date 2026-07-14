@@ -30,7 +30,7 @@ No streaks, no scores, no guilt: an unfinished day simply passes; a finished one
 
 **Defaults (new accounts):** morning — Read the Blueprint (from [the Blueprint document](the-blueprint.md)), Drink a glass of water (rail), Walk today's roadmap, Today's one move (fixed question). Night — Check out (rotating question), Set tomorrow's roadmap.
 
-**Existing accounts** are offered the new components exactly once (`rituals.upgradeToSeedVersion`, marked by `settings.ritualsSeedVersion`): appended after their existing items, only into rituals that still have items, deletable forever. The Blueprint read is adopted explicitly — the **read from the Blueprint** button in edit mode, or the Settings card's "Read it each morning" — both idempotent (`rituals.adoptBlueprintRead`).
+**Existing accounts** are offered the new components exactly once (`rituals.upgradeToSeedVersion`, marked by `settings.ritualsSeedVersion`): appended after their existing items, only into rituals that still have items, deletable forever. The Blueprint read is adopted explicitly, per ritual — the **read from the Blueprint** button in edit mode (shown on morning and night alike, whichever one still lacks it), or the Settings card's "Read it each morning" for the morning specifically. `rituals.adoptBlueprintRead({ ritual })` is idempotent per ritual: morning and night each get their own blueprint-sourced read step, adopted and checked off independently, both resolving live from the same Blueprint document.
 
 ### The immersive reader
 
@@ -57,7 +57,7 @@ Tapping a read step opens a full-screen, in-page overlay ([ADR 0013](../../decis
 | Delete a practice | Hover ✕ → confirm the warning | `rituals.removeItem` — removes it from the profile (every day); the warning is never skipped | Manual | deletes `ritualItems` |
 | Seal the ritual | All components + that bookend's practices checked → confirm | `rituals.complete`: verifies against current items, stamps `completedAt`, publishes `ritual_completed` | Manual | writes `ritualDays`, `interactions` |
 | Edit the ritual | edit → inline | `rituals.addItem` (any kind, `source` for reads) / `updateItem` (title, inline words, fixed question) / `removeItem` / `moveItem` | Manual | writes `ritualItems` |
-| Adopt the Blueprint read | edit-mode button / Settings card | `rituals.adoptBlueprintRead`: ensures the [Blueprint document](the-blueprint.md) exists and prepends one blueprint-sourced read to the morning; idempotent | Manual | writes `blueprint?`, `ritualItems` |
+| Adopt the Blueprint read | edit-mode button (morning or night) / Settings card (morning) | `rituals.adoptBlueprintRead({ ritual })`: ensures the [Blueprint document](the-blueprint.md) exists and prepends one blueprint-sourced read to the given ritual; idempotent per ritual, so morning and night are adopted independently | Manual | writes `blueprint?`, `ritualItems` |
 | Read completion history | Rituals rail renders | `rituals.history(sinceDay)` feeds the keeping-up strip at the foot of the rail | System | reads `ritualDays` |
 
 No Coach path yet (§9); the Coach sees completions and answers through the Bus.

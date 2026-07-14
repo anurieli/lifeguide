@@ -23,7 +23,9 @@ export function BlueprintCard() {
   const [draft, setDraft] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const inMorning = (items ?? []).some((i) => i.kind === "read" && i.source === "blueprint");
+  const inMorning = (items ?? []).some(
+    (i) => i.kind === "read" && i.source === "blueprint" && i.ritual === "morning",
+  );
 
   return (
     <div className="bg-card border border-line rounded-2xl px-5 mb-[18px]">
@@ -82,7 +84,7 @@ export function BlueprintCard() {
               </span>
             ) : (
               <button
-                onClick={() => adoptRead({})}
+                onClick={() => adoptRead({ ritual: "morning" })}
                 className="inline-flex items-center gap-1.5 border border-gold rounded-full px-4 py-1.5 text-[13px] text-[#8A6A2E] hover:bg-gold/5 transition"
               >
                 <BookOpen className="w-3.5 h-3.5" /> Read it each morning

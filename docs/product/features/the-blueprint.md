@@ -2,7 +2,7 @@
 
 **Status:** built · **Element of:** the knowledge base (a pillar-level doctrine document) · **Owns:** `blueprint`
 
-> The person's editable conduct doctrine — how a day is lived, on purpose. One document per user, seeded from the 8-pillar Blueprint for Living, fully theirs after that. The morning's read step resolves its words from here: edit it tonight in Settings, and it is what tomorrow morning reads.
+> The person's editable conduct doctrine — how a day is lived, on purpose. One document per user, seeded from the 8-pillar Blueprint for Living, fully theirs after that. A ritual's read step — morning, night, or both — resolves its words from here: edit it tonight in Settings, and it is what every wired-in read shows next.
 
 ## 1. Purpose
 
@@ -10,7 +10,7 @@ The knowledge base holds the person ([pillars](pillars.md) as folders, [files on
 
 ## 2. User-facing behavior
 
-Settings carries **The Blueprint** card: title, one line of what it is, and Open (or **Adopt it**, the first time). Open reveals the document in a plain editor — markdown, the 8 pillars each as practice + payoff — with Save. Beneath it: **Read it each morning** adds the morning read step (idempotent; once present it shows a quiet "Read each morning ✓"). On the Today page, the morning's "Read the Blueprint" step opens the [immersive reader](daily-ritual.md#the-immersive-reader) with this document's current words, pillar by pillar.
+Settings carries **The Blueprint** card: title, one line of what it is, and Open (or **Adopt it**, the first time). Open reveals the document in a plain editor — markdown, the 8 pillars each as practice + payoff — with Save. Beneath it: **Read it each morning** adds the morning read step (idempotent; once present it shows a quiet "Read each morning ✓"). On the Today page, edit mode on *either* ritual offers **read from the Blueprint** independently — morning and night can each carry their own "Read the Blueprint" step, adopted and checked off on their own, both opening the [immersive reader](daily-ritual.md#the-immersive-reader) with this same document's current words, pillar by pillar.
 
 Adoption is never destructive: adopting when a document exists simply returns it; an edited document is never re-seeded or clobbered, whatever buttons are pressed ([tested](../../../tests/convex/rituals.test.ts)).
 
@@ -21,7 +21,7 @@ Adoption is never destructive: adopting when a document exists simply returns it
 | Adopt | Settings card first open / reader open with no doc / adopt-read | `blueprintDoc.adopt` → `ensureBlueprint`: create from the seed if missing; idempotent, never clobbers | Manual | writes `blueprint` (once) |
 | Read | Settings card Open / the morning read step | `blueprintDoc.get` (the reader renders `content` pillar-by-pillar) | Manual | reads `blueprint` |
 | Edit | Settings editor, Save | `blueprintDoc.update` — the single source of truth; tomorrow's read changes with it | Manual | writes `blueprint` |
-| Wire into the morning | "Read it each morning" / edit-mode "read from the Blueprint" | `rituals.adoptBlueprintRead` (see [daily-ritual.md](daily-ritual.md)) | Manual | writes `ritualItems` |
+| Wire into a ritual | "Read it each morning" (morning) / edit-mode "read from the Blueprint" (morning or night) | `rituals.adoptBlueprintRead({ ritual })` (see [daily-ritual.md](daily-ritual.md)) | Manual | writes `ritualItems` |
 
 ## 4. Dynamics
 
@@ -33,7 +33,7 @@ Adoption is never destructive: adopting when a document exists simply returns it
 
 - **No document:** the card offers Adopt; a blueprint-sourced read step adopts on first open.
 - **Seeded, unedited / edited:** indistinguishable to the system — both are simply the person's document.
-- **Wired into the morning / not:** the card reflects it ("Read each morning ✓" vs the button).
+- **Wired into a ritual / not, per ritual:** the Settings card reflects the morning specifically ("Read each morning ✓" vs the button); each ritual's edit mode independently reflects whether that ritual has a blueprint-sourced read yet.
 
 ## 6. Edge cases
 

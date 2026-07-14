@@ -368,7 +368,7 @@ describe("rituals: the v2 typed-component upgrade", () => {
 describe("rituals: adopting the Blueprint read", () => {
   it("creates the Blueprint document and prepends a blueprint-sourced read to the morning", async () => {
     const { asUser } = await legacyV1Account();
-    await asUser.mutation(api.rituals.adoptBlueprintRead, {});
+    await asUser.mutation(api.rituals.adoptBlueprintRead, { ritual: "morning" });
     const doc = await asUser.query(api.blueprintDoc.get, {});
     expect(doc).not.toBeNull();
     expect(doc!.content).toContain("The Body");
@@ -379,11 +379,11 @@ describe("rituals: adopting the Blueprint read", () => {
     expect(morning[0].source).toBe("blueprint");
   });
 
-  it("is idempotent, and re-adoption never clobbers an edited document", async () => {
+  it("is idempotent per ritual, and re-adoption never clobbers an edited document", async () => {
     const { asUser } = await legacyV1Account();
-    await asUser.mutation(api.rituals.adoptBlueprintRead, {});
+    await asUser.mutation(api.rituals.adoptBlueprintRead, { ritual: "morning" });
     await asUser.mutation(api.blueprintDoc.update, { content: "my own doctrine" });
-    await asUser.mutation(api.rituals.adoptBlueprintRead, {});
+    await asUser.mutation(api.rituals.adoptBlueprintRead, { ritual: "morning" });
     await asUser.mutation(api.blueprintDoc.adopt, {});
     const doc = await asUser.query(api.blueprintDoc.get, {});
     expect(doc!.content).toBe("my own doctrine");
@@ -391,6 +391,23 @@ describe("rituals: adopting the Blueprint read", () => {
       (i) => i.kind === "read" && i.source === "blueprint",
     );
     expect(reads).toHaveLength(1);
+  });
+
+  it("morning and night adopt the Blueprint read independently of each other", async () => {
+    const { asUser } = await legacyV1Account();
+    await asUser.mutation(api.rituals.adoptBlueprintRead, { ritual: "morning" });
+    await asUser.mutation(api.rituals.adoptBlueprintRead, { ritual: "night" });
+    const items = await asUser.query(api.rituals.list, {});
+    const reads = items.filter((i) => i.kind === "read" && i.source === "blueprint");
+    expect(reads).toHaveLength(2);
+    expect(reads.map((r) => r.ritual).sort()).toEqual(["morning", "night"]);
+
+    // Re-adopting one ritual is still a no-op for that ritual and leaves the other alone.
+    await asUser.mutation(api.rituals.adoptBlueprintRead, { ritual: "morning" });
+    const after = (await asUser.query(api.rituals.list, {})).filter(
+      (i) => i.kind === "read" && i.source === "blueprint",
+    );
+    expect(after).toHaveLength(2);
   });
 });
 

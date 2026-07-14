@@ -202,12 +202,13 @@ export const upgradeToSeedVersion = mutation({
 });
 
 // "Add the Blueprint": ensure the Blueprint document exists (seeding it if this
-// account never adopted one) and ensure the morning ritual opens with a read step
-// that resolves from it. Idempotent — an existing blueprint-sourced read step (in
-// either ritual) makes this a no-op, so repeated taps never duplicate.
+// account never adopted one) and ensure the given ritual opens with a read step
+// that resolves from it. Idempotent per ritual — an existing blueprint-sourced
+// read step in THAT ritual makes this a no-op, so repeated taps never duplicate;
+// morning and night are adopted independently of each other.
 export const adoptBlueprintRead = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { ritual: RITUAL },
+  handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
     await ensureBlueprint(ctx, userId);
@@ -215,17 +216,17 @@ export const adoptBlueprintRead = mutation({
       .query("ritualItems")
       .withIndex("by_user_ritual", (q) => q.eq("userId", userId))
       .collect();
-    if (all.some((i) => i.kind === "read" && i.source === "blueprint")) return;
-    const morning = all.filter((i) => i.ritual === "morning");
+    const mine = all.filter((i) => i.ritual === args.ritual);
+    if (mine.some((i) => i.kind === "read" && i.source === "blueprint")) return;
     const now = Date.now();
     await ctx.db.insert("ritualItems", {
       userId,
-      ritual: "morning",
+      ritual: args.ritual,
       kind: "read",
       title: "Read the Blueprint",
       source: "blueprint",
-      // The read opens the morning: slot in ahead of everything.
-      order: morning.length === 0 ? 0 : Math.min(...morning.map((i) => i.order)) - 1,
+      // The read opens the ritual: slot in ahead of everything.
+      order: mine.length === 0 ? 0 : Math.min(...mine.map((i) => i.order)) - 1,
       createdAt: now,
       updatedAt: now,
     });

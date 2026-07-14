@@ -1,9 +1,10 @@
 // ============================================================================
 // FEEDBACK — in-app feedback capture + the /admin ticketing queue.
 // ============================================================================
-// A user drops a quick note (typed or spoken) tagged Bug/Feature/Other. We store
-// it with page context: route, metadata, the page's recent JS/console errors, and
-// an optional html2canvas snapshot (uploaded via files.generateUploadUrl). The
+// A user drops a quick note (typed or spoken) tagged Bug/Feature/Other, with any
+// photos they pasted/attached. We store it with page context: route, metadata, the
+// page's recent JS/console errors, and an optional html2canvas snapshot (photos and
+// snapshot both uploaded via files.generateUploadUrl). The
 // /admin dev panel reads `listAll` (reactive) and flips status via resolve/reopen.
 //
 // Access model: the OWNER (see convex/owner.ts) sees and triages EVERY user's
@@ -43,6 +44,7 @@ export const submit = mutation({
       v.object({ message: v.string(), stack: v.optional(v.string()), at: v.number() }),
     ),
     shotId: v.optional(v.id("_storage")),
+    imageIds: v.optional(v.array(v.id("_storage"))),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -80,6 +82,12 @@ export const listAll = query({
         return {
           ...r,
           shotUrl: r.shotId ? await ctx.storage.getUrl(r.shotId) : null,
+          // User-attached photos (pasted or picked in the composer), resolved to URLs.
+          imageUrls: r.imageIds
+            ? (await Promise.all(r.imageIds.map((id) => ctx.storage.getUrl(id)))).filter(
+                (u): u is string => u !== null,
+              )
+            : [],
           // Identity to show + reply to in the queue. Anonymous users have no email.
           submitter: {
             name: u?.name ?? null,

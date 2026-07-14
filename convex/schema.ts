@@ -544,6 +544,7 @@ export default defineSchema({
       v.object({ message: v.string(), stack: v.optional(v.string()), at: v.number() }),
     ),
     shotId: v.optional(v.id("_storage")), // page snapshot (html2canvas), optional
+    imageIds: v.optional(v.array(v.id("_storage"))), // user-attached photos (pasted/picked)
     status: v.union(v.literal("open"), v.literal("dealt_with")),
     createdAt: v.number(),
     resolvedAt: v.optional(v.number()),

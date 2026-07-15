@@ -14,6 +14,7 @@ import {
 } from "@/lib/ritual";
 import { DailyExercise, journalPromptFor, questionForDay } from "@/lib/questions";
 import { mantraForDay } from "@/lib/mantras";
+import { DailyTidbit } from "@/components/today/DailyTidbit";
 import { VoiceField } from "@/components/voice/VoiceField";
 import { ImmersiveReader } from "@/components/today/ImmersiveReader";
 
@@ -46,6 +47,7 @@ const KIND_LABEL: Record<string, string> = {
   mantra: "mantra",
   question: "question",
   roadmap: "roadmap",
+  tidbit: "tidbit",
 };
 
 const EDIT_FIELD =
@@ -56,7 +58,7 @@ const FIELD_CLASS =
 type Item = {
   _id: Id<"ritualItems">;
   ritual: RitualType;
-  kind: "do" | "read" | "mantra" | "question" | "roadmap";
+  kind: "do" | "read" | "mantra" | "question" | "roadmap" | "tidbit";
   title: string;
   content?: string;
   source?: "inline" | "blueprint";
@@ -657,6 +659,25 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
                     )}
                   </>
                 )}
+                {item.kind === "tidbit" && (
+                  <>
+                    <textarea
+                      defaultValue={item.content ?? ""}
+                      rows={2}
+                      placeholder="Your own line — leave empty for a daily quote from your Coach…"
+                      onBlur={(e) => {
+                        if (e.target.value !== (item.content ?? ""))
+                          void updateItem({ itemId: item._id, content: e.target.value });
+                      }}
+                      className={`${EDIT_FIELD} mt-1.5 resize-none leading-relaxed`}
+                    />
+                    {!item.content?.trim() && (
+                      <div className="text-[12.5px] text-ink-mute mt-1.5 pl-1">
+                        A fresh inspirational quote each day, chosen for you from your Core.
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
               <button
                 onClick={() => removeItem({ itemId: item._id })}
@@ -679,6 +700,12 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
               className="inline-flex items-center gap-1 border border-line rounded-full px-3.5 py-1.5 text-[13px] text-ink-soft hover:border-gold"
             >
               <Plus className="w-3.5 h-3.5" /> mantra
+            </button>
+            <button
+              onClick={() => addItem({ ritual, kind: "tidbit", title: "Today's quote" })}
+              className="inline-flex items-center gap-1 border border-line rounded-full px-3.5 py-1.5 text-[13px] text-ink-soft hover:border-gold"
+            >
+              <Plus className="w-3.5 h-3.5" /> daily quote
             </button>
             <button
               onClick={() =>
@@ -784,6 +811,13 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
                       {mantraFor(item)}
                     </div>
                   </div>
+                )}
+                {item.kind === "tidbit" && (
+                  <DailyTidbit
+                    fixedContent={item.content}
+                    dayKey={dayKey}
+                    checked={isChecked}
+                  />
                 )}
                 {item.kind === "question" && (
                   <QuestionStep

@@ -9,6 +9,7 @@ import { filledCount } from "@/lib/levels";
 import { activeRitual, ritualOpensAtLabel } from "@/lib/ritual";
 import { RitualSequence } from "@/components/today/RitualSequence";
 import { RitualsRail } from "@/components/today/RitualsRail";
+import { HorizonsCard } from "@/components/today/HorizonsCard";
 import { PageHeader } from "@/components/shell/PageHeader";
 
 const PILLAR_COLOR: Record<string, string> = {
@@ -167,6 +168,9 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
               </div>
             )}
           </div>
+
+          {/* the horizons ladder — the nested plan, right under the North Star */}
+          <HorizonsCard mode={mode} />
 
           {/* the day's ritual — locked to the beat you're in; the other opens at its hour */}
           <div className="inline-flex bg-card border border-line rounded-full p-1 mb-2">

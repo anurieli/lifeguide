@@ -26,6 +26,7 @@ const KIND = v.union(
   v.literal("mantra"),
   v.literal("question"),
   v.literal("roadmap"),
+  v.literal("tidbit"),
 );
 const SOURCE = v.union(v.literal("inline"), v.literal("blueprint"));
 
@@ -40,22 +41,25 @@ const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
 // behind-the-button "Read the mantra" read AND the v3-seeded inline mantra down to
 // ONE inline mantra (keeping the person's own words), and clears the stale fixed
 // "one move" morning question so it becomes the settings-driven journal.
-export const RITUALS_SEED_VERSION = 4;
+// v5 adds the "tidbit" component — a daily inspirational quote surfaced by the cheap
+// Haiku dailyQuote agent (convex/ai/dailyQuote.ts, convex/dailyTidbits.ts).
+export const RITUALS_SEED_VERSION = 5;
 
 // The minimal default set, derived from the Blueprint for Living doctrine
 // (docs/research/blueprint-for-living.md). Deliberately small: users delete
 // what they do not want. Everything here is editable after seeding. The morning
-// is the primer sequence (read → mantra → roadmap → journal question) plus one
-// "do"; the evening is the close-out (question) and tomorrow's roadmap builder.
+// is the primer sequence (read → mantra → tidbit → roadmap → journal question) plus
+// one "do"; the evening is the close-out (question) and tomorrow's roadmap builder.
 export const DEFAULT_RITUAL_ITEMS: {
   ritual: "morning" | "night";
-  kind: "do" | "read" | "mantra" | "question" | "roadmap";
+  kind: "do" | "read" | "mantra" | "question" | "roadmap" | "tidbit";
   title: string;
   content?: string;
   source?: "inline" | "blueprint";
 }[] = [
   { ritual: "morning", kind: "read", title: "Read the Blueprint", source: "blueprint" },
   { ritual: "morning", kind: "mantra", title: "Read the mantra" }, // no content → rotating pool
+  { ritual: "morning", kind: "tidbit", title: "Today's quote" }, // no content → the daily-quote agent
   { ritual: "morning", kind: "do", title: "Drink a glass of water" },
   { ritual: "morning", kind: "roadmap", title: "Walk today's roadmap" },
   { ritual: "morning", kind: "question", title: "The morning journal" }, // no content → rotating bank
@@ -209,10 +213,11 @@ export const upgradeToSeedVersion = mutation({
     // while a v1 account gains mantra + roadmap + the rotating journal question.
     const additions: Record<
       "morning" | "night",
-      { kind: "mantra" | "question" | "roadmap"; title: string; content?: string }[]
+      { kind: "mantra" | "tidbit" | "question" | "roadmap"; title: string; content?: string }[]
     > = {
       morning: [
         { kind: "mantra", title: "Read the mantra" }, // no content → rotating pool
+        { kind: "tidbit", title: "Today's quote" }, // no content → the daily-quote agent (v5)
         { kind: "roadmap", title: "Walk today's roadmap" },
         { kind: "question", title: "The morning journal" }, // no content → rotating bank
       ],
@@ -290,6 +295,7 @@ const DEFAULT_TITLES: Record<string, string> = {
   mantra: "Read the mantra",
   question: "A question to sit with",
   roadmap: "The roadmap",
+  tidbit: "Today's quote",
 };
 
 export const addItem = mutation({

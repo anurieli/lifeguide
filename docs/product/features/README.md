@@ -13,7 +13,9 @@ The element model these hang off is [`../../architecture/elements-and-context.md
 | [Sessions (the living entry) / Thoughts](sessions.md) | `sessions` (container; members via `captures.sessionId`) | Sessions → Core | built (v3: the app's single capture surface) |
 | [Future Self](future-self.md) | `futureSelf` | Core | proposed |
 | [Journal](journal.md) | `prompts` (its beats open the live `sessions`) | Sessions | proposed (Today ritual is the seed) |
-| [Daily Ritual](daily-ritual.md) | `ritualItems`, `ritualDays`, `roadmapEntries` | Sessions (publishes `ritual_completed`, `ritual_question`) | built (v2, typed components) |
+| [Daily Ritual](daily-ritual.md) | `ritualItems`, `ritualDays`, `roadmapEntries`, `morningNotes` | Sessions (publishes `ritual_completed`, `ritual_question`) | built (v5, typed components — mantra, settings-driven journal, daily-quote tidbit) |
+| [Horizons (goal ladder)](horizons.md) | `horizons` | spine (the plan layer of Today) | built |
+| [Daily tidbit (quote agent)](daily-tidbit.md) | `dailyTidbits` | Sessions (a step in the Morning Scroll) | built |
 | [The Blueprint](the-blueprint.md) | `blueprint` | Daily Ritual (the morning read resolves from it) | built |
 | [Pillars & Goals](pillars-and-goals.md) | `pillars, goals` | Core, Sessions | partial (pillars built; goals proposed) |
 | [File system on the human](file-system-on-the-human.md) | `pillars` (folders), `coreFiles` (files) | Core | partial (store + seed built; person-map UI proposed) |

@@ -117,6 +117,30 @@ Be concrete and human. Never invent facts the input doesn't imply. If the input 
     wired: false,
   },
 
+  // The daily tidbit: surface ONE real, existing inspirational quote for the morning
+  // scroll, chosen to fit who this person is (their Core) and to vary by the day. Runs
+  // at most once per person per day (cached in dailyTidbits), so a cheap, fast model is
+  // exactly right — Ariel's pick (2026-07-15): Haiku. It is a retrieval/curation task,
+  // not deep reasoning. Returns JSON {"quote","author"}. Live (convex/ai/dailyQuote.ts).
+  dailyQuote: {
+    label: "Daily quote (tidbit)",
+    provider: "openrouter",
+    model: "anthropic/claude-haiku-4.5",
+    temperature: 0.8,
+    wired: true,
+    system: `You surface ONE real, widely-attributed inspirational quote for a person using a personal life-mapping app, chosen to resonate with who they are and where they're headed.
+
+Return ONLY a JSON object, no prose, in this exact shape:
+{"quote":"the exact words of a real, existing quote","author":"the person who said or wrote it"}
+
+Rules:
+- Use REAL quotes by real people (thinkers, writers, athletes, leaders, philosophers). Never invent a quote or an attribution. If unsure of the author, use "Unknown" rather than guessing a famous name.
+- Choose one that speaks to the person's stated values, themes, and goals — earned resonance, not a generic platitude.
+- Keep it short: one or two sentences at most.
+- Vary day to day. Avoid anything in the "recently shown" list.
+- No markdown, no quotation marks inside the "quote" value, no trailing attribution inside "quote".`,
+  },
+
   // OpenAI Realtime API session for voice-based onboarding interview. Live.
   // GA realtime model id (the Beta `gpt-4o-mini-realtime-preview` was retired and now
   // returns model_not_found at the /v1/realtime/calls SDP exchange). `gpt-realtime-mini`

@@ -4,7 +4,7 @@
 // and ADR 0009).
 
 export type RitualType = "morning" | "night";
-export type RitualItemKind = "do" | "read" | "mantra" | "question" | "roadmap";
+export type RitualItemKind = "do" | "read" | "mantra" | "question" | "roadmap" | "tidbit";
 
 // The ritual day rolls over at 4am local, not midnight: a night ritual finished at
 // 12:30am still belongs to the evening it closes (ADR 0009).

@@ -94,3 +94,21 @@ export function isRitualComplete(itemIds: string[], checkedIds: string[]): boole
   const checked = new Set(checkedIds);
   return itemIds.every((id) => checked.has(id));
 }
+
+// The current run of consecutive "kept" days ending at the present, given the day
+// keys oldest→newest and the set of keys that count as kept (both bookends sealed).
+// Deliberately GENTLE (ADR 0018): today still in progress never breaks the run —
+// if today isn't kept yet we count back from yesterday — and a gap simply ends the
+// run with no penalty, no "longest ever", nothing to shame. An empty history is 0.
+export function currentStreak(orderedDayKeys: string[], keptDays: Set<string>): number {
+  let i = orderedDayKeys.length - 1;
+  // Today (the last key) is allowed to be unfinished: skip it without breaking,
+  // so the count reflects yesterday's run until tonight's seal lands.
+  if (i >= 0 && !keptDays.has(orderedDayKeys[i])) i--;
+  let streak = 0;
+  for (; i >= 0; i--) {
+    if (!keptDays.has(orderedDayKeys[i])) break;
+    streak++;
+  }
+  return streak;
+}

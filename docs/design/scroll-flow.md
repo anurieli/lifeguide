@@ -24,6 +24,6 @@ Direction 1 + 2 for the **morning** only: "Begin the morning" → note → read 
 
 ## Explicitly rejected
 
-- **Streak/energy meters, progress rings, gamified sunrise animations** — violates "no score, no streak."
+- **Streak/energy meters, progress rings, gamified sunrise animations** — violates "no score, no streak." (The gentle keeping-up run of [ADR 0018](../decisions/0018-gentle-keeping-up-run.md) is a quiet text count on the rituals rail, not a meter, ring, or animation — this line still rules those out.)
 - **Auto-playing the flow on page load** — the person begins the scroll; the app never pounces.
 - **Hiding the card view entirely** — the at-a-glance state must survive; the flow is a mode, not a replacement.

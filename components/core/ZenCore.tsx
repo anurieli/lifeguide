@@ -9,6 +9,20 @@ import { LayoutGrid, Mic, ChevronLeft, MessageSquare } from "lucide-react";
 
 const DOT: Record<Malleability, string> = { green: "#4F7A4A", yellow: "#B8945A", red: "#B5524A" };
 
+// Renders a prompt description with *word* spans bolded (the source text uses
+// asterisks around words meant to land harder, e.g. *HUMAN*).
+function renderEmphasis(text: string) {
+  return text.split(/(\*[^*]+\*)/g).map((part, i) =>
+    part.length > 2 && part.startsWith("*") && part.endsWith("*") ? (
+      <strong key={i} className="font-semibold text-ink">
+        {part.slice(1, -1)}
+      </strong>
+    ) : (
+      part
+    ),
+  );
+}
+
 type FlatQ = {
   key: string;
   title: string;
@@ -341,8 +355,8 @@ export function ZenCore({
               {q.title}
             </h1>
             {q.description && (
-              <p className="text-[15px] text-ink-soft max-w-[460px] mx-auto mt-3 leading-relaxed whitespace-pre-wrap line-clamp-3">
-                {q.description}
+              <p className="text-[15px] text-ink-soft max-w-[460px] mx-auto mt-3 leading-relaxed whitespace-pre-wrap">
+                {renderEmphasis(q.description)}
               </p>
             )}
 

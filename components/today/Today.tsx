@@ -93,25 +93,35 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
               : "No score. No streak. Set tomorrow up, then set it down."}
           </div>
 
-          {/* blueprint progress marker */}
-          {settings !== undefined && (
-            <div className="mb-6 inline-flex items-center gap-2.5 text-[12.5px] text-ink-mute bg-card border border-line rounded-full px-4 py-1.5">
-              <span>Core: {bpCount}/18</span>
-              <span className="text-line">|</span>
-              <span>Level {bpLevel}</span>
-              {!bpComplete && (
-                <>
-                  <span className="text-line">|</span>
-                  <button
-                    onClick={() => onNavigate("core")}
-                    className="text-accent hover:underline"
-                  >
-                    continue &rarr;
-                  </button>
-                </>
-              )}
-            </div>
-          )}
+          {/* Core state marker — until the Core is complete, this is a red nudge
+              to finish it (the foundation comes before the days). Once complete
+              it collapses to the subtle grey progress chip. */}
+          {settings !== undefined &&
+            (!bpComplete ? (
+              <button
+                onClick={() => onNavigate("core")}
+                className="group mb-6 flex w-full items-center gap-3 rounded-[14px] border border-[#E3B4AF] bg-[#FBF0EE] px-4 py-3 text-left transition hover:border-[#B5524A]"
+              >
+                <span className="mt-[3px] h-2 w-2 flex-shrink-0 rounded-full bg-[#B5524A]" />
+                <span className="flex-1">
+                  <span className="block text-[14.5px] font-semibold text-[#B5524A]">
+                    Finish the Core. Schedule a time — it takes about an hour.
+                  </span>
+                  <span className="block text-[12.5px] text-[#B5524A]/70">
+                    It&apos;s the foundation everything else is built on. {bpCount}/18 done.
+                  </span>
+                </span>
+                <span className="text-[13px] text-[#B5524A] opacity-60 transition group-hover:opacity-100">
+                  Start &rarr;
+                </span>
+              </button>
+            ) : (
+              <div className="mb-6 inline-flex items-center gap-2.5 text-[12.5px] text-ink-mute bg-card border border-line rounded-full px-4 py-1.5">
+                <span>Core: {bpCount}/18</span>
+                <span className="text-line">|</span>
+                <span>Level {bpLevel}</span>
+              </div>
+            ))}
 
           {/* north star — the compass */}
           <div className="bg-card border border-gold rounded-[18px] p-[24px] mb-[18px]">

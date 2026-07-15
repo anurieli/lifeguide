@@ -5,9 +5,7 @@ import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { filledCount } from "@/lib/levels";
-import { AlertCircle, CheckCircle2, Image as ImageIcon, Mail } from "lucide-react";
-
-const TYPE_LABEL: Record<string, string> = { bug: "Bug", feature: "Feature", other: "Other" };
+import { FeedbackInbox } from "@/components/feedback/FeedbackInbox";
 
 // Admin panel. Standalone route (no rail). Access: open in local dev (any
 // session), OWNER-ONLY in production (gated on the owner's email — see
@@ -36,14 +34,11 @@ export default function AdminPage() {
   const settings = useQuery(api.settings.get, gate);
   const coreMap = useQuery(api.core.get, gate);
   const sessions = useQuery(api.admin.listSessions, gate);
-  const feedback = useQuery(api.feedback.listAll, gate);
 
   const resetOnboarding = useMutation(api.admin.resetOnboarding);
   const clearCore = useMutation(api.admin.clearCore);
   const seedCore = useMutation(api.admin.seedCore);
   const clearTestData = useMutation(api.admin.clearTestData);
-  const resolveFeedback = useMutation(api.feedback.resolve);
-  const reopenFeedback = useMutation(api.feedback.reopen);
 
   const [confirming, setConfirming] = useState<ActionKey | null>(null);
   const [busy, setBusy] = useState<ActionKey | null>(null);
@@ -185,134 +180,9 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* Feedback / Escalations — live ticketing queue */}
-        <div className="flex items-center gap-2 mt-8 mb-3">
-          <span className="text-ink-mute text-[12px] uppercase tracking-[0.14em]">Feedback / Escalations</span>
-          {feedback && feedback.filter((f) => f.status === "open").length > 0 && (
-            <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#9B2C2C] text-white text-[11px] font-semibold">
-              {feedback.filter((f) => f.status === "open").length}
-            </span>
-          )}
-        </div>
-        <div className="bg-card border border-line rounded-2xl divide-y divide-line">
-          {feedback === undefined ? (
-            <div className="p-4 text-ink-mute text-[14px]">Loading…</div>
-          ) : feedback.length === 0 ? (
-            <div className="p-4 text-ink-mute text-[14px]">No feedback yet.</div>
-          ) : (
-            feedback.map((f) => {
-              const open = f.status === "open";
-              const who = f.submitter?.name || f.submitter?.email || "anonymous";
-              const replyHref = f.submitter?.email
-                ? `mailto:${f.submitter.email}?subject=${encodeURIComponent(
-                    "Re: your LifeGuide feedback",
-                  )}&body=${encodeURIComponent(
-                    `\n\n———\nIn reply to your ${TYPE_LABEL[f.type] ?? f.type} note:\n"${f.text}"`,
-                  )}`
-                : null;
-              return (
-                <div key={f._id} className={`p-4 flex gap-3 ${open ? "" : "opacity-60"}`}>
-                  <div className="pt-0.5 flex-shrink-0">
-                    {open ? (
-                      <AlertCircle className="w-[18px] h-[18px] text-[#9B2C2C]" />
-                    ) : (
-                      <CheckCircle2 className="w-[18px] h-[18px] text-green" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap text-[12px] text-ink-mute mb-1">
-                      <span className="px-2 py-0.5 rounded-full bg-paper-2 text-ink-soft font-medium">
-                        {TYPE_LABEL[f.type] ?? f.type}
-                      </span>
-                      <span className="font-mono">{f.route}</span>
-                      <span>· {f.view}</span>
-                      <span>· {new Date(f.createdAt).toLocaleString()}</span>
-                      {f.errors.length > 0 && (
-                        <span className="text-[#9B2C2C]">· {f.errors.length} error{f.errors.length > 1 ? "s" : ""}</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-[12px] mb-1.5">
-                      <span className="text-ink-mute">from</span>
-                      <span className={`font-medium ${f.submitter?.isAnonymous ? "text-ink-mute italic" : "text-ink-soft"}`}>
-                        {who}
-                      </span>
-                      {f.submitter?.email && f.submitter?.name && (
-                        <span className="text-ink-mute">· {f.submitter.email}</span>
-                      )}
-                    </div>
-                    <div className="text-[14px] text-ink whitespace-pre-wrap break-words">{f.text}</div>
-                    {f.errors.length > 0 && (
-                      <details className="mt-1.5">
-                        <summary className="text-[12px] text-ink-mute cursor-pointer hover:text-ink-soft">
-                          error log
-                        </summary>
-                        <pre className="mt-1 text-[11px] text-ink-soft bg-paper-2 rounded-lg p-2 overflow-x-auto whitespace-pre-wrap">
-                          {f.errors.map((e) => e.message).join("\n")}
-                        </pre>
-                      </details>
-                    )}
-                    <div className="mt-2 flex items-center gap-3">
-                      {f.shotUrl ? (
-                        <a
-                          href={f.shotUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="block w-[88px] h-[56px] rounded-md border border-line overflow-hidden bg-paper-2 flex-shrink-0"
-                          title="Open snapshot"
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={f.shotUrl} alt="page snapshot" className="w-full h-full object-cover" />
-                        </a>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[12px] text-ink-mute">
-                          <ImageIcon className="w-3.5 h-3.5" /> no snapshot
-                        </span>
-                      )}
-                      {(f.imageUrls ?? []).map((u, i) => (
-                        <a
-                          key={u}
-                          href={u}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="block w-[56px] h-[56px] rounded-md border border-line overflow-hidden bg-paper-2 flex-shrink-0"
-                          title={`Open attached photo ${i + 1}`}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={u} alt={`attached photo ${i + 1}`} className="w-full h-full object-cover" />
-                        </a>
-                      ))}
-                      {replyHref ? (
-                        <a
-                          href={replyHref}
-                          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] border border-line text-ink-soft hover:bg-paper-2 transition"
-                          title={`Reply to ${f.submitter?.email}`}
-                        >
-                          <Mail className="w-3.5 h-3.5" /> Reply
-                        </a>
-                      ) : (
-                        <span className="text-[12px] text-ink-mute italic">no email to reply to</span>
-                      )}
-                      {open ? (
-                        <button
-                          onClick={() => void resolveFeedback({ id: f._id })}
-                          className="rounded-lg px-3 py-1.5 text-[13px] bg-ink text-white hover:opacity-90 transition"
-                        >
-                          Dealt with
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => void reopenFeedback({ id: f._id })}
-                          className="rounded-lg px-3 py-1.5 text-[13px] border border-line text-ink-mute hover:bg-paper-2 transition"
-                        >
-                          Reopen
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
+        {/* Feedback / Escalations — the inbox panel (collect · organize · reply · push to Linear) */}
+        <div className="mt-8">
+          <FeedbackInbox enabled={canAccess} />
         </div>
       </div>
     </div>

@@ -36,9 +36,12 @@ There is no Coach path: feedback is deliberately the user's raw words, with no A
 | Attach photos | Paste into the textarea, or tap the image button (file picker) | Adds up to 4 images as thumbnails; ✕ removes one | Manual | — (uploads on submit) |
 | Screenshot page | Tap the camera button | Captures the current page (html2canvas, timeout-capped) and adds it as a visible "Page"-tagged attachment | Manual | — (uploads on submit) |
 | Submit | Click Submit | Captures errors, uploads attachments + (fallback) auto-snapshot concurrently, inserts a `feedback` row (`status: open`) | Manual | `feedback`, `_storage` |
+| Filter inbox | Pile + type controls in `/admin` | Filters tickets by pile (Needs you / In progress / Dealt with) and type (Bug/Feature/Other) | Manual (admin) | — |
+| Reply | "Reply" in `/admin` | Opens a pre-addressed `mailto:` and moves the ticket to `pending` (`markPending`) | Manual (admin) | `feedback` |
+| Export to Linear | "Export to Linear" → inline form (name + urgency) | Creates a Linear issue (note + context + photo attachment) via `convex/linear.ts`, links the ticket (`linear{…}`), moves it to `pending` | Manual (admin) | `feedback`, `_storage`, Linear |
 | Resolve ticket | "Dealt with" in `/admin` | Sets `status: dealt_with` + `resolvedAt` | Manual (admin) | `feedback` |
-| Reopen ticket | "Reopen" in `/admin` | Sets `status: open`, clears `resolvedAt` | Manual (admin) | `feedback` |
-| View queue | Open `/admin` | Lists the user's feedback newest-first, live; open items carry an alert | Manual (admin) | `feedback`, `_storage` |
+| Reopen ticket | "Reopen" in `/admin` | Sets `status: open`, clears `pendingAt` + `resolvedAt` | Manual (admin) | `feedback` |
+| View inbox | Open `/admin` | Live three-pile inbox with type filters; open items carry an alert | Manual (admin) | `feedback`, `_storage` |
 
 ## 4. Dynamics and interactions with other elements
 
@@ -59,7 +62,7 @@ This element **owns** the `feedback` table and **draws** nothing from the user-s
 - **Listening:** textarea is read-only and shows the live transcript; mic shows a stop icon.
 - **Submitting:** Submit shows a spinner; disabled.
 - **Sent:** a transient "Thanks. Noted." then auto-collapse.
-- **Ticket states (admin):** `open` (red alert dot) ⇄ `dealt_with` (green check, greyed row).
+- **Ticket states (admin):** a triage lifecycle — `open` (red alert dot, "Needs you") → `pending` (dashed, "In progress" — replied or pushed to Linear) → `dealt_with` (green check, greyed, a separate pile). `reopen` returns a ticket to `open`. See §9 and [ADR 0018](../../decisions/0018-feedback-to-linear.md).
 
 ## 6. Edge cases
 
@@ -84,16 +87,26 @@ None. By design, feedback is captured as the user's raw words with no model in t
 
 Owns the `feedback` table (see [`../../architecture/data-model.md`](../../architecture/data-model.md)):
 
-`userId`, `type` (`bug|feature|other`), `text`, `route`, `view`, `title`, `viewport {w,h}`, `userAgent`, `errors[] {message, stack?, at}`, `shotId?` (`_storage`, the fallback auto-snapshot — present only when the user didn't attach their own screenshot), `imageIds?` (`_storage[]`, user-attached photos **and** one-click page screenshots, max 4 combined), `status` (`open|dealt_with`), `createdAt`, `resolvedAt?`. Indexes: `by_user [userId, createdAt]`, `by_status [status, createdAt]`.
+`userId`, `type` (`bug|feature|other`), `text`, `route`, `view`, `title`, `viewport {w,h}`, `userAgent`, `errors[] {message, stack?, at}`, `shotId?` (`_storage`, the fallback auto-snapshot — present only when the user didn't attach their own screenshot), `imageIds?` (`_storage[]`, user-attached photos **and** one-click page screenshots, max 4 combined), `status` (`open|pending|dealt_with`), `linear?` (`{issueId, identifier, url, at}` — set when exported to Linear), `createdAt`, `pendingAt?`, `resolvedAt?`. Indexes: `by_user [userId, createdAt]`, `by_status [status, createdAt]`.
 
 Draws `_storage` (the uploaded snapshot + attached photos) via `files.generateUploadUrl` / `ctx.storage.getUrl`; `listAll` resolves `imageIds` to `imageUrls`, and `/admin` renders them as thumbnails beside the snapshot.
 
-## 9. Owner inbox & replies
+## 9. Owner inbox, triage lifecycle & Linear export
 
-`listAll`/`resolve`/`reopen` are **owner-aware** (see [`0006-owner-gated-admin.md`](../../decisions/0006-owner-gated-admin.md)). The owner (`anurieli365@gmail.com`) sees **every** user's feedback as a support inbox — each row joins the submitter's `{ name, email, isAnonymous }` from the users table — and can act on any ticket; everyone else stays self-scoped. In the `/admin` queue each ticket with a known submitter email gets a **Reply** button that opens a `mailto:` in the owner's own mail client (mail goes from the owner's real address, no email provider needed). Anonymous submitters have no email and are not repliable.
+The inbox lives in `components/feedback/FeedbackInbox.tsx` — a self-contained, embeddable panel (no route dependency; today it renders inside `/admin`). Its queries/mutations are **owner-aware** (see [`0006-owner-gated-admin.md`](../../decisions/0006-owner-gated-admin.md)): the owner (`anurieli365@gmail.com`) sees **every** user's feedback as a support inbox — each row joins the submitter's `{ name, email, isAnonymous }` from the users table — and can act on any ticket; everyone else stays self-scoped.
+
+**Piles + filters.** The panel splits tickets into three piles by status — **Needs you** (`open`), **In progress** (`pending`), **Dealt with** (`dealt_with`) — with live counts, and filters by type (All · Bugs · Features · Other).
+
+**Reply.** Each ticket with a known submitter email gets a **Reply** button that opens a `mailto:` in the owner's own mail client (mail goes from the owner's real address, no email provider needed), pre-addressed and quoting their note. Clicking Reply moves the ticket to **In progress** (`markPending`). Anonymous submitters have no email and are not repliable. *(Sending inline via Resend — rather than handing off to a mail client — is a deferred follow-up.)*
+
+**Export to Linear** (see [ADR 0018](../../decisions/0018-feedback-to-linear.md)). Because you can't always tell a bug from a feature from the widget tag, export is a deliberate button, not an auto-sync. **Export to Linear** opens a small inline form (issue **name**, prefilled from the note; **urgency** → Linear priority) and creates a real Linear issue in the configured project via `convex/linear.ts` — carrying the note, the captured page context, and the snapshot/photos uploaded as **real Linear assets**. On success the ticket stores `linear {issueId, identifier, url, at}`, surfaces the `ARI-…` identifier as a link chip, and moves to **In progress**. You finish the card in Linear (assignee, status, board). Export is idempotent — an already-exported ticket links out instead of re-creating. **Setup:** `LINEAR_API_KEY` must be set in the Convex deployment; `LINEAR_TEAM_ID` / `LINEAR_PROJECT_ID` default to LifeGuide's and are env-overridable so the module can travel.
+
+**Close.** **Dealt with** moves a ticket to the closed pile (`resolve`); **Reopen** returns it to **Needs you** (`reopen`, clearing the pending/resolved marks).
 
 ## 10. Open questions
 
-- Programmatic/threaded email (auto-acknowledgment, in-app two-way thread, inbound capture) was deliberately deferred in favor of `mailto`. Revisit if reply volume grows.
+- **Inline replies via Resend** — sending the reply from within the panel (a verified sending domain + API key) instead of handing off to `mailto`, plus threading, is the next slice. Deferred here.
+- **Standalone package** — the widget + inbox + Linear push are structured to be extractable (config-injected Linear settings, self-contained components), but true npm-package extraction is a follow-up.
+- **Linear labels/assignee at export** — v1 puts the type in the title/description and leaves labels/assignee/status to be set in Linear; setting them programmatically at export time is a possible enhancement.
 - Snapshot fidelity depends on `html2canvas`; if it proves lossy on the canvas-heavy Board, consider the native screen-capture API behind an explicit opt-in there.
 - No retention/cleanup policy yet for snapshots in `_storage`.

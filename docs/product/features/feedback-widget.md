@@ -14,9 +14,14 @@ A slim vertical tab labeled **"Feedback?"** rests against the right edge of the 
 
 **Mobile (< 768px): a minimalist nub.** On the phone the tab shrinks to a slim icon-only nub (a message-plus glyph) against the right edge — same drag/tap behavior, same remembered position. The composer opens bottom-anchored on the right, just above the bottom bar (safe-area aware), instead of riding the tab's vertical position, so the on-screen keyboard doesn't hide it. The old collision that kept feedback desktop-only is resolved by yielding: while the full-width Coach sheet is open, the whole widget hides (`coachOpen` prop from the shell) and returns when the sheet closes.
 
-**Photos.** The composer takes up to 4 attached images per submission: paste an image straight into the textarea (screenshot, copied photo) or tap the image button to pick from the photo library / camera roll (`accept="image/*"`). Attachments show as small thumbnails with a remove ✕; they upload to `_storage` on submit (each independently — one failed upload doesn't drop the rest or the note). These are deliberate user attachments, separate from the automatic page snapshot.
+**Photos & screenshots.** The composer takes up to 4 attached images per submission (photos and page screenshots share the limit), each shown as a thumbnail with a remove ✕. Three ways to add one:
+- **Paste** an image straight into the textarea (screenshot, copied photo).
+- **Attach** — tap the image button to pick from the photo library / camera roll (`accept="image/*"`).
+- **Screenshot this page** — tap the camera button (the third action, beside mic and attach) to capture the current page in one click. The shot is added as a *visible* attachment tagged with a small "Page" badge, so the user can preview and remove it before sending. The button shows a spinner while capturing and is timeout-capped so a slow render can't hang the composer.
 
-On submit the widget silently attaches: the current route and app view, the page title, viewport size, the user agent, the page's recent JS/console errors, and a PNG snapshot of the visible page (the widget itself is excluded from the shot). Nothing about this is asked of the user.
+Attachments upload to `_storage` on submit, in parallel and each independently — one failed upload doesn't drop the rest or the note.
+
+On submit the widget also silently attaches page context: the current route and app view, the page title, viewport size, the user agent, and the page's recent JS/console errors. It captures a PNG snapshot of the visible page **as a fallback** (`shotId`) only when the user did *not* attach a screenshot themselves — that auto-capture is timeout-capped and uploads concurrently with the attachments, so Submit never blocks in series on it. The widget itself is excluded from every shot.
 
 There is no Coach path: feedback is deliberately the user's raw words, with no AI rewrite.
 
@@ -29,7 +34,8 @@ There is no Coach path: feedback is deliberately the user's raw words, with no A
 | Select type | Click a type chip | Sets type; persists to `localStorage` (`lifeguide.feedback.type`) | Manual | localStorage |
 | Dictate | Tap the mic | Starts/stops Web Speech transcription into the textarea | Manual | — (on-device) |
 | Attach photos | Paste into the textarea, or tap the image button (file picker) | Adds up to 4 images as thumbnails; ✕ removes one | Manual | — (uploads on submit) |
-| Submit | Click Submit | Captures errors + snapshot, uploads the snapshot + attached photos, inserts a `feedback` row (`status: open`) | Manual | `feedback`, `_storage` |
+| Screenshot page | Tap the camera button | Captures the current page (html2canvas, timeout-capped) and adds it as a visible "Page"-tagged attachment | Manual | — (uploads on submit) |
+| Submit | Click Submit | Captures errors, uploads attachments + (fallback) auto-snapshot concurrently, inserts a `feedback` row (`status: open`) | Manual | `feedback`, `_storage` |
 | Resolve ticket | "Dealt with" in `/admin` | Sets `status: dealt_with` + `resolvedAt` | Manual (admin) | `feedback` |
 | Reopen ticket | "Reopen" in `/admin` | Sets `status: open`, clears `resolvedAt` | Manual (admin) | `feedback` |
 | View queue | Open `/admin` | Lists the user's feedback newest-first, live; open items carry an alert | Manual (admin) | `feedback`, `_storage` |
@@ -47,7 +53,8 @@ This element **owns** the `feedback` table and **draws** nothing from the user-s
 ## 5. States
 
 - **Docked (resting):** the "Feedback?" tab at its remembered vertical position (icon-only nub on mobile).
-- **Composer open:** type selector + textarea + attached-photo thumbnails + mic + image picker + Submit.
+- **Composer open:** type selector + textarea + attachment thumbnails (photos + "Page"-tagged screenshots) + mic + image picker + screenshot + Submit.
+- **Capturing:** the screenshot button shows a spinner while html2canvas renders the page; disabled meanwhile and when the 4-image limit is reached.
 - **Yielded (mobile):** hidden entirely while the Coach sheet is open; returns when it closes.
 - **Listening:** textarea is read-only and shows the live transcript; mic shows a stop icon.
 - **Submitting:** Submit shows a spinner; disabled.
@@ -59,9 +66,10 @@ This element **owns** the `feedback` table and **draws** nothing from the user-s
 - **Speech unsupported** (`useSpeechRecognition.supported === false`) → mic button hidden; typing only.
 - **Mic blocked** (`error === "not-allowed"`) → inline "Mic blocked. You can type instead."
 - **Empty/whitespace note** → Submit disabled.
-- **Snapshot fails** (cross-origin images, complex CSS, `html2canvas` throw) → caught; the submission still goes through without an image (`shotId` omitted), and the failure is itself logged to console.
-- **A photo upload fails** → that image is skipped (logged to console); the note and the other photos still submit.
-- **Non-image paste / pick** → ignored; only `image/*` files attach. The 5th image and beyond are dropped; the picker button disables at 4.
+- **Snapshot fails or hangs** (cross-origin images, complex CSS, `html2canvas` throw, or a slow render) → caught, and additionally capped by an 8s timeout; the submission still goes through without an image (`shotId` omitted). A manual screenshot that times out simply adds no attachment. Either way Submit is never blocked.
+- **Manual screenshot taken** → the silent submit-time snapshot is skipped (no duplicate); only the user's visible screenshot is sent (via `imageIds`).
+- **A photo/attachment upload fails** → that image is skipped (logged to console); the note and the other attachments still submit. Uploads run in parallel.
+- **Non-image paste / pick** → ignored; only `image/*` files attach. The 5th image and beyond are dropped; the picker and screenshot buttons disable at 4.
 - **Mobile Coach sheet opens over the widget** → the widget hides (`coachOpen`) rather than floating on top of the sheet.
 - **Stored position off-screen** (smaller window) → clamped back into the viewport on mount and on resize.
 - **Tap vs drag** → movement under 4px counts as a tap (opens); beyond that it's a drag (repositions, no open).
@@ -76,7 +84,7 @@ None. By design, feedback is captured as the user's raw words with no model in t
 
 Owns the `feedback` table (see [`../../architecture/data-model.md`](../../architecture/data-model.md)):
 
-`userId`, `type` (`bug|feature|other`), `text`, `route`, `view`, `title`, `viewport {w,h}`, `userAgent`, `errors[] {message, stack?, at}`, `shotId?` (`_storage`), `imageIds?` (`_storage[]`, user-attached photos, max 4), `status` (`open|dealt_with`), `createdAt`, `resolvedAt?`. Indexes: `by_user [userId, createdAt]`, `by_status [status, createdAt]`.
+`userId`, `type` (`bug|feature|other`), `text`, `route`, `view`, `title`, `viewport {w,h}`, `userAgent`, `errors[] {message, stack?, at}`, `shotId?` (`_storage`, the fallback auto-snapshot — present only when the user didn't attach their own screenshot), `imageIds?` (`_storage[]`, user-attached photos **and** one-click page screenshots, max 4 combined), `status` (`open|dealt_with`), `createdAt`, `resolvedAt?`. Indexes: `by_user [userId, createdAt]`, `by_status [status, createdAt]`.
 
 Draws `_storage` (the uploaded snapshot + attached photos) via `files.generateUploadUrl` / `ctx.storage.getUrl`; `listAll` resolves `imageIds` to `imageUrls`, and `/admin` renders them as thumbnails beside the snapshot.
 

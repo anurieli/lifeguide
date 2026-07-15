@@ -8,6 +8,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import {
   formatCountdown,
   currentStreak,
+  keepingUpStatus,
   lastNRitualDayKeys,
   msUntilRollover,
   ritualDayKey,
@@ -26,10 +27,26 @@ import {
 
 type RailRitual = "morning" | "night" | "any";
 
-const HISTORY_DAYS = 7;
+// How many days the keeping-up calendar shows at the top of the card — a fortnight
+// reads like a small calendar without crowding the narrow rail.
+const CALENDAR_DAYS = 14;
 // How far back the gentle keeping-up run looks (ADR 0018). A run longer than the
 // window reads as "N+" rather than lying with a smaller exact count.
 const STREAK_WINDOW = 120;
+
+// The keeping-up pip's look per day state (ADR 0018): a solid gold pip once the
+// day is fully kept, a soft gold ring once it is merely begun, a bare outline when
+// untouched. Today additionally gets a faint gold halo (added at the call site).
+const PIP_CLASS: Record<ReturnType<typeof keepingUpStatus>, string> = {
+  finished: "bg-gold border border-gold",
+  started: "bg-gold/25 border border-gold",
+  empty: "bg-transparent border border-line-2",
+};
+const PIP_TITLE: Record<ReturnType<typeof keepingUpStatus>, string> = {
+  finished: "Both scrolls sealed",
+  started: "Started — not sealed yet",
+  empty: "Nothing yet",
+};
 
 const EDIT_FIELD =
   "w-full bg-paper border border-line rounded-lg px-3 py-2 text-[13.5px] text-ink outline-none focus:border-gold transition";
@@ -45,9 +62,9 @@ const GROUP_ORDER: RailRitual[] = ["morning", "any", "night"];
 
 export function RitualsRail() {
   const dayKey = useMemo(() => ritualDayKey(new Date()), []);
-  // One history window feeds both the 7-day dot strip (its tail) and the run.
+  // One history window feeds both the calendar (its tail) and the run.
   const streakKeys = useMemo(() => lastNRitualDayKeys(new Date(), STREAK_WINDOW), []);
-  const weekKeys = useMemo(() => streakKeys.slice(-HISTORY_DAYS), [streakKeys]);
+  const calendarKeys = useMemo(() => streakKeys.slice(-CALENDAR_DAYS), [streakKeys]);
   const items = useQuery(api.rituals.list, {});
   const morningDay = useQuery(api.rituals.day, { ritual: "morning", day: dayKey });
   const nightDay = useQuery(api.rituals.day, { ritual: "night", day: dayKey });
@@ -89,10 +106,11 @@ export function RitualsRail() {
     any: { checked: new Set(anyDay?.checkedIds ?? []), sealed: false }, // "any" is never sealed
   };
 
-  // The quiet last-7-days strip: did the morning and night rituals get sealed?
+  // Which mornings and nights got sealed, and which days were merely begun.
   const sealedOn = new Set(
     (history ?? []).filter((h) => h.completedAt).map((h) => `${h.ritual}:${h.day}`),
   );
+  const startedDays = new Set((history ?? []).filter((h) => h.checked > 0).map((h) => h.day));
 
   // The gentle keeping-up run (ADR 0018): a "kept" day is one where BOTH bookends
   // were sealed — the streak just counts the ritual's own completion. Penalty-free
@@ -112,6 +130,45 @@ export function RitualsRail() {
 
   return (
     <div className="bg-card border border-line rounded-[18px] p-[18px]">
+      {/* keeping up — a minimalist calendar at the TOP of the card. Each day reads
+          at a glance: a solid gold pip once both scrolls sealed, a soft gold ring
+          once the day is merely begun (so a started-but-unsealed day shows), a
+          bare outline when untouched. Beside the label sits the gentle run (ADR
+          0018) — days in a row both bookends closed. Today's date is marked gold. */}
+      <div className="pb-4 mb-4 border-b border-line">
+        <div className="flex items-baseline gap-2 mb-2.5">
+          <span className="text-[11px] tracking-[0.16em] uppercase text-ink-mute">Keeping up</span>
+          {streak > 0 && (
+            <span className="text-[11px] text-gold" title="Days in a row both scrolls closed">
+              {streakLabel} in a row
+            </span>
+          )}
+        </div>
+        <div className="flex items-end gap-1">
+          {calendarKeys.map((key) => {
+            const isToday = key === dayKey;
+            const status = keepingUpStatus(key, keptDays, startedDays);
+            const dayNum = new Date(`${key}T12:00:00`).getDate();
+            return (
+              <div
+                key={key}
+                className="flex flex-1 flex-col items-center gap-1.5"
+                title={`${PIP_TITLE[status]}${isToday ? " · today" : ""}`}
+              >
+                <span className={`w-2.5 h-2.5 rounded-full ${PIP_CLASS[status]}`} />
+                <span
+                  className={`text-[9.5px] tabular-nums ${
+                    isToday ? "text-gold font-semibold" : "text-ink-mute"
+                  }`}
+                >
+                  {dayNum}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="text-[11px] tracking-[0.16em] uppercase text-ink-mute mb-1">Rituals</div>
       <div className="text-[12.5px] text-ink-mute mb-1.5">
         Permanent to your profile. Checked fresh each day.
@@ -247,46 +304,6 @@ export function RitualsRail() {
         </button>
       )}
 
-      {/* keeping up — the quiet last-7-days strip plus a gentle run count (ADR
-          0018): the record of which mornings and nights got sealed, and how many
-          days in a row both bookends closed. No penalty, no shaming — a gap just
-          starts the run over at today. */}
-      <div className="border-t border-line pt-3.5 mt-3.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-baseline gap-2">
-            <span className="text-[11px] tracking-[0.16em] uppercase text-ink-mute">Keeping up</span>
-            {streak > 0 && (
-              <span className="text-[11px] text-gold" title="Days in a row both scrolls closed">
-                {streakLabel} in a row
-              </span>
-            )}
-          </div>
-          <div className="flex gap-2.5">
-            {weekKeys.map((key) => {
-              const isToday = key === dayKey;
-              return (
-                <div key={key} className="flex flex-col items-center gap-1">
-                  <span className={`text-[10px] ${isToday ? "text-ink" : "text-ink-mute"}`}>
-                    {new Date(`${key}T12:00:00`).toLocaleDateString([], { weekday: "narrow" })}
-                  </span>
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      sealedOn.has(`morning:${key}`) ? "bg-gold" : "border border-line-2"
-                    }`}
-                    title="Morning scroll"
-                  />
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      sealedOn.has(`night:${key}`) ? "bg-accent" : "border border-line-2"
-                    }`}
-                    title="Night scroll"
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

@@ -131,3 +131,19 @@ export function currentStreak(orderedDayKeys: string[], keptDays: Set<string>): 
   }
   return streak;
 }
+
+// How a single day reads on the keeping-up calendar: "finished" once both bookends
+// are sealed (a kept day — the same bar the run counts), "started" once anything is
+// ticked but the day hasn't fully closed, and "empty" when the day was never
+// touched. The three states let a begun-but-unsealed day show at all, which a
+// seal-only strip could not.
+export type KeepingUpStatus = "finished" | "started" | "empty";
+export function keepingUpStatus(
+  day: string,
+  keptDays: Set<string>,
+  startedDays: Set<string>,
+): KeepingUpStatus {
+  if (keptDays.has(day)) return "finished";
+  if (startedDays.has(day)) return "started";
+  return "empty";
+}

@@ -547,7 +547,7 @@ export default defineSchema({
     shotId: v.optional(v.id("_storage")), // page snapshot (html2canvas), optional
     imageIds: v.optional(v.array(v.id("_storage"))), // user-attached photos (pasted/picked)
     // Triage lifecycle: open (needs you) → pending (being dealt with — replied or
-    // pushed to Linear) → dealt_with (closed, a separate pile). See ADR 0018.
+    // pushed to Linear) → dealt_with (closed, a separate pile). See ADR 0019.
     status: v.union(v.literal("open"), v.literal("pending"), v.literal("dealt_with")),
     // Set once this ticket is pushed to Linear as a tracked issue (convex/linear.ts).
     // Linear becomes the place the bug/feature is actually worked; this row keeps the

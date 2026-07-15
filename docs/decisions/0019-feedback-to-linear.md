@@ -1,4 +1,4 @@
-# 0018. Feedback → Linear: a manual export, and a three-state triage inbox
+# 0019. Feedback → Linear: a manual export, and a three-state triage inbox
 
 **Status:** accepted (live, 2026-07-15)
 

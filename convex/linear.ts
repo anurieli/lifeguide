@@ -6,7 +6,7 @@
 // actually WORKED. "Export to Linear" (owner action) creates a real Linear issue
 // in the configured project — carrying the note, the page context, and the
 // submitter's photo/screenshot uploaded as a real Linear asset — then links the
-// ticket to that card and flips it to `pending`. See ADR 0018.
+// ticket to that card and flips it to `pending`. See ADR 0019.
 //
 // Config is injected, never hardcoded to a person, so this module can travel
 // (open-source / embed elsewhere): the API key and the destination team/project

@@ -146,7 +146,7 @@ describe("feedback — owner access", () => {
   });
 });
 
-// The triage lifecycle (open → pending → dealt_with) and the Linear link (ADR 0018).
+// The triage lifecycle (open → pending → dealt_with) and the Linear link (ADR 0019).
 describe("feedback — lifecycle + Linear link", () => {
   it("markPending moves open → pending; won't drag a dealt_with ticket back", async () => {
     const t = convexTest(schema);

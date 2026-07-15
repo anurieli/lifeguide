@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { ArrowDown, ArrowUp, BookOpen, Check, Plus, X } from "lucide-react";
 import { api } from "@/convex/_generated/api";
@@ -12,7 +12,7 @@ import {
   ritualDayRange,
   RitualType,
 } from "@/lib/ritual";
-import { questionForDay } from "@/lib/questions";
+import { DailyExercise, journalPromptFor, questionForDay } from "@/lib/questions";
 import { mantraForDay } from "@/lib/mantras";
 import { VoiceField } from "@/components/voice/VoiceField";
 import { ImmersiveReader } from "@/components/today/ImmersiveReader";
@@ -99,12 +99,16 @@ function QuestionStep({
   answer,
   sealed,
   onAnswer,
+  promptControl,
 }: {
   item: Item;
   question: string;
   answer: string | null;
   sealed: boolean;
   onAnswer: (answer: string) => Promise<void>;
+  // The morning journal's inline prompt picker (Intention / Gratitude / Free),
+  // shown under the question so the person can retune the day's prompt in place.
+  promptControl?: ReactNode;
 }) {
   const [draft, setDraft] = useState(answer ?? "");
   // While the person is mid-edit we hold their draft; otherwise we mirror the
@@ -141,6 +145,7 @@ function QuestionStep({
   return (
     <div className="min-w-0 flex-1">
       <div className="text-[15px] text-ink mb-1">{question}</div>
+      {promptControl}
       <div className="mt-2">
         <VoiceField
           meta={{
@@ -160,6 +165,48 @@ function QuestionStep({
           inputClassName={FIELD_CLASS}
         />
       </div>
+    </div>
+  );
+}
+
+// --- The daily-prompt picker: the journal's setting, editable in the scroll ---
+// The morning journal's prompt follows the person's Daily Exercise (Settings →
+// "What the check-in asks you"). Rather than send them to Settings, this changes
+// it right here: three chips write settings.dailyExercise, and the prompt above
+// re-resolves live. (Ariel, 2026-07-15.)
+
+const EXERCISE_LABEL: Record<DailyExercise, string> = {
+  intention: "Intention",
+  gratitude: "Gratitude",
+  free: "Free",
+};
+
+function DailyPromptPicker({
+  exercise,
+  onChange,
+}: {
+  exercise: DailyExercise;
+  onChange: (e: DailyExercise) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 mt-1.5">
+      <span className="text-[11px] tracking-[0.1em] uppercase text-ink-mute mr-0.5">Prompt</span>
+      {(Object.keys(EXERCISE_LABEL) as DailyExercise[]).map((e) => {
+        const active = e === exercise;
+        return (
+          <button
+            key={e}
+            onClick={() => !active && onChange(e)}
+            className={`rounded-full px-2.5 py-0.5 text-[12px] border transition ${
+              active
+                ? "bg-ink text-white border-ink"
+                : "text-ink-mute border-line hover:border-gold"
+            }`}
+          >
+            {EXERCISE_LABEL[e]}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -383,6 +430,10 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
   const dayState = useQuery(api.rituals.day, { ritual, day: dayKey });
   const events = useQuery(api.interactions.forRange, { sinceMs, untilMs });
   const blueprint = useQuery(api.blueprintDoc.get, {});
+  // The Daily Exercise steers the morning journal prompt, editable inline below.
+  const settings = useQuery(api.settings.get, {});
+  const updateSettings = useMutation(api.settings.update);
+  const exercise = (settings?.dailyExercise ?? "intention") as DailyExercise;
   // The note last-night you left for this morning — it opens the morning scroll.
   const morningNote = useQuery(
     api.morningNote.forDay,
@@ -407,7 +458,8 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
   const upgradedRef = useRef(false);
 
   // First open ever: seed the defaults (one-shot server-side). Existing accounts:
-  // offer the v2 typed components once (one-shot via settings.ritualsSeedVersion).
+  // upgrade + reconcile once (v4: fold duplicate mantras, settings-drive the journal;
+  // one-shot via settings.ritualsSeedVersion).
   useEffect(() => {
     if (items && items.length === 0 && !seededRef.current) {
       seededRef.current = true;
@@ -446,9 +498,15 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
     }
   }
 
+  // A content-less morning question IS the morning journal: its prompt follows the
+  // Daily Exercise setting (editable inline). The night's content-less question keeps
+  // the rotating evening bank. A question with its own fixed words always wins.
+  const isMorningJournal = (item: Item) =>
+    ritual === "morning" && item.kind === "question" && !item.content?.trim();
+
   const questionFor = (item: Item) =>
     item.content?.trim() ||
-    questionForDay(ritual === "morning" ? "morning" : "evening", dayKey);
+    (ritual === "morning" ? journalPromptFor(exercise) : questionForDay("evening", dayKey));
 
   // A mantra's inline words: the person's own fixed line, or one drawn from the
   // rotating pool (differing by the day). Shown in place — no reader, no Read tap.
@@ -564,10 +622,19 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
                   ))}
                 {item.kind === "question" && !item.content?.trim() && (
                   <div className="text-[12.5px] text-ink-mute mt-1.5 pl-1">
-                    Rotating through the bank — tonight:{" "}
-                    <span className="text-ink-soft">
-                      “{questionForDay(ritual === "morning" ? "morning" : "evening", dayKey)}”
-                    </span>
+                    {ritual === "morning" ? (
+                      <>
+                        The morning journal — follows your Daily Exercise ({exercise}):{" "}
+                        <span className="text-ink-soft">“{journalPromptFor(exercise)}”</span>
+                      </>
+                    ) : (
+                      <>
+                        Rotating through the bank — tonight:{" "}
+                        <span className="text-ink-soft">
+                          “{questionForDay("evening", dayKey)}”
+                        </span>
+                      </>
+                    )}
                   </div>
                 )}
                 {item.kind === "mantra" && (
@@ -724,6 +791,14 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
                     question={questionFor(item)}
                     answer={answers.get(item._id)?.answer ?? null}
                     sealed={sealed}
+                    promptControl={
+                      isMorningJournal(item) ? (
+                        <DailyPromptPicker
+                          exercise={exercise}
+                          onChange={(e) => void updateSettings({ dailyExercise: e })}
+                        />
+                      ) : undefined
+                    }
                     onAnswer={async (answer) => {
                       await log({
                         type: "ritual_question",

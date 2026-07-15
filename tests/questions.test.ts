@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
   dayNumber,
+  journalPromptFor,
   questionForDay,
   EVENING_QUESTIONS,
+  MORNING_JOURNAL_PROMPTS,
   MORNING_QUESTIONS,
 } from "../lib/questions";
 
@@ -44,5 +46,26 @@ describe("questionForDay (the rotating bank)", () => {
   it("both banks are non-empty and distinct in tone", () => {
     expect(MORNING_QUESTIONS.length).toBeGreaterThan(2);
     expect(EVENING_QUESTIONS.length).toBeGreaterThan(4);
+  });
+});
+
+describe("journalPromptFor (the settings-driven morning journal)", () => {
+  it("returns a distinct prompt for each Daily Exercise setting", () => {
+    expect(journalPromptFor("intention")).toBe(MORNING_JOURNAL_PROMPTS.intention);
+    expect(journalPromptFor("gratitude")).toBe(MORNING_JOURNAL_PROMPTS.gratitude);
+    expect(journalPromptFor("free")).toBe(MORNING_JOURNAL_PROMPTS.free);
+    const all = new Set(Object.values(MORNING_JOURNAL_PROMPTS));
+    expect(all.size).toBe(3); // three genuinely different prompts
+  });
+
+  it("falls back to the intention prompt for a missing/unknown setting", () => {
+    expect(journalPromptFor(undefined)).toBe(MORNING_JOURNAL_PROMPTS.intention);
+    expect(journalPromptFor(null)).toBe(MORNING_JOURNAL_PROMPTS.intention);
+  });
+
+  it("every prompt is a non-empty question", () => {
+    for (const p of Object.values(MORNING_JOURNAL_PROMPTS)) {
+      expect(p.trim().length).toBeGreaterThan(0);
+    }
   });
 });

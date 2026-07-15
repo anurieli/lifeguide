@@ -6,6 +6,26 @@
 
 export type QuestionBank = "morning" | "evening";
 
+// The Daily Exercise (Settings → "What the check-in asks you"; convex
+// settings.dailyExercise). It steers the MORNING JOURNAL prompt — the morning's
+// write-in-place reflection, the thing the Coach most wants to see: where the
+// person's head is as the day starts. Editable inline from the scroll, so the
+// person can retune the day's prompt without leaving the ritual.
+export type DailyExercise = "intention" | "gratitude" | "free";
+
+export const MORNING_JOURNAL_PROMPTS: Record<DailyExercise, string> = {
+  intention: "What's your intention for today?",
+  gratitude: "What are you grateful for this morning?",
+  free: "How are you, really, this morning? Say whatever's there.",
+};
+
+// The morning journal prompt for a given exercise setting. A content-less morning
+// `question` component resolves through here (not the rotating bank) so the daily
+// prompt is the one the person chose in Settings — or changed right in the scroll.
+export function journalPromptFor(exercise: DailyExercise | undefined | null): string {
+  return MORNING_JOURNAL_PROMPTS[exercise ?? "intention"] ?? MORNING_JOURNAL_PROMPTS.intention;
+}
+
 // Morning prompts point forward (the day ahead — the morning journal); evening
 // prompts close the day (wins, lessons, honesty). Drawn from the Blueprint for
 // Living doctrine's Direction pillar ("journal wins and lessons", "track progress

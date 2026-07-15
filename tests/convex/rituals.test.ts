@@ -322,20 +322,81 @@ async function legacyV1Account() {
   return { t, asUser, userId };
 }
 
+// A v3 account that got bitten by the duplicate-mantra bug: a legacy behind-the-
+// button "Read the mantra" read AND a v3-seeded inline mantra, plus the stale fixed
+// morning question. ritualsSeedVersion = 3, so the v4 upgrade still runs.
+async function duplicateMantraV3Account() {
+  const { t, asUser, userId } = await setup();
+  await t.run(async (ctx) => {
+    const now = 1;
+    const rows = [
+      { ritual: "morning", kind: "read", title: "Read the Blueprint", source: "blueprint", order: 0 },
+      { ritual: "morning", kind: "read", title: "Read the mantra", content: "my own creed", order: 1 },
+      { ritual: "morning", kind: "mantra", title: "Read the mantra", order: 2 }, // seeded, no content
+      { ritual: "morning", kind: "roadmap", title: "Walk today's roadmap", order: 3 },
+      {
+        ritual: "morning",
+        kind: "question",
+        title: "The morning journal",
+        content: "What's one small thing today that points at it?",
+        order: 4,
+      },
+      { ritual: "night", kind: "question", title: "Check out", order: 0 },
+      { ritual: "night", kind: "roadmap", title: "Set tomorrow's roadmap", order: 1 },
+    ] as const;
+    for (const r of rows) {
+      await ctx.db.insert("ritualItems", { userId, ...r, createdAt: now, updatedAt: now });
+    }
+    await ctx.db.insert("settings", {
+      userId,
+      morningCheckin: true,
+      eveningCheckin: true,
+      dailyExercise: "intention",
+      coachTone: "balanced",
+      reachingOut: "earned",
+      ritualsSeededAt: now,
+      ritualsSeedVersion: 3,
+      updatedAt: now,
+    });
+  });
+  return { t, asUser, userId };
+}
+
 describe("rituals: the typed-component upgrade", () => {
-  it("appends the missing mantra/question/roadmap components without touching existing items", async () => {
+  it("folds a legacy read-mantra into ONE inline mantra and inlines it (v1 → v4)", async () => {
     const { asUser } = await legacyV1Account();
     await asUser.mutation(api.rituals.upgradeToSeedVersion, {});
     const items = await asUser.query(api.rituals.list, {});
     const morning = items.filter((i) => i.ritual === "morning").sort((a, b) => a.order - b.order);
     const night = items.filter((i) => i.ritual === "night").sort((a, b) => a.order - b.order);
-    // Existing items untouched, new kinds appended after them (v3 adds the mantra).
-    expect(morning.map((i) => i.kind)).toEqual(["read", "do", "mantra", "roadmap", "question"]);
-    expect(morning[0].content).toBe("old words");
+    // The lone legacy "Read the mantra" read becomes the inline mantra (its words
+    // kept); no second mantra is seeded beside it; roadmap + journal question added.
+    expect(morning.map((i) => i.kind)).toEqual(["mantra", "do", "roadmap", "question"]);
+    const mantra = morning.find((i) => i.kind === "mantra")!;
+    expect(mantra.content).toBe("old words");
+    expect(mantra.source).toBeUndefined();
+    expect(items.filter((i) => i.ritual === "morning" && i.kind === "mantra")).toHaveLength(1);
     expect(night.map((i) => i.kind)).toEqual(["do", "question", "roadmap"]);
   });
 
-  it("is one-shot: deleting the added components sticks across re-runs", async () => {
+  it("collapses the v3 duplicate mantra to one, keeping the person's words (v3 → v4)", async () => {
+    const { asUser } = await duplicateMantraV3Account();
+    await asUser.mutation(api.rituals.upgradeToSeedVersion, {});
+    const morning = (await asUser.query(api.rituals.list, {})).filter((i) => i.ritual === "morning");
+    // Exactly one mantra, and it carries the person's own words (not the seeded blank).
+    const mantras = morning.filter((i) => i.kind === "mantra");
+    expect(mantras).toHaveLength(1);
+    expect(mantras[0].content).toBe("my own creed");
+    // The behind-the-button read-mantra is gone; the Blueprint read is untouched.
+    const reads = morning.filter((i) => i.kind === "read");
+    expect(reads).toHaveLength(1);
+    expect(reads[0].source).toBe("blueprint");
+    // The stale fixed "one move" question is cleared → it becomes the journal.
+    const question = morning.find((i) => i.kind === "question")!;
+    expect(question.content ?? "").toBe("");
+  });
+
+  it("is one-shot: deleting the added/folded components sticks across re-runs", async () => {
     const { asUser } = await legacyV1Account();
     await asUser.mutation(api.rituals.upgradeToSeedVersion, {});
     const added = (await asUser.query(api.rituals.list, {})).filter(
@@ -356,9 +417,9 @@ describe("rituals: the typed-component upgrade", () => {
     await asUser.mutation(api.rituals.upgradeToSeedVersion, {});
     const after = await asUser.query(api.rituals.list, {});
     expect(after.filter((i) => i.ritual === "night")).toHaveLength(0);
-    // ...while the still-populated morning got its components.
+    // ...while the still-populated morning got its components (read-mantra folded in).
     expect(after.filter((i) => i.ritual === "morning").map((i) => i.kind).sort()).toEqual(
-      ["do", "mantra", "question", "read", "roadmap"],
+      ["do", "mantra", "question", "roadmap"],
     );
   });
 

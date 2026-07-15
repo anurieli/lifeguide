@@ -36,7 +36,11 @@ const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
 // upgradeToSeedVersion can offer to older accounts. Fresh seeds start here.
 // v3 adds the inline "mantra" component and makes the morning question a rotating
 // journal prompt (no fixed words) — the daytime mirror of the night's Check out.
-export const RITUALS_SEED_VERSION = 3;
+// v4 RECONCILES the fallout of v3 on existing accounts: it collapses a legacy
+// behind-the-button "Read the mantra" read AND the v3-seeded inline mantra down to
+// ONE inline mantra (keeping the person's own words), and clears the stale fixed
+// "one move" morning question so it becomes the settings-driven journal.
+export const RITUALS_SEED_VERSION = 4;
 
 // The minimal default set, derived from the Blueprint for Living doctrine
 // (docs/research/blueprint-for-living.md). Deliberately small: users delete
@@ -58,6 +62,49 @@ export const DEFAULT_RITUAL_ITEMS: {
   { ritual: "night", kind: "question", title: "Check out" }, // no content → rotating bank
   { ritual: "night", kind: "roadmap", title: "Set tomorrow's roadmap" },
 ];
+
+// A legacy "Read the mantra" step: an INLINE read (not the Blueprint) whose title
+// names it a mantra. These predate the typed `mantra` kind; v4 folds them into it.
+function isReadMantra(i: { kind: string; source?: string; title: string }) {
+  return i.kind === "read" && i.source !== "blueprint" && /mantra/i.test(i.title);
+}
+
+// The exact content the v2/v3 default morning question shipped with. v4 clears it
+// so the step falls through to the settings-driven journal prompt (journalPromptFor).
+const STALE_MORNING_QUESTION = "What's one small thing today that points at it?";
+
+// v4 reconcile (ADR 0011 is additive-only; this is a deliberate, one-shot repair of
+// a duplicate v3 itself created). Two jobs, morning only, both idempotent:
+//   1. Collapse every mantra-ish morning item — legacy "Read the mantra" reads AND
+//      typed `mantra` steps — down to ONE inline `mantra`, preferring the item that
+//      carries the person's own words (so nothing they wrote is lost).
+//   2. Clear the stale fixed "one move" morning question so it becomes the
+//      settings-driven journal.
+async function reconcileMorningV4(ctx: MutationCtx, userId: Id<"users">, now: number) {
+  const morning = await itemsFor(ctx, userId, "morning");
+
+  const mantraish = morning.filter((i) => isReadMantra(i) || i.kind === "mantra");
+  // Only act when there's a duplicate (2+) or a lone legacy read to inline (a single
+  // typed mantra is already correct — leave fresh v4 seeds untouched).
+  const needsMantraFix =
+    mantraish.length > 1 || (mantraish.length === 1 && mantraish[0].kind !== "mantra");
+  if (needsMantraFix) {
+    // Keep the one with the person's own words; else the first. Make it an inline mantra.
+    const keep = mantraish.find((i) => i.content?.trim()) ?? mantraish[0];
+    if (keep.kind !== "mantra") {
+      await ctx.db.patch(keep._id, { kind: "mantra", source: undefined, updatedAt: now });
+    }
+    for (const i of mantraish) {
+      if (i._id !== keep._id) await ctx.db.delete(i._id);
+    }
+  }
+
+  for (const q of morning.filter((i) => i.kind === "question")) {
+    if (q.content?.trim() === STALE_MORNING_QUESTION) {
+      await ctx.db.patch(q._id, { content: "", updatedAt: now });
+    }
+  }
+}
 
 async function getOwnedItem(ctx: MutationCtx, userId: Id<"users">, itemId: Id<"ritualItems">) {
   const item = await ctx.db.get(itemId);
@@ -181,6 +228,9 @@ export const upgradeToSeedVersion = mutation({
       const have = new Set(items.map((i) => i.kind));
       for (const add of additions[ritual]) {
         if (have.has(add.kind)) continue;
+        // Never seed a second mantra next to a legacy "Read the mantra" read — the
+        // v4 reconcile below folds that read into the inline mantra instead.
+        if (add.kind === "mantra" && items.some(isReadMantra)) continue;
         await ctx.db.insert("ritualItems", {
           userId,
           ritual,
@@ -193,6 +243,8 @@ export const upgradeToSeedVersion = mutation({
         });
       }
     }
+    // v4: repair the v3 duplicate-mantra fallout and inline any legacy read-mantra.
+    await reconcileMorningV4(ctx, userId, now);
     await ctx.db.patch(settings._id, {
       ritualsSeedVersion: RITUALS_SEED_VERSION,
       updatedAt: now,

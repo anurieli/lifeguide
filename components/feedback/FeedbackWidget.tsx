@@ -8,13 +8,14 @@ import { View } from "@/components/shell/Rail";
 import { useSpeechRecognition } from "@/lib/useSpeechRecognition";
 import { snapshotErrors } from "@/lib/errorBuffer";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { Mic, MicOff, Send, X, Check, Loader2, ImagePlus, MessageSquarePlus } from "lucide-react";
+import { Mic, MicOff, Send, X, Check, Loader2, ImagePlus, Camera, MessageSquarePlus } from "lucide-react";
 
 const POS_KEY = "lifeguide.feedback.pos"; // remembered vertical position (px from top)
 const TYPE_KEY = "lifeguide.feedback.type";
 const TAB_H = 132; // approx height of the docked tab, for clamping
 const DEFAULT_TOP = 0.42; // fraction of viewport height
-const MAX_IMAGES = 4; // attached photos per submission
+const MAX_IMAGES = 4; // attached images per submission (photos + page screenshots)
+const SNAPSHOT_TIMEOUT = 8000; // html2canvas can hang on heavy pages — never block submit on it
 
 type FeedbackType = "bug" | "feature" | "other";
 const TYPES: { key: FeedbackType; label: string }[] = [
@@ -23,11 +24,20 @@ const TYPES: { key: FeedbackType; label: string }[] = [
   { key: "other", label: "Other" },
 ];
 
-type Attached = { file: File; url: string }; // url is an object URL for the thumbnail
+// An image the user will send. `kind` distinguishes a picked/pasted photo from a
+// one-click screenshot of the page. `url` is an object URL for the thumbnail.
+type AttachKind = "photo" | "shot";
+type Attached = { file: File; url: string; kind: AttachKind };
 
 function clampTop(top: number): number {
   const max = window.innerHeight - TAB_H - 12;
   return Math.max(12, Math.min(top, Math.max(12, max)));
+}
+
+// Resolve to null after `ms` instead of hanging — used to cap the auto-snapshot so a
+// slow/stuck html2canvas can never freeze the Submit flow.
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([p, new Promise<null>((res) => setTimeout(() => res(null), ms))]);
 }
 
 export function FeedbackWidget({ view, coachOpen = false }: { view: View; coachOpen?: boolean }) {
@@ -42,6 +52,7 @@ export function FeedbackWidget({ view, coachOpen = false }: { view: View; coachO
   const [type, setType] = useState<FeedbackType>("bug");
   const [text, setText] = useState("");
   const [images, setImages] = useState<Attached[]>([]);
+  const [capturing, setCapturing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
 
@@ -110,7 +121,7 @@ export function FeedbackWidget({ view, coachOpen = false }: { view: View; coachO
       for (const f of files) {
         if (!f.type.startsWith("image/")) continue;
         if (next.length >= MAX_IMAGES) break;
-        next.push({ file: f, url: URL.createObjectURL(f) });
+        next.push({ file: f, url: URL.createObjectURL(f), kind: "photo" });
       }
       return next;
     });
@@ -141,7 +152,9 @@ export function FeedbackWidget({ view, coachOpen = false }: { view: View; coachO
     [generateUploadUrl],
   );
 
-  const uploadSnapshot = useCallback(async (): Promise<Id<"_storage"> | undefined> => {
+  // Render the visible page to a PNG blob (the widget itself is excluded from the shot).
+  // Powers both the one-click screenshot button and the silent submit-time fallback.
+  const capturePageBlob = useCallback(async (): Promise<Blob | null> => {
     try {
       const html2canvas = (await import("html2canvas")).default;
       const canvas = await html2canvas(document.body, {
@@ -157,26 +170,45 @@ export function FeedbackWidget({ view, coachOpen = false }: { view: View; coachO
         windowWidth: document.documentElement.scrollWidth,
         windowHeight: document.documentElement.scrollHeight,
       });
-      const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
-      if (!blob) return undefined;
-      return await uploadBlob(blob, "image/png");
+      return await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
     } catch (e) {
       console.error("[feedback] snapshot failed", e);
-      return undefined;
+      return null;
     }
-  }, [uploadBlob]);
+  }, []);
 
-  // Attached photos upload independently: one failing doesn't sink the rest.
-  const uploadImages = useCallback(async (): Promise<Id<"_storage">[]> => {
-    const ids: Id<"_storage">[] = [];
-    for (const img of images) {
-      try {
-        ids.push(await uploadBlob(img.file, img.file.type || "image/png"));
-      } catch (e) {
-        console.error("[feedback] photo upload failed", e);
-      }
+  // One-click "screenshot this page": capture now and add it as a visible attachment
+  // the user can preview (and remove) before sending — no silent, invisible capture.
+  const captureScreenshot = useCallback(async () => {
+    if (capturing || images.length >= MAX_IMAGES) return;
+    setCapturing(true);
+    try {
+      const blob = await withTimeout(capturePageBlob(), SNAPSHOT_TIMEOUT);
+      if (!blob) return;
+      const file = new File([blob], `screenshot-${Date.now()}.png`, { type: "image/png" });
+      setImages((prev) =>
+        prev.length >= MAX_IMAGES
+          ? prev
+          : [...prev, { file, url: URL.createObjectURL(file), kind: "shot" }],
+      );
+    } finally {
+      setCapturing(false);
     }
-    return ids;
+  }, [capturing, images.length, capturePageBlob]);
+
+  // Attachments upload in parallel and independently: one failing doesn't sink the rest.
+  const uploadImages = useCallback(async (): Promise<Id<"_storage">[]> => {
+    const results = await Promise.all(
+      images.map(async (img) => {
+        try {
+          return await uploadBlob(img.file, img.file.type || "image/png");
+        } catch (e) {
+          console.error("[feedback] photo upload failed", e);
+          return null;
+        }
+      }),
+    );
+    return results.filter((id): id is Id<"_storage"> => id !== null);
   }, [images, uploadBlob]);
 
   const onSubmit = async () => {
@@ -185,8 +217,22 @@ export function FeedbackWidget({ view, coachOpen = false }: { view: View; coachO
     if (speech.listening) speech.stop();
     setSubmitting(true);
     const errors = snapshotErrors();
-    const shotId = await uploadSnapshot();
-    const imageIds = await uploadImages();
+    // If the user attached their own screenshot, don't also grab a silent one.
+    const hasManualShot = images.some((img) => img.kind === "shot");
+    // Attachments and the fallback snapshot upload concurrently — Submit never waits
+    // on a slow snapshot in series, and the snapshot is timeout-capped besides.
+    const uploadAutoShot = async (): Promise<Id<"_storage"> | undefined> => {
+      if (hasManualShot) return undefined;
+      const blob = await withTimeout(capturePageBlob(), SNAPSHOT_TIMEOUT);
+      if (!blob) return undefined;
+      try {
+        return await uploadBlob(blob, "image/png");
+      } catch (e) {
+        console.error("[feedback] snapshot upload failed", e);
+        return undefined;
+      }
+    };
+    const [shotId, imageIds] = await Promise.all([uploadAutoShot(), uploadImages()]);
     try {
       await submit({
         type,
@@ -302,17 +348,30 @@ export function FeedbackWidget({ view, coachOpen = false }: { view: View; coachO
               className="w-full resize-none bg-paper border border-line rounded-xl px-3 py-2.5 text-ink text-[14px] outline-none placeholder:text-ink-mute focus:border-ink-mute"
             />
 
-            {/* Attached photos */}
+            {/* Attachments — photos and page screenshots the user will send */}
             {images.length > 0 && (
               <div className="flex gap-2 flex-wrap">
                 {images.map((img, i) => (
-                  <div key={img.url} className="relative w-12 h-12 rounded-lg border border-line overflow-hidden bg-paper-2">
+                  <div key={img.url} className="relative w-16 h-16 rounded-lg border border-line overflow-hidden bg-paper-2">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img.url} alt={`attached photo ${i + 1}`} className="w-full h-full object-cover" />
+                    <img
+                      src={img.url}
+                      alt={img.kind === "shot" ? `page screenshot ${i + 1}` : `attached photo ${i + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {img.kind === "shot" && (
+                      <span
+                        className="absolute bottom-0 left-0 flex items-center gap-0.5 px-1 py-0.5 bg-ink/70 text-white text-[9px] rounded-tr-md"
+                        title="Screenshot of this page"
+                      >
+                        <Camera className="w-2.5 h-2.5" />
+                        Page
+                      </span>
+                    )}
                     <button
                       onClick={() => removeImage(i)}
                       className="absolute top-0 right-0 w-4 h-4 flex items-center justify-center bg-ink/70 text-white rounded-bl-md"
-                      aria-label="Remove photo"
+                      aria-label={img.kind === "shot" ? "Remove screenshot" : "Remove photo"}
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -345,6 +404,15 @@ export function FeedbackWidget({ view, coachOpen = false }: { view: View; coachO
               >
                 <ImagePlus className="w-4 h-4" />
               </button>
+              <button
+                onClick={() => void captureScreenshot()}
+                disabled={capturing || images.length >= MAX_IMAGES}
+                className="rounded-xl px-3 py-2.5 border border-line text-ink-soft hover:bg-paper-2 transition flex items-center justify-center disabled:opacity-40"
+                title="Screenshot this page"
+                aria-label="Screenshot this page"
+              >
+                {capturing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+              </button>
               <input
                 ref={fileInput}
                 type="file"
@@ -370,7 +438,8 @@ export function FeedbackWidget({ view, coachOpen = false }: { view: View; coachO
               <div className="text-[12px] text-ink-mute">Mic blocked. You can type instead.</div>
             )}
             <div className="text-[11.5px] text-ink-mute">
-              Captures this page, its errors, and a snapshot. Paste or attach photos to include them.
+              Tap the camera to attach a screenshot of this page, or paste/attach photos. This page
+              and its errors are captured automatically.
             </div>
           </div>
         )}

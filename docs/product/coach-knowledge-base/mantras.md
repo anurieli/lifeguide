@@ -10,7 +10,9 @@ A mantra is a short, self-directed line a person reads to absorb, not a task to 
 
 - Individual mantras, one line each. The list grows; the person (and the Coach) can add to it.
 - Surfaced **always on screen, ambiently** — one, or a rotating few — **cycling daily**.
-- **Independent of the morning/night ritual.** This is distinct from the Daily Ritual "read" steps (see [`../features/daily-ritual.md`](../features/daily-ritual.md)), which are beat-gated. The pool is always-on; the ritual mantras fire inside a beat.
+- **Independent of the morning/night ritual** in the always-on ambient form. That surface is still deferred (below).
+
+**Live in the app (as of 2026-07-15):** the pool now also seeds the Daily Ritual's **`mantra` component** (see [`../features/daily-ritual.md`](../features/daily-ritual.md)) — a code-resident copy in `lib/mantras.ts`. Inside a scroll it renders **inline** (no reader, no Read tap — mantras are short) and **rotates deterministically per ritual day**, so the line differs by the day. This is beat-gated (it fires inside a morning scroll); the always-on ambient surface remains distinct and deferred. A person's own edits to a ritual mantra line live on that `ritualItems` row (their Personal KB), never writing back to this canon.
 
 ## Coach KB vs Personal KB
 
@@ -81,5 +83,5 @@ The original writing this pool was seeded from, kept verbatim. It is parent-to-c
 ## Deferred (intent, not built)
 
 - **Coach KB in admin** — a surface for the owner to view and edit the mantra pool, blueprint, and doctrine. Net-new feature; goes through the commitment gate.
-- **The always-on cycling pool surface** — the ambient on-screen display. Net-new feature; goes through the commitment gate.
-- **Vault pull** — a light mechanism to pull the canon from Brain Vault into this repo copy. Later.
+- **The always-on cycling pool surface** — the ambient on-screen display (distinct from the beat-gated ritual `mantra` component now built). Net-new feature; goes through the commitment gate.
+- **Vault pull** — a light mechanism to pull the canon from Brain Vault into this repo copy (`lib/mantras.ts` is the current hand-pulled copy). Later.

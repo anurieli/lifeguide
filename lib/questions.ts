@@ -6,15 +6,20 @@
 
 export type QuestionBank = "morning" | "evening";
 
-// Morning prompts point forward (the day ahead); evening prompts close the day
-// (wins, lessons, honesty). Drawn from the Blueprint for Living doctrine's Direction
-// pillar ("journal wins and lessons", "track progress not perfection").
+// Morning prompts point forward (the day ahead — the morning journal); evening
+// prompts close the day (wins, lessons, honesty). Drawn from the Blueprint for
+// Living doctrine's Direction pillar ("journal wins and lessons", "track progress
+// not perfection"). The morning question rotates this bank, so the daily scroll
+// carries a fresh journal prompt each day — the mirror of the night's Check out.
 export const MORNING_QUESTIONS: string[] = [
   "What's one small thing today that points at it?",
   "What would make today feel won by tonight?",
   "What's the one thing you're most likely to dodge today?",
   "Who do you want to have been by the end of today?",
   "What deserves your best hour today?",
+  "How are you arriving at today — honestly?",
+  "What are you carrying in that you'd rather set down?",
+  "What's one thing you're grateful for before the day starts?",
 ];
 
 export const EVENING_QUESTIONS: string[] = [

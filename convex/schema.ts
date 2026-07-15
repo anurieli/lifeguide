@@ -531,9 +531,10 @@ export default defineSchema({
   }).index("by_user_task", ["userId", "taskId"]),
 
   // In-app feedback: a quick note from a user, captured with page context (route,
-  // metadata, the page's recent JS/console errors, and an optional visual snapshot).
-  // Surfaced in the /admin dev panel as a live ticketing queue. Self-scoped like the
-  // rest of /admin: each user only ever writes/reads their own rows.
+  // metadata, the page's recent JS/console errors, and photos/snapshot). Surfaced in
+  // the /admin inbox as a live ticketing queue with a triage lifecycle, and pushable
+  // to Linear as a tracked issue (owner-gated). The owner sees every user's feedback
+  // (support inbox); everyone else is self-scoped — enforced in convex/feedback.ts.
   feedback: defineTable({
     userId: v.id("users"),
     type: v.union(v.literal("bug"), v.literal("feature"), v.literal("other")),
@@ -548,8 +549,22 @@ export default defineSchema({
     ),
     shotId: v.optional(v.id("_storage")), // page snapshot (html2canvas), optional
     imageIds: v.optional(v.array(v.id("_storage"))), // user-attached photos (pasted/picked)
-    status: v.union(v.literal("open"), v.literal("dealt_with")),
+    // Triage lifecycle: open (needs you) → pending (being dealt with — replied or
+    // pushed to Linear) → dealt_with (closed, a separate pile). See ADR 0018.
+    status: v.union(v.literal("open"), v.literal("pending"), v.literal("dealt_with")),
+    // Set once this ticket is pushed to Linear as a tracked issue (convex/linear.ts).
+    // Linear becomes the place the bug/feature is actually worked; this row keeps the
+    // support-inbox side (who to reply to, its lifecycle) and links out to the card.
+    linear: v.optional(
+      v.object({
+        issueId: v.string(),
+        identifier: v.string(), // e.g. "ARI-42"
+        url: v.string(),
+        at: v.number(),
+      }),
+    ),
     createdAt: v.number(),
+    pendingAt: v.optional(v.number()), // moved to "being dealt with"
     resolvedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId", "createdAt"])

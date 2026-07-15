@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../convex/schema";
-import { api } from "../../convex/_generated/api";
+import { api, internal } from "../../convex/_generated/api";
 
 // Auth test-identity pattern: insert a real users row, use its _id as the subject.
 
@@ -143,5 +143,85 @@ describe("feedback — owner access", () => {
     expect((await t.withIdentity({ subject: owner }).query(api.owner.amOwner, {})).isOwner).toBe(true);
     expect((await t.withIdentity({ subject: alice }).query(api.owner.amOwner, {})).isOwner).toBe(false);
     expect((await t.query(api.owner.amOwner, {})).isOwner).toBe(false); // anonymous/unauthenticated
+  });
+});
+
+// The triage lifecycle (open → pending → dealt_with) and the Linear link (ADR 0018).
+describe("feedback — lifecycle + Linear link", () => {
+  it("markPending moves open → pending; won't drag a dealt_with ticket back", async () => {
+    const t = convexTest(schema);
+    const userId = await t.run(async (ctx) => ctx.db.insert("users", {}));
+    const asUser = t.withIdentity({ subject: userId });
+
+    const id = await asUser.mutation(api.feedback.submit, BASE);
+    await asUser.mutation(api.feedback.markPending, { id });
+    let row = (await asUser.query(api.feedback.listAll, {}))[0];
+    expect(row.status).toBe("pending");
+    expect(row.pendingAt).toBeTruthy();
+
+    // Close it, then a stray markPending must not reopen it as pending.
+    await asUser.mutation(api.feedback.resolve, { id });
+    await asUser.mutation(api.feedback.markPending, { id });
+    row = (await asUser.query(api.feedback.listAll, {}))[0];
+    expect(row.status).toBe("dealt_with");
+  });
+
+  it("reopen clears both pendingAt and resolvedAt", async () => {
+    const t = convexTest(schema);
+    const userId = await t.run(async (ctx) => ctx.db.insert("users", {}));
+    const asUser = t.withIdentity({ subject: userId });
+
+    const id = await asUser.mutation(api.feedback.submit, BASE);
+    await asUser.mutation(api.feedback.markPending, { id });
+    await asUser.mutation(api.feedback.resolve, { id });
+    await asUser.mutation(api.feedback.reopen, { id });
+
+    const row = (await asUser.query(api.feedback.listAll, {}))[0];
+    expect(row.status).toBe("open");
+    expect(row.pendingAt ?? null).toBeNull();
+    expect(row.resolvedAt ?? null).toBeNull();
+  });
+
+  it("markExported links the Linear issue and moves the ticket to pending", async () => {
+    const t = convexTest(schema);
+    const userId = await t.run(async (ctx) => ctx.db.insert("users", {}));
+    const asUser = t.withIdentity({ subject: userId });
+
+    const id = await asUser.mutation(api.feedback.submit, BASE);
+    await asUser.mutation(api.feedback.markExported, {
+      id,
+      issueId: "issue_123",
+      identifier: "ARI-99",
+      url: "https://linear.app/cuttheedge/issue/ARI-99",
+    });
+
+    const row = (await asUser.query(api.feedback.listAll, {}))[0];
+    expect(row.status).toBe("pending");
+    expect(row.linear?.identifier).toBe("ARI-99");
+    expect(row.linear?.url).toContain("ARI-99");
+    expect(row.linear?.at).toBeTruthy();
+  });
+
+  it("getRowForExport returns the note + submitter label; blocks other users", async () => {
+    const t = convexTest(schema);
+    const alice = await t.run(async (ctx) =>
+      ctx.db.insert("users", { email: "alice@example.com", name: "Alice" }),
+    );
+    const bob = await t.run(async (ctx) => ctx.db.insert("users", { email: "bob@example.com" }));
+
+    const id = await t
+      .withIdentity({ subject: alice })
+      .mutation(api.feedback.submit, { ...BASE, text: "export me" });
+
+    const row = await t
+      .withIdentity({ subject: alice })
+      .query(internal.feedback.getRowForExport, { id });
+    expect(row.text).toBe("export me");
+    expect(row.submitterLabel).toBe("Alice (alice@example.com)");
+
+    // A different (non-owner) user cannot read the row for export.
+    await expect(
+      t.withIdentity({ subject: bob }).query(internal.feedback.getRowForExport, { id }),
+    ).rejects.toThrow();
   });
 });

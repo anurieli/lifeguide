@@ -15,7 +15,7 @@
    **Read vs mantra (Ariel, 2026-07-15):** the two are deliberately split. A mantra is short — it belongs *right there* on the step, absorbed in a breath, no button between the person and the words; it rotates so the line differs by the day. The Read button is reserved for the *big* thing — the Blueprint — where an immersive full-screen read earns the tap.
 4. **The Core is the person (character, who you are); the Blueprint is the conduct doctrine (how the day is lived).** The Today page serves the doctrine layer. The two interlink (the read step resolves from [the Blueprint](the-blueprint.md)) but never merge.
 
-No streaks, no scores, no guilt: an unfinished day simply passes; a finished one gets one quiet golden moment.
+No scores, no guilt: an unfinished day simply passes; a finished one gets one quiet golden moment. The one deliberate carve-out is the **gentle keeping-up run** ([ADR 0018](../../decisions/0018-gentle-keeping-up-run.md)) — a penalty-free count of how many days in a row both bookends were sealed, shown quietly beside the keeping-up strip. It never shames a miss (a gap just resets the run), never keeps a longest-ever high score, and stays silent at zero. Streaks *as an engine* — meters, streak-loss states, notifications, points — remain rejected.
 
 ## 2. User-facing behavior
 
@@ -131,7 +131,7 @@ Exact shapes in [`../../architecture/data-model.md`](../../architecture/data-mod
 
 - **User-adjustable cutoffs** (`NIGHT_START_HOUR`, `DAY_ROLLOVER_HOUR` → `settings`). When?
 - **Coach involvement:** proposing components, nudging an unsealed evening, adaptive questions — all must clear the earned-interruption bar.
-- **History surface:** the 7-day strip lives at the foot of the rituals rail (moved there 2026-07-13 when the standalone Today's log was removed); a quiet month view remains open. Still not a streak counter.
+- **History surface:** the 7-day strip lives at the foot of the rituals rail (moved there 2026-07-13 when the standalone Today's log was removed); a quiet month view remains open. It now carries the **gentle run** ([ADR 0018](../../decisions/0018-gentle-keeping-up-run.md)) — a current-run count only. Open: whether "both bookends" is the right bar for a kept day (vs. "either bookend"); whether the run ever wants a warmer moment when it grows. Longest-ever, streak-freezes, and streak notifications stay out (they'd cross back into the streak-mechanic the principle rejects).
 - **Un-seal:** is a sealed day truly immutable?
 - **Roadmap carry-over:** should an unwalked entry offer itself to tomorrow's builder ("still on it?"), or is a dropped entry allowed to just pass?
 - **Question bank growth:** user-authored questions in the bank? Answers feeding the Mirror more directly?

@@ -53,7 +53,7 @@ It publishes nothing of its own to the streams. What flows into shared context c
 - **Morning, no session yet:** shows direction + the one-move entry; primary action begins the morning beat.
 - **Evening:** shows the single reflective entry; primary action begins the night beat.
 - **Session in progress:** offers "resume" rather than "begin."
-- **Session complete for this beat:** acknowledges quietly (no streak, no score); the "Who you're becoming" half below remains a calm place to read yourself back without pressure.
+- **Session complete for this beat:** acknowledges quietly (no score; the gentle keeping-up run lives on the rituals rail, not here — [ADR 0018](../../decisions/0018-gentle-keeping-up-run.md)); the "Who you're becoming" half below remains a calm place to read yourself back without pressure.
 - **Identity thin (sparse Core/Board):** greeting falls back to time-of-day only; still warm, never error-shaped.
 
 ## 6. Edge cases

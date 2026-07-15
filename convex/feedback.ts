@@ -13,7 +13,7 @@
 // holds regardless of which surface (dev or prod) is calling.
 // ============================================================================
 
-import { mutation, query, MutationCtx } from "./_generated/server";
+import { mutation, query, internalQuery, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
@@ -100,7 +100,20 @@ export const listAll = query({
   },
 });
 
-// Mark a ticket dealt with (clears its alert in the admin queue).
+// Move a ticket to "pending" — being dealt with (you replied, or it's out in
+// Linear). Idempotent-ish: a dealt_with ticket stays dealt_with unless reopened.
+export const markPending = mutation({
+  args: { id: v.id("feedback") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    const row = await actableRow(ctx, userId, args.id);
+    if (row.status === "dealt_with") return; // don't drag a closed ticket back
+    await ctx.db.patch(args.id, { status: "pending", pendingAt: row.pendingAt ?? Date.now() });
+  },
+});
+
+// Mark a ticket dealt with (moves it to the closed pile).
 export const resolve = mutation({
   args: { id: v.id("feedback") },
   handler: async (ctx, args) => {
@@ -111,13 +124,70 @@ export const resolve = mutation({
   },
 });
 
-// Reopen a previously-resolved ticket.
+// Reopen a ticket back into the "needs you" pile (clears pending/resolved marks).
 export const reopen = mutation({
   args: { id: v.id("feedback") },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
     await actableRow(ctx, userId, args.id);
-    await ctx.db.patch(args.id, { status: "open", resolvedAt: undefined });
+    await ctx.db.patch(args.id, { status: "open", pendingAt: undefined, resolvedAt: undefined });
+  },
+});
+
+// ── Linear export plumbing ───────────────────────────────────────────────────
+// Internal read for the export action (convex/linear.ts): returns the row's
+// content + storage ids + a display label for the submitter, owner/self gated so
+// the action can't be used to read someone else's ticket. Auth propagates from
+// the calling action into this query.
+export const getRowForExport = internalQuery({
+  args: { id: v.id("feedback") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    const row = await ctx.db.get(args.id);
+    if (!row) throw new Error("Not found");
+    if (row.userId !== userId && !(await isOwner(ctx))) throw new Error("Not found");
+    const u = await ctx.db.get(row.userId);
+    const submitterLabel = u?.name
+      ? `${u.name}${u.email ? ` (${u.email})` : ""}`
+      : u?.email ?? "anonymous";
+    return {
+      type: row.type,
+      text: row.text,
+      route: row.route,
+      view: row.view,
+      title: row.title,
+      viewport: row.viewport,
+      userAgent: row.userAgent,
+      errors: row.errors,
+      createdAt: row.createdAt,
+      shotId: row.shotId,
+      imageIds: row.imageIds,
+      linear: row.linear,
+      submitterLabel,
+    };
+  },
+});
+
+// Link a ticket to the Linear issue it was exported to and move it to pending.
+// Called by the export action (convex/linear.ts) after the card is created.
+export const markExported = mutation({
+  args: {
+    id: v.id("feedback"),
+    issueId: v.string(),
+    identifier: v.string(),
+    url: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    const row = await actableRow(ctx, userId, args.id);
+    await ctx.db.patch(args.id, {
+      linear: { issueId: args.issueId, identifier: args.identifier, url: args.url, at: Date.now() },
+      // Exporting means it's now being worked in Linear → pending (unless closed).
+      status: row.status === "dealt_with" ? "dealt_with" : "pending",
+      pendingAt: row.pendingAt ?? Date.now(),
+    });
   },
 });

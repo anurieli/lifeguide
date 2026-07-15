@@ -56,7 +56,7 @@ The core loop is two beats a day:
 - **Morning check-in** — when he wakes up. Sees where he's headed before the day pulls him anywhere.
 - **Evening check-out** — before bed. Reflects on the day, feeds the text layer.
 
-Not streaks. Not guilt. Two calm bookends. The references research confirmed ritual bookends out-retain streak mechanics, and proactive tethering (~75% retention) beats wait-to-be-opened (~51%).
+Not streaks as an engine. Not guilt. Two calm bookends. The references research confirmed ritual bookends out-retain streak mechanics, and proactive tethering (~75% retention) beats wait-to-be-opened (~51%). (One narrow, penalty-free carve-out: a gentle keeping-up run that quietly counts days both bookends closed — never a meter, never a guilt trip — [ADR 0018](../decisions/0018-gentle-keeping-up-run.md).)
 
 ## The alignment engine
 

@@ -7,6 +7,7 @@ import {
   lastNRitualDayKeys,
   ritualOpensAtLabel,
   isRitualComplete,
+  currentStreak,
   DAY_ROLLOVER_HOUR,
   NIGHT_START_HOUR,
 } from "../lib/ritual";
@@ -135,5 +136,35 @@ describe("isRitualComplete (completion detection)", () => {
 
   it("ignores stale checked ids from deleted items", () => {
     expect(isRitualComplete(["a", "b"], ["a", "b", "deleted-long-ago"])).toBe(true);
+  });
+});
+
+describe("currentStreak (the gentle keeping-up run, ADR 0018)", () => {
+  // Oldest→newest, the shape RitualsRail passes (lastNRitualDayKeys + a kept set).
+  const week = ["d1", "d2", "d3", "d4", "d5"]; // d5 is "today"
+
+  it("counts consecutive kept days ending at today", () => {
+    expect(currentStreak(week, new Set(["d3", "d4", "d5"]))).toBe(3);
+    expect(currentStreak(week, new Set(week))).toBe(5);
+  });
+
+  it("today unfinished does not break the run — it counts back from yesterday", () => {
+    // Today (d5) not yet kept, but the four before it were: the run still reads 4.
+    expect(currentStreak(week, new Set(["d1", "d2", "d3", "d4"]))).toBe(4);
+  });
+
+  it("a gap ends the run at the most recent kept stretch", () => {
+    // d3 missed: only d4+d5 count, d1/d2 are stranded behind the gap.
+    expect(currentStreak(week, new Set(["d1", "d2", "d4", "d5"]))).toBe(2);
+  });
+
+  it("is 0 when neither today nor yesterday was kept (no penalty, just a reset)", () => {
+    expect(currentStreak(week, new Set(["d1", "d2", "d3"]))).toBe(0);
+    expect(currentStreak(week, new Set())).toBe(0);
+    expect(currentStreak([], new Set())).toBe(0);
+  });
+
+  it("a single kept today is a run of one", () => {
+    expect(currentStreak(week, new Set(["d5"]))).toBe(1);
   });
 });

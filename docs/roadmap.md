@@ -97,7 +97,7 @@ The reflection loop made daily, and the Coach off-platform.
 
 Never built, by design (they cut against the soul in [`product/concept-and-soul.md`](product/concept-and-soul.md)):
 
-- Streaks / gamification.
+- Streaks as an engine / gamification (the gentle, penalty-free keeping-up run of [ADR 0018](decisions/0018-gentle-keeping-up-run.md) is the one exception).
 - A social feed.
 - Generic blank-page journaling.
 - Productivity-app framing.

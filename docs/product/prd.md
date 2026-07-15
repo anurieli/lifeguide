@@ -10,7 +10,7 @@
 
 **Young men are lost.** No one taught them how to set a goal, how to know what they want, or how to stay aligned with it once life starts pulling. They walk a path set for them (school, job, money, marriage) and wake up years later realizing they never chose the direction. The cost of that drift is a life spent walking the wrong way. The full statement of the pain is in [`concept-and-soul.md`](concept-and-soul.md).
 
-**The promise: the space for the individual.** Not a productivity tool, not a journal app. A space he checks into twice a day (once when he wakes, once before he sleeps) that keeps him tethered to who he is becoming, and a Coach who makes sure today's life still points at it. The product runs on **two beats a day**: a morning check-in and an evening check-out, calm bookends, never streaks, never guilt.
+**The promise: the space for the individual.** Not a productivity tool, not a journal app. A space he checks into twice a day (once when he wakes, once before he sleeps) that keeps him tethered to who he is becoming, and a Coach who makes sure today's life still points at it. The product runs on **two beats a day**: a morning check-in and an evening check-out, calm bookends, never guilt, and never streaks as an engine — the one penalty-free exception is a gentle keeping-up run ([ADR 0018](../decisions/0018-gentle-keeping-up-run.md)).
 
 The soul in one line: LifeGuide builds and steers one thing, a person's true self and the plan for their life, through a Core the Coach keeps honest, daily sessions that keep the pulse, pillars that make the person solid, and a vivid Future Self that keeps the direction in view.
 
@@ -72,14 +72,14 @@ Every surface honors one design contract: creative, calm, never bombarding. Two 
 - **Off-platform tether.** The same Coach off-platform, proactively reaching out (~75% retention vs ~51% wait-to-be-opened). Core to the ritual, sequenced after the on-platform spine.
 
 **OUT forever**
-- Streaks, points, gamification.
+- Streaks as an engine, points, gamification. (The sole carve-out is the gentle, penalty-free keeping-up run — a current-run count, no high score, no streak-loss state: [ADR 0018](../decisions/0018-gentle-keeping-up-run.md).)
 - A social feed or any social layer.
 - Generic blank-page journaling (the Journal is adaptive prompts, never a blank diary).
 - Productivity-app framing (task manager, habit tracker, dashboard of metrics).
 
 ## 8. Success
 
-The product works when **the person returns twice a day** (the morning and night beats become a ritual, not a chore) and **the Core sharpens over time** (the backbone fills in, gaps close, the Mirror's synthesis gets truer and the drift it catches gets more specific). Retention is the ritual; depth is the Core getting more right about who he is. No streaks, no vanity metrics: the only scoreboards are "did he come back" and "does the mirror look more like him."
+The product works when **the person returns twice a day** (the morning and night beats become a ritual, not a chore) and **the Core sharpens over time** (the backbone fills in, gaps close, the Mirror's synthesis gets truer and the drift it catches gets more specific). Retention is the ritual; depth is the Core getting more right about who he is. No streak mechanics, no vanity metrics (beyond the gentle keeping-up run, [ADR 0018](../decisions/0018-gentle-keeping-up-run.md)): the only scoreboards are "did he come back" and "does the mirror look more like him."
 
 ---
 

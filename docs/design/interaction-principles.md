@@ -12,7 +12,7 @@
 The app lives in a morning beat and a night beat. Between them it is silent. It does not buzz, badge, or backfill a feed to keep you scrolling.
 
 - **Do:** bookend the day. A direction to wake to (morning), a moment to set the day down (evening). See [`../product/concept-and-soul.md`](../product/concept-and-soul.md) (the daily ritual).
-- **Don't:** notify mid-day "just to check in," run streak counters, or punish a missed beat. No score, no streak (the evening screen says this out loud).
+- **Don't:** notify mid-day "just to check in," run streak *meters you serve*, or punish a missed beat. No score, no streak-as-pressure (the evening screen says this out loud). The one carve-out is the gentle keeping-up run — a penalty-free current-run count that never shames a miss and is hidden at zero ([ADR 0018](../decisions/0018-gentle-keeping-up-run.md)).
 
 ### 2. One thing per screen. Never a dashboard.
 Each surface holds one job and one focus. Depth is opened, never dumped. A welcoming, identity-aware home is allowed; a metrics dashboard is not (the rule forbids dumping data, not a warm front door).

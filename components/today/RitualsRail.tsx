@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Check, Moon, Plus, Sun, SunMoon, X } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { lastNRitualDayKeys, ritualDayKey } from "@/lib/ritual";
+import { currentStreak, lastNRitualDayKeys, ritualDayKey } from "@/lib/ritual";
 
 // ============================================================================
 // The Rituals rail: the person's permanent ritual practices (kind "do"), one
@@ -21,6 +21,9 @@ import { lastNRitualDayKeys, ritualDayKey } from "@/lib/ritual";
 type RailRitual = "morning" | "night" | "any";
 
 const HISTORY_DAYS = 7;
+// How far back the gentle keeping-up run looks (ADR 0018). A run longer than the
+// window reads as "N+" rather than lying with a smaller exact count.
+const STREAK_WINDOW = 120;
 
 const EDIT_FIELD =
   "w-full bg-paper border border-line rounded-lg px-3 py-2 text-[13.5px] text-ink outline-none focus:border-gold transition";
@@ -36,12 +39,14 @@ const GROUP_ORDER: RailRitual[] = ["morning", "any", "night"];
 
 export function RitualsRail() {
   const dayKey = useMemo(() => ritualDayKey(new Date()), []);
-  const weekKeys = useMemo(() => lastNRitualDayKeys(new Date(), HISTORY_DAYS), []);
+  // One history window feeds both the 7-day dot strip (its tail) and the run.
+  const streakKeys = useMemo(() => lastNRitualDayKeys(new Date(), STREAK_WINDOW), []);
+  const weekKeys = useMemo(() => streakKeys.slice(-HISTORY_DAYS), [streakKeys]);
   const items = useQuery(api.rituals.list, {});
   const morningDay = useQuery(api.rituals.day, { ritual: "morning", day: dayKey });
   const nightDay = useQuery(api.rituals.day, { ritual: "night", day: dayKey });
   const anyDay = useQuery(api.rituals.day, { ritual: "any", day: dayKey });
-  const history = useQuery(api.rituals.history, { sinceDay: weekKeys[0] });
+  const history = useQuery(api.rituals.history, { sinceDay: streakKeys[0] });
   const setChecked = useMutation(api.rituals.setChecked);
   const addItem = useMutation(api.rituals.addItem);
   const removeItem = useMutation(api.rituals.removeItem);
@@ -72,6 +77,15 @@ export function RitualsRail() {
   const sealedOn = new Set(
     (history ?? []).filter((h) => h.completedAt).map((h) => `${h.ritual}:${h.day}`),
   );
+
+  // The gentle keeping-up run (ADR 0018): a "kept" day is one where BOTH bookends
+  // were sealed — the streak just counts the ritual's own completion. Penalty-free
+  // and reset-silently; a run past the window reads as "N+".
+  const keptDays = new Set(
+    streakKeys.filter((k) => sealedOn.has(`morning:${k}`) && sealedOn.has(`night:${k}`)),
+  );
+  const streak = currentStreak(streakKeys, keptDays);
+  const streakLabel = streak >= STREAK_WINDOW ? `${streak}+` : `${streak}`;
 
   const submit = async () => {
     const t = text.trim();
@@ -210,11 +224,20 @@ export function RitualsRail() {
         </button>
       )}
 
-      {/* keeping up — the quiet last-7-days strip. No score, no streak; just the
-          record of which mornings and nights got sealed. */}
+      {/* keeping up — the quiet last-7-days strip plus a gentle run count (ADR
+          0018): the record of which mornings and nights got sealed, and how many
+          days in a row both bookends closed. No penalty, no shaming — a gap just
+          starts the run over at today. */}
       <div className="border-t border-line pt-3.5 mt-3.5">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] tracking-[0.16em] uppercase text-ink-mute">Keeping up</span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[11px] tracking-[0.16em] uppercase text-ink-mute">Keeping up</span>
+            {streak > 0 && (
+              <span className="text-[11px] text-gold" title="Days in a row both scrolls closed">
+                {streakLabel} in a row
+              </span>
+            )}
+          </div>
           <div className="flex gap-2.5">
             {weekKeys.map((key) => {
               const isToday = key === dayKey;

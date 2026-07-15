@@ -7,6 +7,8 @@ import {
   lastNRitualDayKeys,
   ritualOpensAtLabel,
   isRitualComplete,
+  msUntilRollover,
+  formatCountdown,
   DAY_ROLLOVER_HOUR,
   NIGHT_START_HOUR,
 } from "../lib/ritual";
@@ -118,6 +120,33 @@ describe("lastNRitualDayKeys (the keeping-up strip)", () => {
 
   it("respects the 4am rollover and month boundaries", () => {
     expect(lastNRitualDayKeys(at(2026, 8, 1, 2), 2)).toEqual(["2026-07-30", "2026-07-31"]);
+  });
+});
+
+describe("msUntilRollover / formatCountdown (the rituals-rail reset timer)", () => {
+  it("counts down to the next 4am rollover within the ritual day", () => {
+    // 9:00 on the 12th → next rollover is 4:00 on the 13th, 19h away.
+    expect(msUntilRollover(at(2026, 7, 12, 9))).toBe(19 * 60 * 60 * 1000);
+    // 23:30 → 4:30 away.
+    expect(msUntilRollover(at(2026, 7, 12, 23, 30))).toBe(4.5 * 60 * 60 * 1000);
+  });
+
+  it("in the small hours still points at this ritual day's 4am end", () => {
+    // 1:00am on the 13th belongs to the 12th; rollover is 4:00 the same morning, 3h away.
+    expect(msUntilRollover(at(2026, 7, 13, 1))).toBe(3 * 60 * 60 * 1000);
+  });
+
+  it("is a full day at the boundary and always positive", () => {
+    expect(msUntilRollover(at(2026, 7, 12, DAY_ROLLOVER_HOUR))).toBe(24 * 60 * 60 * 1000);
+    expect(msUntilRollover(at(2026, 7, 12, 3, 59))).toBeGreaterThan(0);
+  });
+
+  it("formats a friendly countdown, hours only while any remain", () => {
+    expect(formatCountdown(6 * 60 * 60 * 1000 + 12 * 60 * 1000)).toBe("6h 12m");
+    expect(formatCountdown(43 * 60 * 1000)).toBe("43m");
+    expect(formatCountdown(30 * 1000)).toBe("under a minute");
+    expect(formatCountdown(0)).toBe("under a minute");
+    expect(formatCountdown(2 * 60 * 60 * 1000)).toBe("2h 0m");
   });
 });
 

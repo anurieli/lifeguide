@@ -210,11 +210,13 @@ export default defineSchema({
   // One typed component of the user's morning or night ritual (ADR 0011; see
   // docs/product/features/daily-ritual.md). A ritual is an ordered list of typed
   // components. Kinds: "do" (plain checkbox task, lives on the to-do rail), "read"
-  // (a readout — inline `content`, or the Blueprint document when source="blueprint"),
-  // "question" (a reflection prompt: fixed `content`, or drawn from the rotating bank
-  // in lib/questions.ts when absent), "roadmap" (the evening builder / morning display
-  // of tomorrow's roadmap, ADR 0012). New kinds are added by widening this union +
-  // optional per-kind fields — never by rewriting rows.
+  // (a long readout behind the immersive reader — inline `content`, or the Blueprint
+  // document when source="blueprint"), "mantra" (a short line shown INLINE — no
+  // reader — with fixed `content` or drawn from the rotating pool in lib/mantras.ts
+  // when absent), "question" (a reflection prompt: fixed `content`, or drawn from the
+  // rotating bank in lib/questions.ts when absent), "roadmap" (the evening builder /
+  // morning display of tomorrow's roadmap, ADR 0012). New kinds are added by widening
+  // this union + optional per-kind fields — never by rewriting rows.
   ritualItems: defineTable({
     userId: v.id("users"),
     // "any" = a ritual practice indifferent to the time of day: it lives on the
@@ -224,11 +226,12 @@ export default defineSchema({
     kind: v.union(
       v.literal("do"),
       v.literal("read"),
+      v.literal("mantra"),
       v.literal("question"),
       v.literal("roadmap"),
     ),
     title: v.string(),
-    content: v.optional(v.string()), // read: inline text · question: fixed prompt
+    content: v.optional(v.string()), // read/mantra: inline text · question: fixed prompt
     // read only: where the words come from. Absent/"inline" = `content`;
     // "blueprint" = resolved live from the user's Blueprint document.
     source: v.optional(v.union(v.literal("inline"), v.literal("blueprint"))),

@@ -4,7 +4,7 @@
 // and ADR 0009).
 
 export type RitualType = "morning" | "night";
-export type RitualItemKind = "do" | "read";
+export type RitualItemKind = "do" | "read" | "mantra" | "question" | "roadmap";
 
 // The ritual day rolls over at 4am local, not midnight: a night ritual finished at
 // 12:30am still belongs to the evening it closes (ADR 0009).
@@ -56,6 +56,25 @@ export function ritualDayRange(d: Date): { sinceMs: number; untilMs: number } {
     sinceMs: new Date(y, m, day, DAY_ROLLOVER_HOUR).getTime(),
     untilMs: new Date(y, m, day + 1, DAY_ROLLOVER_HOUR).getTime(),
   };
+}
+
+// Milliseconds from `d` until the next 4am rollover — when the day's ritual check
+// state resets (each new ritual day gets a fresh row). Feeds the rituals rail's
+// "resets in…" countdown. Always positive: within the ritual day, it counts down
+// to that day's `untilMs`; exactly at the boundary it is a full day away.
+export function msUntilRollover(d: Date): number {
+  return ritualDayRange(d).untilMs - d.getTime();
+}
+
+// A friendly "6h 12m" / "43m" / "under a minute" label for a positive ms span —
+// how long until the rituals reset. Shows hours only while any remain.
+export function formatCountdown(ms: number): string {
+  const totalMinutes = Math.max(0, Math.floor(ms / 60_000));
+  if (totalMinutes < 1) return "under a minute";
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes}m`;
+  return `${hours}h ${minutes}m`;
 }
 
 // The ritual day AFTER the one this moment belongs to — the upcoming morning the

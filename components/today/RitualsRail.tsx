@@ -1,11 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { Check, Moon, Plus, Sun, SunMoon, X } from "lucide-react";
+import { Check, Moon, Plus, RotateCcw, Sun, SunMoon, X } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { lastNRitualDayKeys, ritualDayKey } from "@/lib/ritual";
+import {
+  formatCountdown,
+  lastNRitualDayKeys,
+  msUntilRollover,
+  ritualDayKey,
+} from "@/lib/ritual";
 
 // ============================================================================
 // The Rituals rail: the person's permanent ritual practices (kind "do"), one
@@ -51,6 +56,16 @@ export function RitualsRail() {
   const [when, setWhen] = useState<RailRitual>("any");
   const [confirming, setConfirming] = useState<Id<"ritualItems"> | null>(null);
 
+  // The daily reset countdown: every check clears at the 4am rollover (a fresh
+  // ritual-day row), so the rail shows how long the day's checks still stand.
+  // Ticks each minute — enough for a minute-granular "resets in 6h 12m".
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  const resetsIn = formatCountdown(msUntilRollover(new Date(nowMs)));
+
   const practices = (items ?? [])
     .filter((i) => i.kind === "do")
     .sort(
@@ -83,8 +98,15 @@ export function RitualsRail() {
   return (
     <div className="bg-card border border-line rounded-[18px] p-[18px]">
       <div className="text-[11px] tracking-[0.16em] uppercase text-ink-mute mb-1">Rituals</div>
-      <div className="text-[12.5px] text-ink-mute mb-2">
+      <div className="text-[12.5px] text-ink-mute mb-1.5">
         Permanent to your profile. Checked fresh each day.
+      </div>
+      <div
+        className="flex items-center gap-1.5 text-[12px] text-ink-mute mb-2"
+        title="Every check clears at the 4:00 AM rollover"
+      >
+        <RotateCcw className="w-3 h-3" strokeWidth={2.2} />
+        Resets in {resetsIn}
       </div>
 
       {practices.map((item) => {

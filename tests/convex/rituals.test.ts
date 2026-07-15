@@ -32,13 +32,17 @@ describe("rituals: items", () => {
     const items = await asUser.query(api.rituals.list, {});
     const morning = items.filter((i) => i.ritual === "morning");
     const night = items.filter((i) => i.ritual === "night");
-    expect(morning).toHaveLength(4);
+    expect(morning).toHaveLength(5);
     expect(night).toHaveLength(2);
-    expect(morning.map((i) => i.order)).toEqual([0, 1, 2, 3]);
-    // The morning opens with the Blueprint read; the sequence carries roadmap + question.
+    expect(morning.map((i) => i.order)).toEqual([0, 1, 2, 3, 4]);
+    // The morning opens with the Blueprint read, then the inline mantra; the
+    // sequence carries roadmap + the rotating journal question.
     expect(morning[0].kind).toBe("read");
     expect(morning[0].source).toBe("blueprint");
-    expect(morning.map((i) => i.kind)).toEqual(["read", "do", "roadmap", "question"]);
+    expect(morning.map((i) => i.kind)).toEqual(["read", "mantra", "do", "roadmap", "question"]);
+    // The mantra and the morning question both carry no fixed words: they rotate.
+    expect(morning.find((i) => i.kind === "mantra")!.content).toBeUndefined();
+    expect(morning.find((i) => i.kind === "question")!.content).toBeUndefined();
     // The evening question carries no fixed prompt: it draws from the rotating bank.
     expect(night.map((i) => i.kind)).toEqual(["question", "roadmap"]);
     expect(night[0].content).toBeUndefined();
@@ -100,6 +104,7 @@ describe("rituals: items", () => {
       before[2]._id,
       before[1]._id,
       before[3]._id,
+      before[4]._id,
     ]);
   });
 
@@ -317,15 +322,15 @@ async function legacyV1Account() {
   return { t, asUser, userId };
 }
 
-describe("rituals: the v2 typed-component upgrade", () => {
-  it("appends the missing question/roadmap components without touching existing items", async () => {
+describe("rituals: the typed-component upgrade", () => {
+  it("appends the missing mantra/question/roadmap components without touching existing items", async () => {
     const { asUser } = await legacyV1Account();
     await asUser.mutation(api.rituals.upgradeToSeedVersion, {});
     const items = await asUser.query(api.rituals.list, {});
     const morning = items.filter((i) => i.ritual === "morning").sort((a, b) => a.order - b.order);
     const night = items.filter((i) => i.ritual === "night").sort((a, b) => a.order - b.order);
-    // Existing items untouched, new kinds appended after them.
-    expect(morning.map((i) => i.kind)).toEqual(["read", "do", "roadmap", "question"]);
+    // Existing items untouched, new kinds appended after them (v3 adds the mantra).
+    expect(morning.map((i) => i.kind)).toEqual(["read", "do", "mantra", "roadmap", "question"]);
     expect(morning[0].content).toBe("old words");
     expect(night.map((i) => i.kind)).toEqual(["do", "question", "roadmap"]);
   });
@@ -334,12 +339,14 @@ describe("rituals: the v2 typed-component upgrade", () => {
     const { asUser } = await legacyV1Account();
     await asUser.mutation(api.rituals.upgradeToSeedVersion, {});
     const added = (await asUser.query(api.rituals.list, {})).filter(
-      (i) => i.kind === "question" || i.kind === "roadmap",
+      (i) => i.kind === "mantra" || i.kind === "question" || i.kind === "roadmap",
     );
     for (const item of added) await asUser.mutation(api.rituals.removeItem, { itemId: item._id });
     await asUser.mutation(api.rituals.upgradeToSeedVersion, {});
     const after = await asUser.query(api.rituals.list, {});
-    expect(after.filter((i) => i.kind === "question" || i.kind === "roadmap")).toHaveLength(0);
+    expect(
+      after.filter((i) => i.kind === "mantra" || i.kind === "question" || i.kind === "roadmap"),
+    ).toHaveLength(0);
   });
 
   it("leaves an emptied ritual empty (delete-all is honored)", async () => {
@@ -351,17 +358,18 @@ describe("rituals: the v2 typed-component upgrade", () => {
     expect(after.filter((i) => i.ritual === "night")).toHaveLength(0);
     // ...while the still-populated morning got its components.
     expect(after.filter((i) => i.ritual === "morning").map((i) => i.kind).sort()).toEqual(
-      ["do", "question", "read", "roadmap"],
+      ["do", "mantra", "question", "read", "roadmap"],
     );
   });
 
-  it("no-ops on a fresh v2 seed (no duplicate components)", async () => {
+  it("no-ops on a fresh seed (no duplicate components)", async () => {
     const { asUser } = await setup();
     await asUser.mutation(api.rituals.seedDefaults, {});
     await asUser.mutation(api.rituals.upgradeToSeedVersion, {});
     const items = await asUser.query(api.rituals.list, {});
     expect(items.filter((i) => i.kind === "roadmap")).toHaveLength(2); // one per ritual
     expect(items.filter((i) => i.kind === "question")).toHaveLength(2);
+    expect(items.filter((i) => i.kind === "mantra")).toHaveLength(1); // morning only
   });
 });
 

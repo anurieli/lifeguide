@@ -37,7 +37,8 @@ There is no Coach path: feedback is deliberately the user's raw words, with no A
 | Screenshot page | Tap the camera button | Captures the current page (html2canvas, timeout-capped) and adds it as a visible "Page"-tagged attachment | Manual | — (uploads on submit) |
 | Submit | Click Submit | Captures errors, uploads attachments + (fallback) auto-snapshot concurrently, inserts a `feedback` row (`status: open`) | Manual | `feedback`, `_storage` |
 | Filter inbox | Pile + type controls in `/admin` | Filters tickets by pile (Needs you / In progress / Dealt with) and type (Bug/Feature/Other) | Manual (admin) | — |
-| Reply | "Reply" in `/admin` | Opens a pre-addressed `mailto:` and moves the ticket to `pending` (`markPending`) | Manual (admin) | `feedback` |
+| Reply | "Reply" in `/admin` | Opens a pre-addressed `mailto:`. Does **not** itself change status (a `mailto:` link gives no completion signal — the browser's own "leave this site?" prompt can cancel it after the click already fired) | Manual (admin) | — |
+| Mark as replied | "Mark as replied" in `/admin` (shown while `open`) | Explicit, deliberate move to `pending` (`markPending`) — the owner confirms the reply actually happened | Manual (admin) | `feedback` |
 | Export to Linear | "Export to Linear" → inline form (name + urgency) | Creates a Linear issue (note + context + photo attachment) via `convex/linear.ts`, links the ticket (`linear{…}`), moves it to `pending` | Manual (admin) | `feedback`, `_storage`, Linear |
 | Resolve ticket | "Dealt with" in `/admin` | Sets `status: dealt_with` + `resolvedAt` | Manual (admin) | `feedback` |
 | Reopen ticket | "Reopen" in `/admin` | Sets `status: open`, clears `pendingAt` + `resolvedAt` | Manual (admin) | `feedback` |
@@ -62,7 +63,7 @@ This element **owns** the `feedback` table and **draws** nothing from the user-s
 - **Listening:** textarea is read-only and shows the live transcript; mic shows a stop icon.
 - **Submitting:** Submit shows a spinner; disabled.
 - **Sent:** a transient "Thanks. Noted." then auto-collapse.
-- **Ticket states (admin):** a triage lifecycle — `open` (red alert dot, "Needs you") → `pending` (dashed, "In progress" — replied or pushed to Linear) → `dealt_with` (green check, greyed, a separate pile). `reopen` returns a ticket to `open`. See §9 and [ADR 0018](../../decisions/0018-feedback-to-linear.md).
+- **Ticket states (admin):** a triage lifecycle — `open` (red alert dot, "Needs you") → `pending` (dashed, "In progress" — replied or pushed to Linear) → `dealt_with` (green check, greyed, a separate pile). `reopen` returns a ticket to `open`. See §9 and [ADR 0019](../../decisions/0019-feedback-to-linear.md).
 
 ## 6. Edge cases
 
@@ -77,6 +78,7 @@ This element **owns** the `feedback` table and **draws** nothing from the user-s
 - **Stored position off-screen** (smaller window) → clamped back into the viewport on mount and on resize.
 - **Tap vs drag** → movement under 4px counts as a tap (opens); beyond that it's a drag (repositions, no open).
 - **Ownership** → `resolve`/`reopen` on a row the user doesn't own throws ("Not found"); each identity only sees its own feedback.
+- **Reply link cancelled** (the browser's "leave this site?" prompt, declined) → no status change; the ticket stays exactly where it was, since Reply no longer mutates on click (see §9).
 - **Unauthenticated** → the widget never renders (it lives inside `AppShell`); `submit` also rejects unauthenticated calls server-side.
 
 ## 7. AI involvement
@@ -97,9 +99,9 @@ The inbox lives in `components/feedback/FeedbackInbox.tsx` — a self-contained,
 
 **Piles + filters.** The panel splits tickets into three piles by status — **Needs you** (`open`), **In progress** (`pending`), **Dealt with** (`dealt_with`) — with live counts, and filters by type (All · Bugs · Features · Other).
 
-**Reply.** Each ticket with a known submitter email gets a **Reply** button that opens a `mailto:` in the owner's own mail client (mail goes from the owner's real address, no email provider needed), pre-addressed and quoting their note. Clicking Reply moves the ticket to **In progress** (`markPending`). Anonymous submitters have no email and are not repliable. *(Sending inline via Resend — rather than handing off to a mail client — is a deferred follow-up.)*
+**Reply.** Each ticket with a known submitter email gets a **Reply** button that opens a `mailto:` in the owner's own mail client (mail goes from the owner's real address, no email provider needed), pre-addressed and quoting their note. Reply is a plain link with **no status side effect** — a `mailto:` navigation gives the page no way to know whether the mail client actually opened or a message was sent (some browsers show a "leave this site?" confirmation for it, and that confirmation fires *after* any click handler already ran, so an earlier version of this that optimistically called `markPending` on click would flip a ticket to "In progress" even when the user cancelled and sent nothing — fixed 2026-07-15). A separate **Mark as replied** button (shown only while `open`) is the deliberate, explicit action that moves a ticket to **In progress** (`markPending`) — it reflects the owner's confirmation, not a guess. Anonymous submitters have no email and are not repliable. *(Sending inline via Resend — rather than handing off to a mail client, and with the send's own success/failure as the real completion signal — is a deferred follow-up; see §10.)*
 
-**Export to Linear** (see [ADR 0018](../../decisions/0018-feedback-to-linear.md)). Because you can't always tell a bug from a feature from the widget tag, export is a deliberate button, not an auto-sync. **Export to Linear** opens a small inline form (issue **name**, prefilled from the note; **urgency** → Linear priority) and creates a real Linear issue in the configured project via `convex/linear.ts` — carrying the note, the captured page context, and the snapshot/photos uploaded as **real Linear assets**. On success the ticket stores `linear {issueId, identifier, url, at}`, surfaces the `ARI-…` identifier as a link chip, and moves to **In progress**. You finish the card in Linear (assignee, status, board). Export is idempotent — an already-exported ticket links out instead of re-creating. **Setup:** `LINEAR_API_KEY` must be set in the Convex deployment; `LINEAR_TEAM_ID` / `LINEAR_PROJECT_ID` default to LifeGuide's and are env-overridable so the module can travel.
+**Export to Linear** (see [ADR 0019](../../decisions/0019-feedback-to-linear.md)). Because you can't always tell a bug from a feature from the widget tag, export is a deliberate button, not an auto-sync. **Export to Linear** opens a small inline form (issue **name**, prefilled from the note; **urgency** → Linear priority) and creates a real Linear issue in the configured project via `convex/linear.ts` — carrying the note, the captured page context, and the snapshot/photos uploaded as **real Linear assets**. On success the ticket stores `linear {issueId, identifier, url, at}`, surfaces the `ARI-…` identifier as a link chip, and moves to **In progress**. You finish the card in Linear (assignee, status, board). Export is idempotent — an already-exported ticket links out instead of re-creating. **Setup:** `LINEAR_API_KEY` must be set in the Convex deployment; `LINEAR_TEAM_ID` / `LINEAR_PROJECT_ID` default to LifeGuide's and are env-overridable so the module can travel.
 
 **Close.** **Dealt with** moves a ticket to the closed pile (`resolve`); **Reopen** returns it to **Needs you** (`reopen`, clearing the pending/resolved marks).
 

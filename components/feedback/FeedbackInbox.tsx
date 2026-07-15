@@ -266,14 +266,28 @@ export function FeedbackInbox({ enabled = true }: { enabled?: boolean }) {
                   {/* Actions */}
                   <div className="mt-3 flex items-center gap-2 flex-wrap">
                     {replyHref ? (
-                      <a
-                        href={replyHref}
-                        onClick={() => void markPending({ id: f._id })}
-                        className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] border border-line text-ink-soft hover:bg-paper-2 transition"
-                        title={`Reply to ${f.submitter?.email}`}
-                      >
-                        <Mail className="w-3.5 h-3.5" /> Reply
-                      </a>
+                      <>
+                        {/* Plain mailto handoff: we have no way to know whether the OS
+                            mail client actually opened or an email was sent (the browser's
+                            own "leave this site?" prompt can cancel it), so this must NOT
+                            mutate status on click — only "Mark as replied" below does. */}
+                        <a
+                          href={replyHref}
+                          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] border border-line text-ink-soft hover:bg-paper-2 transition"
+                          title={`Reply to ${f.submitter?.email}`}
+                        >
+                          <Mail className="w-3.5 h-3.5" /> Reply
+                        </a>
+                        {f.status === "open" && (
+                          <button
+                            onClick={() => void markPending({ id: f._id })}
+                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] border border-line text-ink-mute hover:bg-paper-2 transition"
+                            title="Mark this ticket as replied to / in progress"
+                          >
+                            <CircleDashed className="w-3.5 h-3.5" /> Mark as replied
+                          </button>
+                        )}
+                      </>
                     ) : (
                       <span className="text-[12px] text-ink-mute italic">no email to reply to</span>
                     )}

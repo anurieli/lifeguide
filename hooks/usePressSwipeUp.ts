@@ -3,7 +3,9 @@
 import { useRef } from "react";
 
 // How far the pointer must travel upward, while pressed, to commit the gesture.
-const SWIPE_UP_PX = 36;
+// Kept short: on a phone the ➕ sits near the home-indicator zone, and iOS can
+// cancel the pointer stream if the finger travels far — commit early instead.
+const SWIPE_UP_PX = 24;
 
 /**
  * Press-and-swipe-up on a button. onSwipeUp fires the moment the pointer has

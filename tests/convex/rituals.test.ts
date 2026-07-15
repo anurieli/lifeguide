@@ -473,3 +473,51 @@ describe("rituals: time-indifferent practices (the rituals rail)", () => {
     // Stale id in the day row is ignored by completion logic (long-standing rule).
   });
 });
+
+describe("rituals: history (the keeping-up calendar feed)", () => {
+  it("reports checked counts and completion so a started-but-unsealed day is visible", async () => {
+    const { asUser } = await setup();
+    await asUser.mutation(api.rituals.seedDefaults, {});
+    // Tick a single morning box — the day is begun but not sealed.
+    const morning = (await asUser.query(api.rituals.list, {})).find((i) => i.ritual === "morning")!;
+    await asUser.mutation(api.rituals.setChecked, {
+      ritual: "morning",
+      day: DAY,
+      itemId: morning._id,
+      checked: true,
+    });
+    const rows = await asUser.query(api.rituals.history, { sinceDay: DAY });
+    const morningRow = rows.find((r) => r.ritual === "morning" && r.day === DAY)!;
+    expect(morningRow.checked).toBe(1);
+    expect(morningRow.completedAt).toBeNull(); // started, not finished
+  });
+
+  it("includes 'any' practices so an anytime tick also marks the day begun", async () => {
+    const { asUser } = await setup();
+    const anyId = await asUser.mutation(api.rituals.addItem, {
+      ritual: "any",
+      kind: "do",
+      title: "10 minute walk",
+    });
+    await asUser.mutation(api.rituals.setChecked, {
+      ritual: "any",
+      day: DAY,
+      itemId: anyId,
+      checked: true,
+    });
+    const rows = await asUser.query(api.rituals.history, { sinceDay: DAY });
+    const anyRow = rows.find((r) => r.ritual === "any" && r.day === DAY);
+    expect(anyRow?.checked).toBe(1);
+  });
+
+  it("a sealed day reports its completedAt (the finished state)", async () => {
+    const { asUser } = await setup();
+    await asUser.mutation(api.rituals.seedDefaults, {});
+    await checkAll(asUser, "night");
+    await asUser.mutation(api.rituals.complete, { ritual: "night", day: DAY });
+    const rows = await asUser.query(api.rituals.history, { sinceDay: DAY });
+    const nightRow = rows.find((r) => r.ritual === "night" && r.day === DAY)!;
+    expect(nightRow.completedAt).toBeTypeOf("number");
+    expect(nightRow.checked).toBeGreaterThan(0);
+  });
+});

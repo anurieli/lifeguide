@@ -78,3 +78,25 @@ keeping-up run**, and nothing more.
   changed to "either bookend" if the honest bar proves too steep in practice.
 - **Reversible.** Because it is pure derivation with no stored state, dialing the
   run back to the plain dot strip is a component-only change; nothing to migrate.
+
+## Addendum (2026-07-15) — the keeping-up calendar
+
+On first live use Ariel flagged that a *started* day showed nothing (the strip only
+reacted to a full seal) and asked for the record to sit more prominently. The strip
+was accordingly reworked — this refines point 3 above without touching the run's
+gentleness:
+
+- **Three day states, not seal-or-nothing.** Each day now resolves to **finished**
+  (both bookends sealed — the same kept-day bar the run counts), **started**
+  (anything ticked but not yet sealed), or **empty**. The *started* state closes the
+  gap where a begun day was invisible. The logic is the pure `keepingUpStatus`
+  (`lib/ritual.ts`); `rituals.history` was widened to return per-day `checked`
+  counts + `completedAt` across morning / night / any so *started* is derivable
+  (ticking an anytime practice also begins the day). Still no schema change.
+- **A calendar at the top.** The strip moved to the **top of the rituals card** and
+  became a last-14-days calendar — one pip per day above its date-of-month number,
+  today marked gold. The old morning/night two-dot split folds into the single
+  per-day pip.
+- **Still not a streak mechanic.** The guardrails hold unchanged: no penalty on a
+  miss, today never held against you, no longest-ever, run hidden at zero. A
+  *finished* pip is exactly a run-day, so the calendar and the count stay coherent.

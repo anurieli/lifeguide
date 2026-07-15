@@ -1,0 +1,74 @@
+import { v } from "convex/values";
+import { internalAction } from "../_generated/server";
+import { internal } from "../_generated/api";
+import { chatComplete } from "./openai";
+import { TASKS } from "./config";
+
+// ============================================================================
+// The daily-quote agent (AI hub node `dailyQuote`, cheap Haiku — Ariel 2026-07-15).
+// Its one job: surface a real, existing inspirational quote for the person's day,
+// chosen from their Core (Mirror + North Star + standing horizons) and varied from
+// the recent ones. Scheduled once per person per day by dailyTidbits.ensureForDay;
+// writes the result back onto the pending row. Every call is logged to aiLogs by
+// chatComplete (ADR 0017), so this agent shows up in the AI usage hub like the rest.
+// ============================================================================
+
+function buildInput(cx: {
+  northStar: string;
+  values: string[];
+  themes: string[];
+  summary: string;
+  standing: string;
+  recentQuotes: string[];
+}): string {
+  const lines: string[] = ["Who this person is:"];
+  if (cx.summary) lines.push(`- Summary: ${cx.summary}`);
+  if (cx.values.length) lines.push(`- Values: ${cx.values.join(", ")}`);
+  if (cx.themes.length) lines.push(`- Themes: ${cx.themes.join(", ")}`);
+  if (cx.northStar) lines.push(`- North Star: ${cx.northStar}`);
+  if (cx.standing) lines.push(`- Horizons:\n${cx.standing}`);
+  if (lines.length === 1) lines.push("- (Little is known yet — choose a broadly resonant quote.)");
+  if (cx.recentQuotes.length) {
+    lines.push("\nRecently shown (do NOT repeat these):");
+    for (const q of cx.recentQuotes) lines.push(`- ${q}`);
+  }
+  lines.push("\nReturn one fitting quote as JSON {\"quote\",\"author\"}.");
+  return lines.join("\n");
+}
+
+export const generate = internalAction({
+  args: { tidbitId: v.id("dailyTidbits"), userId: v.id("users"), day: v.string() },
+  handler: async (ctx, args) => {
+    const cx = await ctx.runQuery(internal.dailyTidbits.contextForInternal, {
+      userId: args.userId,
+      day: args.day,
+    });
+    try {
+      const raw = await chatComplete(ctx, {
+        taskId: "dailyQuote",
+        fn: "ai/dailyQuote.generate",
+        userId: args.userId,
+        jsonMode: true,
+        messages: [{ role: "user", content: buildInput(cx) }],
+      });
+      const parsed = JSON.parse(raw || "{}");
+      const text = typeof parsed.quote === "string" ? parsed.quote.trim().slice(0, 400) : "";
+      const attribution =
+        typeof parsed.author === "string" ? parsed.author.trim().slice(0, 120) : "";
+      if (!text) throw new Error("empty quote");
+      await ctx.runMutation(internal.dailyTidbits.writeInternal, {
+        tidbitId: args.tidbitId,
+        status: "done",
+        text,
+        attribution: attribution || "Unknown",
+        model: TASKS.dailyQuote.model,
+      });
+    } catch (e: any) {
+      await ctx.runMutation(internal.dailyTidbits.writeInternal, {
+        tidbitId: args.tidbitId,
+        status: "error",
+        error: String(e?.message ?? e).slice(0, 300),
+      });
+    }
+  },
+});

@@ -10,6 +10,7 @@
 
 import type * as admin from "../admin.js";
 import type * as ai_config from "../ai/config.js";
+import type * as ai_dailyQuote from "../ai/dailyQuote.js";
 import type * as ai_distill from "../ai/distill.js";
 import type * as ai_imageGen from "../ai/imageGen.js";
 import type * as ai_ingest from "../ai/ingest.js";
@@ -33,10 +34,12 @@ import type * as context_assemble from "../context/assemble.js";
 import type * as context_types from "../context/types.js";
 import type * as core from "../core.js";
 import type * as coreFiles from "../coreFiles.js";
+import type * as dailyTidbits from "../dailyTidbits.js";
 import type * as edges from "../edges.js";
 import type * as feedback from "../feedback.js";
 import type * as files from "../files.js";
 import type * as goals from "../goals.js";
+import type * as horizons from "../horizons.js";
 import type * as http from "../http.js";
 import type * as interactions from "../interactions.js";
 import type * as interview from "../interview.js";
@@ -67,6 +70,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   "ai/config": typeof ai_config;
+  "ai/dailyQuote": typeof ai_dailyQuote;
   "ai/distill": typeof ai_distill;
   "ai/imageGen": typeof ai_imageGen;
   "ai/ingest": typeof ai_ingest;
@@ -90,10 +94,12 @@ declare const fullApi: ApiFromModules<{
   "context/types": typeof context_types;
   core: typeof core;
   coreFiles: typeof coreFiles;
+  dailyTidbits: typeof dailyTidbits;
   edges: typeof edges;
   feedback: typeof feedback;
   files: typeof files;
   goals: typeof goals;
+  horizons: typeof horizons;
   http: typeof http;
   interactions: typeof interactions;
   interview: typeof interview;

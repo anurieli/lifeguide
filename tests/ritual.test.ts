@@ -10,6 +10,7 @@ import {
   msUntilRollover,
   formatCountdown,
   currentStreak,
+  keepingUpStatus,
   DAY_ROLLOVER_HOUR,
   NIGHT_START_HOUR,
 } from "../lib/ritual";
@@ -195,5 +196,22 @@ describe("currentStreak (the gentle keeping-up run, ADR 0018)", () => {
 
   it("a single kept today is a run of one", () => {
     expect(currentStreak(week, new Set(["d5"]))).toBe(1);
+  });
+});
+
+describe("keepingUpStatus (the calendar's three day states)", () => {
+  const kept = new Set(["d1"]);
+  const started = new Set(["d1", "d2"]); // a kept day is necessarily started too
+
+  it("reads finished when both bookends sealed (kept wins over started)", () => {
+    expect(keepingUpStatus("d1", kept, started)).toBe("finished");
+  });
+
+  it("reads started when touched but not fully sealed", () => {
+    expect(keepingUpStatus("d2", kept, started)).toBe("started");
+  });
+
+  it("reads empty when the day was never touched", () => {
+    expect(keepingUpStatus("d3", kept, started)).toBe("empty");
   });
 });

@@ -326,24 +326,38 @@ export const day = query({
   },
 });
 
-// Completion history from `sinceDay` (inclusive) onward, both rituals: the quiet
-// "am I keeping up with the mornings and nights" strip. Day keys sort
-// lexicographically, so a string range over the index does the work.
+// Per-day history from `sinceDay` (inclusive) onward, all three assignments: the
+// quiet "am I keeping up" strip. Each row carries `completedAt` (sealed → a dot
+// fills) and `checked` (how many boxes are ticked → the day reads as *started*
+// even before it seals, so a touched-but-unsealed day is visible). The `any`
+// assignment is included so ticking an anytime practice also marks the day begun.
+// Day keys sort lexicographically, so a string range over the index does the work.
 export const history = query({
   args: { sinceDay: v.string() },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
     if (!DAY_KEY.test(args.sinceDay)) return [];
-    const out: { ritual: "morning" | "night"; day: string; completedAt: number | null }[] = [];
-    for (const ritual of ["morning", "night"] as const) {
+    const out: {
+      ritual: "morning" | "night" | "any";
+      day: string;
+      completedAt: number | null;
+      checked: number;
+    }[] = [];
+    for (const ritual of ["morning", "night", "any"] as const) {
       const rows = await ctx.db
         .query("ritualDays")
         .withIndex("by_user_ritual_day", (q) =>
           q.eq("userId", userId).eq("ritual", ritual).gte("day", args.sinceDay),
         )
         .collect();
-      for (const r of rows) out.push({ ritual, day: r.day, completedAt: r.completedAt ?? null });
+      for (const r of rows)
+        out.push({
+          ritual,
+          day: r.day,
+          completedAt: r.completedAt ?? null,
+          checked: r.checkedIds.length,
+        });
     }
     return out;
   },

@@ -41,6 +41,7 @@ import type * as http from "../http.js";
 import type * as interactions from "../interactions.js";
 import type * as interview from "../interview.js";
 import type * as lib_transcript from "../lib/transcript.js";
+import type * as linear from "../linear.js";
 import type * as messages from "../messages.js";
 import type * as mirror from "../mirror.js";
 import type * as morningNote from "../morningNote.js";
@@ -97,6 +98,7 @@ declare const fullApi: ApiFromModules<{
   interactions: typeof interactions;
   interview: typeof interview;
   "lib/transcript": typeof lib_transcript;
+  linear: typeof linear;
   messages: typeof messages;
   mirror: typeof mirror;
   morningNote: typeof morningNote;

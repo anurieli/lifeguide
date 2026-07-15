@@ -105,7 +105,7 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
                 <span className="mt-[3px] h-2 w-2 flex-shrink-0 rounded-full bg-[#B5524A]" />
                 <span className="flex-1">
                   <span className="block text-[14.5px] font-semibold text-[#B5524A]">
-                    Finish the Core. Schedule a time — it takes about an hour.
+                    Finish the Core. Schedule a time. It takes about an hour.
                   </span>
                   <span className="block text-[12.5px] text-[#B5524A]/70">
                     It&apos;s the foundation everything else is built on. {bpCount}/18 done.

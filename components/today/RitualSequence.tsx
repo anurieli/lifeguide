@@ -13,6 +13,7 @@ import {
   RitualType,
 } from "@/lib/ritual";
 import { questionForDay } from "@/lib/questions";
+import { mantraForDay } from "@/lib/mantras";
 import { VoiceField } from "@/components/voice/VoiceField";
 import { ImmersiveReader } from "@/components/today/ImmersiveReader";
 
@@ -42,6 +43,7 @@ const COPY: Record<RitualType, { label: string; done: string; seal: string; seal
 const KIND_LABEL: Record<string, string> = {
   do: "ritual",
   read: "read",
+  mantra: "mantra",
   question: "question",
   roadmap: "roadmap",
 };
@@ -54,7 +56,7 @@ const FIELD_CLASS =
 type Item = {
   _id: Id<"ritualItems">;
   ritual: RitualType;
-  kind: "do" | "read" | "question" | "roadmap";
+  kind: "do" | "read" | "mantra" | "question" | "roadmap";
   title: string;
   content?: string;
   source?: "inline" | "blueprint";
@@ -255,7 +257,7 @@ function RoadmapStep({
           ? "What does tomorrow start with? Type it, hit enter, next."
           : entries.length > 0
             ? "Left by last-night you. Walk it, top to bottom."
-            : "No roadmap was set last night. Set the first thing now:"}
+            : "What does today start with? Set the first thing:"}
       </div>
 
       {entries.map((e, i) => (
@@ -448,6 +450,10 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
     item.content?.trim() ||
     questionForDay(ritual === "morning" ? "morning" : "evening", dayKey);
 
+  // A mantra's inline words: the person's own fixed line, or one drawn from the
+  // rotating pool (differing by the day). Shown in place — no reader, no Read tap.
+  const mantraFor = (item: Item) => item.content?.trim() || mantraForDay(dayKey);
+
   const readContent = (item: Item) =>
     item.source === "blueprint" ? blueprint?.content ?? "" : item.content ?? "";
 
@@ -564,6 +570,26 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
                     </span>
                   </div>
                 )}
+                {item.kind === "mantra" && (
+                  <>
+                    <textarea
+                      defaultValue={item.content ?? ""}
+                      rows={2}
+                      placeholder="Your own line to read each time — leave empty to rotate through the pool…"
+                      onBlur={(e) => {
+                        if (e.target.value !== (item.content ?? ""))
+                          void updateItem({ itemId: item._id, content: e.target.value });
+                      }}
+                      className={`${EDIT_FIELD} mt-1.5 resize-none leading-relaxed`}
+                    />
+                    {!item.content?.trim() && (
+                      <div className="text-[12.5px] text-ink-mute mt-1.5 pl-1">
+                        Rotating through the pool — today:{" "}
+                        <span className="text-ink-soft">“{mantraForDay(dayKey)}”</span>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
               <button
                 onClick={() => removeItem({ itemId: item._id })}
@@ -582,8 +608,14 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
               <Plus className="w-3.5 h-3.5" /> ritual
             </button>
             <button
+              onClick={() => addItem({ ritual, kind: "mantra", title: "Read the mantra" })}
+              className="inline-flex items-center gap-1 border border-line rounded-full px-3.5 py-1.5 text-[13px] text-ink-soft hover:border-gold"
+            >
+              <Plus className="w-3.5 h-3.5" /> mantra
+            </button>
+            <button
               onClick={() =>
-                addItem({ ritual, kind: "read", title: "Read the mantra", content: "" })
+                addItem({ ritual, kind: "read", title: "Something to read", content: "" })
               }
               className="inline-flex items-center gap-1 border border-line rounded-full px-3.5 py-1.5 text-[13px] text-ink-soft hover:border-gold"
             >
@@ -668,6 +700,22 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
                       <BookOpen className="w-3.5 h-3.5" />
                       {isChecked ? "Read again" : "Read"}
                     </button>
+                  </div>
+                )}
+                {item.kind === "mantra" && (
+                  // Shown inline — the mantra IS the step. No Read button: it is
+                  // short, read in a breath. The circle is the acknowledgment.
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] tracking-[0.14em] uppercase text-ink-mute mb-1">
+                      {item.title}
+                    </div>
+                    <div
+                      className={`text-[16px] leading-relaxed ${
+                        isChecked ? "text-ink-mute" : "text-ink"
+                      }`}
+                    >
+                      {mantraFor(item)}
+                    </div>
                   </div>
                 )}
                 {item.kind === "question" && (

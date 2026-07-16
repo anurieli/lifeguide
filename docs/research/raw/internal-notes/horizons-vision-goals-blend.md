@@ -1,6 +1,6 @@
 # Blending the vision board, the horizons, and goals into one alignment spine
 
-**Status:** raw (parked 2026-07-15, mid-session) · **Tracks:** _Linear issue TBD — the MCP was down when this was parked; mirror to the LifeGuide project when reachable._
+**Status:** raw (parked 2026-07-15, mid-session) · **Tracks:** [ARI-103](https://linear.app/cuttheedge/issue/ARI-103)
 
 > Parked by Ariel while building a "Profile" surface: "this is a thought exercise as much as a build." The Profile idea surfaced a much bigger concept that needs design before code. A working Profile prototype was built this session and **reverted** (see §Prototype).
 

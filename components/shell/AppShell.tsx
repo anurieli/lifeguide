@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { Square } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Rail, View } from "./Rail";
@@ -121,9 +122,12 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   };
 
   // ➕ + swipe-up: quick record. The mic arms the instant the gesture commits —
-  // on any device, since the swipe is an explicit ask to record — while the
-  // entry is created and its document loaded in the background. Inside an empty
-  // note the take just lands there; no new note.
+  // on any device, since the swipe is an explicit ask to record — and the person
+  // STAYS where they are: no navigation, just the top recording pill (timer ·
+  // stop) while the entry is created silently in the background. Tapping the
+  // pill opens the note; stopping saves the take without leaving the screen.
+  // That is what makes the swipe different from a tap (which opens the note).
+  // Inside an empty note the take just lands there; no new note.
   const quickRecord = () => {
     clientLog("session.quickrecord", { view });
     if (emptyActiveEntry) {
@@ -132,12 +136,8 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
     }
     const created = createSession({ device: currentDevice() });
     void rec.start(created);
-    created
-      .then((id) => {
-        setActiveSessionId(id);
-        setView("sessions");
-      })
-      .catch(() => void rec.cancel());
+    // No target for the take if creation failed (offline): release the mic.
+    created.catch(() => void rec.cancel());
   };
 
   const jumpToRecording = () => {
@@ -194,24 +194,37 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
           {view === "settings" && <Settings />}
         </ShellNavProvider>
       </main>
-      {/* A take recording in the background: one quiet pill that leads back to it. */}
-      {rec.sessionId && !viewingLiveEntry && (
-        <button
-          type="button"
-          onClick={jumpToRecording}
-          aria-label="Back to the live recording"
-          className="fixed top-3 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-2 bg-card border border-line rounded-full shadow-lg px-3.5 py-2"
-        >
-          <span
-            className={`w-2 h-2 rounded-full bg-gold ${rec.paused ? "" : "animate-pulse"}`}
-          />
-          <span className="text-[12.5px] tabular-nums text-ink-soft">
-            {formatElapsed(rec.elapsedMs)}
-          </span>
-          <span className="text-[11.5px] text-ink-mute">
-            {rec.paused ? "Paused" : "Recording"}
-          </span>
-        </button>
+      {/* A take recording in the background: one quiet pill. Shown from the very
+          first frame of a quick record (even before the entry's id is back from
+          the server — that's the `rec.recording` half). The body leads into the
+          note; the ■ saves the take right here, without leaving the screen. */}
+      {(rec.recording || rec.sessionId) && !viewingLiveEntry && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[70] flex items-center bg-card border border-line rounded-full shadow-lg pl-3.5 pr-1.5 py-1.5">
+          <button
+            type="button"
+            onClick={jumpToRecording}
+            aria-label="Open the live recording"
+            className="flex items-center gap-2"
+          >
+            <span
+              className={`w-2 h-2 rounded-full bg-gold ${rec.paused ? "" : "animate-pulse"}`}
+            />
+            <span className="text-[12.5px] tabular-nums text-ink-soft">
+              {formatElapsed(rec.elapsedMs)}
+            </span>
+            <span className="text-[11.5px] text-ink-mute">
+              {rec.paused ? "Paused" : "Recording"}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => void rec.finish()}
+            aria-label="Save recording"
+            className="ml-2.5 w-8 h-8 rounded-full bg-gold/15 border border-gold text-gold flex items-center justify-center active:scale-95 transition"
+          >
+            <Square className="w-3 h-3" fill="currentColor" strokeWidth={0} />
+          </button>
+        </div>
       )}
       {/* The open thought document is pure capture: the Coach window and its
           floating buttons step aside there (Ariel, 2026-07-13, second pass). */}

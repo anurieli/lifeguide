@@ -25,6 +25,44 @@ import { caretPosition, CaretPos } from "./caret";
  * live take itself belongs to RecordingProvider, so it keeps recording if the
  * person navigates away. Leaving an entry with no content deletes it.
  */
+// Past this length a spoken passage renders as a preview: a long ramble must not
+// swallow the page. Tap the text (or the toggle) to expand and collapse.
+const TRANSCRIPT_PREVIEW_CHARS = 320;
+const TRANSCRIPT_PREVIEW_LINES = 4;
+
+function Transcript({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  if (text.length <= TRANSCRIPT_PREVIEW_CHARS) {
+    return (
+      <p className="text-[15px] leading-relaxed text-ink whitespace-pre-wrap">{text}</p>
+    );
+  }
+  const toggle = () => setExpanded((e) => !e);
+  return (
+    <div>
+      <p
+        onClick={toggle}
+        className="text-[15px] leading-relaxed text-ink whitespace-pre-wrap cursor-pointer"
+        style={
+          expanded
+            ? undefined
+            : {
+                display: "-webkit-box",
+                WebkitLineClamp: TRANSCRIPT_PREVIEW_LINES,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }
+        }
+      >
+        {text}
+      </p>
+      <button type="button" onClick={toggle} className="mt-1 text-[12.5px] text-gold">
+        {expanded ? "Show less" : "Show more"}
+      </button>
+    </div>
+  );
+}
+
 export function SessionDoc({
   sessionId,
   onBack,
@@ -300,9 +338,7 @@ export function SessionDoc({
               {c.rawType === "audio" && (
                 <div>
                   {c.extractedText ? (
-                    <p className="text-[15px] leading-relaxed text-ink whitespace-pre-wrap">
-                      {c.extractedText}
-                    </p>
+                    <Transcript text={c.extractedText} />
                   ) : c.extraction?.status === "error" ? (
                     <p className="text-[13px] text-ink-mute">
                       Transcription failed, the recording is safe.{" "}

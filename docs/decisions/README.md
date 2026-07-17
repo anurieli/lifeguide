@@ -23,6 +23,7 @@ Architecture Decision Records for LifeGuide. One file per notable decision, numb
 | [0017](0017-ai-hub-logging-and-overrides.md) | The AI hub: every call logged, every model a Settings dial | accepted (live) | 2026-07-13 |
 | [0018](0018-gentle-keeping-up-run.md) | A gentle keeping-up run (the one carve-out from "no streaks") | accepted (live) | 2026-07-15 |
 | [0019](0019-feedback-to-linear.md) | Feedback → Linear: manual export + a three-state triage inbox | accepted (live) | 2026-07-15 |
+| [0020](0020-a-take-is-never-lost-to-a-cold-start.md) | A voice take is never lost to a cold start | accepted (live) | 2026-07-17 |
 
 
 See [`../README.md`](../README.md) for the documentation map and the two seeds, and [`../product/concept-and-soul.md`](../product/concept-and-soul.md) for the current source of truth.

@@ -22,6 +22,7 @@ import { Sessions } from "@/components/sessions/Sessions";
 import { RecordingProvider, useRecording } from "@/components/sessions/RecordingProvider";
 import { currentDevice, formatElapsed } from "@/components/thoughts/utils";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { withRetry } from "@/lib/withRetry";
 
 const VIEW_STORAGE_KEY = "lifeguide.activeView";
 const VIEWS: View[] = ["today", "core", "board", "goals", "sessions", "settings"];
@@ -108,7 +109,9 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
       if (device === "phone") void rec.start(emptyActiveEntry);
       return;
     }
-    const created = createSession({ device });
+    // Retry rides out the cold-start auth settle (a stale token right after the app
+    // opens or resumes from the background), so the entry almost always lands.
+    const created = withRetry(() => createSession({ device }));
     // Mic first: on the phone the take starts while the entry is still being
     // created server-side, so the first words never wait on the round-trip.
     if (device === "phone") void rec.start(created);
@@ -117,7 +120,11 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
       setActiveSessionId(id);
       setView("sessions");
     } catch {
-      if (device === "phone") void rec.cancel();
+      // Entry creation ultimately failed. Crucially we do NOT cancel the mic: on the
+      // phone the take keeps recording and the provider mints a fresh entry for it at
+      // save (see RecordingProvider) — the audio is never discarded. This is the fix
+      // for a whole cold-start ramble getting silently lost.
+      clientLog("session.start.failed", { view });
     }
   };
 
@@ -134,10 +141,11 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
       void rec.start(emptyActiveEntry);
       return;
     }
-    const created = createSession({ device: currentDevice() });
+    const created = withRetry(() => createSession({ device: currentDevice() }));
     void rec.start(created);
-    // No target for the take if creation failed (offline): release the mic.
-    created.catch(() => void rec.cancel());
+    // If creation ultimately fails, we still keep recording: the provider mints a
+    // fresh entry for the take at save time, so nothing the person said is dropped.
+    created.catch(() => clientLog("session.quickrecord.failed", { view }));
   };
 
   const jumpToRecording = () => {

@@ -4,6 +4,8 @@
 
 > Onboarding is the first pass at the Core. It draws a person's Life Blueprint out of them in one calm session, instead of collecting settings.
 
+> **Not to be confused with the [Product Tour](product-tour.md)** (ARI-19, built 2026-07-18): that's a separate, later feature that walks an already-onboarded person around the app shell (Core, Whiteboard, Today, Coach, Settings) once they're inside it. This doc is only the Door/Interview/Synthesis flow that runs *before* the shell ever mounts.
+
 ---
 
 ## 1. Purpose

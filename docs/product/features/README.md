@@ -28,6 +28,8 @@ The element model these hang off is [`../../architecture/elements-and-context.md
 | [The Guide](guide.md) | view-only | renders Core | merged into Home |
 | [Home (Today)](dashboard.md) | view-only | draws Core + Sessions | partial (hosts the merged Guide) |
 | [Settings & Onboarding](settings.md) | `settings` | system | built (reached via the account menu) |
+| [Onboarding (Door/Interview/Synthesis)](onboarding.md) | `interviewSessions`, `experienceEvents` | draws the Core out of a brand-new user before the shell mounts | built |
+| [Product Tour (guided walkthrough)](product-tour.md) | rides `settings` (no table of its own) | walks an already-onboarded person around the shell | built |
 | [Feedback Widget](feedback-widget.md) | `feedback` | dev tooling | built (draggable widget + `/admin` ticket queue) |
 | [Atmosphere](atmosphere.md) | `settings.music*` + audio assets | none (ambient) | built (v1) |
 

@@ -23,6 +23,7 @@ import { RecordingProvider, useRecording } from "@/components/sessions/Recording
 import { currentDevice, formatElapsed } from "@/components/thoughts/utils";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { withRetry } from "@/lib/withRetry";
+import { Tour } from "@/components/tour/Tour";
 
 const VIEW_STORAGE_KEY = "lifeguide.activeView";
 const VIEWS: View[] = ["today", "core", "board", "goals", "sessions", "settings"];
@@ -251,6 +252,9 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
       </div>
       {/* The Listener: always-available voice. Opens full-screen over everything. */}
       {speakOpen && <SpeakSurface onClose={() => setSpeakOpen(false)} />}
+      {/* The guided product tour (ARI-19): fires once per user after onboarding,
+          drives `view` across its five stops via the same `nav` the rail uses. */}
+      <Tour view={view} onNav={nav} />
     </div>
   );
 }

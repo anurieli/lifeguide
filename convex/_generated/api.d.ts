@@ -61,6 +61,7 @@ import type * as sessions from "../sessions.js";
 import type * as settings from "../settings.js";
 import type * as surfaces from "../surfaces.js";
 import type * as todoist from "../todoist.js";
+import type * as tour from "../tour.js";
 import type * as users from "../users.js";
 import type * as voice from "../voice.js";
 
@@ -124,6 +125,7 @@ declare const fullApi: ApiFromModules<{
   settings: typeof settings;
   surfaces: typeof surfaces;
   todoist: typeof todoist;
+  tour: typeof tour;
   users: typeof users;
   voice: typeof voice;
 }>;

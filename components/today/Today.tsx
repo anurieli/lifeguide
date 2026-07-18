@@ -75,6 +75,7 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
 
   return (
     <div
+      data-tour="tour-today"
       className="h-full overflow-auto"
       style={{ background: "radial-gradient(900px 480px at 70% -10%, #FFFDF7, #FAF8F2)" }}
     >

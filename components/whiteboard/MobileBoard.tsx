@@ -31,7 +31,7 @@ export function MobileBoard({ surfaceId }: { surfaceId: SurfaceId }) {
   const items = [...nodes].sort((a, b) => b.createdAt - a.createdAt);
 
   return (
-    <div className="h-full overflow-y-auto bg-paper">
+    <div data-tour="tour-whiteboard" className="h-full overflow-y-auto bg-paper">
       <div className="mx-auto max-w-lg px-4 pb-24 pt-5">
         <PageHeader align="items-start" className="mb-4">
           <h1 className="text-lg font-semibold text-ink">Vision Board</h1>

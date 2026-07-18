@@ -120,7 +120,7 @@ export function Core() {
     );
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div data-tour="tour-core" className="h-full overflow-y-auto">
       <div className="max-w-[760px] mx-auto px-5 py-8 md:px-8 md:py-10">
         <PageHeader
           align="items-start"

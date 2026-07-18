@@ -17,7 +17,9 @@ The element model these hang off is [`../../architecture/elements-and-context.md
 | [Horizons (goal ladder)](horizons.md) | `horizons` | spine (the plan layer of Today) | built |
 | [Daily tidbit (quote agent)](daily-tidbit.md) | `dailyTidbits` | Sessions (a step in the Morning Scroll) | built |
 | [The Blueprint](the-blueprint.md) | `blueprint` | Daily Ritual (the morning read resolves from it) | built |
-| [Pillars & Goals](pillars-and-goals.md) | `pillars, goals` | Core, Sessions | partial (pillars built; goals proposed) |
+| [Pillars & Goals](pillars-and-goals.md) | `pillars, goals` | Core, Sessions | superseded on pillars (see [Pillars](pillars.md)); goals now built as Orbit ([Goals](goals.md)) |
+| [Pillars](pillars.md) | `pillars` (shared, ARI-11 fields) | Core, Coach | partial (domain data + Life Wheel built; Temple/Orbit/Tree not built) |
+| [Goals (Orbit board)](goals.md) | `goals`, `goalTasks` | Home (Today) | built (v1) |
 | [File system on the human](file-system-on-the-human.md) | `pillars` (folders), `coreFiles` (files) | Core | partial (store + seed built; person-map UI proposed) |
 | [The Core](core.md) | `mirror` | is the Core | partial |
 | [The Coach](coach.md) | `threads, messages` | reads all | partial (thin single-turn) |

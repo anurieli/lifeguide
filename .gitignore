@@ -38,3 +38,6 @@ yarn-error.log*
 
 # Claude Code session worktrees (local working areas, never content)
 .claude/worktrees/
+
+# reference material for other apps, not part of LifeGuide itself
+_source-apps/

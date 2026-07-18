@@ -27,6 +27,7 @@ The person never sees the Center work. When a Listener call ends, they see a bri
 - **Fills** the [file system on the human](file-system-on-the-human.md); it is that store's only writer in v1.
 - **Always fans out to every pillar** (product decision, 2026-06-04): each pillar gets its own pass whether or not it seems touched, so nothing subtle is missed. Independence means one pillar's failure can't sink the others.
 - **Never silently overwrites.** A contradicting change becomes a `pending` file; the person resolves it in the report.
+- **Runs alongside, not through, the Listener's memory backbone** (ARI-23, [ADR 0023](../../decisions/0023-listener-memory-backbone.md)): `SpeakSurface` client-invokes `center.synthesizeSession` (identity — *who this person is*) on call end, while `interview.end` server-schedules the independent `ai/listenerMemory.summarizeSession` (conversation memory — *what we talked about*). A future toss can withhold this Center pass without losing that memory — the two were deliberately kept apart so tossing the Core filing never means forgetting the call happened.
 
 ## 5. States
 

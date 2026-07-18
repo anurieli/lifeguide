@@ -25,6 +25,14 @@ Synthesized doctrine documents that seed product features. Unlike raw notes, the
 |---|---|---|
 | [`blueprint-for-living.md`](blueprint-for-living.md) | The 8-pillar daily-conduct doctrine (pillar → practice → payoff), synthesized 2026-07-12 from Ariel's "Blueprint" reel folder. Canonical copy in Brain Vault. | The [Daily Ritual](../product/features/daily-ritual.md) default items; Coach doctrine layer (future) |
 
+## Resolved notes
+
+Top-level notes (not raw/internal, already resolved) are kept here for their reasoning trail once decided; the canonical answer lives where the table below points.
+
+| Note | Question | Resolved | Landed in |
+|---|---|---|---|
+| [`listener-memory-backbone.md`](listener-memory-backbone.md) | What is the Listener's conversational-continuity backbone, and what is "a session per speaker"? | 2026-07-18 (ARI-23) | [ADR 0023](../decisions/0023-listener-memory-backbone.md), [`../product/features/listener.md`](../product/features/listener.md) |
+
 ## Raw Internal Notes
 
 | Note | Question | Status | Tracks |

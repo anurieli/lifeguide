@@ -1,6 +1,7 @@
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { appendTranscriptTurn } from "./lib/transcript";
@@ -191,11 +192,15 @@ export const skip = mutation({
   },
 });
 
-/** Mark a session as completed or abandoned. Logs an event named by the status. */
+/** Mark a session as completed, abandoned, or tossed. Logs an event named by the
+ *  status. For a "listen" (Listener) session, this also schedules the memory-backbone
+ *  summary pass (ARI-23) — filed, abandoned, AND tossed alike, since ending a call
+ *  always produces a conversational memory even when nothing goes to the Core. See
+ *  convex/ai/listenerMemory.ts and docs/decisions/0023-listener-memory-backbone.md. */
 export const end = mutation({
   args: {
     sessionId: v.id("interviewSessions"),
-    status: v.union(v.literal("completed"), v.literal("abandoned")),
+    status: v.union(v.literal("completed"), v.literal("abandoned"), v.literal("tossed")),
   },
   handler: async (ctx, { sessionId, status }) => {
     const userId = await getAuthUserId(ctx);
@@ -212,6 +217,10 @@ export const end = mutation({
       event: status,
       at: Date.now(),
     });
+
+    if (session.experienceId === "listen") {
+      await ctx.scheduler.runAfter(0, internal.ai.listenerMemory.summarizeSession, { sessionId });
+    }
   },
 });
 
@@ -251,6 +260,74 @@ export const joinWithToken = query({
       transcript: session.transcript,
       skipped: session.skipped,
     };
+  },
+});
+
+// ─── Listener memory backbone plumbing (server-only, convex/ai/listenerMemory.ts) ──
+// ARI-23. No auth check: these run off the scheduler (no client identity in ctx),
+// same shape as sessions.ts's getForReplyInternal/getForThoughtMapInternal.
+
+/** Internal — fetch a session by id, no auth. Used by the summarize action, which
+ *  runs server-scheduled off `end`, not on a request from the session's owner. */
+export const getForSummaryInternal = internalQuery({
+  args: { sessionId: v.id("interviewSessions") },
+  handler: async (ctx, { sessionId }) => {
+    return await ctx.db.get(sessionId);
+  },
+});
+
+/** Internal — write the post-call summary (ARI-23). A session gets exactly one
+ *  summary; this overwrites in place if it ever reran. */
+export const writeSummaryInternal = internalMutation({
+  args: {
+    sessionId: v.id("interviewSessions"),
+    status: v.union(v.literal("pending"), v.literal("done"), v.literal("error")),
+    text: v.optional(v.string()),
+    topics: v.optional(v.array(v.string())),
+    openThreads: v.optional(v.array(v.string())),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.sessionId, {
+      summary: {
+        status: args.status,
+        text: args.text,
+        topics: args.topics,
+        openThreads: args.openThreads,
+        error: args.error,
+        at: Date.now(),
+      },
+    });
+  },
+});
+
+/** Internal — the most recent PAST "listen" call for this person with a done,
+ *  non-empty summary: the "session per speaker" continuity thread this account's
+ *  Listener calls form (docs/decisions/0023-listener-memory-backbone.md). Used to
+ *  ground the NEXT call's opening (convex/ai/voice/index.ts). Excludes the session
+ *  currently being minted (its own future, not its past). Scans the 20 most recent
+ *  sessions of ANY experience for this user — cheap at this account's call cadence;
+ *  a compound index can be added if that ever stops being true. */
+export const latestListenSummaryInternal = internalQuery({
+  args: { userId: v.id("users"), excludeSessionId: v.optional(v.id("interviewSessions")) },
+  handler: async (ctx, { userId, excludeSessionId }) => {
+    const recent = await ctx.db
+      .query("interviewSessions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(20);
+    for (const s of recent) {
+      if (s._id === excludeSessionId) continue;
+      if (s.experienceId !== "listen") continue;
+      if (s.summary?.status === "done" && s.summary.text) {
+        return {
+          text: s.summary.text,
+          topics: s.summary.topics ?? [],
+          openThreads: s.summary.openThreads ?? [],
+        };
+      }
+    }
+    return null;
   },
 });
 

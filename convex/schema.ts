@@ -582,6 +582,23 @@ export default defineSchema({
     joinTokenExpiresAt: v.optional(v.number()),
     startedAt: v.number(),
     endedAt: v.optional(v.number()),
+    // The Listener's memory backbone (ARI-23): a post-call digest of THIS call,
+    // written by convex/ai/listenerMemory.ts on every end (completed, abandoned, or
+    // tossed alike — see ADR 0022), distinct from the Center's identity filing
+    // (coreFiles). Only ever set for experienceId "listen"; onboarding sessions leave
+    // it absent. The most recent done summary for a user is read back into the NEXT
+    // "listen" session's realtime instructions (convex/ai/voice/index.ts) so the orb
+    // opens already oriented instead of cold.
+    summary: v.optional(
+      v.object({
+        status: v.union(v.literal("pending"), v.literal("done"), v.literal("error")),
+        text: v.optional(v.string()), // 2-4 plain sentences: what was talked about, where it landed
+        topics: v.optional(v.array(v.string())), // short topic tags
+        openThreads: v.optional(v.array(v.string())), // left unresolved, worth picking back up
+        error: v.optional(v.string()),
+        at: v.optional(v.number()),
+      }),
+    ),
   }).index("by_user", ["userId", "startedAt"]),
 
   // Telemetry stream: what each experience is doing (for A/B + funnel later).

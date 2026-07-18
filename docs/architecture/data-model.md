@@ -102,15 +102,15 @@ One row per model call, every call, success or failure. `{ userId?, taskId, fn (
 ### aiOverrides (per-user model dials — ADR 0017)
 The Settings AI hub's model picker. `{ userId, taskId, provider: openrouter|openai|local, model, updatedAt }`, indexed `by_user_task`. `aiForTask` resolves the person's override before the config default in `convex/ai/config.ts`; deleting the row (the "yours · reset" chip) falls back. Mutations in `convex/aiModels.ts` (`setModel` / `clearModel`; `nodes` returns the registry overlaid with the caller's overrides).
 
-### interviewSessions (onboarding interviews)
+### interviewSessions (onboarding interviews + the Listener's calls)
 
-One run of an onboarding experience. The QR phone-handoff encodes `/interview/<_id>` so any device can join the same row.
+One run of an onboarding experience, OR one Listener (`/speak`) call — the table is shared (`experienceId` distinguishes them; ADR 0007/the-center.md). The QR phone-handoff encodes `/interview/<_id>` so any device can join the same onboarding row; Listener calls never use tokens (auth-gated only).
 
 ```
 interviewSessions {
-  userId,                       // owner of the session
-  experienceId: string,         // "text-interview" | "voice-interview"
-  status: "active" | "completed" | "abandoned",
+  userId,                       // owner of the session — the one speaker this thread belongs to
+  experienceId: string,         // "text-interview" | "voice-interview" | "listen"
+  status: "active" | "completed" | "abandoned" | "tossed",
   device: "desktop" | "phone",  // device that started the session
   transcript: Array<{
     role: "coach" | "user",
@@ -123,12 +123,22 @@ interviewSessions {
   joinTokenExpiresAt?: number,  // token expiry in unix ms (10-minute window)
   startedAt: number,
   endedAt?: number,
+  summary?: {                   // Listener memory backbone (ARI-23, ADR 0023) — "listen" only
+    status: "pending" | "done" | "error",
+    text?: string,               // 2-4 plain sentences: what was talked about, where it landed
+    topics?: string[],           // short topic tags
+    openThreads?: string[],      // left unresolved, worth picking back up next call
+    error?: string,
+    at?: number,
+  },
 }
 ```
 
 Indexes: `by_user` over `["userId", "startedAt"]`.
 
 A join token is minted by `interview.issueJoinToken` (owner-only), hashed with SHA-256 via Web Crypto, stored as `joinTokenHash`. The raw token is returned once and embedded in the QR URL as `?t=<token>`. Public mutations (`markJoined`, `appendTurnByToken`, `endByToken`) validate the token by rehashing and comparing to `joinTokenHash`.
+
+**`summary` — the Listener's memory backbone (ARI-23, [ADR 0023](../decisions/0023-listener-memory-backbone.md)).** Distinct from the Center's identity filing (`coreFiles`, below): this answers "what have this person and the Listener been talking about lately," not "who is this person." Written by `convex/ai/listenerMemory.ts`'s `summarizeSession` (the `listenerSummary` AI node), scheduled by `interview.end` on EVERY "listen" call end — completed, abandoned, or **tossed alike** (`end`'s `status` union now includes `"tossed"`; a toss only withholds the Center's Core-filing pass, never this memory). An empty transcript short-circuits to `status: "done"` with no `text` and no model call. `interview.latestListenSummaryInternal` walks one user's own `interviewSessions` newest-first for the most recent done, non-empty summary — this per-user scan over rows already scoped to exactly one `userId` **is** the "session per speaker" continuity thread (ADR 0023 §1: a new person-level memory concept was unnecessary, the existing per-user scoping already provides it). `convex/ai/voice/index.ts`'s `instructionsFor` reads that one prior summary and appends it to `LISTENER_INSTRUCTIONS` (`agents/listener/persona.ts`'s `buildListenerInstructions`) when minting the NEXT "listen" session, so the orb opens grounded instead of cold. v1 depth is last-session-only, not last-N or a rolling memo (ADR 0023 §4, tracked as an open question). Pure assembly/parsing/handoff logic lives in `lib/listenerMemory.ts`.
 
 ---
 

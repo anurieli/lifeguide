@@ -429,6 +429,15 @@ export default defineSchema({
     // components were offered to this account's non-empty rituals. One-shot, so
     // deleting the added components sticks.
     ritualsSeedVersion: v.optional(v.number()),
+    // The in-app guided product tour (ARI-19; distinct from the Door/Interview
+    // onboarding above, which draws out the Core before the app shell ever
+    // mounts — the tour walks a person around the shell afterward). All three
+    // fields are optional/undefined by default so existing rows are untouched:
+    // `undefined` reads as "never started," and the tour only ever fires once
+    // onboarding is complete. See docs/product/features/product-tour.md.
+    tourStep: v.optional(v.number()), // current step index while in progress
+    tourCompletedAt: v.optional(v.number()), // finished every step
+    tourSkippedAt: v.optional(v.number()), // dismissed early; also suppresses re-fire
   }).index("by_user", ["userId"]),
 
   // Per-profile AI provider keys. A user's own key (e.g. their OpenRouter key) is

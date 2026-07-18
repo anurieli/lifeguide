@@ -604,6 +604,7 @@ export function Whiteboard({ surfaceId, active }: { surfaceId: SurfaceId; active
 
   return (
     <div
+      data-tour="tour-whiteboard"
       className="relative w-full h-screen overflow-hidden bg-paper touch-none"
       style={{
         cursor: isPanning ? "grabbing" : marqueeRect ? "crosshair" : "default",

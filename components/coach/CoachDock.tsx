@@ -134,9 +134,14 @@ export function CoachDock({
 
       {!stepAside && (
         <>
-          {/* Primary: Talk. The Listener is the headline way to reach the Coach. */}
+          {/* Primary: Talk. The Listener is the headline way to reach the Coach.
+              data-tour anchors the tour's "Coach" step; the button is desktop-only
+              (hidden below `md`), so on a phone that step's coachmark falls back
+              to a centered card instead of pointing at nothing — see
+              components/tour/useTourTarget.ts. */}
           <button
             onClick={onSpeak}
+            data-tour="tour-coach"
             className="hidden md:flex fixed bottom-6 right-6 w-14 h-14 rounded-full bg-coach text-white z-[75] shadow-xl items-center justify-center hover:scale-105 transition"
             title="Talk to your Coach"
           >

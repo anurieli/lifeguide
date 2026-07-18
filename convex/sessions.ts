@@ -184,6 +184,7 @@ export const list = query({
           summary: s.summary,
           doing: s.doing,
           device: s.device,
+          mode: s.mode,
           digestStatus: s.digest?.status,
           startedAt: s.startedAt,
           updatedAt: s.updatedAt,

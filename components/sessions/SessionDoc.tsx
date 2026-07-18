@@ -2,9 +2,20 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { ArrowLeft, ImagePlus, Mic, Pause, Play, Square, X } from "lucide-react";
+import {
+  ArrowLeft,
+  GitBranch,
+  ImagePlus,
+  MessageCircle,
+  Mic,
+  Pause,
+  Play,
+  Square,
+  X,
+} from "lucide-react";
 import { useRecording } from "./RecordingProvider";
 import { useBlobUpload } from "@/hooks/useBlobUpload";
 import {
@@ -14,6 +25,7 @@ import {
   urlRawType,
 } from "@/components/thoughts/utils";
 import { caretPosition, CaretPos } from "./caret";
+import { ThoughtMapView } from "./ThoughtMapView";
 
 /**
  * The living entry: one continuous document. Captures render in the order they
@@ -63,6 +75,38 @@ function Transcript({ text }: { text: string }) {
   );
 }
 
+type CaptureDoc = NonNullable<FunctionReturnType<typeof api.sessions.get>>["captures"][number];
+type ReplyDoc = FunctionReturnType<typeof api.sessions.replies>[number];
+
+function capitalize(s: string): string {
+  return s.length ? s[0].toUpperCase() + s.slice(1) : s;
+}
+
+// A dynamic-mode interviewer turn: visually distinct from the user's own material
+// (indented, thin left border, small persona tag, quieter type) but calm — no
+// bubble chrome, no avatar. History is history: this renders in quiet mode too,
+// it's just that no new ones generate there (the backend handles that gate).
+function ReplyBlock({ reply }: { reply: ReplyDoc }) {
+  return (
+    <div className="pl-3.5 border-l-2 border-gold/35">
+      <div className="text-[10.5px] font-medium tracking-wide text-gold/80 uppercase mb-1">
+        {capitalize(reply.persona || "coach")}
+      </div>
+      {reply.status === "pending" && (
+        <p className="text-[13px] text-ink-mute animate-pulse">thinking…</p>
+      )}
+      {reply.status === "error" && (
+        <p className="text-[12.5px] text-ink-mute">Didn&apos;t catch that one.</p>
+      )}
+      {reply.status === "done" && reply.text && (
+        <p className="text-[14px] leading-relaxed text-ink-soft whitespace-pre-wrap">
+          {reply.text}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function SessionDoc({
   sessionId,
   onBack,
@@ -71,13 +115,20 @@ export function SessionDoc({
   onBack: () => void;
 }) {
   const doc = useQuery(api.sessions.get, { sessionId });
+  const replies = useQuery(api.sessions.replies, { sessionId }) ?? [];
+  // Shares the Convex client's subscription with ThoughtMapView's own query of
+  // the same args (Convex dedupes by query+args), so knowing whether a map
+  // already exists here costs nothing extra.
+  const thoughtMap = useQuery(api.sessions.thoughtMap, { sessionId });
   const createCapture = useMutation(api.captures.create);
   const reprocess = useMutation(api.captures.reprocess);
   const setDoing = useMutation(api.sessions.setDoing);
   const setTitle = useMutation(api.sessions.setTitle);
+  const setMode = useMutation(api.sessions.setMode);
   const refreshDigest = useMutation(api.sessions.refreshDigest);
   const deleteIfEmpty = useMutation(api.sessions.deleteIfEmpty);
   const touchOpened = useMutation(api.sessions.touchOpened);
+  const requestThoughtMap = useMutation(api.sessions.requestThoughtMap);
   const uploadBlob = useBlobUpload();
   const rec = useRecording();
   // This entry is the one the live take is landing in.
@@ -92,6 +143,7 @@ export function SessionDoc({
   const [doingDraft, setDoingDraft] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
   // Where the text caret sits inside the trailing editor (desktop: the capture
   // pair rides it). null = no caret; the pair rests below the last content.
   const [caret, setCaret] = useState<CaretPos | null>(null);
@@ -205,6 +257,13 @@ export function SessionDoc({
     if (ta) setCaret(caretPosition(ta));
   };
 
+  // First tap opens the panel and kicks off generation in the same motion; once
+  // a map already exists this just reopens the (reactive) panel on it.
+  const openMap = () => {
+    setMapOpen(true);
+    if (!thoughtMap) void requestThoughtMap({ sessionId });
+  };
+
   if (doc === undefined) {
     return <p className="text-center text-[13px] text-ink-mute py-10">Loading…</p>;
   }
@@ -221,6 +280,17 @@ export function SessionDoc({
 
   const { session, captures } = doc;
   const started = new Date(session.startedAt);
+  const mode = session.mode ?? "quiet";
+
+  // The user's own material interleaved with the interviewer's replies, in the
+  // order they actually happened. History is history: replies still render in
+  // quiet mode (the backend just stops generating new ones there).
+  const thread: Array<
+    { kind: "capture"; at: number; capture: CaptureDoc } | { kind: "reply"; at: number; reply: ReplyDoc }
+  > = [
+    ...captures.map((c) => ({ kind: "capture" as const, at: c.createdAt, capture: c })),
+    ...replies.map((r) => ({ kind: "reply" as const, at: r.createdAt, reply: r })),
+  ].sort((a, b) => a.at - b.at);
 
   // The live-take pill — discard · pause/resume · save — shared by the desktop
   // caret row and the phone's floating corner.
@@ -321,6 +391,42 @@ export function SessionDoc({
         />
       </div>
 
+      {/* Quiet/dynamic toggle + "map my thinking": a slim strip of its own so it
+          stays comfortably tappable on the phone without crowding the title row. */}
+      <div className="flex items-center justify-between gap-2 px-5 py-2 border-b border-line/70 md:px-8">
+        <button
+          type="button"
+          onClick={() => void setMode({ sessionId, mode: mode === "quiet" ? "dynamic" : "quiet" })}
+          aria-label={mode === "quiet" ? "Switch to dynamic mode" : "Switch to quiet mode"}
+          title={
+            mode === "quiet"
+              ? "Quiet — just held. Tap for a live conversation."
+              : "Dynamic — an interviewer replies. Tap to go quiet."
+          }
+          className={`flex items-center gap-1.5 h-8 px-3 rounded-full border text-[11.5px] font-medium transition ${
+            mode === "dynamic"
+              ? "bg-gold/10 border-gold text-gold"
+              : "bg-paper-2 border-line-2 text-ink-mute hover:text-ink"
+          }`}
+        >
+          {mode === "dynamic" ? (
+            <MessageCircle className="w-3.5 h-3.5" />
+          ) : (
+            <Mic className="w-3.5 h-3.5" />
+          )}
+          {mode === "dynamic" ? "Dynamic" : "Quiet"}
+        </button>
+        <button
+          type="button"
+          onClick={openMap}
+          aria-label={thoughtMap ? "View thought map" : "Map my thinking"}
+          className="flex items-center gap-1.5 h-8 px-3 rounded-full border border-line-2 text-[11.5px] text-ink-mute hover:text-gold hover:border-gold transition"
+        >
+          <GitBranch className="w-3.5 h-3.5" />
+          {thoughtMap ? "Thought map" : "Map my thinking"}
+        </button>
+      </div>
+
       {/* The page: content in order, then the trailing editor. Clicking empty
           space anywhere lands the caret, like a notes document. */}
       <div
@@ -333,57 +439,66 @@ export function SessionDoc({
               Speak, or tap anywhere and write.
             </p>
           )}
-          {captures.map((c) => (
-            <div key={c._id}>
-              {c.rawType === "audio" && (
-                <div>
-                  {c.extractedText ? (
-                    <Transcript text={c.extractedText} />
-                  ) : c.extraction?.status === "error" ? (
-                    <p className="text-[13px] text-ink-mute">
-                      Transcription failed, the recording is safe.{" "}
-                      <button
-                        type="button"
-                        onClick={() => void reprocess({ captureId: c._id })}
-                        className="text-gold"
-                      >
-                        Try again
-                      </button>
-                    </p>
-                  ) : (
-                    <p className="text-[13px] text-ink-mute animate-pulse">Listening back…</p>
+          {thread.map((item) =>
+            item.kind === "reply" ? (
+              <ReplyBlock key={item.reply._id} reply={item.reply} />
+            ) : (
+              <div key={item.capture._id}>
+                {item.capture.rawType === "audio" && (
+                  <div>
+                    {item.capture.extractedText ? (
+                      <Transcript text={item.capture.extractedText} />
+                    ) : item.capture.extraction?.status === "error" ? (
+                      <p className="text-[13px] text-ink-mute">
+                        Transcription failed, the recording is safe.{" "}
+                        <button
+                          type="button"
+                          onClick={() => void reprocess({ captureId: item.capture._id })}
+                          className="text-gold"
+                        >
+                          Try again
+                        </button>
+                      </p>
+                    ) : (
+                      <p className="text-[13px] text-ink-mute animate-pulse">Listening back…</p>
+                    )}
+                    {item.capture.fileUrl && (
+                      <audio
+                        controls
+                        preload="none"
+                        src={item.capture.fileUrl}
+                        className="mt-2 h-9 w-full max-w-[320px]"
+                      />
+                    )}
+                  </div>
+                )}
+                {(item.capture.rawType === "text" || item.capture.rawType === "quote") && (
+                  <p className="text-[15px] leading-relaxed text-ink whitespace-pre-wrap">
+                    {item.capture.rawText}
+                  </p>
+                )}
+                {(item.capture.rawType === "link" || item.capture.rawType === "video_link") &&
+                  item.capture.rawUrl && (
+                    <a
+                      href={item.capture.rawUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[14px] text-gold underline underline-offset-2 break-all"
+                    >
+                      {item.capture.rawUrl}
+                    </a>
                   )}
-                  {c.fileUrl && (
-                    <audio
-                      controls
-                      preload="none"
-                      src={c.fileUrl}
-                      className="mt-2 h-9 w-full max-w-[320px]"
-                    />
-                  )}
-                </div>
-              )}
-              {(c.rawType === "text" || c.rawType === "quote") && (
-                <p className="text-[15px] leading-relaxed text-ink whitespace-pre-wrap">
-                  {c.rawText}
-                </p>
-              )}
-              {(c.rawType === "link" || c.rawType === "video_link") && c.rawUrl && (
-                <a
-                  href={c.rawUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[14px] text-gold underline underline-offset-2 break-all"
-                >
-                  {c.rawUrl}
-                </a>
-              )}
-              {c.rawType === "image" && c.fileUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={c.fileUrl} alt="" className="rounded-xl max-h-80 object-contain" />
-              )}
-            </div>
-          ))}
+                {item.capture.rawType === "image" && item.capture.fileUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={item.capture.fileUrl}
+                    alt=""
+                    className="rounded-xl max-h-80 object-contain"
+                  />
+                )}
+              </div>
+            ),
+          )}
           {/* Takes saving right now: on the page the instant recording stops,
               upload + transcription running behind them. The real capture row
               replaces this the moment the server has it. */}
@@ -548,6 +663,8 @@ export function SessionDoc({
         className="hidden"
         onChange={(e) => void onFile(e)}
       />
+
+      {mapOpen && <ThoughtMapView sessionId={sessionId} onClose={() => setMapOpen(false)} />}
     </div>
   );
 }

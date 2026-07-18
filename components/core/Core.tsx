@@ -7,6 +7,7 @@ import { BLUEPRINT, type Malleability } from "@/lib/blueprint";
 import { VoiceField } from "@/components/voice/VoiceField";
 import { ZenCore } from "./ZenCore";
 import { ConversationalCore } from "./ConversationalCore";
+import { PillarWheel } from "./PillarWheel";
 import { PageHeader } from "@/components/shell/PageHeader";
 
 type CoreMode = "grid" | "zen" | "conversational";
@@ -132,6 +133,8 @@ export function Core() {
           The enduring layer beneath your days: who you are, who you&apos;re becoming, and what you
           stand for. Edit anything, anytime. The colored dot shows how settled each piece should be.
         </p>
+
+        <PillarWheel />
 
         {BLUEPRINT.map((section) => (
           <div key={section.title} className="mb-9">

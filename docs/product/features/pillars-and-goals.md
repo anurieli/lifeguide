@@ -1,6 +1,8 @@
 # Pillars & Goals
 
-**Status:** pillars **built** · goals **proposed** · **Element of:** Core and Sessions · **Owns:** `pillars` (live), `goals` (proposed)
+**Status:** superseded, kept for history · **Element of:** Core and Sessions · **Owns:** `pillars` (live), `goals` (proposed)
+
+> **Superseded.** This doc pre-dates two things that actually shipped and diverged from what it describes: [ADR 0007](../../decisions/0007-file-system-on-the-human-and-the-center.md) turned pillars into folders (not the "cross-cutting tag" model described below — see [`pillars.md`](pillars.md) for the current pillar doc, extended again by ARI-11 / [ADR 0022](../../decisions/0022-identity-is-not-a-pillar.md)), and the Goals board shipped as **Orbit** with a different shape (`kind`/`status`/`area`, no horizons) — see [`goals.md`](goals.md). Kept below for the original "goals across the Blueprint's horizons" idea, which was never built and isn't currently planned.
 
 > The domains that make a human solid, and the commitments inside each. Pillars are the cross-cutting parts of life you are strengthening; goals are what you commit to inside them, across every time horizon.
 

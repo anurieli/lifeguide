@@ -57,7 +57,7 @@ The store itself is inert data. The intelligence is the [Center](the-center.md):
 
 ## 8. Data touched
 
-**Owns:** `pillars { userId, name, description?, about?, composition?, weight, source, createdAt }`; `coreFiles { userId, pillarId, name, content, kind, status, note?, supersedes?, sourceSessionId?, createdAt, updatedAt }`. Exact shapes + indexes in [`../../architecture/data-model.md`](../../architecture/data-model.md).
+**Owns:** `pillars { userId, name, description?, about?, composition?, weight, source, createdAt }`; `coreFiles { userId, pillarId, name, content, kind, status, note?, supersedes?, sourceSessionId?, createdAt, updatedAt }`. Exact shapes + indexes in [`../../architecture/data-model.md`](../../architecture/data-model.md). ARI-11 ([`pillars.md`](pillars.md), [ADR 0022](../../decisions/0022-identity-is-not-a-pillar.md)) added `role?`, `strength?`, `strengthUpdatedAt?` to the same `pillars` rows for the Life Wheel; folder/file behavior here is unchanged by that.
 
 **Draws:** nothing — it is the thing others draw.
 

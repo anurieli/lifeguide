@@ -40,6 +40,8 @@ A task state, not a list: `waiting` + optional free-text `waitingOn` + `waitingS
 
 Tables `goals` and `goalTasks` (see `convex/schema.ts`), plus the `apiKeys` provider union gained `"todoist"`. API: `convex/goals.ts` (board/tasks queries, goal + task mutations), `convex/todoist.ts` (`saveToken` connect-test action, `sync` pull action, push actions, internal plumbing).
 
+`goals.pillarId?` (ARI-11, [ADR 0022](../../decisions/0022-identity-is-not-a-pillar.md)) is an optional relation to `pillars` — which domain this goal strengthens. Added to the schema as a foundation for a future pass; nothing in this board reads or writes it yet.
+
 ## AI involvement
 
 None yet. The Coach's per-view context string includes the goals view. Candidates later: distill captures into goal tasks, why-coaching, weekly review.

@@ -33,6 +33,8 @@ export const ask = action({
     const fragments: ContextFragment[] = [];
     const mirror = await ctx.runQuery(api.mirror.assemble, {});
     if (mirror) fragments.push(mirror);
+    const pillars = await ctx.runQuery(api.pillars.assembleContext, {});
+    if (pillars) fragments.push(pillars);
     if (args.surfaceId) {
       const surface = await ctx.runQuery(api.nodes.surfaceContext, { surfaceId: args.surfaceId });
       if (surface) fragments.push(surface);

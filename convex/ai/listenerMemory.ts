@@ -13,7 +13,7 @@ import { assembleSummaryInput, parseSessionSummary } from "../../lib/listenerMem
 // memory that grounds the NEXT call's opening (agents/listener/persona.ts,
 // convex/ai/voice/index.ts). Scheduled from convex/interview.ts's `end` mutation
 // on EVERY call end, whatever the final status (completed, abandoned, or tossed
-// alike, ADR 0022) — a toss only withholds the Center's identity filing, never
+// alike, ADR 0023) — a toss only withholds the Center's identity filing, never
 // this conversational memory. See docs/decisions/0023-listener-memory-backbone.md
 // and docs/product/features/listener.md.
 // ============================================================================

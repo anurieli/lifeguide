@@ -104,12 +104,14 @@ The Settings AI hub's model picker. `{ userId, taskId, provider: openrouter|open
 
 ### interviewSessions (onboarding interviews + the Listener's calls)
 
-One run of an onboarding experience, OR one Listener (`/speak`) call — the table is shared (`experienceId` distinguishes them; ADR 0007/the-center.md). The QR phone-handoff encodes `/interview/<_id>` so any device can join the same onboarding row; Listener calls never use tokens (auth-gated only).
+One run of an onboarding experience, OR one Listener (`/speak`) call, OR — since ADR 0024 — one run of the Core's Conversational mode (the table is shared: the same shape fits a transcript, a status, a device, and `experienceId` distinguishes them; ADR 0007/the-center.md). The QR phone-handoff encodes `/interview/<_id>` so any device can join the same onboarding row; Listener calls never use tokens (auth-gated only).
 
 ```
 interviewSessions {
   userId,                       // owner of the session — the one speaker this thread belongs to
-  experienceId: string,         // "text-interview" | "voice-interview" | "listen"
+  experienceId: string,         // "text-interview" | "voice-interview" | "listen" (the Listener,
+                                 // components/voice/SpeakSurface.tsx) | "core" (Core Conversational
+                                 // mode, components/core/ConversationalCore.tsx, ADR 0024)
   status: "active" | "completed" | "abandoned" | "tossed",
   device: "desktop" | "phone",  // device that started the session
   transcript: Array<{

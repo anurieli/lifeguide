@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { layoutThoughtMap, nodeWidth } from "../lib/thoughtMapLayout";
+import {
+  layoutThoughtMap,
+  nodeWidth,
+  fitToContainer,
+  MIN_READABLE_SCALE,
+} from "../lib/thoughtMapLayout";
 import { ThoughtMapNode, ThoughtMapEdge } from "../lib/thoughtMap";
 
 function node(partial: Partial<ThoughtMapNode> & { id: string; level: number }): ThoughtMapNode {
@@ -99,5 +104,55 @@ describe("layoutThoughtMap", () => {
 
   it("sizes boxes from label length", () => {
     expect(nodeWidth("hi")).toBeLessThan(nodeWidth("a considerably longer thought than that"));
+  });
+});
+
+describe("fitToContainer", () => {
+  it("returns scale 1 (no scroll) for a degenerate layout or container", () => {
+    expect(fitToContainer({ width: 0, height: 0 }, 800, 600)).toEqual({
+      scale: 1,
+      fitsWithoutScroll: true,
+    });
+    expect(fitToContainer({ width: 400, height: 300 }, 0, 0)).toEqual({
+      scale: 1,
+      fitsWithoutScroll: true,
+    });
+  });
+
+  it("never magnifies a map smaller than its container", () => {
+    const result = fitToContainer({ width: 200, height: 150 }, 900, 700);
+    expect(result.scale).toBe(1);
+    expect(result.fitsWithoutScroll).toBe(true);
+  });
+
+  it("shrinks a map that overflows the container so it fits both dimensions", () => {
+    const containerWidth = 800;
+    const containerHeight = 500;
+    const result = fitToContainer({ width: 1600, height: 600 }, containerWidth, containerHeight);
+    expect(result.fitsWithoutScroll).toBe(true);
+    expect(result.scale).toBeLessThan(1);
+    // Scaled content must actually fit inside the container on both axes.
+    expect(1600 * result.scale).toBeLessThanOrEqual(containerWidth + 0.001);
+    expect(600 * result.scale).toBeLessThanOrEqual(containerHeight + 0.001);
+  });
+
+  it("clamps at MIN_READABLE_SCALE and signals scroll fallback for a huge map", () => {
+    const result = fitToContainer({ width: 6000, height: 5000 }, 800, 500);
+    expect(result.scale).toBe(MIN_READABLE_SCALE);
+    expect(result.fitsWithoutScroll).toBe(false);
+  });
+
+  it("fits a realistic laid-out map inside a typical desktop panel", () => {
+    const nodes: ThoughtMapNode[] = [
+      node({ id: "root", level: 0, label: "Overcommitting" }),
+      node({ id: "a", level: 1, label: "Saying yes to work asks", parentId: "root" }),
+      node({ id: "b", level: 1, label: "Skipping the gym", parentId: "root" }),
+      node({ id: "c", level: 2, label: "Costing me the gym", parentId: "a" }),
+    ];
+    const layout = layoutThoughtMap(nodes, []);
+    const result = fitToContainer(layout, 700, 420);
+    expect(result.fitsWithoutScroll).toBe(true);
+    expect(layout.width * result.scale).toBeLessThanOrEqual(700.001);
+    expect(layout.height * result.scale).toBeLessThanOrEqual(420.001);
   });
 });

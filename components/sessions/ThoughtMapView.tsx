@@ -1,31 +1,46 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { ChevronDown, ChevronRight, GitBranch, Loader2, RefreshCw, X } from "lucide-react";
-import { layoutThoughtMap } from "@/lib/thoughtMapLayout";
+import { ChevronDown, ChevronRight, GitBranch, RefreshCw } from "lucide-react";
+import { fitToContainer, layoutThoughtMap } from "@/lib/thoughtMapLayout";
 import { ThoughtMapEdge, ThoughtMapNode } from "@/lib/thoughtMap";
 
 /**
- * The post-hoc thought map surface (ARI-18): reads only the user's own captures
- * (never the interviewer's replies, see convex/ai/thoughtMap.ts), distilled into
- * a hierarchy. Desktop renders it as a hand-rolled SVG graph (layered by level,
- * lib/thoughtMapLayout.ts computes the positions); phone hides the graph and
- * renders the same data as a collapsible outline instead — same map, calm on
- * a small screen. Owns its own query + the (re)generate mutation, so the caller
- * (SessionDoc) just decides when the panel is open.
+ * The thought map (ARI-18, UX rework): a VIEW of the session document, not a
+ * popup — SessionDoc's view switcher swaps the page's content into this in
+ * place of the thoughts feed. Reads only the user's own captures (never the
+ * interviewer's replies, see convex/ai/thoughtMap.ts), distilled into a
+ * hierarchy. Desktop renders it as a hand-rolled SVG graph, scaled via viewBox
+ * to fit the container without scrolling (lib/thoughtMapLayout.ts's
+ * fitToContainer; huge maps clamp at a readable minimum and fall back to
+ * pan/scroll). Phone hides the graph and renders the same data as a
+ * collapsible outline instead — same map, calm on a small screen. The map now
+ * builds itself in the background as a session fills up (no tap required);
+ * this component only owns the on-demand "Map now" / "Remap" affordances.
  */
 
 type MapDoc = NonNullable<FunctionReturnType<typeof api.sessions.thoughtMap>>;
 
-const EDGE_STROKE = "#9C9586";
 const LINE = "#E7E1D4";
 const GOLD = "#B8945A";
 const INK = "#1A1D24";
 const INK_MUTE = "#8A8F9C";
+
+// Flow-first (directive 5): leads_to is the visual spine — solid, arrowed,
+// heaviest. part_of is a light structural (tree) line. relates is the
+// thinnest, dashed. Kept inside the existing muted/stone/gold palette.
+const EDGE_STYLE: Record<
+  ThoughtMapEdge["kind"],
+  { stroke: string; width: number; opacity: number; dash?: string }
+> = {
+  leads_to: { stroke: GOLD, width: 2.25, opacity: 0.85 },
+  part_of: { stroke: LINE, width: 1.25, opacity: 0.75 },
+  relates: { stroke: "#9C9586", width: 1, opacity: 0.45, dash: "4 3" },
+};
 
 // Rough char budget for a box of this width; long labels already got trimmed to
 // 80 chars server-side, this just keeps the SVG text from spilling past its box.
@@ -34,30 +49,72 @@ function fitLabel(label: string, width: number): string {
   return label.length <= budget ? label : `${label.slice(0, budget - 1)}…`;
 }
 
-function ThoughtGraph({ nodes, edges, rootId }: { nodes: ThoughtMapNode[]; edges: ThoughtMapEdge[]; rootId?: string }) {
+// Measures a container's rendered size so the graph can scale to fit it.
+function useElementSize<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      setSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return { ref, size };
+}
+
+function ThoughtGraph({
+  nodes,
+  edges,
+  rootId,
+}: {
+  nodes: ThoughtMapNode[];
+  edges: ThoughtMapEdge[];
+  rootId?: string;
+}) {
   const layout = useMemo(() => layoutThoughtMap(nodes, edges), [nodes, edges]);
   const nodesById = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
+  const { ref, size } = useElementSize<HTMLDivElement>();
+  const fit = useMemo(
+    () => fitToContainer(layout, size.width, size.height),
+    [layout, size.width, size.height],
+  );
+  const svgWidth = Math.max(layout.width * fit.scale, 1);
+  const svgHeight = Math.max(layout.height * fit.scale, 1);
 
   return (
-    <div className="hidden md:block overflow-auto">
-      <svg width={Math.max(layout.width, 1)} height={Math.max(layout.height, 1)}>
+    <div
+      ref={ref}
+      className={`hidden md:flex h-full w-full items-center justify-center ${
+        fit.fitsWithoutScroll ? "overflow-hidden" : "overflow-auto"
+      }`}
+    >
+      <svg width={svgWidth} height={svgHeight} viewBox={`0 0 ${Math.max(layout.width, 1)} ${Math.max(layout.height, 1)}`}>
         <defs>
           <marker id="tm-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M0 0 L10 5 L0 10 z" fill={EDGE_STROKE} />
+            <path d="M0 0 L10 5 L0 10 z" fill={GOLD} />
           </marker>
         </defs>
-        {layout.edges.map((e, i) => (
-          <path
-            key={`${e.from}-${e.to}-${i}`}
-            d={e.path}
-            fill="none"
-            stroke={EDGE_STROKE}
-            strokeOpacity={0.55}
-            strokeWidth={1.5}
-            strokeDasharray={e.kind === "relates" ? "4 3" : undefined}
-            markerEnd={e.kind === "leads_to" ? "url(#tm-arrow)" : undefined}
-          />
-        ))}
+        {layout.edges.map((e, i) => {
+          const style = EDGE_STYLE[e.kind];
+          return (
+            <path
+              key={`${e.from}-${e.to}-${i}`}
+              d={e.path}
+              fill="none"
+              stroke={style.stroke}
+              strokeOpacity={style.opacity}
+              strokeWidth={style.width}
+              strokeDasharray={style.dash}
+              markerEnd={e.kind === "leads_to" ? "url(#tm-arrow)" : undefined}
+            />
+          );
+        })}
         {layout.nodes.map((p) => {
           const n = nodesById.get(p.id);
           if (!n) return null;
@@ -74,13 +131,14 @@ function ThoughtGraph({ nodes, edges, rootId }: { nodes: ThoughtMapNode[]; edges
                 rx={10}
                 fill={isRoot ? "#B8945A14" : "#FFFFFF"}
                 stroke={isRoot ? GOLD : LINE}
-                strokeWidth={isRoot ? 2 : 1.25}
+                strokeWidth={isRoot ? 2.5 : 1.25}
               />
               <text
                 x={p.x + p.width / 2}
                 y={p.y + p.height / 2 + 4}
                 textAnchor="middle"
-                fontSize={11.5}
+                fontSize={isRoot ? 12.5 : 11.5}
+                fontWeight={isRoot ? 700 : 400}
                 fill={superseded ? INK_MUTE : INK}
                 textDecoration={superseded ? "line-through" : undefined}
               >
@@ -172,74 +230,91 @@ function ThoughtOutline({ nodes, edges, rootId }: { nodes: ThoughtMapNode[]; edg
     );
   };
 
-  return <div className="md:hidden flex flex-col">{roots.map((r) => renderNode(r, 0))}</div>;
-}
-
-export function ThoughtMapView({ sessionId, onClose }: { sessionId: Id<"sessions">; onClose: () => void }) {
-  const map = useQuery(api.sessions.thoughtMap, { sessionId });
-  const requestThoughtMap = useMutation(api.sessions.requestThoughtMap);
-
-  const remap = () => void requestThoughtMap({ sessionId });
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-stretch md:items-center md:justify-center bg-black/25 backdrop-blur-[1px]"
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="ml-auto md:ml-0 w-full max-w-[420px] md:max-w-[760px] h-full md:max-h-[80vh] md:h-auto md:rounded-2xl bg-card border border-line shadow-xl flex flex-col"
-      >
-        <div className="flex items-center gap-2 px-5 py-3.5 border-b border-line md:px-6">
-          <GitBranch className="w-4 h-4 text-gold" />
-          <h2 className="flex-1 text-[14px] font-medium text-ink">Thought map</h2>
-          {map?.status === "done" && (
-            <button
-              type="button"
-              onClick={remap}
-              className="flex items-center gap-1.5 text-[12px] text-ink-mute hover:text-gold"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Remap
-            </button>
-          )}
-          <button type="button" onClick={onClose} aria-label="Close" className="text-ink-mute hover:text-ink">
-            <X className="w-[18px] h-[18px]" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-auto p-5 md:p-6">
-          <MapBody map={map} onRetry={remap} />
-        </div>
-      </div>
+    <div className="md:hidden flex flex-col overflow-y-auto h-full">
+      {roots.map((r) => renderNode(r, 0))}
     </div>
   );
 }
 
-function MapBody({ map, onRetry }: { map: MapDoc | null | undefined; onRetry: () => void }) {
+// The calm empty state: shown before a map has ever been requested or auto-generated.
+function EmptyState({ onRequest }: { onRequest: () => void }) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 py-10">
+      <GitBranch className="w-5 h-5 text-ink-mute" />
+      <p className="text-[13.5px] text-ink-mute max-w-[280px]">
+        Your map builds itself shortly after you finish dumping.
+      </p>
+      <button
+        type="button"
+        onClick={onRequest}
+        className="h-9 px-4 rounded-full border border-line-2 text-[12.5px] text-ink-mute hover:text-gold hover:border-gold transition"
+      >
+        Map now
+      </button>
+    </div>
+  );
+}
+
+export function ThoughtMapView({ sessionId }: { sessionId: Id<"sessions"> }) {
+  const map = useQuery(api.sessions.thoughtMap, { sessionId });
+  const requestThoughtMap = useMutation(api.sessions.requestThoughtMap);
+  const remap = () => void requestThoughtMap({ sessionId });
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col">
+      <MapBody map={map} onRequest={remap} onRetry={remap} />
+    </div>
+  );
+}
+
+function MapBody({
+  map,
+  onRequest,
+  onRetry,
+}: {
+  map: MapDoc | null | undefined;
+  onRequest: () => void;
+  onRetry: () => void;
+}) {
   if (map === undefined) {
-    return <p className="text-[13px] text-ink-mute">Loading…</p>;
+    return <p className="text-center text-[13px] text-ink-mute py-10">Loading…</p>;
   }
-  if (map === null || map.status === "pending") {
-    return <p className="text-[13px] text-ink-mute animate-pulse">mapping your thinking…</p>;
+  if (map === null) {
+    return <EmptyState onRequest={onRequest} />;
+  }
+  if (map.status === "pending") {
+    return <p className="text-center text-[13px] text-ink-mute animate-pulse py-10">mapping your thinking…</p>;
   }
   if (map.status === "error") {
     return (
-      <p className="text-[13px] text-ink-mute">
-        {map.error ?? "Couldn't map this one."}{" "}
-        <button type="button" onClick={onRetry} className="text-gold">
+      <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-10">
+        <p className="text-[13px] text-ink-mute">{map.error ?? "Couldn't map this one."}</p>
+        <button type="button" onClick={onRetry} className="text-[12.5px] text-gold">
           Try again
         </button>
-      </p>
+      </div>
     );
   }
   if (map.nodes.length === 0) {
-    return <p className="text-[13px] text-ink-mute">Nothing to map yet.</p>;
+    return <EmptyState onRequest={onRequest} />;
   }
   return (
-    <>
-      <ThoughtGraph nodes={map.nodes} edges={map.edges} rootId={map.rootId} />
-      <ThoughtOutline nodes={map.nodes} edges={map.edges} rootId={map.rootId} />
-    </>
+    <div className="flex-1 min-h-0 flex flex-col">
+      <div className="flex justify-end px-1 pb-2 shrink-0">
+        <button
+          type="button"
+          onClick={onRequest}
+          className="flex items-center gap-1.5 text-[12px] text-ink-mute hover:text-gold"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Remap
+        </button>
+      </div>
+      <div className="flex-1 min-h-0">
+        <ThoughtGraph nodes={map.nodes} edges={map.edges} rootId={map.rootId} />
+        <ThoughtOutline nodes={map.nodes} edges={map.edges} rootId={map.rootId} />
+      </div>
+    </div>
   );
 }

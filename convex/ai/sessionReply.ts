@@ -70,6 +70,74 @@ export const maybeReply = internalAction({
   },
 });
 
+// The interviewer opens the conversation (ARI-18 UX rework): scheduled with
+// runAfter(0) by sessions.setMode the moment a session flips into "dynamic",
+// so the toggle visibly does something rather than just relabeling. Shares
+// insertReplyInternal/finishReplyInternal and the same "sessionReply" model
+// task as maybeReply's regular turns; the only difference is the trailing
+// instruction telling the model this is an opener, not a reply to new material.
+//
+// No double-greeting: skipped when the newest thread item (captures + replies
+// merged by createdAt) is already a pending or done reply — flipping the
+// toggle off and back on quickly (or a duplicate schedule) must not stack
+// openers. An *error* reply doesn't count as "already answered", so a session
+// whose last attempt failed still gets a fresh opener.
+export const opener = internalAction({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, args) => {
+    const data = await ctx.runQuery(internal.sessions.getForReplyInternal, {
+      sessionId: args.sessionId,
+    });
+    if (!data) return; // session deleted while this was scheduled
+    const { session, captures, replies } = data;
+
+    if (session.mode !== "dynamic") return; // mode may have flipped back before this ran
+
+    const latestCaptureAt = captures.length ? Math.max(...captures.map((c) => c.createdAt)) : 0;
+    const latestReply = replies.length
+      ? replies.reduce((a, b) => (b.createdAt > a.createdAt ? b : a))
+      : undefined;
+    if (latestReply && latestReply.createdAt >= latestCaptureAt && latestReply.status !== "error") {
+      return;
+    }
+
+    const replyId = await ctx.runMutation(internal.sessions.insertReplyInternal, {
+      sessionId: args.sessionId,
+      userId: session.userId,
+      persona: session.interviewer ?? "coach",
+    });
+
+    try {
+      const text = await chatComplete(ctx, {
+        taskId: "sessionReply",
+        fn: "ai/sessionReply.opener",
+        userId: session.userId,
+        messages: [
+          ...buildReplyMessages(captures, replies),
+          {
+            role: "user" as const,
+            content:
+              "(The user just opened a live conversation. Give one short opener inviting them to talk — if there's prior material in this session, hook into it.)",
+          },
+        ],
+      });
+      const trimmed = text.trim();
+      if (!trimmed) throw new Error("empty reply");
+      await ctx.runMutation(internal.sessions.finishReplyInternal, {
+        replyId,
+        status: "done",
+        text: trimmed,
+      });
+    } catch (e) {
+      await ctx.runMutation(internal.sessions.finishReplyInternal, {
+        replyId,
+        status: "error",
+        error: e instanceof Error ? e.message.slice(0, 300) : "reply failed",
+      });
+    }
+  },
+});
+
 const HISTORY_CAP = 40;
 
 type ReplyCapture = Pick<Doc<"captures">, "createdAt" | "rawText" | "extractedText" | "extraction">;

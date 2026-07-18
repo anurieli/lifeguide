@@ -272,7 +272,16 @@ export const setMode = mutation({
     const userId = await getAuthUserId(ctx);
     const s = await ctx.db.get(args.sessionId);
     if (!s || s.userId !== userId) throw new Error("Not found");
+    const turningOn = args.mode === "dynamic" && s.mode !== "dynamic";
     await ctx.db.patch(args.sessionId, { mode: args.mode, updatedAt: Date.now() });
+    if (turningOn) {
+      // The interviewer opens the conversation (UX rework): one short opener
+      // the moment the toggle flips on, so it visibly does something. opener()
+      // re-checks mode and guards against double-greeting on its own.
+      await ctx.scheduler.runAfter(0, internal.ai.sessionReply.opener, {
+        sessionId: args.sessionId,
+      });
+    }
   },
 });
 
@@ -565,14 +574,34 @@ export const writeThoughtMapInternal = internalMutation({
       .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
       .order("desc")
       .first();
-    if (!existing) return; // deleted (or never requested) while generation was in flight
-    await ctx.db.patch(existing._id, {
+    const now = Date.now();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        status: args.status,
+        error: args.error,
+        ...(args.nodes !== undefined ? { nodes: args.nodes } : {}),
+        ...(args.edges !== undefined ? { edges: args.edges } : {}),
+        ...(args.rootId !== undefined ? { rootId: args.rootId } : {}),
+        generatedAt: now,
+      });
+      return;
+    }
+    // Auto-map (ARI-18 rework): the debounced backend pass can be the first
+    // thing to write this session's map — no prior "Map now"/"Remap" tap will
+    // have inserted the row, so insert it here instead of no-opping, or the
+    // map view would never see the auto-generated result.
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) return; // session deleted while generation was in flight
+    await ctx.db.insert("thoughtMaps", {
+      userId: session.userId,
+      sessionId: args.sessionId,
       status: args.status,
       error: args.error,
-      ...(args.nodes !== undefined ? { nodes: args.nodes } : {}),
-      ...(args.edges !== undefined ? { edges: args.edges } : {}),
+      nodes: args.nodes ?? [],
+      edges: args.edges ?? [],
       ...(args.rootId !== undefined ? { rootId: args.rootId } : {}),
-      generatedAt: Date.now(),
+      generatedAt: now,
+      createdAt: now,
     });
   },
 });

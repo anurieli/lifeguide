@@ -86,10 +86,20 @@ export const ingestCapture = internalAction({
     });
 
     // A session-member capture refreshes its session's digest, debounced: the run
-    // 30s out reads current state, so a burst of appends costs one model call.
+    // 30s out reads current state, so a burst of appends costs one model call. This
+    // runs for every rawType (including "text", which never enters extraction above)
+    // since this block sits after the switch, unconditionally — the single trigger
+    // path for both the digest and the dynamic-mode interviewer reply below.
     if (capture.sessionId) {
       await ctx.scheduler.runAfter(30_000, internal.ai.sessionDigest.digestSession, {
         sessionId: capture.sessionId,
+      });
+      // Dynamic-mode interviewer reply (ARI-18): debounced 8s so a burst of quick
+      // appends collapses into one reply; maybeReply itself no-ops outside dynamic
+      // mode and supersedes itself if a newer capture lands before it runs.
+      await ctx.scheduler.runAfter(8_000, internal.ai.sessionReply.maybeReply, {
+        sessionId: capture.sessionId,
+        captureId: args.captureId,
       });
     }
   },

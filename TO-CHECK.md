@@ -2,6 +2,16 @@
 
 Features that are done but haven't been manually verified yet.
 
+### Dynamic sessions + thought maps (ARI-18 slice)
+- [ ] **Toggle is tappable and goes gold:** open a Thoughts entry, tap the mode pill (mic icon, "Quiet") — it flips to a gold-filled "Dynamic" pill with a speech-bubble icon; tap again and it flips back to Quiet.
+- [ ] **Dynamic mode replies interleave after a voice take:** with the entry in Dynamic, speak a real take and let it transcribe; within roughly 8 seconds after the transcript lands, an interviewer reply appears in the document, indented with a thin gold left border and a small "Coach" tag, positioned after the take in reading order.
+- [ ] **The reply is short with pushback, not an essay:** confirm the reply is 2-4 sentences, asks one sharp question (or gently pushes back on something vague), and never reads like a bulleted summary of the whole conversation.
+- [ ] **Quiet mode generates nothing new:** with the pill left on Quiet, speak or type several takes — no new interviewer replies appear (existing replies from an earlier dynamic stretch, if any, still render).
+- [ ] **"Map my thinking" on a real dump, phone:** in a session with a few real spoken/typed thoughts, tap "Map my thinking" — the overlay opens, shows "mapping your thinking…", then renders as a collapsible **outline** (no graph) with a bold root theme; a thought you retracted mid-ramble ("never mind, actually...") shows struck through and muted, not deleted.
+- [ ] **Desktop shows the graph:** open the same session's map on a wide window — the outline is replaced by an SVG graph, root node gold-bordered, boxes connected by lines/arrows, hovering a node shows its detail as a tooltip.
+- [ ] **Remap after more talking updates the map:** add another take or two to the same session, reopen the map, tap "Remap" — the map regenerates in place (same overlay, same session) and reflects the new content; it does not create a second map or duplicate the old one.
+- [ ] **Old sessions unchanged:** open a Thoughts entry created before this shipped — it opens quiet (no pill flipped to Dynamic), shows no interviewer replies, and "Map my thinking" still works as a fresh first-time generation.
+
 ### Ritual beats locked to the clock
 - [ ] **Morning window (before 5pm):** open Today — Morning tab is active (sun), Evening tab is a padlock, muted, and tapping it does nothing; the hint reads "The night ritual opens at 5:00 PM"; only the morning sequence card renders
 - [ ] **Night window (after 5pm / before 4am):** Evening is active (moon), Morning is a padlock with "opens at 4:00 AM"; only the night sequence card renders; you cannot reopen the morning

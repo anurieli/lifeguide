@@ -51,3 +51,14 @@ The hard onboarding gate Ariel wants ("you earn your space; finish before you ca
 ## 6. Where it lands when committed
 
 `docs/product/features/interview.md`, `onboarding.md`, and a `journal.md` (the valve), plus `docs/architecture/data-model.md` (the unified dump stream), and an **ADR** for both the stream merge and the gate-stance reversal.
+
+## 7. Status (2026-07-18): a slice shipped
+
+A slice of the idea in §1 landed inside Sessions ("Thoughts") rather than as the full valve unification: a session can now switch **dynamic** (an AI interviewer replies after each capture, one incisive question at a time, pushing back on vagueness) instead of staying purely quiet, and any session can be run through a **post-hoc thought map** — one AI pass over the person's own words (never the interviewer's) into a hierarchy of distinct thoughts, with retracted thoughts kept as superseded siblings rather than erased. See [`../../../../product/features/sessions.md`](../../../../product/features/sessions.md) and [ADR 0021](../../../../decisions/0021-dynamic-sessions-and-post-hoc-thought-maps.md).
+
+This is **not** the full valve this note describes. What shipped is scoped to Sessions alone — the "one universal write into the person-model" framing in §1, and the data-model convergence in §2, are untouched:
+
+- **Question-of-the-day, prompted flavor** — §1's "prompted" flavor (a micro-interview aimed at a component that's empty or going stale) is still unbuilt. What shipped is purely reactive (the interviewer responds to what was just said); it never initiates toward a gap. `prompts` (the proposed table in `data-model.md`) remains the open mechanism for this.
+- **Routing into Core components** — §2's "converge into one dump stream that targets components" is still open. Dynamic-mode replies and thought maps both stay inside Sessions; neither writes into `coreFiles`/pillars the way the Listener → Center pipeline does. Whether the dynamic conversation or the thought map should ever feed the Core is now an explicit open question in `sessions.md`.
+- **The onboarding-gate question (§3)** — untouched. "Done" still isn't redefined around component fill/freshness; onboarding and this slice of Sessions remain separate mechanisms.
+- **Cross-session accretion** — the thought map is deliberately per-session only (ADR 0021). §1's implicit promise — that a person's real, recurring root theme emerges the more they dump — needs maps to merge across sessions ("latching"), which the node/edge shape was designed not to fight but which is not built.

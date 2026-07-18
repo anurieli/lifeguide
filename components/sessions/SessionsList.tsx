@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Camera, Check, Loader2, Merge, Mic, PenLine, Pin, Trash2 } from "lucide-react";
+import { Camera, Check, Loader2, MessageCircle, Merge, Mic, PenLine, Pin, Trash2 } from "lucide-react";
 import { formatRelativeTime } from "@/components/thoughts/utils";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { useRecording } from "./RecordingProvider";
@@ -171,8 +171,15 @@ function SessionRow({
           )}
           {s.doing && <span className="truncate">· {s.doing}</span>}
         </div>
-        <div className="text-[15px] text-ink font-medium leading-snug">
-          {s.title ?? s.preview}
+        <div className="flex items-center gap-1.5 text-[15px] text-ink font-medium leading-snug">
+          <span className="truncate">{s.title ?? s.preview}</span>
+          {s.mode === "dynamic" && (
+            <MessageCircle
+              className="w-3 h-3 text-gold shrink-0"
+              role="img"
+              aria-label="Dynamic mode"
+            />
+          )}
         </div>
         {s.summary && (
           <div className="text-[13px] text-ink-soft leading-relaxed mt-0.5">{s.summary}</div>

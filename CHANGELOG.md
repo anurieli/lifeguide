@@ -13,6 +13,12 @@ ARI-18: the thought-map engine can now be taught. **Model bump.** The `thoughtMa
 
 **Docs touched:** `docs/product/features/sessions.md` (status line; §2 new "Teach the map how you think" paragraph; §3 new functions-table row; §5 new default-behavior edge-case bullet; §6 AI involvement — `thoughtMap` node's model bump and the memo-folding path; §7 data touched — `settings.thoughtMapMemo` cross-reference), `docs/architecture/data-model.md` (`settings` table gains `thoughtMapMemo`), `TO-CHECK.md` (new QA section), `CHANGELOG.md`.
 
+## 2026-07-18 · ARI-103 pressure-test: horizons/vision/goals blend — decision memo, no code
+
+ARI-103 was parked as "a thought exercise as much as a build," reserved for Ariel to decide, so this pass is analysis only: read the current `horizons` ladder (`convex/horizons.ts`, `components/today/HorizonsCard.tsx`) and the Orbit `goals`/`goalTasks` system (`convex/goals.ts`, `convex/todoist.ts`, `components/goals/Goals.tsx`) against the note's two open forks, and appended a dated "Pressure-test findings" section to the existing note rather than deciding for him. Found a third, unreconciled `goals` shape already sitting in `docs/product/features/pillars-and-goals.md` (proposed, unbuilt, name-collides with the built Orbit table) that overlaps heavily with the note's "candidate reframe" — flagged as a standing doc inconsistency regardless of which fork wins. **Fork 1** (force measurable outcome + deadline, or soft nudge): recommended soft nudge, keeping Orbit's `ongoing` status deadline-less, since it's a first-class, actively-used state today with no natural deadline. **Fork 2** (Orbit becomes the ladder vs. stays separate): recommended staying separate, with a thin optional link (`laddersTo?`/`anchor?`) between a horizon rung and an Orbit goal or vision-board node, rather than table fusion — Orbit's two-way Todoist sync is keyed on `goals` = projects, so full fusion would force a sync redesign, not just a data-model tidy. Sketched the lens model at that smaller scope (prose/pseudocode, no code written). Confirmed the Profile surface is genuinely separable and can ship independently of either fork, since it reads existing shapes as-is and the recommended additive fields don't force a rewrite.
+
+**Docs touched:** `docs/research/raw/internal-notes/horizons-vision-goals-blend.md` (new "Pressure-test findings — 2026-07-18" section appended), `CHANGELOG.md`.
+
 ---
 
 ## 2026-07-18 · ARI-18 UX rework: plain-words toggle, map as a page view, auto-map, fit-to-screen graph, coach opens the conversation (57dc483)

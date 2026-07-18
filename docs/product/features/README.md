@@ -31,6 +31,7 @@ The element model these hang off is [`../../architecture/elements-and-context.md
 | [Onboarding (Door/Interview/Synthesis)](onboarding.md) | `interviewSessions`, `experienceEvents` | draws the Core out of a brand-new user before the shell mounts | built |
 | [Product Tour (guided walkthrough)](product-tour.md) | rides `settings` (no table of its own) | walks an already-onboarded person around the shell | built |
 | [Feedback Widget](feedback-widget.md) | `feedback` | dev tooling | built (draggable widget + `/admin` ticket queue) |
+| [What's New](whats-new.md) | `whatsNew, whatsNewSeen` | spine (owner-authored content) | built (bottom-of-shell feed + `/admin` authoring) |
 | [Atmosphere](atmosphere.md) | `settings.music*` + audio assets | none (ambient) | built (v1) |
 
 **Home (Today)** is the one home surface: it owns no data, renders and routes, and now hosts the former **Guide** (north star compass, Mirror, pillars) folded in. Everything else owns its tables and publishes distilled text to the two streams. Settings is reached from the account menu at the bottom of the rail, not a primary rail tab.

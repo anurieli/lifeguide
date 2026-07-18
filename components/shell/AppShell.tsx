@@ -16,6 +16,7 @@ import { Settings } from "@/components/settings/Settings";
 import { CoachDock } from "@/components/coach/CoachDock";
 import { SpeakSurface } from "@/components/voice/SpeakSurface";
 import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
+import { WhatsNewFeed } from "@/components/whatsnew/WhatsNewFeed";
 import { MusicProvider } from "@/components/music/MusicProvider";
 import { AtmospherePlayer } from "@/components/music/AtmospherePlayer";
 import { Sessions } from "@/components/sessions/Sessions";
@@ -246,6 +247,9 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
         stepAside={view === "sessions" && activeSessionId !== null}
       />
       <FeedbackWidget view={view} coachOpen={coachOpen} />
+      {/* What's New: a dismiss-by-click-through feed of shipped features, docked
+          near the bottom of the shell. Hidden entirely once nothing is unseen. */}
+      <WhatsNewFeed onNavigate={nav} />
       {/* Atmosphere: ambient music, desktop only. The phone stays capture-first. */}
       <div className="hidden md:block">
         <AtmospherePlayer />

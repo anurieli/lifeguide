@@ -29,6 +29,7 @@ Architecture Decision Records for LifeGuide. One file per notable decision, numb
 | [0023](0023-listener-memory-backbone.md) | The Listener's memory backbone: session-per-speaker, post-call summaries, tossed calls included | accepted (live) | 2026-07-18 |
 | [0024](0024-core-conversational-mode-engine.md) | The Core's Conversational mode: the mode machine, and mapping free speech to Blueprint keys | accepted (live) | 2026-07-18 |
 | [0025](0025-custom-guided-tour-engine.md) | A custom guided-tour engine, not driver.js or react-joyride | accepted (live) | 2026-07-18 |
+| [0026](0026-whats-new-manual-authorship.md) | What's New: manually authored entries, not auto-generated from CHANGELOG.md | accepted | 2026-07-18 |
 
 
 See [`../README.md`](../README.md) for the documentation map and the two seeds, and [`../product/concept-and-soul.md`](../product/concept-and-soul.md) for the current source of truth.

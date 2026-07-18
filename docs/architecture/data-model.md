@@ -21,6 +21,7 @@ Every table is multi-tenant: every row carries `userId` and every query/mutation
 | The Coach | `threads`, `messages` | live (reserved, lightly used) |
 | Mirror / Context Bus | `interactions` + the assembler | live |
 | Feedback Widget | `feedback` | live |
+| What's New | `whatsNew`, `whatsNewSeen` | live |
 | Daily Ritual (the Scrolls) | `ritualItems`, `ritualDays`, `roadmapEntries`, `morningNotes` | live |
 | Horizons (goal ladder) | `horizons` | live |
 | Daily tidbit (quote agent) | `dailyTidbits` | live |
@@ -191,6 +192,13 @@ One live, replaceable map per session — the person's own captures (never the i
 
 ### feedback (the Feedback Widget)
 `feedback { userId, type: bug|feature|other, text, route, view, title, viewport {w,h}, userAgent, errors[{message, stack?, at}], shotId?: _storage, imageIds?: _storage[], status: open|pending|dealt_with, linear?: {issueId, identifier, url, at}, createdAt, pendingAt?, resolvedAt? }`. Indexes: `by_user [userId, createdAt]`, `by_status [status, createdAt]`. A user's in-app feedback, each captured with the page context at submit time (route, metadata, the page's recent JS/console errors, and an optional `html2canvas` snapshot in `_storage`). `imageIds` holds photos the person attached deliberately (pasted into the composer or picked from the photo library, max 4); `listAll` resolves them to `imageUrls`. Surfaced as a live ticketing queue in `/admin`. **Triage lifecycle** (ADR 0019): `open` (needs you) → `pending` (being dealt with — you replied, or it was pushed to Linear) → `dealt_with` (closed, a separate pile); `reopen` clears both marks. **`linear`** is set once the ticket is exported to Linear as a tracked issue (`convex/linear.ts`) — the app keeps the support-inbox side and links out to the card. **Access is owner-aware** (`convex/owner.ts`): the owner reads every user's feedback (joining the submitter's identity from `users`) as a support inbox and may export/triage any row; everyone else is self-scoped to their own rows. See [`../product/features/feedback-widget.md`](../product/features/feedback-widget.md), [`../decisions/0019-feedback-to-linear.md`](../decisions/0019-feedback-to-linear.md), and [`../decisions/0006-owner-gated-admin.md`](../decisions/0006-owner-gated-admin.md).
+
+### whatsNew / whatsNewSeen (What's New)
+`whatsNew { title, body, view: today|core|board|goals|sessions|settings, publishedAt, createdBy: Id<users> }`, indexed `by_publishedAt`. One owner-authored, user-facing announcement of a shipped feature, shown as a dismiss-by-click-through feed docked near the bottom of the app shell (see [`../product/features/whats-new.md`](../product/features/whats-new.md)). `view` is a Rail `View` key, not a URL — the app has no per-surface route (see the `sessions`/`view` field on `feedback` above for the same pattern) — so "the linked page" means "the tab the click switches to." Manually authored, never generated from `CHANGELOG.md` — see [ADR 0022](../decisions/0022-whats-new-manual-authorship.md).
+
+`whatsNewSeen { userId, whatsNewId: Id<whatsNew>, seenAt }`, indexed `by_user` and `by_user_entry [userId, whatsNewId]`. One row per `(user, entry)`, written the instant that user clicks that *specific* entry and is navigated to its `view` — the click-through itself is the acknowledgment. There is no generic dismiss and no "mark all seen": an entry's absence from this table for a given user means it is still unseen for them, full stop. `whatsNew.feed` reads both tables and returns every published entry not yet in `whatsNewSeen` for the caller.
+
+**Access is owner-aware** on the write side only (`convex/owner.ts`): `listAll`/`create`/`update`/`remove` (the `/admin` authoring surface) gate purely on `isOwner`, with **no** `isDev` bypass — unlike the `/admin` *page's* `isDev || isOwner` UX gate (ADR 0006), this is genuine cross-user content (every account's feed), so it follows the stricter pattern `feedback.listAll` uses for the owner's cross-user reads, not the page-render gate. The read side (`feed`, `markSeen`) is open to any authenticated user, scoped to their own `whatsNewSeen` rows.
 
 ---
 

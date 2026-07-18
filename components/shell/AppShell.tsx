@@ -51,6 +51,7 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   // Coach text dock open state (desktop secondary). The Listener voice call is the
   // primary way in — it opens as a full-screen surface.
   const [coachOpen, setCoachOpen] = useState(false);
+  const [coachPrefill, setCoachPrefill] = useState<{ text: string; v: number } | null>(null);
   const [speakOpen, setSpeakOpen] = useState(false);
   // The open entry in the Sessions view.
   const [activeSessionId, setActiveSessionId] = useState<Id<"sessions"> | null>(null);
@@ -190,7 +191,15 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
           )}
           {view === "today" && <Today onNavigate={setView} />}
           {view === "core" && <Core />}
-          {view === "goals" && <Goals onNavigate={setView} />}
+          {view === "goals" && (
+            <Goals
+              onNavigate={setView}
+              onTalkToCoach={(message) => {
+                setCoachPrefill({ text: message, v: Date.now() });
+                setCoachOpen(true);
+              }}
+            />
+          )}
           {view === "sessions" && (
             <Sessions
               activeSessionId={activeSessionId}
@@ -243,6 +252,7 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
         onToggle={() => setCoachOpen((o) => !o)}
         onSpeak={openSpeak}
         stepAside={view === "sessions" && activeSessionId !== null}
+        prefill={coachPrefill}
       />
       <FeedbackWidget view={view} coachOpen={coachOpen} />
       {/* Atmosphere: ambient music, desktop only. The phone stays capture-first. */}

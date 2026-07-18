@@ -1,15 +1,22 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { Id } from "./_generated/dataModel";
+import { ContextFragment } from "./context/types";
 
-// The Goals board (Orbit): Big Things with a "why", plus the Today / Inbox /
-// Waiting triage queue. Spec: _source-apps/goal-manager/Orbit-PRD.md and
-// docs/product/features/goals.md. Every write that touches a Todoist-linked
-// task schedules a push action (convex/todoist.ts); pushes no-op without a token.
+// Goals: the things a person is chasing in life, plus the Today / Inbox /
+// Waiting triage queue (goalTasks). Spec: docs/product/features/goals.md,
+// docs/decisions/0022-aspirations-goals-and-roadmap-steps.md. Every write that
+// touches a Todoist-linked task schedules a push action (convex/todoist.ts);
+// pushes no-op without a token.
 
 const STATUS = v.union(v.literal("active"), v.literal("planning"), v.literal("ongoing"));
-const AREA = v.union(v.literal("business"), v.literal("personal"), v.literal("people"));
+const LADDERS_TO = v.union(
+  v.literal("five_year"),
+  v.literal("one_year"),
+  v.literal("one_month"),
+);
 
 async function ownedGoal(ctx: any, userId: string, id: any) {
   const goal = await ctx.db.get(id);
@@ -118,11 +125,17 @@ export const tasks = query({
 
 // ── Goal writes ──────────────────────────────────────────────────────────────
 
+// No `deadline` = an aspiration; setting one graduates it into a Goal — see
+// the schema comment in convex/schema.ts. Every new goal/aspiration gets an
+// async AI-drafted roadmap (convex/ai/goalEnrich.ts), scheduled here and never
+// blocking the create.
 export const createGoal = mutation({
   args: {
     name: v.string(),
-    area: v.optional(AREA),
-    kind: v.optional(v.union(v.literal("big"), v.literal("shelf"))),
+    why: v.optional(v.string()),
+    pillarId: v.optional(v.id("pillars")),
+    deadline: v.optional(v.string()),
+    laddersTo: v.optional(LADDERS_TO),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -134,16 +147,21 @@ export const createGoal = mutation({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
     const maxOrder = existing.reduce((m, g) => Math.max(m, g.sortOrder), 0);
-    return await ctx.db.insert("goals", {
+    const id = await ctx.db.insert("goals", {
       userId,
       name,
-      kind: args.kind ?? "big",
       status: "planning",
-      area: args.area ?? "personal",
+      pillarId: args.pillarId,
+      why: args.why,
+      deadline: args.deadline,
+      laddersTo: args.laddersTo,
+      roadmapDraft: { status: "pending" },
       sortOrder: maxOrder + 1,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+    await ctx.scheduler.runAfter(0, internal.ai.goalEnrich.draftRoadmap, { goalId: id });
+    return id;
   },
 });
 
@@ -153,7 +171,10 @@ export const updateGoal = mutation({
     name: v.optional(v.string()),
     why: v.optional(v.string()),
     status: v.optional(STATUS),
-    area: v.optional(AREA),
+    // null clears the field (e.g. ungraduating a Goal back to an aspiration).
+    pillarId: v.optional(v.union(v.id("pillars"), v.null())),
+    deadline: v.optional(v.union(v.string(), v.null())),
+    laddersTo: v.optional(v.union(LADDERS_TO, v.null())),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -163,8 +184,174 @@ export const updateGoal = mutation({
     if (args.name !== undefined && args.name.trim()) patch.name = args.name.trim();
     if (args.why !== undefined) patch.why = args.why;
     if (args.status !== undefined) patch.status = args.status;
-    if (args.area !== undefined) patch.area = args.area;
+    if (args.pillarId !== undefined) patch.pillarId = args.pillarId ?? undefined;
+    if (args.deadline !== undefined) patch.deadline = args.deadline ?? undefined;
+    if (args.laddersTo !== undefined) patch.laddersTo = args.laddersTo ?? undefined;
     await ctx.db.patch(args.id, patch);
+  },
+});
+
+// Re-run the AI roadmap draft (manual "Regenerate", or after an error). Only
+// ever replaces `source: "ai"` steps (see writeGoalEnrichmentInternal) — a
+// user's own manually-added steps are never touched by a regenerate.
+export const regenerateRoadmap = mutation({
+  args: { id: v.id("goals") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    await ownedGoal(ctx, userId, args.id);
+    await ctx.db.patch(args.id, { roadmapDraft: { status: "pending" } });
+    await ctx.scheduler.runAfter(0, internal.ai.goalEnrich.draftRoadmap, { goalId: args.id });
+  },
+});
+
+// ── AI roadmap-drafting plumbing (convex/ai/goalEnrich.ts) ──────────────────
+
+export const getForEnrichInternal = internalQuery({
+  args: { goalId: v.id("goals") },
+  handler: async (ctx, args) => {
+    const goal = await ctx.db.get(args.goalId);
+    if (!goal) return null; // deleted while scheduled
+    const pillar = goal.pillarId ? await ctx.db.get(goal.pillarId) : null;
+    return { ...goal, pillarName: pillar?.name };
+  },
+});
+
+// One transaction: patch the goal's roadmapDraft AND replace its AI-drafted
+// steps, resolving each step's local blockedByIndexes to real ids now that
+// every step has one (can't reference a sibling before it's inserted).
+export const writeGoalEnrichmentInternal = internalMutation({
+  args: {
+    goalId: v.id("goals"),
+    status: v.union(v.literal("done"), v.literal("error")),
+    summary: v.optional(v.string()),
+    model: v.optional(v.string()),
+    steps: v.optional(
+      v.array(
+        v.object({
+          title: v.string(),
+          isNextMove: v.boolean(),
+          blockedByIndexes: v.array(v.number()),
+        }),
+      ),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const goal = await ctx.db.get(args.goalId);
+    if (!goal) return; // deleted while the action was running
+
+    if (args.status === "error") {
+      await ctx.db.patch(args.goalId, {
+        roadmapDraft: { status: "error", error: "Couldn't draft a roadmap — try again." },
+      });
+      return;
+    }
+
+    const existing = await ctx.db
+      .query("roadmapSteps")
+      .withIndex("by_user_goal", (q) => q.eq("userId", goal.userId).eq("goalId", args.goalId))
+      .collect();
+    for (const step of existing) {
+      if (step.source === "ai") await ctx.db.delete(step._id);
+    }
+
+    const steps = args.steps ?? [];
+    const ids: Id<"roadmapSteps">[] = [];
+    for (let i = 0; i < steps.length; i++) {
+      const id = await ctx.db.insert("roadmapSteps", {
+        userId: goal.userId,
+        goalId: args.goalId,
+        title: steps[i].title,
+        status: "todo",
+        isNextMove: steps[i].isNextMove,
+        blockedBy: [],
+        source: "ai",
+        sortOrder: i,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      ids.push(id);
+    }
+    for (let i = 0; i < steps.length; i++) {
+      const blockedBy = steps[i].blockedByIndexes
+        .filter((idx) => idx >= 0 && idx < ids.length && idx !== i)
+        .map((idx) => ids[idx]);
+      if (blockedBy.length) await ctx.db.patch(ids[i], { blockedBy });
+    }
+
+    await ctx.db.patch(args.goalId, {
+      roadmapDraft: {
+        status: "done",
+        summary: args.summary,
+        model: args.model,
+        generatedAt: Date.now(),
+      },
+    });
+  },
+});
+
+// The set of ids the Coach's intent classifier is allowed to reference — it
+// must cross-check the model's output against this, never trust a returned
+// id blindly (convex/ai/parse.ts's parseGoalIntent).
+export const intentIds = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return { goalIds: [], pillarIds: [] };
+    const [goals, pillars] = await Promise.all([
+      ctx.db
+        .query("goals")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect(),
+      ctx.db
+        .query("pillars")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect(),
+    ]);
+    return {
+      goalIds: goals.filter((g) => !g.archived).map((g) => g._id as string),
+      pillarIds: pillars.map((p) => p._id as string),
+    };
+  },
+});
+
+// ── Coach context (convex/coach.ts) ──────────────────────────────────────────
+
+// Goals/aspirations + pillars, rendered with real ids inline so the Coach's
+// intent-classification pass can reference one verbatim rather than fuzzy-
+// matching a name (mirrors convex/nodes.ts's surfaceContext).
+export const coachContext = query({
+  args: {},
+  handler: async (ctx): Promise<ContextFragment | null> => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    const [goals, pillars] = await Promise.all([
+      ctx.db
+        .query("goals")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect(),
+      ctx.db
+        .query("pillars")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect(),
+    ]);
+    const pillarName = new Map(pillars.map((p) => [p._id as string, p.name]));
+    const pillarLines = pillars.map((p) => `- (${p._id}) ${p.name}`).join("\n");
+    const goalLines = goals
+      .filter((g) => !g.archived)
+      .map((g) => {
+        const tier = g.deadline ? `due ${g.deadline}` : "aspiration (no deadline)";
+        const pillar = g.pillarId ? (pillarName.get(g.pillarId) ?? "unknown pillar") : "none";
+        return `- (${g._id}) ${g.name} — ${tier}, pillar: ${pillar}, why: ${g.why || "(none yet)"}`;
+      })
+      .join("\n");
+    return {
+      surfaceId: "goals",
+      scope: "summary",
+      label: "Goals & Aspirations",
+      text: `Pillars:\n${pillarLines || "(none)"}\n\nGoals & Aspirations:\n${goalLines || "(none yet)"}`,
+      priority: 7,
+    };
   },
 });
 

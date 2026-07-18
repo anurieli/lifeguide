@@ -449,19 +449,34 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_user_provider", ["userId", "provider"]),
 
-  // Goals (the Orbit board): Big Things — the few projects/goals the board is
-  // organized around, each carrying a "why" so priorities stay honest. A goal
-  // with parentId set is a sub-project (part) of a Big Thing. Seeded from
-  // _source-apps/goal-manager/Orbit-PRD.md.
+  // Goals: the things a person is chasing in life. No `deadline` = an aspiration
+  // (someday, no fixed date); setting a deadline graduates it into a Goal — this
+  // is the ONLY tier signal, deliberately not a separate field/table so the two
+  // can't drift apart. `pillarId` homes it in a domain (see `pillars`); `laddersTo`
+  // is a light, optional pointer at a Horizons standing rung (docs/decisions/0022) —
+  // the fuller vision-board/Horizons unification stays parked (Linear ARI-103).
+  // `roadmapDraft` tracks the async AI scoping pass scheduled on create (see
+  // convex/ai/goalEnrich.ts); `roadmapSteps` below holds the actual steps.
   goals: defineTable({
     userId: v.id("users"),
     name: v.string(),
-    parentId: v.optional(v.id("goals")),
-    // big = a card on the board; shelf = a quick everyday list (Groceries, Someday).
-    kind: v.union(v.literal("big"), v.literal("shelf")),
+    parentId: v.optional(v.id("goals")), // sub-project of a Big Thing
     status: v.union(v.literal("active"), v.literal("planning"), v.literal("ongoing")),
-    area: v.union(v.literal("business"), v.literal("personal"), v.literal("people")),
+    pillarId: v.optional(v.id("pillars")),
     why: v.optional(v.string()),
+    deadline: v.optional(v.string()), // YYYY-MM-DD; presence = Goal, absence = aspiration
+    laddersTo: v.optional(
+      v.union(v.literal("five_year"), v.literal("one_year"), v.literal("one_month")),
+    ),
+    roadmapDraft: v.optional(
+      v.object({
+        status: v.union(v.literal("pending"), v.literal("done"), v.literal("error")),
+        summary: v.optional(v.string()),
+        model: v.optional(v.string()),
+        error: v.optional(v.string()),
+        generatedAt: v.optional(v.number()),
+      }),
+    ),
     sortOrder: v.number(),
     archived: v.optional(v.boolean()),
     // Two-way Todoist link: set when this goal mirrors a Todoist project.
@@ -470,11 +485,32 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_user", ["userId"])
-    .index("by_user_todoist", ["userId", "todoistProjectId"]),
+    .index("by_user_todoist", ["userId", "todoistProjectId"])
+    .index("by_user_pillar", ["userId", "pillarId"]),
+
+  // The AI-drafted (and user-editable) roadmap for a goal/aspiration: a small
+  // dependency graph, not a flat checklist. `blockedBy` are edges to sibling
+  // steps on the SAME goal; whether a step is actually blocked is a COMPUTED
+  // property (any blockedBy step not yet done), never stored, so it can't go
+  // stale. A blockedBy id that no longer resolves (its step was deleted) is
+  // treated as already-resolved rather than fanned out and cleaned up.
+  roadmapSteps: defineTable({
+    userId: v.id("users"),
+    goalId: v.id("goals"),
+    title: v.string(),
+    status: v.union(v.literal("todo"), v.literal("doing"), v.literal("done")),
+    isNextMove: v.optional(v.boolean()), // the one immediate move (AI-flagged or user-pinned)
+    blockedBy: v.array(v.id("roadmapSteps")),
+    source: v.union(v.literal("ai"), v.literal("manual")),
+    sortOrder: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user_goal", ["userId", "goalId"]),
 
   // Tasks on the Goals board. goalId unset = the Inbox (unfiled capture bucket).
   // "waiting" is the Orbit Phase-1 task state: blocked on someone/something,
-  // surfaced in its own view with aging.
+  // surfaced in its own view with aging. Distinct from `roadmapSteps`: these are
+  // day-to-day, Todoist-synced execution items, not the goal's scoping roadmap.
   goalTasks: defineTable({
     userId: v.id("users"),
     goalId: v.optional(v.id("goals")),

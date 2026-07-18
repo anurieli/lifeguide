@@ -16,7 +16,7 @@ Every table is multi-tenant: every row carries `userId` and every query/mutation
 | Future Self | `futureSelf` | proposed |
 | Sessions (the living entry) | `sessions` (container; members via `captures.sessionId`), `sessionReplies`, `thoughtMaps` | live |
 | Journal | `prompts` (its beats open the live `sessions`) | proposed |
-| Pillars & Goals | `pillars`, `goals` | `pillars` live; `goals` proposed |
+| Pillars & Goals | `pillars`, `goals`, `goalTasks`, `roadmapSteps` | live |
 | The Core | `coreResponses` (raw Blueprint answers) + `mirror` (synthesized) | live |
 | The Coach | `threads`, `messages` | live (reserved, lightly used) |
 | Mirror / Context Bus | `interactions` + the assembler | live |
@@ -53,6 +53,18 @@ The folders of the **file system on the human** — the regions of a person (see
 
 ### coreFiles (the files on the human)
 The durable textual units that make up a person, each living inside a pillar (folder). `{ userId, pillarId, name, content, kind, status: active|pending, note?, supersedes?, sourceSessionId?, createdAt, updatedAt }`, indexed `by_user_pillar` (`[userId, pillarId, status]`) and `by_session` (`[sourceSessionId]`). `kind` is the type of thing captured (`value|belief|fact|dream|fear|tension|pattern|state`). `status: "active"` is held truth; `status: "pending"` is a proposed change that **contradicts** an existing file (`supersedes` points at it, `note` says why) and is waiting on the person to decide — never silently overwritten. Written by the **Center** during its post-call fan-out (`convex/center.ts` via internal mutations in `convex/coreFiles.ts`); the **filing report** reads `bySession`. See [`../product/features/the-center.md`](../product/features/the-center.md).
+
+### goals
+
+The things a person is chasing in life — a TED talk, climbing Everest — through to the measurable commitments they've dated. `{ userId, name, parentId?, status: active|planning|ongoing, pillarId?, why?, deadline?, laddersTo?: five_year|one_year|one_month, roadmapDraft?{status: pending|done|error, summary?, model?, error?, generatedAt?}, sortOrder, archived?, todoistProjectId?, createdAt, updatedAt }`, indexed `by_user`, `by_user_todoist [userId, todoistProjectId]`, `by_user_pillar [userId, pillarId]`. **The aspiration/Goal tier is purely `deadline` presence** — no `deadline` is a someday aspiration; setting one graduates it into a dated Goal, and clearing it ungraduates back. `pillarId` optionally homes it in a domain from the live `pillars` table (a real link — this did not exist before this shape shipped). `laddersTo` is a light, optional pointer at a Horizons standing rung (`five_year`/`one_year`/`one_month`) — deliberately not a full merge of the two tables; the fuller vision-board/Horizons/Orbit unification is parked as Linear ARI-103 (see [ADR 0022](../decisions/0022-aspirations-goals-and-roadmap-steps.md)). `roadmapDraft` tracks the async AI scoping pass (`convex/ai/goalEnrich.ts`, scheduled on create/regenerate): a short "what this actually takes" summary, with an explicit `pending`/`done`/`error` status so the UI never hangs. `parentId` is unchanged sub-project nesting; `todoistProjectId` is the unchanged two-way Todoist link. See [`../product/features/goals.md`](../product/features/goals.md).
+
+### goalTasks
+
+Day-to-day, Todoist-synced execution items — Today/Inbox/Waiting triage, distinct from a goal's own `roadmapSteps` scoping. `{ userId, goalId?, content, description?, dueDate?, priority?, checked, completedAt?, waiting?, waitingOn?, waitingSince?, sortOrder, todoistTaskId?, createdAt, updatedAt }`, indexed `by_user`, `by_user_goal [userId, goalId]`, `by_user_todoist [userId, todoistTaskId]`. `goalId` unset = the Inbox. Unchanged by the aspiration/Goal rework. See [`../product/features/goals.md`](../product/features/goals.md).
+
+### roadmapSteps
+
+The AI-drafted (and user-editable) roadmap for a goal/aspiration: a small dependency graph, not a flat checklist. `{ userId, goalId, title, status: todo|doing|done, isNextMove?, blockedBy: Id<roadmapSteps>[], source: ai|manual, sortOrder, createdAt, updatedAt }`, indexed `by_user_goal [userId, goalId]`. Whether a step is **blocked is computed**, never stored (any `blockedBy` step not yet `done` blocks it; a dangling id whose step was deleted resolves as non-blocking, avoiding fan-out cleanup on delete). Cycle handling is trust-split ([ADR 0022](../decisions/0022-aspirations-goals-and-roadmap-steps.md)): an AI-drafted batch silently breaks cycles (same technique as `thoughtMaps`' cycle guard, below); a user's live edit (`roadmapSteps.setBlockedBy`) is rejected outright rather than silently dropped. Drafted by `convex/ai/goalEnrich.ts` on goal create/regenerate; `source: "manual"` steps a person adds by hand are never touched by a regenerate. See [`../product/features/goals.md`](../product/features/goals.md).
 
 ### ritualItems / ritualDays / roadmapEntries / morningNotes (the Daily Ritual)
 The two ordered component sequences that bookend the day, plus the roadmap loop (see [`../product/features/daily-ritual.md`](../product/features/daily-ritual.md)).
@@ -207,23 +219,6 @@ futureSelf {
   pillars[],                     // domains it speaks to
   isActive, createdAt,
 }  // index by_user over createdAt
-```
-
-### goals (inside Pillars & Goals)
-A commitment in a pillar, across the Blueprint's time horizons.
-```
-goals {
-  userId,
-  pillarId?,                     // the domain it strengthens (a goal lives inside a pillar)
-  horizon: "life" | "five_year" | "yearly" | "monthly" | "daily" | "north_star",
-  title,
-  why?,                          // the reason behind it (Blueprint asks for this)
-  deadline?,
-  status: "active" | "done" | "dropped",
-  parentGoalId?,                 // life -> yearly -> monthly nesting
-  malleability: "green" | "yellow" | "red",
-  createdAt, updatedAt,
-}  // index by_user, by_pillar
 ```
 
 ### Proposed: the synthesized backbone on `mirror.structured`

@@ -14,6 +14,7 @@ import type * as ai_dailyQuote from "../ai/dailyQuote.js";
 import type * as ai_distill from "../ai/distill.js";
 import type * as ai_imageGen from "../ai/imageGen.js";
 import type * as ai_ingest from "../ai/ingest.js";
+import type * as ai_listenerMemory from "../ai/listenerMemory.js";
 import type * as ai_openai from "../ai/openai.js";
 import type * as ai_parse from "../ai/parse.js";
 import type * as ai_sessionDigest from "../ai/sessionDigest.js";
@@ -60,8 +61,10 @@ import type * as sessions from "../sessions.js";
 import type * as settings from "../settings.js";
 import type * as surfaces from "../surfaces.js";
 import type * as todoist from "../todoist.js";
+import type * as tour from "../tour.js";
 import type * as users from "../users.js";
 import type * as voice from "../voice.js";
+import type * as whatsNew from "../whatsNew.js";
 
 import type {
   ApiFromModules,
@@ -76,6 +79,7 @@ declare const fullApi: ApiFromModules<{
   "ai/distill": typeof ai_distill;
   "ai/imageGen": typeof ai_imageGen;
   "ai/ingest": typeof ai_ingest;
+  "ai/listenerMemory": typeof ai_listenerMemory;
   "ai/openai": typeof ai_openai;
   "ai/parse": typeof ai_parse;
   "ai/sessionDigest": typeof ai_sessionDigest;
@@ -122,8 +126,10 @@ declare const fullApi: ApiFromModules<{
   settings: typeof settings;
   surfaces: typeof surfaces;
   todoist: typeof todoist;
+  tour: typeof tour;
   users: typeof users;
   voice: typeof voice;
+  whatsNew: typeof whatsNew;
 }>;
 
 /**

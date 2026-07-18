@@ -139,6 +139,8 @@ export function Settings() {
   const setKey = useMutation(api.aiKeys.setKey);
   const clearKey = useMutation(api.aiKeys.clearKey);
   const saveTodoistToken = useAction(api.todoist.saveToken);
+  const restartTour = useMutation(api.tour.restart);
+  const [tourRestarted, setTourRestarted] = useState(false);
   const { signOut } = useAuthActions();
   const [modal, setModal] = useState(false);
   const [custom, setCustom] = useState("");
@@ -487,6 +489,27 @@ export function Settings() {
                 {tdError && <div className="text-[12px] text-red-500 max-w-[260px] text-right">{tdError}</div>}
               </div>
             )}
+          </Row>
+        </Group>
+
+        <Group label="Guided tour">
+          <Row title="Product tour" desc="Walk through Core, the vision board, Today, and your Coach again.">
+            <div className="flex flex-col items-end gap-1.5">
+              <button
+                data-tour="tour-settings-restart"
+                onClick={() => {
+                  void restartTour({});
+                  setTourRestarted(true);
+                  setTimeout(() => setTourRestarted(false), 2000);
+                }}
+                className="border border-line rounded-lg px-4 py-2 text-sm text-ink-soft hover:bg-paper-2 transition"
+              >
+                Restart tour
+              </button>
+              {tourRestarted && (
+                <div className="text-[11.5px] text-green">Starting over ✓</div>
+              )}
+            </div>
           </Row>
         </Group>
 

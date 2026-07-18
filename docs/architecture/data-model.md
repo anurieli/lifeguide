@@ -16,16 +16,18 @@ Every table is multi-tenant: every row carries `userId` and every query/mutation
 | Future Self | `futureSelf` | proposed |
 | Sessions (the living entry) | `sessions` (container; members via `captures.sessionId`), `sessionReplies`, `thoughtMaps` | live |
 | Journal | `prompts` (its beats open the live `sessions`) | proposed |
-| Pillars & Goals | `pillars`, `goals` | `pillars` live; `goals` proposed |
+| Pillars & Goals | `pillars`, `goals`, `goalTasks` | live |
 | The Core | `coreResponses` (raw Blueprint answers) + `mirror` (synthesized) | live |
 | The Coach | `threads`, `messages` | live (reserved, lightly used) |
 | Mirror / Context Bus | `interactions` + the assembler | live |
 | Feedback Widget | `feedback` | live |
+| What's New | `whatsNew`, `whatsNewSeen` | live |
 | Daily Ritual (the Scrolls) | `ritualItems`, `ritualDays`, `roadmapEntries`, `morningNotes` | live |
 | Horizons (goal ladder) | `horizons` | live |
 | Daily tidbit (quote agent) | `dailyTidbits` | live |
 | The Blueprint (conduct doctrine) | `blueprint` | live |
 | (system) | `profiles`, `settings`, `apiKeys`, `authTables` | live |
+| Product Tour (guided walkthrough) | rides `settings` (no table of its own) | live |
 
 Ownership is stark: no element stores a copy of another's data. Cross-element needs are met by **drawing** through the Context Bus at act-time, never by holding (see [`context-bus.md`](context-bus.md)).
 
@@ -49,7 +51,9 @@ A labeled, directed connection between two nodes. `{ userId, surfaceId, fromNode
 The immutable event of a thought or inspiration, ingested async (extraction then distillation), may become a node. `{ userId, source: paste|upload|url|audio|agent, rawType: text|image|link|video_link|quote|audio|file, rawText?, rawUrl?, rawFileId?, sessionId?, sourceMeta?, target?: "board", extractedText?, extraction?{status: pending|done|error|skipped, error?, meta?, at?}, distilled?{title,essence,pillars}, boardWorthy?{verdict, reason, at}, embedding?, placedAt?, nodeId?, isActive, createdAt }`. `target: "board"` is **explicit destination intent**, recorded at capture time (canvas paste, onboarding seed): such captures enter the board Inbox unconditionally. `boardWorthy` is the **vision sieve's** verdict, written by the distill pass for every capture: whether this is a piece of the life the person wants (an aspiration, a want, a vision) or ambient noise. The board Inbox admits only `target: "board"` OR `boardWorthy.verdict: true` (unplaced + active as before) — see [ADR 0015](../decisions/0015-vision-sieve-for-the-board-inbox.md). `sessionId` marks membership in a living entry (index `by_session [sessionId, createdAt]`); loose captures have none and behave exactly as before. `source: "agent"` is how the Coach captures on your behalf. The raw artifact (`rawText`/`rawUrl`/`rawFileId`) is always kept so a capture can be re-ingested after the fact. `extractedText` is the canonical derived text (Whisper transcript for `audio`, fetched title/description/body for `link`/`video_link`, vision description + verbatim visible text for `image`); the ingest pipeline is `convex/ai/ingest.ts` + `lib/extractHtml.ts`, and distillation reads `extractedText` first. `sourceMeta` is client context at capture time (JSON, currently `{device}`). `rawType: "file"` is stored durably but not parsed yet. See [`../product/features/thought-stream.md`](../product/features/thought-stream.md).
 
 ### pillars
-The folders of the **file system on the human** — the regions of a person (see [`../product/features/file-system-on-the-human.md`](../product/features/file-system-on-the-human.md)). `{ userId, name, description?, about?, composition?, weight, source: default|preset|custom, createdAt }`, indexed `by_user`. `about` says what this region of the person is; `composition` tells the **Center** how to build this pillar from its files. Bootstrap seeds the **canonical skeleton** (the `DEFAULT_PILLARS` set in `convex/pillars.ts`: Identity & Values, Body & Health, Work & Money, Relationships, Mind & Growth, Meaning & Spirit, Fears & Shadows, Dreams & Aspirations); `seedDefaultPillars` is idempotent and tops up older accounts. The preset library adds more; users can define custom pillars.
+The folders of the **file system on the human** — the regions of a person (see [`../product/features/file-system-on-the-human.md`](../product/features/file-system-on-the-human.md)) and, as of ARI-11, the canonical domain entity the Core, Sessions, goals, and the Coach all read/write ([`../product/features/pillars.md`](../product/features/pillars.md)). `{ userId, name, description?, about?, composition?, weight, source: default|preset|custom, role?: domain|identity, strength?, strengthUpdatedAt?, createdAt }`, indexed `by_user`. `about` says what this region of the person is; `composition` tells the **Center** how to build this pillar from its files. Bootstrap seeds the **canonical skeleton** (the `DEFAULT_PILLARS` set in `convex/pillars.ts`: Identity & Values, Body & Health, Work & Money, Relationships, Mind & Growth, Meaning & Spirit, Fears & Shadows, Dreams & Aspirations); `seedDefaultPillars` is idempotent and tops up older accounts. The preset library adds more; users can define custom pillars.
+
+`role` (absent = `"domain"`, back-compat): `"identity"` marks the one pillar ("Identity & Values") that IS the person's identity rather than a domain it holds up — see [ADR 0022](../decisions/0022-identity-is-not-a-pillar.md). It is filed into exactly as before (ADR 0007 is unchanged) but is excluded from `pillars.wheel` and `pillars.assembleContext`, i.e. from strength scoring and the Life Wheel. `strength` is a manual 0-100 rating of how strong/attended-to a domain currently is — v1 has no automatic derivation (deferred to ARI-16, the current-state/gap engine); unset reads as a neutral 50 (`NEUTRAL_STRENGTH`), never as 0. `strengthUpdatedAt` is set whenever `strength` changes, the seam a future history/over-time view plugs into. `pillars.wheel` (query) returns the domain pillars with their strengths for the Life Wheel; `pillars.setStrength` (mutation, owner-checked, clamps to [0,100]) is the read/write path; `pillars.assembleContext` (query) publishes a `ContextFragment` of domain strengths that `coach.ask` includes alongside the Mirror, so the Coach can see how each part of a person's life is currently standing.
 
 ### coreFiles (the files on the human)
 The durable textual units that make up a person, each living inside a pillar (folder). `{ userId, pillarId, name, content, kind, status: active|pending, note?, supersedes?, sourceSessionId?, createdAt, updatedAt }`, indexed `by_user_pillar` (`[userId, pillarId, status]`) and `by_session` (`[sourceSessionId]`). `kind` is the type of thing captured (`value|belief|fact|dream|fear|tension|pattern|state`). `status: "active"` is held truth; `status: "pending"` is a proposed change that **contradicts** an existing file (`supersedes` points at it, `note` says why) and is waiting on the person to decide — never silently overwritten. Written by the **Center** during its post-call fan-out (`convex/center.ts` via internal mutations in `convex/coreFiles.ts`); the **filing report** reads `bySession`. See [`../product/features/the-center.md`](../product/features/the-center.md).
@@ -66,15 +70,21 @@ The two ordered component sequences that bookend the day, plus the roadmap loop 
 `ritualDays { userId, ritual: morning|night|any, day: "YYYY-MM-DD", checkedIds: Id<ritualItems>[], completedAt? }`, indexed `by_user_ritual_day [userId, ritual, day]`. One row per ritual per **ritual day**: the live check state while the day is open, and the completion record once `completedAt` is stamped by the explicit confirm (`rituals.complete`, which also publishes a `ritual_completed` interaction). The `day` key is computed client-side from local time with a **4am rollover** (`lib/ritual.ts`, [ADR 0009](../decisions/0009-ritual-day-boundary.md)); daily reset is structural because each new day is a new, initially absent row. Stale ids in `checkedIds` (items deleted later) are ignored by completion logic. `rituals.history(sinceDay)` reads both rituals' rows from a day key onward (lexicographic range over the index) for the Today log's quiet keeping-up strip.
 
 ### settings
-Per-user app settings. `{ userId, onboardedAt?, morningCheckin, eveningCheckin, dailyExercise: intention|gratitude|free, coachTone: gentle|balanced|direct, reachingOut: leave|earned|often, northStar?, blueprintStatus?, level?, musicEnabled?, musicAutoplay?, musicDefaultMood?, ritualsSeededAt?, ritualsSeedVersion?, thoughtMapMemo?, updatedAt }`.
+Per-user app settings. `{ userId, onboardedAt?, morningCheckin, eveningCheckin, dailyExercise: intention|gratitude|free, coachTone: gentle|balanced|direct, reachingOut: leave|earned|often, northStar?, blueprintStatus?, level?, musicEnabled?, musicAutoplay?, musicDefaultMood?, ritualsSeededAt?, ritualsSeedVersion?, thoughtMapMemo?, tourStep?, tourCompletedAt?, tourSkippedAt?, updatedAt }`.
 
 `thoughtMapMemo?` (ARI-18 teachable map, 2026-07-18) is the person's standing, plain-language steering memo for the [Thought Map](../product/features/sessions.md) — how they want their thinking mapped (fewer/bigger nodes, what counts as the root, what to ignore). Trimmed and capped ~2000 chars server-side (`convex/settings.ts`'s `update`, sharing the `THOUGHT_MAP_MEMO_CAP` constant with `lib/thoughtMap.ts`); an empty/whitespace memo saves as unset (default behavior, unchanged mapping). Read server-side only by `ai/thoughtMap.ts`'s `generate` (via `settings.getMemoInternal`) and folded into the model's system prompt by `lib/thoughtMap.ts`'s `buildMapSystemPrompt`. Editable from the session's "Teach it" panel (`components/sessions/ThoughtMapView.tsx`) and from Settings (`components/settings/ThoughtMapMemoField.tsx`), both wired to the same `settings.update` mutation.
 
 `ritualsSeededAt?` marks the one-shot seeding of the Daily Ritual defaults (see `ritualItems` above); once set, `rituals.seedDefaults` never inserts again. `ritualsSeedVersion?` marks the one-shot typed-component upgrade ([ADR 0011](../decisions/0011-typed-ritual-components.md)); at the current version (5 — v3 added the inline `mantra` and the morning journal, v4 reconciles the v3 duplicate-mantra fallout into one inline mantra and makes the morning journal follow `settings.dailyExercise`, v5 adds the daily-quote `tidbit`), `rituals.upgradeToSeedVersion` is a no-op forever. `dailyExercise` (`intention|gratitude|free`) drives the morning journal prompt and is editable both in Settings and inline in the morning scroll.
 
+`tourStep?`, `tourCompletedAt?`, `tourSkippedAt?` back the in-app **guided product tour** ([`../product/features/product-tour.md`](../product/features/product-tour.md), `convex/tour.ts`) — distinct from the Door/Interview onboarding above, which draws out the Core before the shell ever mounts; the tour walks an already-onboarded person around the shell itself. All three are optional/undefined by default, so existing rows are untouched by the migration: undefined reads as "never started," and the tour only fires once `onboardedAt` is set and neither terminal stamp (`tourCompletedAt` finished, `tourSkippedAt` dismissed early) is present. `tourStep` mirrors the current stop so a reload resumes mid-tour instead of restarting. Settings' "Restart tour" control clears both stamps and resets the step to re-fire it.
+
 ### horizons (the goal ladder)
 
 `horizons { userId, scope: five_year|one_year|one_month|weekly|daily, period, text, order, doneAt?, createdAt, updatedAt }`, indexed `by_user_scope_period [userId, scope, period, order]`. The nested plan from the far 5-year vision down to today (see [`../product/features/horizons.md`](../product/features/horizons.md)). `period` addresses which instance of a rung: `"std"` for the standing rungs (five_year/one_year/one_month — one evolving line, order 0), the week's **Monday key** for `weekly`, the **ritual day key** for `daily` (all from `lib/horizons.ts periodKeyFor`, timezone-stable). Weekly/daily rungs hold up to 3 (`MAX_PER_PERIOD`) ordered, checkable goals (`doneAt`); standing rungs are single-line and not checkable (enforced in `convex/horizons.ts`). North Star is **not** here — it stays in `settings.northStar` and renders as the ladder's crown.
+
+### goals / goalTasks (the Goals board, "Orbit")
+
+`goals { userId, name, parentId?, kind: big|shelf, status: active|planning|ongoing, area: business|personal|people, why?, sortOrder, archived?, todoistProjectId?, pillarId?, createdAt, updatedAt }`, indexed `by_user` and `by_user_todoist [userId, todoistProjectId]`. The Big Things board (see [`../product/features/goals.md`](../product/features/goals.md)) — this is the **live** shape, distinct from the horizon-based `goals` sketched in "Proposed" below, which that feature superseded when it actually shipped. `pillarId?` (ARI-11) is the relation from a goal to the domain (`pillars`) it strengthens; optional and not yet set by any UI — it exists so the pillar entity is a sane foundation for wiring goals into the Life Wheel/Coach later, not something this change builds out. `goalTasks { userId, goalId?, content, description?, dueDate?, priority?, checked, completedAt?, waiting?, waitingOn?, waitingSince?, sortOrder, todoistTaskId?, createdAt, updatedAt }`, indexed `by_user`, `by_user_goal`, `by_user_todoist`. Tasks on the board; `goalId` unset = the Inbox.
 
 ### dailyTidbits (the daily quote)
 
@@ -96,15 +106,17 @@ One row per model call, every call, success or failure. `{ userId?, taskId, fn (
 ### aiOverrides (per-user model dials — ADR 0017)
 The Settings AI hub's model picker. `{ userId, taskId, provider: openrouter|openai|local, model, updatedAt }`, indexed `by_user_task`. `aiForTask` resolves the person's override before the config default in `convex/ai/config.ts`; deleting the row (the "yours · reset" chip) falls back. Mutations in `convex/aiModels.ts` (`setModel` / `clearModel`; `nodes` returns the registry overlaid with the caller's overrides).
 
-### interviewSessions (onboarding interviews)
+### interviewSessions (onboarding interviews + the Listener's calls)
 
-One run of an onboarding experience. The QR phone-handoff encodes `/interview/<_id>` so any device can join the same row.
+One run of an onboarding experience, OR one Listener (`/speak`) call, OR — since ADR 0024 — one run of the Core's Conversational mode (the table is shared: the same shape fits a transcript, a status, a device, and `experienceId` distinguishes them; ADR 0007/the-center.md). The QR phone-handoff encodes `/interview/<_id>` so any device can join the same onboarding row; Listener calls never use tokens (auth-gated only).
 
 ```
 interviewSessions {
-  userId,                       // owner of the session
-  experienceId: string,         // "text-interview" | "voice-interview"
-  status: "active" | "completed" | "abandoned",
+  userId,                       // owner of the session — the one speaker this thread belongs to
+  experienceId: string,         // "text-interview" | "voice-interview" | "listen" (the Listener,
+                                 // components/voice/SpeakSurface.tsx) | "core" (Core Conversational
+                                 // mode, components/core/ConversationalCore.tsx, ADR 0024)
+  status: "active" | "completed" | "abandoned" | "tossed",
   device: "desktop" | "phone",  // device that started the session
   transcript: Array<{
     role: "coach" | "user",
@@ -117,12 +129,22 @@ interviewSessions {
   joinTokenExpiresAt?: number,  // token expiry in unix ms (10-minute window)
   startedAt: number,
   endedAt?: number,
+  summary?: {                   // Listener memory backbone (ARI-23, ADR 0023) — "listen" only
+    status: "pending" | "done" | "error",
+    text?: string,               // 2-4 plain sentences: what was talked about, where it landed
+    topics?: string[],           // short topic tags
+    openThreads?: string[],      // left unresolved, worth picking back up next call
+    error?: string,
+    at?: number,
+  },
 }
 ```
 
 Indexes: `by_user` over `["userId", "startedAt"]`.
 
 A join token is minted by `interview.issueJoinToken` (owner-only), hashed with SHA-256 via Web Crypto, stored as `joinTokenHash`. The raw token is returned once and embedded in the QR URL as `?t=<token>`. Public mutations (`markJoined`, `appendTurnByToken`, `endByToken`) validate the token by rehashing and comparing to `joinTokenHash`.
+
+**`summary` — the Listener's memory backbone (ARI-23, [ADR 0023](../decisions/0023-listener-memory-backbone.md)).** Distinct from the Center's identity filing (`coreFiles`, below): this answers "what have this person and the Listener been talking about lately," not "who is this person." Written by `convex/ai/listenerMemory.ts`'s `summarizeSession` (the `listenerSummary` AI node), scheduled by `interview.end` on EVERY "listen" call end — completed, abandoned, or **tossed alike** (`end`'s `status` union now includes `"tossed"`; a toss only withholds the Center's Core-filing pass, never this memory). An empty transcript short-circuits to `status: "done"` with no `text` and no model call. `interview.latestListenSummaryInternal` walks one user's own `interviewSessions` newest-first for the most recent done, non-empty summary — this per-user scan over rows already scoped to exactly one `userId` **is** the "session per speaker" continuity thread (ADR 0023 §1: a new person-level memory concept was unnecessary, the existing per-user scoping already provides it). `convex/ai/voice/index.ts`'s `instructionsFor` reads that one prior summary and appends it to `LISTENER_INSTRUCTIONS` (`agents/listener/persona.ts`'s `buildListenerInstructions`) when minting the NEXT "listen" session, so the orb opens grounded instead of cold. v1 depth is last-session-only, not last-N or a rolling memo (ADR 0023 §4, tracked as an open question). Pure assembly/parsing/handoff logic lives in `lib/listenerMemory.ts`.
 
 ---
 
@@ -171,6 +193,13 @@ One live, replaceable map per session — the person's own captures (never the i
 ### feedback (the Feedback Widget)
 `feedback { userId, type: bug|feature|other, text, route, view, title, viewport {w,h}, userAgent, errors[{message, stack?, at}], shotId?: _storage, imageIds?: _storage[], status: open|pending|dealt_with, linear?: {issueId, identifier, url, at}, createdAt, pendingAt?, resolvedAt? }`. Indexes: `by_user [userId, createdAt]`, `by_status [status, createdAt]`. A user's in-app feedback, each captured with the page context at submit time (route, metadata, the page's recent JS/console errors, and an optional `html2canvas` snapshot in `_storage`). `imageIds` holds photos the person attached deliberately (pasted into the composer or picked from the photo library, max 4); `listAll` resolves them to `imageUrls`. Surfaced as a live ticketing queue in `/admin`. **Triage lifecycle** (ADR 0019): `open` (needs you) → `pending` (being dealt with — you replied, or it was pushed to Linear) → `dealt_with` (closed, a separate pile); `reopen` clears both marks. **`linear`** is set once the ticket is exported to Linear as a tracked issue (`convex/linear.ts`) — the app keeps the support-inbox side and links out to the card. **Access is owner-aware** (`convex/owner.ts`): the owner reads every user's feedback (joining the submitter's identity from `users`) as a support inbox and may export/triage any row; everyone else is self-scoped to their own rows. See [`../product/features/feedback-widget.md`](../product/features/feedback-widget.md), [`../decisions/0019-feedback-to-linear.md`](../decisions/0019-feedback-to-linear.md), and [`../decisions/0006-owner-gated-admin.md`](../decisions/0006-owner-gated-admin.md).
 
+### whatsNew / whatsNewSeen (What's New)
+`whatsNew { title, body, view: today|core|board|goals|sessions|settings, publishedAt, createdBy: Id<users> }`, indexed `by_publishedAt`. One owner-authored, user-facing announcement of a shipped feature, shown as a dismiss-by-click-through feed docked near the bottom of the app shell (see [`../product/features/whats-new.md`](../product/features/whats-new.md)). `view` is a Rail `View` key, not a URL — the app has no per-surface route (see the `sessions`/`view` field on `feedback` above for the same pattern) — so "the linked page" means "the tab the click switches to." Manually authored, never generated from `CHANGELOG.md` — see [ADR 0022](../decisions/0022-whats-new-manual-authorship.md).
+
+`whatsNewSeen { userId, whatsNewId: Id<whatsNew>, seenAt }`, indexed `by_user` and `by_user_entry [userId, whatsNewId]`. One row per `(user, entry)`, written the instant that user clicks that *specific* entry and is navigated to its `view` — the click-through itself is the acknowledgment. There is no generic dismiss and no "mark all seen": an entry's absence from this table for a given user means it is still unseen for them, full stop. `whatsNew.feed` reads both tables and returns every published entry not yet in `whatsNewSeen` for the caller.
+
+**Access is owner-aware** on the write side only (`convex/owner.ts`): `listAll`/`create`/`update`/`remove` (the `/admin` authoring surface) gate purely on `isOwner`, with **no** `isDev` bypass — unlike the `/admin` *page's* `isDev || isOwner` UX gate (ADR 0006), this is genuine cross-user content (every account's feed), so it follows the stricter pattern `feedback.listAll` uses for the owner's cross-user reads, not the page-render gate. The read side (`feed`, `markSeen`) is open to any authenticated user, scoped to their own `whatsNewSeen` rows.
+
 ---
 
 ## Proposed tables (new elements, written into schema when built)
@@ -211,8 +240,8 @@ futureSelf {
 }  // index by_user over createdAt
 ```
 
-### goals (inside Pillars & Goals)
-A commitment in a pillar, across the Blueprint's time horizons.
+### ~~goals (inside Pillars & Goals)~~ — superseded
+This horizon-based sketch predates the Orbit board shipping; the **live** `goals`/`goalTasks` shape is documented under "Live tables" above (Orbit's `kind`/`status`/`area`, plus the ARI-11 `pillarId?` relation). Kept here for history — the horizon-linked idea (a goal filed under `life|five_year|yearly|monthly|daily|north_star`) was never built and isn't planned; `horizons` (also live, above) is what actually carries the ladder.
 ```
 goals {
   userId,

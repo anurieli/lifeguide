@@ -22,6 +22,7 @@ async function seedDefaultPillars(ctx: MutationCtx, userId: Id<"users">) {
       composition: p.composition,
       weight: 1,
       source: "default",
+      role: p.role,
       createdAt: now,
     });
   }

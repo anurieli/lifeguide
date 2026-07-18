@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { filledCount } from "@/lib/levels";
 import { FeedbackInbox } from "@/components/feedback/FeedbackInbox";
+import { WhatsNewAdmin } from "@/components/whatsnew/WhatsNewAdmin";
 
 // Admin panel. Standalone route (no rail). Access: open in local dev (any
 // session), OWNER-ONLY in production (gated on the owner's email — see
@@ -178,6 +179,11 @@ export default function AdminPage() {
               </div>
             ))
           )}
+        </div>
+
+        {/* What's New — the owner-authored feed shown at the bottom of the app shell */}
+        <div className="mt-8">
+          <WhatsNewAdmin enabled={canAccess} />
         </div>
 
         {/* Feedback / Escalations — the inbox panel (collect · organize · reply · push to Linear) */}

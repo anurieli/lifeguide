@@ -1,8 +1,8 @@
 # Research / spec draft: The Listener's memory backbone (conversational continuity)
 
-> **Type:** parked feature spec — NOT finalized. Captured from a brainstorm on 2026-06-09, parked in Linear for design completion before any code.
-> **Status:** needs finalization (open questions below are load-bearing).
-> **Related code:** the Listener (`agents/listener/`, `components/voice/SpeakSurface.tsx`, `hooks/useRealtimeVoice.ts`), the Center (`agents/center/`, `convex/center.ts`), sessions (`convex/interview.ts`, `interviewSessions` in `convex/schema.ts`).
+> **Type:** parked feature spec — captured from a brainstorm on 2026-06-09, parked in Linear for design completion before any code.
+> **Status:** RESOLVED 2026-07-18 (ARI-23). All five open questions below were decided and built. The answer lives in [`../decisions/0023-listener-memory-backbone.md`](../decisions/0023-listener-memory-backbone.md) (the decision record), [`../product/features/listener.md`](../product/features/listener.md) §2/§4/§7-9 (the feature behavior), and [`../architecture/data-model.md`](../architecture/data-model.md) (`interviewSessions.summary`). This note is kept as-is below for the original reasoning trail; it is no longer the source of truth.
+> **Related code:** the Listener (`agents/listener/`, `components/voice/SpeakSurface.tsx`, `hooks/useRealtimeVoice.ts`), the Center (`agents/center/`, `convex/center.ts`), sessions (`convex/interview.ts`, `interviewSessions` in `convex/schema.ts`), the memory backbone itself (`convex/ai/listenerMemory.ts`, `lib/listenerMemory.ts`).
 
 ---
 
@@ -45,3 +45,15 @@ The backbone = **conversational continuity**, distinct from Core-filing:
 - A clear, documented model for "session per speaker."
 - Docs: `docs/product/features/listener.md` (continuity behavior), `docs/architecture/data-model.md` (summary fields/table), and an ADR if it introduces a new memory layer.
 - Tests: pure summary-assembly/handoff logic unit-tested; a manual two-call continuity smoke.
+
+## 5. Resolution (2026-07-18, ARI-23)
+
+All five questions in §3 were decided; see [ADR 0023](../decisions/0023-listener-memory-backbone.md) for the full reasoning:
+
+1. **Session per speaker** = reading (b), but realized as a consequence of the product's existing single-tenant-per-row shape, not a new mechanism: every `interviewSessions` row is already scoped to one `userId`, so that user's own chronological "listen" history *is* their continuity thread. (a) (role tags) was already built; (c) (multi-human diarization) is out of scope — nothing in the schema or the realtime transport supports multiple humans in one call, and nothing asked for it.
+2. **Summary cadence/writer** = a dedicated `summarizeSession` pass (`convex/ai/listenerMemory.ts`, the `listenerSummary` AI node), scheduled from `interview.end`, independent of the Center.
+3. **Tossed calls** DO still get a summary — `interview.end`'s `status` union now includes `"tossed"`, and the summarize scheduling is unconditional on status.
+4. **Memory depth** = last session only for v1 (not last-N, not a rolling memo) — tracked as an open question in `listener.md` §9 for a future pass.
+5. **Relationship to the Coach/Mirror** = Listener-specific, least coupling: the summary lives directly on `interviewSessions`, no shared table with `threads`/`messages`/`mirror`.
+
+The definition of done in §4 above was met: every call gets a retrievable summary (filed and tossed alike, verified in `tests/convex/listener-memory.test.ts`); the opening handoff is wired (`convex/ai/voice/index.ts`, verified via the pure `lib/listenerMemory.ts` unit tests — the live two-call smoke is unverified pending a Convex dev deployment); "session per speaker" is documented in ADR 0023; docs and tests both landed in the same change.

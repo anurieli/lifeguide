@@ -228,6 +228,21 @@ export default defineSchema({
   // textual files making up one part of a person (see docs/product/features/file-system-on-the-human.md).
   // `about` says what the pillar is; `composition` tells the Center how this pillar is
   // built from its files, so each per-pillar synthesis knows what belongs here.
+  //
+  // ARI-11 (Pillars visualization, see docs/decisions/0022-identity-is-not-a-pillar.md and
+  // docs/product/features/pillars.md) grows this same table into the canonical domain entity
+  // that the Core, Sessions, goals, and the Coach all read/write — deliberately NOT a second
+  // table, to stay one source of truth with ADR 0007's file system:
+  //   `role` — "identity" marks the single self/values pillar that the person's identity IS,
+  //     not one of the domains it holds up (see the ADR); everything else is "domain". Absent
+  //     = "domain" (back-compat with rows written before this field existed).
+  //   `strength` — a 0-100 read on how strong/attended-to this domain currently is, the value
+  //     the Life Wheel plots. v1 is manual-only (the person or the Coach sets it directly);
+  //     absent means "never rated" and callers fall back to a neutral midpoint. Deriving it
+  //     from activity (session/coreFiles signal) is explicitly deferred to ARI-16 (the
+  //     current-state/gap engine) — this field is the seam it plugs into later.
+  //   `strengthUpdatedAt` — when `strength` last changed, so a future over-time/history view
+  //     (also ARI-16 territory) has a starting timestamp without needing a snapshots table yet.
   pillars: defineTable({
     userId: v.id("users"),
     name: v.string(),
@@ -236,6 +251,9 @@ export default defineSchema({
     composition: v.optional(v.string()), // how the Center should build this pillar from its files
     weight: v.number(),
     source: v.union(v.literal("default"), v.literal("preset"), v.literal("custom")),
+    role: v.optional(v.union(v.literal("domain"), v.literal("identity"))), // default "domain"
+    strength: v.optional(v.number()), // 0-100, manual for v1 (ARI-11)
+    strengthUpdatedAt: v.optional(v.number()),
     createdAt: v.number(),
   }).index("by_user", ["userId"]),
 
@@ -436,6 +454,15 @@ export default defineSchema({
     // is the unchanged default behavior. Editable from the session's "Teach it"
     // panel and from Settings.
     thoughtMapMemo: v.optional(v.string()),
+    // The in-app guided product tour (ARI-19; distinct from the Door/Interview
+    // onboarding above, which draws out the Core before the app shell ever
+    // mounts — the tour walks a person around the shell afterward). All three
+    // fields are optional/undefined by default so existing rows are untouched:
+    // `undefined` reads as "never started," and the tour only ever fires once
+    // onboarding is complete. See docs/product/features/product-tour.md.
+    tourStep: v.optional(v.number()), // current step index while in progress
+    tourCompletedAt: v.optional(v.number()), // finished every step
+    tourSkippedAt: v.optional(v.number()), // dismissed early; also suppresses re-fire
   }).index("by_user", ["userId"]),
 
   // Per-profile AI provider keys. A user's own key (e.g. their OpenRouter key) is
@@ -473,6 +500,11 @@ export default defineSchema({
     archived: v.optional(v.boolean()),
     // Two-way Todoist link: set when this goal mirrors a Todoist project.
     todoistProjectId: v.optional(v.string()),
+    // ARI-11: which pillar/domain (see `pillars` above) this goal strengthens, so the Life
+    // Wheel and the Coach can eventually connect "what I'm doing" to "what it builds."
+    // Optional and unenforced for v1 — no UI sets it yet, this is the relation the pillar
+    // entity needs to exist as a sane foundation for that wiring later.
+    pillarId: v.optional(v.id("pillars")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -559,6 +591,23 @@ export default defineSchema({
     joinTokenExpiresAt: v.optional(v.number()),
     startedAt: v.number(),
     endedAt: v.optional(v.number()),
+    // The Listener's memory backbone (ARI-23): a post-call digest of THIS call,
+    // written by convex/ai/listenerMemory.ts on every end (completed, abandoned, or
+    // tossed alike — see ADR 0023), distinct from the Center's identity filing
+    // (coreFiles). Only ever set for experienceId "listen"; onboarding sessions leave
+    // it absent. The most recent done summary for a user is read back into the NEXT
+    // "listen" session's realtime instructions (convex/ai/voice/index.ts) so the orb
+    // opens already oriented instead of cold.
+    summary: v.optional(
+      v.object({
+        status: v.union(v.literal("pending"), v.literal("done"), v.literal("error")),
+        text: v.optional(v.string()), // 2-4 plain sentences: what was talked about, where it landed
+        topics: v.optional(v.array(v.string())), // short topic tags
+        openThreads: v.optional(v.array(v.string())), // left unresolved, worth picking back up
+        error: v.optional(v.string()),
+        at: v.optional(v.number()),
+      }),
+    ),
   }).index("by_user", ["userId", "startedAt"]),
 
   // Telemetry stream: what each experience is doing (for A/B + funnel later).
@@ -674,4 +723,39 @@ export default defineSchema({
   })
     .index("by_user", ["userId", "createdAt"])
     .index("by_status", ["status", "createdAt"]),
+
+  // What's New: owner-authored entries announcing a shipped feature, surfaced as a
+  // dismiss-by-click-through feed docked at the bottom of the app shell (see
+  // docs/product/features/whats-new.md, ADR 0026). `view` is a Rail `View` key
+  // (today|core|board|goals|sessions|settings) — the app has no per-surface URL, so
+  // "the linked page" means "the tab to switch to." Manually authored (not
+  // auto-generated from CHANGELOG.md — see the ADR for why) through the owner-gated
+  // /admin surface (convex/owner.ts, ADR 0006).
+  whatsNew: defineTable({
+    title: v.string(),
+    body: v.string(),
+    view: v.union(
+      v.literal("today"),
+      v.literal("core"),
+      v.literal("board"),
+      v.literal("goals"),
+      v.literal("sessions"),
+      v.literal("settings"),
+    ),
+    publishedAt: v.number(),
+    createdBy: v.id("users"), // the owner who authored it
+  }).index("by_publishedAt", ["publishedAt"]),
+
+  // Per-user click-through state for What's New. One row per (user, entry) is
+  // written the moment they click that SPECIFIC entry and it navigates them to its
+  // linked surface — that click-through IS the acknowledgment. There is no generic
+  // "mark all seen" / X-to-dismiss; a row's absence means the entry is still unseen
+  // for that user. `whatsNew.feed` filters on this table's `by_user` index.
+  whatsNewSeen: defineTable({
+    userId: v.id("users"),
+    whatsNewId: v.id("whatsNew"),
+    seenAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_entry", ["userId", "whatsNewId"]),
 });

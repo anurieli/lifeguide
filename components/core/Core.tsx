@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { BLUEPRINT, type Malleability } from "@/lib/blueprint";
 import { VoiceField } from "@/components/voice/VoiceField";
 import { ZenCore } from "./ZenCore";
 import { ConversationalCore } from "./ConversationalCore";
+import { PillarWheel } from "./PillarWheel";
 import { PageHeader } from "@/components/shell/PageHeader";
-
-type CoreMode = "grid" | "zen" | "conversational";
+import { coreModeReducer } from "@/lib/core/mode";
 
 const MALL: Record<Malleability, { dot: string; label: string }> = {
   green: { dot: "#4F7A4A", label: "freely changeable" },
@@ -102,27 +102,31 @@ export function Core() {
   const responses = stored ?? {};
   const loadingRef = useRef(stored === undefined);
   loadingRef.current = stored === undefined;
-  const [mode, setMode] = useState<CoreMode>("grid");
+  const [mode, dispatch] = useReducer(coreModeReducer, "grid");
 
   if (mode === "zen")
     return (
       <ZenCore
-        onExit={() => setMode("grid")}
-        onConversational={() => setMode("conversational")}
+        onExit={() => dispatch({ type: "toGrid" })}
+        onConversational={() => dispatch({ type: "toConversational" })}
       />
     );
   if (mode === "conversational")
     return (
       <ConversationalCore
-        onExit={() => setMode("grid")}
-        onZen={() => setMode("zen")}
+        onExit={() => dispatch({ type: "toGrid" })}
+        onZen={() => dispatch({ type: "toZen" })}
       />
     );
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div data-tour="tour-core" className="h-full overflow-y-auto">
       <div className="max-w-[760px] mx-auto px-5 py-8 md:px-8 md:py-10">
-        <PageHeader align="items-start" className="gap-4" actions={<ZenButton onClick={() => setMode("zen")} />}>
+        <PageHeader
+          align="items-start"
+          className="gap-4"
+          actions={<ZenButton onClick={() => dispatch({ type: "toZen" })} />}
+        >
           <div className="text-[11px] tracking-[0.16em] uppercase text-gold mb-2">
             The Blueprint · who you are
           </div>
@@ -132,6 +136,8 @@ export function Core() {
           The enduring layer beneath your days: who you are, who you&apos;re becoming, and what you
           stand for. Edit anything, anytime. The colored dot shows how settled each piece should be.
         </p>
+
+        <PillarWheel />
 
         {BLUEPRINT.map((section) => (
           <div key={section.title} className="mb-9">

@@ -17,7 +17,9 @@ The element model these hang off is [`../../architecture/elements-and-context.md
 | [Horizons (goal ladder)](horizons.md) | `horizons` | spine (the plan layer of Today) | built |
 | [Daily tidbit (quote agent)](daily-tidbit.md) | `dailyTidbits` | Sessions (a step in the Morning Scroll) | built |
 | [The Blueprint](the-blueprint.md) | `blueprint` | Daily Ritual (the morning read resolves from it) | built |
-| [Pillars & Goals](pillars-and-goals.md) | `pillars, goals` | Core, Sessions | partial (pillars built; goals proposed) |
+| [Pillars & Goals](pillars-and-goals.md) | `pillars, goals` | Core, Sessions | superseded on pillars (see [Pillars](pillars.md)); goals now built as Orbit ([Goals](goals.md)) |
+| [Pillars](pillars.md) | `pillars` (shared, ARI-11 fields) | Core, Coach | partial (domain data + Life Wheel built; Temple/Orbit/Tree not built) |
+| [Goals (Orbit board)](goals.md) | `goals`, `goalTasks` | Home (Today) | built (v1) |
 | [File system on the human](file-system-on-the-human.md) | `pillars` (folders), `coreFiles` (files) | Core | partial (store + seed built; person-map UI proposed) |
 | [The Core](core.md) | `mirror` | is the Core | partial |
 | [The Coach](coach.md) | `threads, messages` | reads all | partial (thin single-turn) |
@@ -26,7 +28,10 @@ The element model these hang off is [`../../architecture/elements-and-context.md
 | [The Guide](guide.md) | view-only | renders Core | merged into Home |
 | [Home (Today)](dashboard.md) | view-only | draws Core + Sessions | partial (hosts the merged Guide) |
 | [Settings & Onboarding](settings.md) | `settings` | system | built (reached via the account menu) |
+| [Onboarding (Door/Interview/Synthesis)](onboarding.md) | `interviewSessions`, `experienceEvents` | draws the Core out of a brand-new user before the shell mounts | built |
+| [Product Tour (guided walkthrough)](product-tour.md) | rides `settings` (no table of its own) | walks an already-onboarded person around the shell | built |
 | [Feedback Widget](feedback-widget.md) | `feedback` | dev tooling | built (draggable widget + `/admin` ticket queue) |
+| [What's New](whats-new.md) | `whatsNew, whatsNewSeen` | spine (owner-authored content) | built (bottom-of-shell feed + `/admin` authoring) |
 | [Atmosphere](atmosphere.md) | `settings.music*` + audio assets | none (ambient) | built (v1) |
 
 **Home (Today)** is the one home surface: it owns no data, renders and routes, and now hosts the former **Guide** (north star compass, Mirror, pillars) folded in. Everything else owns its tables and publishes distilled text to the two streams. Settings is reached from the account menu at the bottom of the rail, not a primary rail tab.

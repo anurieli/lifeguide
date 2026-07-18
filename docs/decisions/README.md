@@ -25,6 +25,7 @@ Architecture Decision Records for LifeGuide. One file per notable decision, numb
 | [0019](0019-feedback-to-linear.md) | Feedback → Linear: manual export + a three-state triage inbox | accepted (live) | 2026-07-15 |
 | [0020](0020-a-take-is-never-lost-to-a-cold-start.md) | A voice take is never lost to a cold start | accepted (live) | 2026-07-17 |
 | [0021](0021-dynamic-sessions-and-post-hoc-thought-maps.md) | Dynamic sessions and post-hoc thought maps | accepted (live) | 2026-07-18 |
+| [0022](0022-whats-new-manual-authorship.md) | What's New: manually authored entries, not auto-generated from CHANGELOG.md | accepted | 2026-07-18 |
 
 
 See [`../README.md`](../README.md) for the documentation map and the two seeds, and [`../product/concept-and-soul.md`](../product/concept-and-soul.md) for the current source of truth.

@@ -667,4 +667,39 @@ export default defineSchema({
   })
     .index("by_user", ["userId", "createdAt"])
     .index("by_status", ["status", "createdAt"]),
+
+  // What's New: owner-authored entries announcing a shipped feature, surfaced as a
+  // dismiss-by-click-through feed docked at the bottom of the app shell (see
+  // docs/product/features/whats-new.md, ADR 0022). `view` is a Rail `View` key
+  // (today|core|board|goals|sessions|settings) — the app has no per-surface URL, so
+  // "the linked page" means "the tab to switch to." Manually authored (not
+  // auto-generated from CHANGELOG.md — see the ADR for why) through the owner-gated
+  // /admin surface (convex/owner.ts, ADR 0006).
+  whatsNew: defineTable({
+    title: v.string(),
+    body: v.string(),
+    view: v.union(
+      v.literal("today"),
+      v.literal("core"),
+      v.literal("board"),
+      v.literal("goals"),
+      v.literal("sessions"),
+      v.literal("settings"),
+    ),
+    publishedAt: v.number(),
+    createdBy: v.id("users"), // the owner who authored it
+  }).index("by_publishedAt", ["publishedAt"]),
+
+  // Per-user click-through state for What's New. One row per (user, entry) is
+  // written the moment they click that SPECIFIC entry and it navigates them to its
+  // linked surface — that click-through IS the acknowledgment. There is no generic
+  // "mark all seen" / X-to-dismiss; a row's absence means the entry is still unseen
+  // for that user. `whatsNew.feed` filters on this table's `by_user` index.
+  whatsNewSeen: defineTable({
+    userId: v.id("users"),
+    whatsNewId: v.id("whatsNew"),
+    seenAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_entry", ["userId", "whatsNewId"]),
 });

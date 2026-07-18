@@ -62,6 +62,7 @@ import type * as surfaces from "../surfaces.js";
 import type * as todoist from "../todoist.js";
 import type * as users from "../users.js";
 import type * as voice from "../voice.js";
+import type * as whatsNew from "../whatsNew.js";
 
 import type {
   ApiFromModules,
@@ -124,6 +125,7 @@ declare const fullApi: ApiFromModules<{
   todoist: typeof todoist;
   users: typeof users;
   voice: typeof voice;
+  whatsNew: typeof whatsNew;
 }>;
 
 /**

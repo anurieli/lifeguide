@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   GitBranch,
   ImagePlus,
+  Loader2,
   MessageCircle,
   Mic,
   Pause,
@@ -107,6 +108,108 @@ function ReplyBlock({ reply }: { reply: ReplyDoc }) {
   );
 }
 
+type MicTurn = "idle" | "recording" | "transcribing";
+
+// Conversation mode makes the mic the primary control, with a visible
+// turn-cycle: idle "Speak" (gold, labeled) -> recording (the existing
+// discard/pause/stop pill, gold-accented with a subtle pulse on stop) ->
+// transcribing (a disabled spinner badge) -> back to idle once the take lands
+// as a real capture. Brain-dump mode's ambient controls are untouched; this
+// only renders when the session is in "dynamic" mode.
+function ConversationMicButton({
+  turn,
+  paused,
+  confirmDiscard,
+  onStart,
+  onStop,
+  onPauseResume,
+  onDiscard,
+  size,
+  disabled,
+}: {
+  turn: MicTurn;
+  paused: boolean;
+  confirmDiscard: boolean;
+  onStart: () => void;
+  onStop: () => void;
+  onPauseResume: () => void;
+  onDiscard: () => void;
+  size: "sm" | "lg";
+  disabled?: boolean;
+}) {
+  const badgeDim = size === "lg" ? "w-14 h-14" : "w-9 h-9";
+  const badgeIcon = size === "lg" ? "w-6 h-6" : "w-4 h-4";
+
+  if (turn === "transcribing") {
+    return (
+      <div
+        aria-label="Transcribing"
+        className={`${badgeDim} rounded-full bg-gold/15 border-[1.5px] border-gold text-gold flex items-center justify-center`}
+      >
+        <Loader2 className={`${badgeIcon} animate-spin`} />
+      </div>
+    );
+  }
+
+  if (turn === "recording") {
+    return (
+      <div className="flex items-center gap-1 bg-card border border-gold rounded-full shadow-lg p-1">
+        <button
+          type="button"
+          onClick={onDiscard}
+          aria-label={confirmDiscard ? "Tap again to discard" : "Discard recording"}
+          className={`h-10 rounded-full flex items-center justify-center transition ${
+            confirmDiscard
+              ? "px-3 text-[12px] font-medium text-red-500"
+              : "w-10 text-ink-mute hover:text-red-500"
+          }`}
+        >
+          {confirmDiscard ? "Sure?" : <X className="w-[18px] h-[18px]" />}
+        </button>
+        <button
+          type="button"
+          onClick={onPauseResume}
+          aria-label={paused ? "Resume recording" : "Pause recording"}
+          className="w-10 h-10 rounded-full text-ink-soft hover:text-ink flex items-center justify-center"
+        >
+          {paused ? (
+            <Play className="w-[18px] h-[18px]" fill="currentColor" strokeWidth={0} />
+          ) : (
+            <Pause className="w-[18px] h-[18px]" fill="currentColor" strokeWidth={0} />
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={onStop}
+          aria-label="Stop and send"
+          className="relative w-11 h-11 rounded-full bg-gold border-[1.5px] border-gold text-white flex items-center justify-center active:scale-95 transition"
+        >
+          {!paused && <span className="absolute inset-0 rounded-full bg-gold/50 animate-ping" />}
+          <Square className="relative w-3.5 h-3.5" fill="currentColor" strokeWidth={0} />
+        </button>
+      </div>
+    );
+  }
+
+  // idle
+  return (
+    <button
+      type="button"
+      onClick={onStart}
+      disabled={disabled}
+      aria-label="Speak"
+      className={`${
+        size === "lg" ? "h-14 px-5" : "h-9 px-3.5"
+      } rounded-full bg-gold text-white shadow-md flex items-center justify-center gap-1.5 disabled:opacity-40 active:scale-95 transition`}
+    >
+      <Mic className={badgeIcon} />
+      <span className={size === "lg" ? "text-[14px] font-medium" : "text-[12.5px] font-medium"}>
+        Speak
+      </span>
+    </button>
+  );
+}
+
 export function SessionDoc({
   sessionId,
   onBack,
@@ -116,10 +219,6 @@ export function SessionDoc({
 }) {
   const doc = useQuery(api.sessions.get, { sessionId });
   const replies = useQuery(api.sessions.replies, { sessionId }) ?? [];
-  // Shares the Convex client's subscription with ThoughtMapView's own query of
-  // the same args (Convex dedupes by query+args), so knowing whether a map
-  // already exists here costs nothing extra.
-  const thoughtMap = useQuery(api.sessions.thoughtMap, { sessionId });
   const createCapture = useMutation(api.captures.create);
   const reprocess = useMutation(api.captures.reprocess);
   const setDoing = useMutation(api.sessions.setDoing);
@@ -128,7 +227,6 @@ export function SessionDoc({
   const refreshDigest = useMutation(api.sessions.refreshDigest);
   const deleteIfEmpty = useMutation(api.sessions.deleteIfEmpty);
   const touchOpened = useMutation(api.sessions.touchOpened);
-  const requestThoughtMap = useMutation(api.sessions.requestThoughtMap);
   const uploadBlob = useBlobUpload();
   const rec = useRecording();
   // This entry is the one the live take is landing in.
@@ -137,13 +235,19 @@ export function SessionDoc({
   // the upload running behind them.
   const pendingHere = rec.pendingTakes.filter((t) => t.sessionId === sessionId);
   const failedHere = rec.failedTakes.some((t) => t.sessionId === sessionId);
+  // The conversation-mode mic's turn-cycle: idle -> recording -> transcribing
+  // (a take stopped and is saving/uploading) -> back to idle once the real
+  // capture lands.
+  const micTurn: MicTurn = isLive && rec.recording ? "recording" : pendingHere.length > 0 ? "transcribing" : "idle";
 
   const [text, setText] = useState("");
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
   const [doingDraft, setDoingDraft] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
-  const [mapOpen, setMapOpen] = useState(false);
+  // The view switcher: same page, swapped content — "Thoughts" is the existing
+  // dump/conversation feed, "Thought Map" hands the body to ThoughtMapView.
+  const [view, setView] = useState<"thoughts" | "map">("thoughts");
   // Where the text caret sits inside the trailing editor (desktop: the capture
   // pair rides it). null = no caret; the pair rests below the last content.
   const [caret, setCaret] = useState<CaretPos | null>(null);
@@ -257,13 +361,6 @@ export function SessionDoc({
     if (ta) setCaret(caretPosition(ta));
   };
 
-  // First tap opens the panel and kicks off generation in the same motion; once
-  // a map already exists this just reopens the (reactive) panel on it.
-  const openMap = () => {
-    setMapOpen(true);
-    if (!thoughtMap) void requestThoughtMap({ sessionId });
-  };
-
   if (doc === undefined) {
     return <p className="text-center text-[13px] text-ink-mute py-10">Loading…</p>;
   }
@@ -291,6 +388,23 @@ export function SessionDoc({
     ...captures.map((c) => ({ kind: "capture" as const, at: c.createdAt, capture: c })),
     ...replies.map((r) => ({ kind: "reply" as const, at: r.createdAt, reply: r })),
   ].sort((a, b) => a.at - b.at);
+
+  // No dead air (dynamic mode only): the instant a take is saved or a text
+  // capture commits, show a client-side "listening…" line at the thread bottom
+  // — bridging the gap before the real pending reply row ("thinking…") shows
+  // up. `pendingHere` covers the moment a take just stopped (saving/uploading,
+  // before it's even a real capture yet); otherwise it's on as long as the
+  // newest capture is newer than the newest reply — the same signal
+  // ai/sessionReply.maybeReply itself uses to decide whether it still owes a
+  // reply. Never shown while still actively speaking (that's its own live
+  // pulsing row), and it steps aside the moment a real reply row exists,
+  // pending or done or error — that row's own rendering takes over from there.
+  const latestCaptureAt = captures.length ? Math.max(...captures.map((c) => c.createdAt)) : 0;
+  const latestReplyAt = replies.length ? Math.max(...replies.map((r) => r.createdAt)) : 0;
+  const showListening =
+    mode === "dynamic" &&
+    !(isLive && rec.recording) &&
+    (pendingHere.length > 0 || latestCaptureAt > latestReplyAt);
 
   // The live-take pill — discard · pause/resume · save — shared by the desktop
   // caret row and the phone's floating corner.
@@ -391,19 +505,22 @@ export function SessionDoc({
         />
       </div>
 
-      {/* Quiet/dynamic toggle + "map my thinking": a slim strip of its own so it
-          stays comfortably tappable on the phone without crowding the title row. */}
+      {/* Plain-words mode toggle + the Thoughts/Thought Map view switcher: a slim
+          strip of its own so both stay comfortably tappable on the phone
+          without crowding the title row. Same api.sessions.setMode call
+          underneath — only the label changed, the stored "quiet"/"dynamic"
+          values didn't. */}
       <div className="flex items-center justify-between gap-2 px-5 py-2 border-b border-line/70 md:px-8">
         <button
           type="button"
           onClick={() => void setMode({ sessionId, mode: mode === "quiet" ? "dynamic" : "quiet" })}
-          aria-label={mode === "quiet" ? "Switch to dynamic mode" : "Switch to quiet mode"}
+          aria-label={mode === "quiet" ? "Turn on Have a conversation" : "Turn off Have a conversation"}
           title={
             mode === "quiet"
-              ? "Quiet — just held. Tap for a live conversation."
-              : "Dynamic — an interviewer replies. Tap to go quiet."
+              ? "Brain dump — silent. Tap to have a conversation."
+              : "Conversation — the interviewer engages. Tap to go back to a brain dump."
           }
-          className={`flex items-center gap-1.5 h-8 px-3 rounded-full border text-[11.5px] font-medium transition ${
+          className={`flex items-center gap-1.5 h-9 px-3.5 rounded-full border text-[12px] font-medium transition min-w-[44px] justify-center ${
             mode === "dynamic"
               ? "bg-gold/10 border-gold text-gold"
               : "bg-paper-2 border-line-2 text-ink-mute hover:text-ink"
@@ -414,21 +531,37 @@ export function SessionDoc({
           ) : (
             <Mic className="w-3.5 h-3.5" />
           )}
-          {mode === "dynamic" ? "Dynamic" : "Quiet"}
+          {mode === "dynamic" ? "Conversation" : "Brain dump"}
         </button>
-        <button
-          type="button"
-          onClick={openMap}
-          aria-label={thoughtMap ? "View thought map" : "Map my thinking"}
-          className="flex items-center gap-1.5 h-8 px-3 rounded-full border border-line-2 text-[11.5px] text-ink-mute hover:text-gold hover:border-gold transition"
-        >
-          <GitBranch className="w-3.5 h-3.5" />
-          {thoughtMap ? "Thought map" : "Map my thinking"}
-        </button>
+        <div className="flex items-center gap-0.5 bg-paper-2 border border-line-2 rounded-full p-0.5">
+          <button
+            type="button"
+            onClick={() => setView("thoughts")}
+            aria-pressed={view === "thoughts"}
+            className={`h-8 px-3 rounded-full text-[11.5px] font-medium transition ${
+              view === "thoughts" ? "bg-card text-ink shadow-sm" : "text-ink-mute hover:text-ink"
+            }`}
+          >
+            Thoughts
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("map")}
+            aria-pressed={view === "map"}
+            className={`flex items-center gap-1.5 h-8 px-3 rounded-full text-[11.5px] font-medium transition ${
+              view === "map" ? "bg-card text-ink shadow-sm" : "text-ink-mute hover:text-ink"
+            }`}
+          >
+            <GitBranch className="w-3.5 h-3.5" />
+            Thought Map
+          </button>
+        </div>
       </div>
 
       {/* The page: content in order, then the trailing editor. Clicking empty
-          space anywhere lands the caret, like a notes document. */}
+          space anywhere lands the caret, like a notes document. Only rendered
+          in the "Thoughts" view — the map view swaps this whole body out. */}
+      {view === "thoughts" && (
       <div
         className="flex-1 overflow-y-auto px-5 py-5 pb-36 md:px-8 cursor-text"
         onClick={focusEditor}
@@ -526,6 +659,17 @@ export function SessionDoc({
               </button>
             </p>
           )}
+          {/* No dead air (conversation mode): a placeholder in the interviewer's
+              own voice/position, standing in until the real pending reply row
+              replaces it. */}
+          {showListening && (
+            <div className="pl-3.5 border-l-2 border-gold/35">
+              <div className="text-[10.5px] font-medium tracking-wide text-gold/80 uppercase mb-1">
+                {capitalize(session.interviewer || "coach")}
+              </div>
+              <p className="text-[13px] text-ink-mute animate-pulse">listening…</p>
+            </div>
+          )}
           {/* A live take renders in-flow, part of the document as it happens. */}
           {isLive && rec.recording && (
             <div className="flex items-center gap-2.5 pointer-events-none select-none">
@@ -590,7 +734,48 @@ export function SessionDoc({
               }
               onMouseDown={(e) => e.preventDefault()}
             >
-              {isLive && rec.recording ? (
+              {mode === "dynamic" ? (
+                micTurn === "recording" ? (
+                  <ConversationMicButton
+                    turn={micTurn}
+                    paused={rec.paused}
+                    confirmDiscard={confirmDiscard}
+                    onStart={() => void rec.start(sessionId)}
+                    onStop={() => void rec.finish()}
+                    onPauseResume={() => (rec.paused ? rec.resume() : rec.pause())}
+                    onDiscard={discardTake}
+                    size="sm"
+                  />
+                ) : (
+                  <>
+                    <ConversationMicButton
+                      turn={micTurn}
+                      paused={rec.paused}
+                      confirmDiscard={confirmDiscard}
+                      onStart={() => void rec.start(sessionId)}
+                      onStop={() => void rec.finish()}
+                      onPauseResume={() => (rec.paused ? rec.resume() : rec.pause())}
+                      onDiscard={discardTake}
+                      size="sm"
+                      disabled={!rec.supported}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      aria-label="Add a photo"
+                      className="w-9 h-9 rounded-full bg-card border border-line-2 shadow-sm text-ink-mute hover:text-gold flex items-center justify-center disabled:opacity-40"
+                    >
+                      <ImagePlus className="w-4 h-4" />
+                    </button>
+                    {rec.error && !rec.recording && (
+                      <span className="text-[11px] text-ink-mute whitespace-nowrap">
+                        Mic unavailable — just write.
+                      </span>
+                    )}
+                  </>
+                )
+              ) : isLive && rec.recording ? (
                 takePill
               ) : (
                 <>
@@ -623,25 +808,42 @@ export function SessionDoc({
           </div>
         </div>
       </div>
+      )}
 
       {/* Phone: the controls float bottom-right (there's no caret to ride on a
-          touch keyboard flow). Idle: photo + mic. Live: the shared slim pill. */}
+          touch keyboard flow). Idle: photo + mic. Live: the shared slim pill.
+          The composer/recording controls never float over the map view. */}
+      {view === "thoughts" && (
       <div className="absolute bottom-5 right-5 flex flex-col items-end gap-2.5 md:hidden">
         {rec.error && !rec.recording && (
           <span className="text-[11px] text-ink-mute bg-card border border-line rounded-full px-2.5 py-1">
             Mic unavailable. Tap the page and type.
           </span>
         )}
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          aria-label="Add a photo"
-          className="w-11 h-11 rounded-full bg-card border border-line-2 shadow-md text-ink-mute hover:text-gold flex items-center justify-center disabled:opacity-40"
-        >
-          <ImagePlus className="w-[18px] h-[18px]" />
-        </button>
-        {isLive && rec.recording ? (
+        {!(mode === "dynamic" && micTurn === "recording") && (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            aria-label="Add a photo"
+            className="w-11 h-11 rounded-full bg-card border border-line-2 shadow-md text-ink-mute hover:text-gold flex items-center justify-center disabled:opacity-40"
+          >
+            <ImagePlus className="w-[18px] h-[18px]" />
+          </button>
+        )}
+        {mode === "dynamic" ? (
+          <ConversationMicButton
+            turn={micTurn}
+            paused={rec.paused}
+            confirmDiscard={confirmDiscard}
+            onStart={() => void rec.start(sessionId)}
+            onStop={() => void rec.finish()}
+            onPauseResume={() => (rec.paused ? rec.resume() : rec.pause())}
+            onDiscard={discardTake}
+            size="lg"
+            disabled={!rec.supported}
+          />
+        ) : isLive && rec.recording ? (
           takePill
         ) : (
           <button
@@ -655,6 +857,18 @@ export function SessionDoc({
           </button>
         )}
       </div>
+      )}
+
+      {/* The thought map: a VIEW of this same page (not an overlay), swapped
+          in for the captures feed + composer above. Desktop shows the graph,
+          phone the collapsible outline; ThoughtMapView owns that split. */}
+      {view === "map" && (
+        <div className="flex-1 min-h-0 flex flex-col overflow-y-auto md:overflow-hidden px-5 py-4 md:px-8">
+          <div className="max-w-[900px] w-full mx-auto flex-1 min-h-0 flex flex-col">
+            <ThoughtMapView sessionId={sessionId} />
+          </div>
+        </div>
+      )}
 
       <input
         ref={fileInputRef}
@@ -663,8 +877,6 @@ export function SessionDoc({
         className="hidden"
         onChange={(e) => void onFile(e)}
       />
-
-      {mapOpen && <ThoughtMapView sessionId={sessionId} onClose={() => setMapOpen(false)} />}
     </div>
   );
 }

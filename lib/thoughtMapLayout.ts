@@ -136,3 +136,36 @@ export function layoutThoughtMap(nodes: ThoughtMapNode[], edges: ThoughtMapEdge[
 
   return { nodes: positioned, edges: laidEdges, width, height };
 }
+
+// ---- fit-to-screen (directive: the whole map visible without scrolling) ----
+// The default case scales the whole layout down (never up past 1:1) so it fits
+// inside whatever container it's rendered in, via the SVG's own viewBox — the
+// caller just sets width/height to `layout.width * scale` / `layout.height *
+// scale` and lets the browser do the rest. A huge map would need to shrink text
+// past legibility to fit, so the scale never drops below MIN_READABLE_SCALE;
+// past that point `fitsWithoutScroll` goes false and the caller should fall
+// back to pan/scroll at the clamped (still-readable) size instead of shrinking
+// further.
+export const MIN_READABLE_SCALE = 0.42;
+
+export type FitToContainer = {
+  scale: number;
+  fitsWithoutScroll: boolean;
+};
+
+export function fitToContainer(
+  layout: Pick<ThoughtMapLayout, "width" | "height">,
+  containerWidth: number,
+  containerHeight: number,
+): FitToContainer {
+  if (layout.width <= 0 || layout.height <= 0 || containerWidth <= 0 || containerHeight <= 0) {
+    return { scale: 1, fitsWithoutScroll: true };
+  }
+  // Never magnify past natural size — a tiny map should just sit centered
+  // (letterboxed) in a big container, not stretch to fill it.
+  const naturalScale = Math.min(containerWidth / layout.width, containerHeight / layout.height, 1);
+  if (naturalScale >= MIN_READABLE_SCALE) {
+    return { scale: naturalScale, fitsWithoutScroll: true };
+  }
+  return { scale: MIN_READABLE_SCALE, fitsWithoutScroll: false };
+}

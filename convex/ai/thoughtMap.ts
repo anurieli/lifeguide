@@ -21,18 +21,37 @@ function assembleThoughtMapInput(captures: MapCapture[]): string {
   return parts.join("\n\n").slice(0, INPUT_CAP);
 }
 
-// The post-hoc thought map (ARI-18): requested on demand (sessions.requestThoughtMap)
-// once a session has enough to look back over. One model call extracts the person's
-// distinct thoughts as a hierarchy; lib/thoughtMap.ts's normalizeThoughtMap turns the
-// untrusted JSON into the exact shape the thoughtMaps table expects.
+// The post-hoc thought map (ARI-18, UX rework): builds itself in the background
+// as a session fills up (convex/ai/ingest.ts schedules this 30s after each
+// capture's ingest, same debounce pattern as the digest) — no tap required.
+// `sessions.requestThoughtMap` (the "Map now"/"Remap" affordance) also schedules
+// this directly, with no captureId, for an explicit run that always executes.
+// One model call extracts the person's distinct thoughts as a hierarchy;
+// lib/thoughtMap.ts's normalizeThoughtMap turns the untrusted JSON into the
+// exact shape the thoughtMaps table expects.
 export const generate = internalAction({
-  args: { sessionId: v.id("sessions") },
+  args: { sessionId: v.id("sessions"), captureId: v.optional(v.id("captures")) },
   handler: async (ctx, args) => {
     const data = await ctx.runQuery(internal.sessions.getForThoughtMapInternal, {
       sessionId: args.sessionId,
     });
     if (!data) return; // session deleted while this was scheduled
     const { session, captures } = data;
+
+    // Auto-map supersede guard: when triggered by a specific capture (the
+    // scheduled/auto path), skip if a newer capture has landed in the session
+    // since — that capture's own scheduled run supersedes this one, last
+    // capture wins (same pattern as convex/ai/sessionReply.ts maybeReply). The
+    // manual requestThoughtMap path omits captureId, bypassing this guard, so
+    // an explicit "Map now"/"Remap" always runs.
+    if (args.captureId) {
+      const trigger = captures.find((c) => c._id === args.captureId);
+      if (!trigger) return; // the triggering capture was removed before this ran
+      const newerCaptureExists = captures.some(
+        (c) => c._id !== trigger._id && c.createdAt > trigger.createdAt,
+      );
+      if (newerCaptureExists) return;
+    }
 
     const input = assembleThoughtMapInput(captures);
     if (!input) {

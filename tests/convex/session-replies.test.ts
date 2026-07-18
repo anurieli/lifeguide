@@ -2,12 +2,25 @@ import { describe, it, expect } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../convex/schema";
 import { api, internal } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
 
 // Auth test-identity pattern: insert a real users row, use its _id as the subject.
 async function setup() {
   const t = convexTest(schema);
   const userId = await t.run(async (ctx) => ctx.db.insert("users", {}));
   return { t, asUser: t.withIdentity({ subject: userId }), userId };
+}
+
+// Guard tests below need a session already in dynamic mode as setup, but must
+// NOT go through the real sessions.setMode mutation for that — it now
+// schedules ai/sessionReply.opener for real (convex-test's scheduler actually
+// fires runAfter(0) via a real setTimeout), which would insert its own reply
+// row and confound the exact-row-count assertions these tests make about a
+// *different* guard. Patching mode directly keeps them isolated.
+async function setDynamic(t: ReturnType<typeof convexTest>, sessionId: Id<"sessions">) {
+  await t.run(async (ctx) => {
+    await ctx.db.patch(sessionId, { mode: "dynamic" });
+  });
 }
 
 describe("sessions.setMode", () => {
@@ -81,7 +94,7 @@ describe("ai/sessionReply.maybeReply guards", () => {
   it("supersede guard: a newer capture exists -> the older capture's run no-ops", async () => {
     const { t, asUser } = await setup();
     const sessionId = await asUser.mutation(api.sessions.create, { device: "phone" });
-    await asUser.mutation(api.sessions.setMode, { sessionId, mode: "dynamic" });
+    await setDynamic(t, sessionId);
     const olderId = await asUser.mutation(api.captures.create, {
       source: "paste",
       rawType: "text",
@@ -103,7 +116,7 @@ describe("ai/sessionReply.maybeReply guards", () => {
   it("already-answered guard: a reply newer than the latest capture -> no new pending row", async () => {
     const { t, asUser, userId } = await setup();
     const sessionId = await asUser.mutation(api.sessions.create, { device: "phone" });
-    await asUser.mutation(api.sessions.setMode, { sessionId, mode: "dynamic" });
+    await setDynamic(t, sessionId);
     const captureId = await asUser.mutation(api.captures.create, {
       source: "paste",
       rawType: "text",
@@ -121,5 +134,67 @@ describe("ai/sessionReply.maybeReply guards", () => {
     await t.action(internal.ai.sessionReply.maybeReply, { sessionId, captureId });
     const rows = await t.run(async (ctx) => ctx.db.query("sessionReplies").collect());
     expect(rows).toHaveLength(1); // only the one we seeded — no second pending row
+  });
+});
+
+// opener's guards must all resolve BEFORE any model call, so these tests can
+// call the action directly (t.action) without hitting the network — same
+// shape as maybeReply's guard tests above.
+describe("ai/sessionReply.opener guards", () => {
+  it("no-ops on a quiet session — no reply row inserted", async () => {
+    const { t, asUser } = await setup();
+    const sessionId = await asUser.mutation(api.sessions.create, { device: "phone" });
+    await t.action(internal.ai.sessionReply.opener, { sessionId });
+    const rows = await t.run(async (ctx) => ctx.db.query("sessionReplies").collect());
+    expect(rows).toHaveLength(0);
+  });
+
+  it("no double-greeting: a done reply already covers the newest capture -> no-op", async () => {
+    const { t, asUser, userId } = await setup();
+    const sessionId = await asUser.mutation(api.sessions.create, { device: "phone" });
+    await setDynamic(t, sessionId);
+    const captureId = await asUser.mutation(api.captures.create, {
+      source: "paste",
+      rawType: "text",
+      rawText: "one thought",
+      sessionId,
+    });
+    await new Promise((r) => setTimeout(r, 5));
+    const replyId = await t.mutation(internal.sessions.insertReplyInternal, {
+      sessionId,
+      userId,
+      afterCaptureId: captureId,
+      persona: "coach",
+    });
+    await t.mutation(internal.sessions.finishReplyInternal, {
+      replyId,
+      status: "done",
+      text: "an existing opener",
+    });
+    await t.action(internal.ai.sessionReply.opener, { sessionId });
+    const rows = await t.run(async (ctx) => ctx.db.query("sessionReplies").collect());
+    expect(rows).toHaveLength(1); // only the one we seeded — no double greeting
+  });
+
+  it("a pending reply already covers the newest capture -> no-op", async () => {
+    const { t, asUser, userId } = await setup();
+    const sessionId = await asUser.mutation(api.sessions.create, { device: "phone" });
+    await setDynamic(t, sessionId);
+    const captureId = await asUser.mutation(api.captures.create, {
+      source: "paste",
+      rawType: "text",
+      rawText: "one thought",
+      sessionId,
+    });
+    await new Promise((r) => setTimeout(r, 5));
+    await t.mutation(internal.sessions.insertReplyInternal, {
+      sessionId,
+      userId,
+      afterCaptureId: captureId,
+      persona: "coach",
+    });
+    await t.action(internal.ai.sessionReply.opener, { sessionId });
+    const rows = await t.run(async (ctx) => ctx.db.query("sessionReplies").collect());
+    expect(rows).toHaveLength(1); // the seeded pending row is still the only one
   });
 });

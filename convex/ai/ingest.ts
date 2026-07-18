@@ -94,10 +94,23 @@ export const ingestCapture = internalAction({
       await ctx.scheduler.runAfter(30_000, internal.ai.sessionDigest.digestSession, {
         sessionId: capture.sessionId,
       });
-      // Dynamic-mode interviewer reply (ARI-18): debounced 8s so a burst of quick
+      // Dynamic-mode interviewer reply (ARI-18): debounced so a burst of quick
       // appends collapses into one reply; maybeReply itself no-ops outside dynamic
       // mode and supersedes itself if a newer capture lands before it runs.
-      await ctx.scheduler.runAfter(8_000, internal.ai.sessionReply.maybeReply, {
+      // Finishing a voice take is a deliberate end-of-turn (you stopped talking
+      // on purpose), so it gets a fast ~2s turnaround; a typed capture might be
+      // mid-burst (more keystrokes coming, or blur-then-resume), so it keeps the
+      // slower 8s debounce.
+      const replyDelayMs = capture.rawType === "audio" ? 2_000 : 8_000;
+      await ctx.scheduler.runAfter(replyDelayMs, internal.ai.sessionReply.maybeReply, {
+        sessionId: capture.sessionId,
+        captureId: args.captureId,
+      });
+      // Thought map (ARI-18 UX rework): the map now builds itself, same 30s
+      // debounce pattern as the digest above, so a burst of appends costs one
+      // model call. Passing captureId lets thoughtMap.generate supersede itself
+      // if a newer capture lands before this runs (last capture wins).
+      await ctx.scheduler.runAfter(30_000, internal.ai.thoughtMap.generate, {
         sessionId: capture.sessionId,
         captureId: args.captureId,
       });

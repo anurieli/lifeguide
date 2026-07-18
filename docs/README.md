@@ -48,6 +48,8 @@ The rebuild is complete. The set below is written fresh to the evolved vision; n
 - [`product/blueprint/the-life-blueprint.md`](product/blueprint/the-life-blueprint.md): the recovered Blueprint, the Core's backbone (3 sections, 18 questions).
 - [`product/coach-knowledge-base/`](product/coach-knowledge-base/mantras.md): the **Coach Knowledge Base** — the canon the Coach draws from (mantra pool, blueprint, doctrine). Canonical source is the developer's Brain Vault; repo copies are pulled from there. See [`../CLAUDE.md`](../CLAUDE.md#coach-knowledge-base-pulled-from-the-developers-brain-vault).
 - [`product/features/`](product/features/README.md): one doc per element (Vision Board, Future Self, Journal, Pillars & Goals, Core, Coach, Guide, Dashboard, Settings).
+- [`product/onboarding-strategy.md`](product/onboarding-strategy.md): the outcome, ICP, readiness, and journey behind onboarding — the planning artifact for the in-app onboarding tour build.
+- [`product/beta-checklist.md`](product/beta-checklist.md): the concrete checklist (accounts, env, test scope, reporting, success criteria) for getting real beta testers into the app.
 
 **Architecture**
 - [`architecture/ai-layer.md`](architecture/ai-layer.md): the AI roles and providers (OpenRouter preferred, OpenAI fallback).

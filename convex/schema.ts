@@ -429,6 +429,13 @@ export default defineSchema({
     // components were offered to this account's non-empty rituals. One-shot, so
     // deleting the added components sticks.
     ritualsSeedVersion: v.optional(v.number()),
+    // The thought map's steering memo (ARI-18 teachable map): plain-language
+    // guidance the person writes once, folded into every future `thoughtMap`
+    // generation's system prompt (lib/thoughtMap.ts's buildMapSystemPrompt).
+    // Per-user, capped ~2000 chars server-side (convex/settings.ts); absent/empty
+    // is the unchanged default behavior. Editable from the session's "Teach it"
+    // panel and from Settings.
+    thoughtMapMemo: v.optional(v.string()),
   }).index("by_user", ["userId"]),
 
   // Per-profile AI provider keys. A user's own key (e.g. their OpenRouter key) is

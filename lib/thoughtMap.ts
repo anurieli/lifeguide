@@ -35,6 +35,28 @@ const DETAIL_CAP = 300;
 const EDGE_LABEL_CAP = 60;
 const EDGE_KINDS = new Set<string>(["leads_to", "part_of", "relates"]);
 
+// The steering memo's server-side cap (ARI-18 teachable map): shared by
+// convex/settings.ts (what gets stored) and buildMapSystemPrompt below (belt and
+// suspenders — never trust a memo reaching the prompt is already capped).
+export const THOUGHT_MAP_MEMO_CAP = 2000;
+
+const MEMO_HEADER =
+  "The user's standing guidance for how they want their thinking mapped — follow it even where it overrides the defaults above:";
+
+/**
+ * Folds the person's steering memo into the thought-map task's base system
+ * prompt, as a clearly-fenced section (ARI-18 teachable map) — so the model
+ * reads it unambiguously as user-authored guidance, not part of the base
+ * instructions. An empty or whitespace-only memo appends nothing: absent memo
+ * is the unchanged default behavior. Pure so it's unit-testable and shared
+ * between convex/ai/thoughtMap.ts and its tests.
+ */
+export function buildMapSystemPrompt(base: string, memo?: string | null): string {
+  const trimmed = memo?.trim().slice(0, THOUGHT_MAP_MEMO_CAP);
+  if (!trimmed) return base;
+  return `${base}\n\n---\n${MEMO_HEADER}\n${trimmed}\n---`;
+}
+
 function isRecord(x: unknown): x is Record<string, unknown> {
   return typeof x === "object" && x !== null;
 }

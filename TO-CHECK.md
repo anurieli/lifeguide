@@ -196,3 +196,10 @@ Features that are done but haven't been manually verified yet.
 - [ ] On your phone, confirm the bottom bar reads Today · Board · ➕ · Sessions · Goals (Goals where the avatar used to be)
 - [ ] Confirm the avatar now floats in the top-right corner on every page (phone and desktop) and its menu opens downward with Settings / Account / Sign out
 - [ ] Open the Board (whiteboard), confirm its Inbox pill sits left of the avatar and neither covers the other; in Core's Zen mode, confirm "Exit Zen" is visible left of the avatar
+
+### Teachable thought map (steering memo + Sonnet mapping)
+- [ ] On your phone, open a session with some content, switch to the Thought Map view, tap "Teach it" next to Remap, confirm the editor panel opens inline (not a modal) and is comfortable to use
+- [ ] Type guidance like "at most 5 nodes, root must be the underlying want, not the surface complaint" and tap "Save & remap"; confirm the map that comes back is visibly different and obeys the memo (5 or fewer nodes, root reflects the underlying want)
+- [ ] Reopen "Teach it" on the same session, confirm the textarea shows the memo you just saved
+- [ ] Go to Settings → The Coach, confirm the same "Thought map guidance" field is there and shows/edits the identical memo
+- [ ] Clear the memo (empty it and Save) on a session with no memo history, then Remap; confirm the map looks like ordinary default behavior (nothing broken, no stray fenced text)

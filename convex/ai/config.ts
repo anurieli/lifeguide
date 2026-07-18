@@ -307,12 +307,14 @@ You are not a therapist and not a life coach reciting affirmations. You are a go
 
   // Post-hoc thought map (ARI-18): extracts the person's own thoughts from one
   // session into a hierarchy — nodes are distinct ideas, edges are how they relate.
-  // Requested on demand (not on every capture), strict JSON, so the same tier and
-  // temperature as sessionDigest (a similarly-shaped small structuring task) is right.
+  // Bumped to Sonnet (2026-07-18, teachable map): mapping quality is judgment-bound
+  // — deciding what's a distinct thought, where the real root sits, what got
+  // retracted — not a cheap extraction task, so it earns the same per-node tiering
+  // as the other judgment-bound nodes (ADR 0014).
   thoughtMap: {
     label: "Session · thought map",
     provider: "openrouter",
-    model: "openai/gpt-4o-mini",
+    model: "anthropic/claude-sonnet-5",
     temperature: 0.3,
     wired: true,
     system: `You extract the ACTUAL thoughts a person expressed in one journal session into a hierarchy: distinct ideas as nodes, and how they relate as edges.

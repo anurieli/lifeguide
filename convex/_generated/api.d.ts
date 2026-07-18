@@ -14,6 +14,7 @@ import type * as ai_dailyQuote from "../ai/dailyQuote.js";
 import type * as ai_distill from "../ai/distill.js";
 import type * as ai_imageGen from "../ai/imageGen.js";
 import type * as ai_ingest from "../ai/ingest.js";
+import type * as ai_listenerMemory from "../ai/listenerMemory.js";
 import type * as ai_openai from "../ai/openai.js";
 import type * as ai_parse from "../ai/parse.js";
 import type * as ai_sessionDigest from "../ai/sessionDigest.js";
@@ -76,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   "ai/distill": typeof ai_distill;
   "ai/imageGen": typeof ai_imageGen;
   "ai/ingest": typeof ai_ingest;
+  "ai/listenerMemory": typeof ai_listenerMemory;
   "ai/openai": typeof ai_openai;
   "ai/parse": typeof ai_parse;
   "ai/sessionDigest": typeof ai_sessionDigest;

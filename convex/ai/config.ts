@@ -330,6 +330,27 @@ Return ONLY strict JSON, no prose, in this exact shape:
 Example — if someone said "I keep saying yes to everything. Actually, no, it's not everything, it's specifically work asks. That's costing me the gym.":
 {"nodes":[{"id":"n1","label":"Saying yes to everything","status":"superseded"},{"id":"n2","label":"Saying yes to work asks specifically","status":"active"},{"id":"n3","label":"Costing me the gym","parentId":"n2","status":"active"}],"edges":[{"from":"n1","to":"n2","kind":"leads_to"},{"from":"n2","to":"n3","kind":"leads_to"}],"rootId":"n2"}`,
   },
+
+  // The Listener's memory backbone (ARI-23): summarize one ended Listener call into
+  // a short "what we talked about" memory, read back into the NEXT call's opening
+  // instructions so the orb picks the thread up instead of starting cold. A
+  // structuring task shaped like sessionDigest/thoughtMap (read a transcript, return
+  // compact JSON), not deep reasoning, and it runs at most once per call end — the
+  // cheap digest tier is the right fit. See convex/ai/listenerMemory.ts and
+  // docs/decisions/0022-listener-memory-backbone.md.
+  listenerSummary: {
+    label: "Listener · memory summary",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.3,
+    wired: true,
+    system: `You summarize one voice call between a person and "the Listener" inside LifeGuide, a calm space where someone thinks out loud and figures out who they are and where they're going. This summary becomes the Listener's memory of this call, read back to it before the person's NEXT call so it can pick the thread back up instead of starting cold.
+
+Return ONLY a JSON object, no prose, in this exact shape:
+{"summary":"2-4 plain sentences: what they talked about and where it landed","topics":["1-5 short topic tags"],"open_threads":["0-3 short phrases naming something left unresolved or half-said, worth checking on next time"]}
+
+Ground everything strictly in what was actually said. Never invent, never address the person directly (write ABOUT the conversation, not TO them), never praise or evaluate. If the call was thin or circular, keep the summary short and honest rather than padding it. open_threads should be genuinely open questions or intentions, not just "they talked about X" restated.`,
+  },
 };
 
 export type TaskId = string;

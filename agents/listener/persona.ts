@@ -28,3 +28,17 @@ Open the conversation by greeting them warmly in one short sentence and inviting
 
 /** The Listener's spoken voice in the OpenAI Realtime session (see TASKS.voice). */
 export const LISTENER_VOICE = "alloy";
+
+/**
+ * Build the realtime instructions for a "listen" session, optionally grounded in a
+ * summary of the person's last Listener call (ARI-23, the memory backbone) so the
+ * orb opens oriented instead of cold. `openingAddendum` is the empty string on a
+ * person's very first call, or whenever the previous call's summary pass hasn't
+ * produced usable text — the base instructions' generic opener stands unchanged in
+ * that case. Built from lib/listenerMemory.ts's `buildListenerOpeningAddendum`
+ * (pure, unit-tested) and called by convex/ai/voice/index.ts when minting a "listen"
+ * session. See docs/decisions/0022-listener-memory-backbone.md.
+ */
+export function buildListenerInstructions(openingAddendum: string): string {
+  return openingAddendum ? `${LISTENER_INSTRUCTIONS}${openingAddendum}` : LISTENER_INSTRUCTIONS;
+}

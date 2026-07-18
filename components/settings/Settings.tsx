@@ -5,6 +5,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 import { BlueprintCard } from "@/components/settings/BlueprintCard";
+import { ThoughtMapMemoField } from "@/components/settings/ThoughtMapMemoField";
 import { convexErrorMessage } from "@/lib/convexError";
 import { PageHeader } from "@/components/shell/PageHeader";
 
@@ -211,6 +212,14 @@ export function Settings() {
               ]}
             />
           </Row>
+          <div className="py-4">
+            <div className="text-[15px] font-medium text-ink mb-0.5">Thought map guidance</div>
+            <div className="text-[13px] text-ink-mute mb-2.5">
+              How a session&apos;s Thought Map builds itself — also editable inline from any
+              session&apos;s Map view (&quot;Teach it&quot;).
+            </div>
+            <ThoughtMapMemoField />
+          </div>
         </Group>
 
         <Group label="Atmosphere">

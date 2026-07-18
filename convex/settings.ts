@@ -1,8 +1,9 @@
-import { mutation, query, MutationCtx } from "./_generated/server";
+import { mutation, query, internalQuery, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
 import { blueprintStatus, deriveLevel } from "../lib/levels";
+import { THOUGHT_MAP_MEMO_CAP } from "../lib/thoughtMap";
 
 const EXERCISE = v.union(v.literal("intention"), v.literal("gratitude"), v.literal("free"));
 const TONE = v.union(v.literal("gentle"), v.literal("balanced"), v.literal("direct"));
@@ -55,12 +56,33 @@ export const update = mutation({
     musicEnabled: v.optional(v.boolean()),
     musicAutoplay: v.optional(v.boolean()),
     musicDefaultMood: v.optional(MOOD),
+    // The thought map's steering memo (ARI-18 teachable map), per-user. Trimmed
+    // and capped server-side; an empty/whitespace memo saves as unset, which
+    // buildMapSystemPrompt (lib/thoughtMap.ts) reads as "no memo, default behavior".
+    thoughtMapMemo: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
     const s = await getOrCreate(ctx, userId);
-    await ctx.db.patch(s._id, { ...args, updatedAt: Date.now() });
+    const patch = { ...args } as typeof args;
+    if (args.thoughtMapMemo !== undefined) {
+      patch.thoughtMapMemo = args.thoughtMapMemo.trim().slice(0, THOUGHT_MAP_MEMO_CAP) || undefined;
+    }
+    await ctx.db.patch(s._id, { ...patch, updatedAt: Date.now() });
+  },
+});
+
+// Server-only: the person's thought-map steering memo, read by
+// ai/thoughtMap.ts's generate action when it builds the system prompt.
+export const getMemoInternal = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const s = await ctx.db
+      .query("settings")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    return s?.thoughtMapMemo;
   },
 });
 

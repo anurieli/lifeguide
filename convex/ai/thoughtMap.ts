@@ -3,7 +3,8 @@ import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { chatComplete } from "./openai";
 import { Doc } from "../_generated/dataModel";
-import { normalizeThoughtMap } from "../../lib/thoughtMap";
+import { normalizeThoughtMap, buildMapSystemPrompt } from "../../lib/thoughtMap";
+import { TASKS } from "./config";
 
 const INPUT_CAP = 8_000;
 
@@ -28,7 +29,10 @@ function assembleThoughtMapInput(captures: MapCapture[]): string {
 // this directly, with no captureId, for an explicit run that always executes.
 // One model call extracts the person's distinct thoughts as a hierarchy;
 // lib/thoughtMap.ts's normalizeThoughtMap turns the untrusted JSON into the
-// exact shape the thoughtMaps table expects.
+// exact shape the thoughtMaps table expects. The person's own steering memo
+// (settings.thoughtMapMemo, taught from the "Teach it" panel or Settings) is
+// folded into the base system prompt via lib/thoughtMap.ts's
+// buildMapSystemPrompt before every call — teachable per-user, not global.
 export const generate = internalAction({
   args: { sessionId: v.id("sessions"), captureId: v.optional(v.id("captures")) },
   handler: async (ctx, args) => {
@@ -64,12 +68,25 @@ export const generate = internalAction({
     }
 
     try {
+      // The steering memo (ARI-18 teachable map): standing, plain-language guidance
+      // the person wrote for how THEY want their thinking mapped, folded into the
+      // base system prompt as a clearly-fenced section. Built explicitly here (not
+      // left to chatComplete's own system-prepend) because the memo must be woven in
+      // per-user, per-call — passing an explicit system message is what chatComplete
+      // expects when a call needs anything beyond the task's static config prompt.
+      const memo = await ctx.runQuery(internal.settings.getMemoInternal, {
+        userId: session.userId,
+      });
+      const system = buildMapSystemPrompt(TASKS.thoughtMap.system ?? "", memo);
       const raw = await chatComplete(ctx, {
         taskId: "thoughtMap",
         fn: "ai/thoughtMap.generate",
         userId: session.userId,
         jsonMode: true,
-        messages: [{ role: "user", content: input }],
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: input },
+        ],
       });
       const result = normalizeThoughtMap(JSON.parse(raw || "{}"));
       if ("error" in result) {

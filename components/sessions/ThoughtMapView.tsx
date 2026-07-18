@@ -5,9 +5,10 @@ import { useMutation, useQuery } from "convex/react";
 import { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { ChevronDown, ChevronRight, GitBranch, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronRight, GitBranch, GraduationCap, RefreshCw } from "lucide-react";
 import { fitToContainer, layoutThoughtMap } from "@/lib/thoughtMapLayout";
 import { ThoughtMapEdge, ThoughtMapNode } from "@/lib/thoughtMap";
+import { ThoughtMapMemoField } from "@/components/settings/ThoughtMapMemoField";
 
 /**
  * The thought map (ARI-18, UX rework): a VIEW of the session document, not a
@@ -20,7 +21,10 @@ import { ThoughtMapEdge, ThoughtMapNode } from "@/lib/thoughtMap";
  * pan/scroll). Phone hides the graph and renders the same data as a
  * collapsible outline instead — same map, calm on a small screen. The map now
  * builds itself in the background as a session fills up (no tap required);
- * this component only owns the on-demand "Map now" / "Remap" affordances.
+ * this component only owns the on-demand "Map now" / "Remap" affordances, plus
+ * (ARI-18 teachable map) "Teach it" — an inline editor for the standing
+ * steering memo (settings.thoughtMapMemo) that shapes every future map for
+ * this person, with a combined "Save & remap" to see the change immediately.
  */
 
 type MapDoc = NonNullable<FunctionReturnType<typeof api.sessions.thoughtMap>>;
@@ -237,6 +241,41 @@ function ThoughtOutline({ nodes, edges, rootId }: { nodes: ThoughtMapNode[]; edg
   );
 }
 
+// The "Teach it" panel (ARI-18 teachable map): an inline, calm editor — not a
+// modal — for the steering memo that shapes every future map for this person.
+// Wraps the shared ThoughtMapMemoField with a combined "Save & remap" action
+// so the whole teach-then-see loop stays one beat inside the map view.
+function TeachItPanel({ onClose, onRemap }: { onClose: () => void; onRemap: () => void }) {
+  return (
+    <div className="mb-2.5 rounded-xl border border-line-2 bg-paper-2 p-3 shrink-0">
+      <ThoughtMapMemoField
+        actions={({ save }) => (
+          <>
+            <button
+              type="button"
+              onClick={async () => {
+                await save();
+                onRemap();
+                onClose();
+              }}
+              className="h-8 px-3 rounded-full bg-ink text-white text-[12px]"
+            >
+              Save &amp; remap
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-8 px-3 text-[12px] text-ink-mute hover:text-ink"
+            >
+              Close
+            </button>
+          </>
+        )}
+      />
+    </div>
+  );
+}
+
 // The calm empty state: shown before a map has ever been requested or auto-generated.
 function EmptyState({ onRequest }: { onRequest: () => void }) {
   return (
@@ -259,21 +298,35 @@ function EmptyState({ onRequest }: { onRequest: () => void }) {
 export function ThoughtMapView({ sessionId }: { sessionId: Id<"sessions"> }) {
   const map = useQuery(api.sessions.thoughtMap, { sessionId });
   const requestThoughtMap = useMutation(api.sessions.requestThoughtMap);
+  const [teaching, setTeaching] = useState(false);
   const remap = () => void requestThoughtMap({ sessionId });
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
-      <MapBody map={map} onRequest={remap} onRetry={remap} />
+      <MapBody
+        map={map}
+        teaching={teaching}
+        onToggleTeach={() => setTeaching((v) => !v)}
+        onCloseTeach={() => setTeaching(false)}
+        onRequest={remap}
+        onRetry={remap}
+      />
     </div>
   );
 }
 
 function MapBody({
   map,
+  teaching,
+  onToggleTeach,
+  onCloseTeach,
   onRequest,
   onRetry,
 }: {
   map: MapDoc | null | undefined;
+  teaching: boolean;
+  onToggleTeach: () => void;
+  onCloseTeach: () => void;
   onRequest: () => void;
   onRetry: () => void;
 }) {
@@ -301,7 +354,15 @@ function MapBody({
   }
   return (
     <div className="flex-1 min-h-0 flex flex-col">
-      <div className="flex justify-end px-1 pb-2 shrink-0">
+      <div className="flex justify-end items-center gap-3 px-1 pb-2 shrink-0">
+        <button
+          type="button"
+          onClick={onToggleTeach}
+          className="flex items-center gap-1.5 text-[12px] text-ink-mute hover:text-gold"
+        >
+          <GraduationCap className="w-3.5 h-3.5" />
+          Teach it
+        </button>
         <button
           type="button"
           onClick={onRequest}
@@ -311,6 +372,7 @@ function MapBody({
           Remap
         </button>
       </div>
+      {teaching && <TeachItPanel onClose={onCloseTeach} onRemap={onRequest} />}
       <div className="flex-1 min-h-0">
         <ThoughtGraph nodes={map.nodes} edges={map.edges} rootId={map.rootId} />
         <ThoughtOutline nodes={map.nodes} edges={map.edges} rootId={map.rootId} />

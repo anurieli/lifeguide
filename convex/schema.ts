@@ -165,11 +165,64 @@ export default defineSchema({
         at: v.optional(v.number()),
       }),
     ),
+    // "dynamic" = a live interviewer replies after each capture (convex/ai/sessionReply.ts);
+    // absent/"quiet" = the entry is just held, no AI voice in the loop. See ARI-18.
+    mode: v.optional(v.union(v.literal("quiet"), v.literal("dynamic"))),
+    // Persona hook for the dynamic interviewer; absent = the default "coach" persona
+    // (applied in code, not schema — see convex/ai/sessionReply.ts).
+    interviewer: v.optional(v.string()),
     startedAt: v.number(),
     updatedAt: v.number(), // bumped on every appended capture
     pinnedAt: v.optional(v.number()), // set when pinned; pinned entries lead the list
     lastOpenedAt: v.optional(v.number()), // visit metadata: last time the document view was opened
   }).index("by_user_updated", ["userId", "updatedAt"]),
+
+  // One AI interviewer reply within a dynamic-mode session (ARI-18). Scheduled,
+  // debounced, after each appended capture; superseded replies are simply never
+  // generated (see the supersede guard in convex/ai/sessionReply.ts) rather than
+  // written and retracted. `afterCaptureId` is the capture that triggered this turn.
+  sessionReplies: defineTable({
+    userId: v.id("users"),
+    sessionId: v.id("sessions"),
+    afterCaptureId: v.optional(v.id("captures")),
+    persona: v.string(),
+    status: v.union(v.literal("pending"), v.literal("done"), v.literal("error")),
+    text: v.optional(v.string()),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_session", ["sessionId", "createdAt"]),
+
+  // The post-hoc thought map for one session: the user's own captures (never the
+  // interviewer's replies — the map reads only their thinking) distilled into a
+  // hierarchy of distinct thoughts. Generated on demand (sessions.requestThoughtMap);
+  // one live map per session, regenerated in place. See convex/ai/thoughtMap.ts.
+  thoughtMaps: defineTable({
+    userId: v.id("users"),
+    sessionId: v.id("sessions"),
+    status: v.union(v.literal("pending"), v.literal("done"), v.literal("error")),
+    error: v.optional(v.string()),
+    nodes: v.array(
+      v.object({
+        id: v.string(),
+        label: v.string(),
+        detail: v.optional(v.string()),
+        level: v.number(), // depth from the nearest root, derived (lib/thoughtMap.ts)
+        status: v.union(v.literal("active"), v.literal("superseded")),
+        parentId: v.optional(v.string()), // "part of / under" — the hierarchy edge
+      }),
+    ),
+    edges: v.array(
+      v.object({
+        from: v.string(),
+        to: v.string(),
+        kind: v.union(v.literal("leads_to"), v.literal("part_of"), v.literal("relates")),
+        label: v.optional(v.string()),
+      }),
+    ),
+    rootId: v.optional(v.string()), // the root with the most descendants
+    generatedAt: v.number(),
+    createdAt: v.number(),
+  }).index("by_session", ["sessionId", "createdAt"]),
 
   // A pillar is a region of the "file system on the human" — a folder that holds the
   // textual files making up one part of a person (see docs/product/features/file-system-on-the-human.md).

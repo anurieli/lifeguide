@@ -262,6 +262,87 @@ export const refreshDigest = mutation({
   },
 });
 
+// The person switches this entry between quiet (just held) and dynamic (an AI
+// interviewer replies after each capture, convex/ai/sessionReply.ts). Absent
+// counts as "quiet" everywhere that reads it.
+export const setMode = mutation({
+  args: { sessionId: v.id("sessions"), mode: v.union(v.literal("quiet"), v.literal("dynamic")) },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const s = await ctx.db.get(args.sessionId);
+    if (!s || s.userId !== userId) throw new Error("Not found");
+    await ctx.db.patch(args.sessionId, { mode: args.mode, updatedAt: Date.now() });
+  },
+});
+
+// The dynamic-mode conversation thread: this session's interviewer replies, oldest first.
+export const replies = query({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+    const s = await ctx.db.get(args.sessionId);
+    if (!s || s.userId !== userId) return [];
+    return await ctx.db
+      .query("sessionReplies")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .order("asc")
+      .collect();
+  },
+});
+
+// The session's live thought map (or null if none has been requested yet).
+export const thoughtMap = query({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    const s = await ctx.db.get(args.sessionId);
+    if (!s || s.userId !== userId) return null;
+    return await ctx.db
+      .query("thoughtMaps")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .order("desc")
+      .first();
+  },
+});
+
+// Ask for a (re)generation of this session's thought map: upserts the row to
+// pending (one live map per session — patched in place, never duplicated) and
+// schedules the generation pass.
+export const requestThoughtMap = mutation({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const s = await ctx.db.get(args.sessionId);
+    if (!s || s.userId !== userId) throw new Error("Not found");
+    const existing = await ctx.db
+      .query("thoughtMaps")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .order("desc")
+      .first();
+    const now = Date.now();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        status: "pending" as const,
+        error: undefined,
+        generatedAt: now,
+      });
+    } else {
+      await ctx.db.insert("thoughtMaps", {
+        userId,
+        sessionId: args.sessionId,
+        status: "pending" as const,
+        nodes: [],
+        edges: [],
+        generatedAt: now,
+        createdAt: now,
+      });
+    }
+    await ctx.scheduler.runAfter(0, internal.ai.thoughtMap.generate, { sessionId: args.sessionId });
+  },
+});
+
 export const setDoing = mutation({
   args: { sessionId: v.id("sessions"), doing: v.string() },
   handler: async (ctx, args) => {
@@ -376,6 +457,122 @@ export const deleteIfEmpty = mutation({
       .filter((q) => q.eq(q.field("isActive"), true))
       .first();
     if (!first) await ctx.db.delete(args.sessionId);
+  },
+});
+
+// ---- interviewer reply plumbing (server-only, convex/ai/sessionReply.ts) ---
+
+export const getForReplyInternal = internalQuery({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, args) => {
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) return null;
+    const captures = await ctx.db
+      .query("captures")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+    const replies = await ctx.db
+      .query("sessionReplies")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .collect();
+    return { session, captures, replies };
+  },
+});
+
+export const insertReplyInternal = internalMutation({
+  args: {
+    sessionId: v.id("sessions"),
+    userId: v.id("users"),
+    afterCaptureId: v.optional(v.id("captures")),
+    persona: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("sessionReplies", {
+      userId: args.userId,
+      sessionId: args.sessionId,
+      afterCaptureId: args.afterCaptureId,
+      persona: args.persona,
+      status: "pending" as const,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const finishReplyInternal = internalMutation({
+  args: {
+    replyId: v.id("sessionReplies"),
+    status: v.union(v.literal("done"), v.literal("error")),
+    text: v.optional(v.string()),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.replyId, {
+      status: args.status,
+      ...(args.text !== undefined ? { text: args.text } : {}),
+      ...(args.error !== undefined ? { error: args.error } : {}),
+    });
+  },
+});
+
+// ---- thought map plumbing (server-only, convex/ai/thoughtMap.ts) -----------
+
+export const getForThoughtMapInternal = internalQuery({
+  args: { sessionId: v.id("sessions") },
+  handler: async (ctx, args) => {
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) return null;
+    // USER CONTENT ONLY: the map reads what the person actually thought, never
+    // the interviewer's replies.
+    const captures = await ctx.db
+      .query("captures")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+    return { session, captures };
+  },
+});
+
+const thoughtMapNodeValidator = v.object({
+  id: v.string(),
+  label: v.string(),
+  detail: v.optional(v.string()),
+  level: v.number(),
+  status: v.union(v.literal("active"), v.literal("superseded")),
+  parentId: v.optional(v.string()),
+});
+
+const thoughtMapEdgeValidator = v.object({
+  from: v.string(),
+  to: v.string(),
+  kind: v.union(v.literal("leads_to"), v.literal("part_of"), v.literal("relates")),
+  label: v.optional(v.string()),
+});
+
+export const writeThoughtMapInternal = internalMutation({
+  args: {
+    sessionId: v.id("sessions"),
+    status: v.union(v.literal("pending"), v.literal("done"), v.literal("error")),
+    error: v.optional(v.string()),
+    nodes: v.optional(v.array(thoughtMapNodeValidator)),
+    edges: v.optional(v.array(thoughtMapEdgeValidator)),
+    rootId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("thoughtMaps")
+      .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+      .order("desc")
+      .first();
+    if (!existing) return; // deleted (or never requested) while generation was in flight
+    await ctx.db.patch(existing._id, {
+      status: args.status,
+      error: args.error,
+      ...(args.nodes !== undefined ? { nodes: args.nodes } : {}),
+      ...(args.edges !== undefined ? { edges: args.edges } : {}),
+      ...(args.rootId !== undefined ? { rootId: args.rootId } : {}),
+      generatedAt: Date.now(),
+    });
   },
 });
 

@@ -191,12 +191,15 @@ export const applySync = internalMutation({
         }
         goalIdByProject.set(p.id, existing._id);
       } else {
+        // No pillar/deadline from Todoist: lands as an unsorted aspiration.
+        // No roadmapDraft either — a "Sync now" can create many goals in one
+        // call, and auto-firing AI enrichment for all of them at once would be
+        // an unbounded burst; the same on-demand "Generate a roadmap" affordance
+        // (regenerateRoadmap) covers a synced goal whenever the user opens it.
         const id = await ctx.db.insert("goals", {
           userId,
           name: p.name,
-          kind: "big",
           status: "active",
-          area: "personal",
           sortOrder: maxOrder + 1 + p.order,
           todoistProjectId: p.id,
           createdAt: Date.now(),

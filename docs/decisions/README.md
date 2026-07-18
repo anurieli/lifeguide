@@ -32,6 +32,7 @@ Architecture Decision Records for LifeGuide. One file per notable decision, numb
 | [0026](0026-whats-new-manual-authorship.md) | What's New: manually authored entries, not auto-generated from CHANGELOG.md | accepted | 2026-07-18 |
 | [0027](0027-one-coach-voice-and-text-as-io.md) | One Coach: voice and text as I/O modes on a single agent and a single memory (two interchangeable postures: intake / direction) | accepted | 2026-07-20 |
 | [0028](0028-core-is-the-fixed-life-blueprint-plus-living-containers.md) | Core is the fixed Life Blueprint plus Living Core containers | accepted (product direction, not implemented) | 2026-07-20 |
+| [0029](0029-aspirations-goals-and-roadmap-steps.md) | Aspirations, Goals, and roadmap steps (written 2026-07-18 as "0022" on a diverged branch; renumbered on landing) | accepted (live) | 2026-07-20 |
 
 
 See [`../README.md`](../README.md) for the documentation map and the two seeds, and [`../product/concept-and-soul.md`](../product/concept-and-soul.md) for the current source of truth.

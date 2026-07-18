@@ -96,12 +96,14 @@ The Settings AI hub's model picker. `{ userId, taskId, provider: openrouter|open
 
 ### interviewSessions (onboarding interviews)
 
-One run of an onboarding experience. The QR phone-handoff encodes `/interview/<_id>` so any device can join the same row.
+One run of an onboarding experience — and, since ADR 0022, one run of the Core's Conversational mode too (the same shape fits: a transcript, a status, a device). The QR phone-handoff encodes `/interview/<_id>` so any device can join the same row.
 
 ```
 interviewSessions {
   userId,                       // owner of the session
-  experienceId: string,         // "text-interview" | "voice-interview"
+  experienceId: string,         // "text-interview" | "voice-interview" | "listen" (the Listener,
+                                 // components/voice/SpeakSurface.tsx) | "core" (Core Conversational
+                                 // mode, components/core/ConversationalCore.tsx, ADR 0022)
   status: "active" | "completed" | "abandoned",
   device: "desktop" | "phone",  // device that started the session
   transcript: Array<{

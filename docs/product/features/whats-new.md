@@ -23,6 +23,7 @@ A small pill sits near the bottom of the shell, labeled **"What's new"** with a 
 | Author an entry | `/admin` → What's New → **New entry** | Owner writes `title` + `body` + picks the linked `view`; inserts a `whatsNew` row, published immediately | Manual (owner-gated) | `whatsNew` |
 | Edit an entry | `/admin` → What's New → pencil icon | Owner edits title/body/view on an existing row | Manual (owner-gated) | `whatsNew` |
 | Delete an entry | `/admin` → What's New → trash icon | Owner removes a `whatsNew` row outright (e.g. a mistake); anyone who hadn't seen it simply stops seeing it — no "it was deleted" notice | Manual (owner-gated) | `whatsNew` |
+| Seed the launch entries | `npx convex run whatsNew:seedLaunchEntries` | One-shot `internalMutation` publishing the hand-written launch entries (Life Wheel, Talk-to-fill-Core, guided tour, thought maps) so the feed isn't empty on day one; idempotent (skips a title that already exists), stamps `createdBy` to the owner (must have signed in once). Still manual authorship — copy is hand-written in code, not generated from `CHANGELOG.md` (ADR 0026) | Owner (CLI) | `whatsNew` |
 
 There is no Coach path for What's New: it is not something the Coach curates or narrates — see §4.
 
@@ -35,7 +36,7 @@ There is no Coach path for What's New: it is not something the Coach curates or 
 
 ## 5. States
 
-- **Hidden:** the signed-in person has zero unseen entries (new account with none published yet, or they've clicked through everything so far). Nothing renders — no empty pill, no placeholder.
+- **Hidden:** the signed-in person has zero unseen entries (none published yet, or they've clicked through everything so far). Nothing renders — no empty pill, no placeholder. Note (ARI-107): in production the feed showed *nothing at all* until the launch entries were seeded — the "shipped but empty, so invisible" trap — since `feed` only returns published rows and none had been authored. `seedLaunchEntries` (see §3) is the fix; a fresh deployment must run it (or author entries via `/admin`) for the pill to appear.
 - **Collapsed (pill):** unseen entries exist; the pill shows a count badge.
 - **Expanded (panel):** the pill is tapped; the list of unseen entries shows, scrollable past ~4 rows.
 - **Seen (per user, per entry):** a `whatsNewSeen` row exists for that `(userId, whatsNewId)` pair — the entry is gone from that user's `feed` query forever, independent of every other user's state.

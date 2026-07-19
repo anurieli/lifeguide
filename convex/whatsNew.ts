@@ -10,10 +10,10 @@
 // until its own row is opened. See docs/product/features/whats-new.md, ADR 0026.
 // ============================================================================
 
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { isOwner } from "./owner";
+import { isOwner, OWNER_EMAIL } from "./owner";
 
 const VIEW = v.union(
   v.literal("today"),
@@ -107,5 +107,64 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     if (!(await isOwner(ctx))) throw new Error("Not authorized");
     await ctx.db.delete(args.id);
+  },
+});
+
+// ── Launch seed (ARI-107) ───────────────────────────────────────────────────
+// The feed was invisible in production because it renders only *published* entries
+// and none had ever been authored (manual authorship, ADR 0026). This seeds the
+// first hand-written, user-facing entries for the features already shipped, so the
+// pill actually appears. It is still manual authorship — the copy is written by
+// hand here, not generated from CHANGELOG.md — just delivered as a one-shot seed
+// instead of four passes through the /admin form.
+//
+// Run once against the deployment: `npx convex run whatsNew:seedLaunchEntries`.
+// Idempotent: an entry whose title already exists is skipped, so re-running is safe.
+// `createdBy` is stamped to the owner account (resolved by OWNER_EMAIL); the owner
+// must have signed in at least once so their `users` row exists.
+const LAUNCH_ENTRIES: { title: string; body: string; view: "today" | "core" | "sessions" }[] = [
+  {
+    title: "Your Life Wheel",
+    body: "Your Core now opens with a Life Wheel — a radar of the domains that make you, with a slider to rate how strong each part of your life feels right now.",
+    view: "core",
+  },
+  {
+    title: "Fill your Core by talking",
+    body: 'Prefer speaking to typing? Open your Core and tap "Talk it through" for a calm voice conversation that fills your Blueprint as you go.',
+    view: "core",
+  },
+  {
+    title: "A quick guided tour",
+    body: "New here? A five-stop tour walks you through Today, your Core, the vision board, your Coach, and Settings. Restart it anytime from Settings.",
+    view: "today",
+  },
+  {
+    title: "Thought maps for your sessions",
+    body: "Your brain-dumps can now be mapped into a visual thought map — see how your ideas connect, and teach it how you think.",
+    view: "sessions",
+  },
+];
+
+export const seedLaunchEntries = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const owner = (await ctx.db.query("users").collect()).find((u) => u.email === OWNER_EMAIL);
+    if (!owner) {
+      throw new Error(
+        `No owner user found for ${OWNER_EMAIL}. Sign in once as the owner, then re-run this seed.`,
+      );
+    }
+    const existing = await ctx.db.query("whatsNew").collect();
+    const existingTitles = new Set(existing.map((e) => e.title));
+    let inserted = 0;
+    // Stagger publishedAt by a millisecond each so the feed's newest-first ordering is
+    // stable and matches the array order (Date.now() alone would tie them).
+    const base = Date.now();
+    for (const [i, entry] of LAUNCH_ENTRIES.entries()) {
+      if (existingTitles.has(entry.title)) continue;
+      await ctx.db.insert("whatsNew", { ...entry, publishedAt: base + i, createdBy: owner._id });
+      inserted++;
+    }
+    return { inserted, skipped: LAUNCH_ENTRIES.length - inserted };
   },
 });

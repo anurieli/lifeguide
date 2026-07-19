@@ -10,6 +10,7 @@ import { ConversationalCore } from "./ConversationalCore";
 import { PillarWheel } from "./PillarWheel";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { coreModeReducer } from "@/lib/core/mode";
+import { MessageSquare } from "lucide-react";
 
 const MALL: Record<Malleability, { dot: string; label: string }> = {
   green: { dot: "#4F7A4A", label: "freely changeable" },
@@ -30,6 +31,22 @@ function ZenButton({ onClick }: { onClick: () => void }) {
         <span className="w-[5px] h-[5px] rounded-full bg-current transition-all duration-300 group-hover:scale-125" />
       </span>
       <span className="tracking-wide">Zen</span>
+    </button>
+  );
+}
+
+// The direct door into Conversational mode from the main Core view. Without this,
+// the spoken/guided way to fill the Blueprint was reachable only by opening Zen and
+// hovering its timeline rail to reveal a "Talk" button — three interactions deep, so
+// nobody found it (ARI-106). A first-class Core mode gets a first-class entry.
+function TalkButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="group flex items-center gap-2 rounded-full border border-line bg-card px-3.5 py-2 text-[13px] text-ink-soft shadow-sm transition-all duration-300 hover:border-gold hover:text-ink hover:shadow-md hover:-translate-y-0.5"
+    >
+      <MessageSquare className="w-[15px] h-[15px] transition-transform duration-300 group-hover:scale-110" />
+      <span className="tracking-wide">Talk it through</span>
     </button>
   );
 }
@@ -125,7 +142,12 @@ export function Core() {
         <PageHeader
           align="items-start"
           className="gap-4"
-          actions={<ZenButton onClick={() => dispatch({ type: "toZen" })} />}
+          actions={
+            <div className="flex items-center gap-2">
+              <TalkButton onClick={() => dispatch({ type: "toConversational" })} />
+              <ZenButton onClick={() => dispatch({ type: "toZen" })} />
+            </div>
+          }
         >
           <div className="text-[11px] tracking-[0.16em] uppercase text-gold mb-2">
             The Blueprint · who you are

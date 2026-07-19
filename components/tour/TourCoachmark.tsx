@@ -4,9 +4,19 @@ import type { TourStep } from "./steps";
 import type { TourRect } from "./useTourTarget";
 import { TourVideoSlot } from "./TourVideoSlot";
 
-const PAD = 8; // px of breathing room the spotlight leaves around the target
-const CARD_W = 320;
+export const PAD = 8; // px of breathing room the spotlight leaves around the target
+export const CARD_W = 320;
+export const CARD_H = 260; // rough card height, used only to keep the card fully on-screen
 const GAP = 14; // px between the spotlight and the card
+
+// A spotlight only makes sense around a compact control. A target that fills
+// most of the viewport (e.g. a page's full-height scroll container) would cut
+// a hole over the whole screen and leave the dim showing only in the margins
+// (the left rail) — read as an unexplained "grey film." When the target is that
+// large we skip the spotlight and show a plain dim + centered card instead.
+export function isSpotlightable(rect: TourRect, vw: number, vh: number) {
+  return rect.height <= vh * 0.6 && rect.width <= vw * 0.85;
+}
 
 // One coachmark: a dimmed overlay with a cut-out "spotlight" around the
 // current step's target, plus a small card carrying the copy and controls.
@@ -44,21 +54,34 @@ export function TourCoachmark({
   onSkip: () => void;
 }) {
   const isLast = index === total - 1;
-  const cardStyle = rect ? cardPosition(rect, step.placement) : centeredCardStyle();
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  // A spotlight is only drawn for a compact, on-screen target; otherwise the
+  // card is centered over a plain dim. Either way the tour is dismissable.
+  const spotlight = rect !== null && isSpotlightable(rect, vw, vh);
+  const cardStyle = spotlight ? cardPosition(rect!, step.placement, vw, vh) : centeredCardStyle();
 
+  // The backdrop is an escape hatch: a click anywhere outside the card ends the
+  // tour, so it can never trap someone who can't scroll or reach the controls.
   return (
-    <div className="fixed inset-0 z-[200]" role="dialog" aria-modal="true" aria-label="Guided tour">
-      {rect ? (
+    <div
+      className="fixed inset-0 z-[200]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Guided tour"
+      onClick={onSkip}
+    >
+      {spotlight ? (
         // The "giant box-shadow" spotlight trick: a transparent rounded rect
         // sized to the target, whose box-shadow is the dimmed backdrop for
         // the rest of the screen. No SVG mask, no extra layers.
         <div
           className="fixed rounded-2xl pointer-events-none transition-all duration-200"
           style={{
-            top: rect.top - PAD,
-            left: rect.left - PAD,
-            width: rect.width + PAD * 2,
-            height: rect.height + PAD * 2,
+            top: rect!.top - PAD,
+            left: rect!.left - PAD,
+            width: rect!.width + PAD * 2,
+            height: rect!.height + PAD * 2,
             boxShadow: "0 0 0 9999px rgba(20,18,12,0.55)",
           }}
         />
@@ -69,6 +92,7 @@ export function TourCoachmark({
       <div
         className="fixed bg-card border border-line rounded-2xl shadow-2xl p-5 flex flex-col gap-3"
         style={{ width: CARD_W, ...cardStyle }}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
           <span className="text-[11px] tracking-[0.16em] uppercase text-gold">
@@ -129,32 +153,39 @@ function centeredCardStyle(): React.CSSProperties {
   return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
 }
 
-function cardPosition(rect: TourRect, placement: TourStep["placement"]): React.CSSProperties {
-  const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
-  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+export function cardPosition(
+  rect: TourRect,
+  placement: TourStep["placement"],
+  vw: number,
+  vh: number,
+): React.CSSProperties {
   const clampLeft = (left: number) => Math.min(Math.max(left, 12), vw - CARD_W - 12);
+  // Keep the card (and its Skip control) wholly inside the viewport, so a tall
+  // target can never push it off-screen and out of reach.
+  const clampTop = (top: number) => Math.min(Math.max(top, 12), vh - CARD_H - 12);
 
   switch (placement) {
     case "bottom":
       return {
-        top: rect.top + rect.height + PAD + GAP,
+        top: clampTop(rect.top + rect.height + PAD + GAP),
         left: clampLeft(rect.left),
       };
     case "top":
+      // Anchor the card's bottom just above the target, then clamp that bottom
+      // edge so the whole card stays on-screen even for a target near the top.
       return {
-        top: rect.top - PAD - GAP,
+        top: clampTop(rect.top - PAD - GAP - CARD_H),
         left: clampLeft(rect.left),
-        transform: "translateY(-100%)",
       };
     case "right":
       return {
-        top: Math.min(Math.max(rect.top, 12), vh - 200),
+        top: clampTop(rect.top),
         left: Math.min(rect.left + rect.width + PAD + GAP, vw - CARD_W - 12),
       };
     case "left":
     default:
       return {
-        top: Math.min(Math.max(rect.top, 12), vh - 200),
+        top: clampTop(rect.top),
         left: Math.max(rect.left - PAD - GAP - CARD_W, 12),
       };
   }

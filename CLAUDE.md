@@ -35,6 +35,20 @@ The changelog is how any agent or session picks up cold. No silent changes.
 ### 3. New work goes through the commitment gate — don't open a loop silently
 Any **net-new** feature, task, or research/spike item proposed in this repo (anything beyond the task already greenlit this session) must pass through the **commitment gate** before any code is written. Invoke the **`lifeguide-gate`** skill: it measures how much dev work is already in flight, sizes the new item (effort + the tests it takes to finish), and forces a deliberate choice — **commit now**, or **park it as an issue in the private LifeGuide Linear project** (`linear.app/cuttheedge/project/lifeguide-67aceaa648cf`). Never start a new loop, and never park one, silently.
 
+### 4. Issue readiness for autonomous pickup
+A Linear issue meant to be picked up cold — by a subagent, a headless run, or a different session — must carry enough that the picker never has to come back and ask. Learned from a 2026-07-18 backlog sweep (ARI-11/19/20 worked as write-and-forget; ARI-103 and ARI-23 did not, in different ways). Write every LifeGuide issue meant for autonomous work to this bar, using **ARI-11 as the template**:
+
+- **What** — the concrete thing, not just the theme.
+- **Why** — the reasoning, so the picker can make in-scope judgment calls without drifting from intent.
+- **Effort estimate**, with an explicit **data-model impact: yes/no** call-out — this alone determines whether `convex/schema.ts` is in play.
+- **Definition of done** as a checklist of testable/verifiable statements, not vague goals.
+- **Source / related issues** — name what's explicitly *out of scope* (sibling issues touching the same subsystem), so the picker doesn't scope-creep into them.
+- Where relevant: a pointer to existing research docs or prior Linear comments (`docs/research/*`, prior "Slice N shipped" comments) — the picker should never redo groundwork that already exists.
+
+**Two signals an issue is NOT ready for blind pickup — route around them instead of assigning as-is:**
+- The issue's own text defers a decision to the human ("pressure-test, not commit," open forks with no lean, "for Ariel to decide"). That's a **decision-memo task** (research output, no code), not an implementation task — say so explicitly when assigning it.
+- "Needs finalization before any code" with open questions and *no* documented lean on any of them. If most questions already carry a lean/default and only one is genuinely load-bearing, it's still pickable — the picker resolves the load-bearing one, records the decision (an ADR, per most Definition-of-done sections), and proceeds. Only route to a decision-memo when the load-bearing call is one only Ariel can make.
+
 ---
 
 ## Documentation map (rebuilding)

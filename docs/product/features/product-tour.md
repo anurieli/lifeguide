@@ -16,6 +16,8 @@ Beta testers were landing in a fully-built app shell — Today, Core, the vision
 
 The tour fires automatically the first time an onboarded user (`settings.onboardedAt` set) lands in the app shell with no tour history (`tourCompletedAt` and `tourSkippedAt` both unset). It shows a small floating card with a title, a line of copy, a step counter (dot row), and Back / Next / Skip controls, plus a **spotlight**: the rest of the screen dims and a rounded cutout highlights the real UI element the step is about.
 
+The card is always positioned wholly inside the viewport (clamped on every edge), so its controls — Skip in particular — are always reachable, and **a click anywhere on the dimmed backdrop (outside the card) ends the tour**, the same as Skip. Together these mean the overlay can never trap a person: even if a step's card lands somewhere awkward, one click on the dim gets them out. The spotlight is only drawn around a **compact** target; a target that fills most of the viewport (a page's full-height scroll container) gets a plain centered card over an even dim instead of a cutout — see §6.
+
 Five stops, in order:
 
 1. **Today** — welcome + orientation. Carries the optional intro-video slot (see §4).
@@ -55,7 +57,7 @@ The tour **draws** on, and **drives**, the App Shell rather than owning any surf
 | State | When | Visual |
 |---|---|---|
 | Inactive | `onboardedAt` unset, or `tourCompletedAt`/`tourSkippedAt` set | Nothing renders |
-| Active — step N | Eligible and running | Spotlight (or centered card if the target isn't found) + coachmark, N of 5 |
+| Active — step N | Eligible and running | Spotlight (or centered card if the target isn't found or is oversized) + coachmark, N of 5 |
 | Completed | "Finish" clicked on step 5 | `tourCompletedAt` stamped; inactive from then on |
 | Skipped | "Skip tour" clicked on any step | `tourSkippedAt` stamped; inactive from then on |
 | Restarted | Settings → "Restart tour" | Both stamps cleared, step reset to 0; re-enters Active — step 1 |
@@ -65,6 +67,7 @@ The tour **draws** on, and **drives**, the App Shell rather than owning any surf
 ## 6. Edge cases
 
 - **Target not found** (element hidden by a breakpoint — the Coach talk button is `hidden md:flex`, or not yet mounted a render after a view switch): `useTourTarget` treats a zero-size `getBoundingClientRect()` the same as "not found." The coachmark falls back to a plain centered card with no spotlight, so the tour still renders and can advance on every step on every device, even where a specific control isn't reachable there.
+- **Oversized target — the "grey film" trap (fixed 2026-07-19):** the `today` and `core` steps anchor `data-tour` on each page's full-height `overflow-auto` scroll container. As first shipped (ARI-19), the spotlight cut a rounded hole over that entire container, so the dim showed only in the margins — chiefly the left rail — reading as an unexplained grey film over the sidebar; the `fixed inset-0` overlay also swallowed all scroll, and the "bottom"-placed card was pushed below a full-height target, off-screen, taking the Skip control with it. An already-onboarded user landing after the deploy was simply locked out. Three guards now prevent it, all in `TourCoachmark.tsx` (pure geometry, unit-tested in `tests/tour-coachmark.test.ts`): `isSpotlightable()` suppresses the cutout for any target taller than 60% of the viewport or wider than 85% (those get a centered card over an even dim); `cardPosition()` clamps the card fully on-screen on every placement (no more off-screen Skip, and the `top` placement no longer relies on a `translateY(-100%)` the clamp can't see); and a click on the backdrop calls `skip`, so the overlay is never a dead end.
 - **Whiteboard's moving canvas:** the board pans/zooms via a CSS transform, which fires neither a resize nor a scroll event. `useTourTarget` re-measures on every animation frame while a step is active (bounded cost: only during the tour) rather than relying on `ResizeObserver`/scroll listeners, so the spotlight never drifts off a moving target — though in practice the tour anchors on the Whiteboard's root container, not a node, so this mostly matters if a future step ever anchors on a canvas-space element.
 - **User navigates away manually mid-tour** (clicks a different rail item): the shell's `view` changes, the tour's own effect immediately pushes it back to the current step's required view. This is deliberate — the tour is a directed walkthrough, not a free-roam overlay — but it means a person who wants to explore instead of following along should use Skip.
 - **Restart while sitting on a different page than step 1:** the "Restart tour" button lives in Settings; clicking it navigates the shell to Today (step 1's view) immediately, same as any other step transition.

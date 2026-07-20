@@ -515,6 +515,13 @@ export default defineSchema({
     archived: v.optional(v.boolean()),
     // Two-way Todoist link: set when this goal mirrors a Todoist project.
     todoistProjectId: v.optional(v.string()),
+    // DEPRECATED pre-ADR-0029 Orbit fields. ADR 0029 assumed no production data
+    // existed, but prod carried Todoist-synced goals in the old shape, so the
+    // schema push was rejected. Kept as validate-only optionals (nothing reads
+    // or writes them) until `goals.migrateDropAreaKind` has been run against
+    // the deployment, after which both lines can be deleted.
+    area: v.optional(v.string()),
+    kind: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

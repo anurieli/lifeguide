@@ -488,3 +488,22 @@ export const deleteTask = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+// One-shot migration for ADR 0029's landing: strip the dead pre-0029 Orbit
+// fields (`area`, `kind`) from existing rows so the deprecated optionals in
+// the schema can eventually be deleted. Idempotent; safe to re-run.
+// Run: npx convex run goals:migrateDropAreaKind --prod
+export const migrateDropAreaKind = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("goals").collect();
+    let cleaned = 0;
+    for (const goal of all) {
+      const doc = goal as { area?: unknown; kind?: unknown };
+      if (doc.area === undefined && doc.kind === undefined) continue;
+      await ctx.db.patch(goal._id, { area: undefined, kind: undefined });
+      cleaned++;
+    }
+    return { scanned: all.length, cleaned };
+  },
+});

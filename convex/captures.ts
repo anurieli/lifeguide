@@ -227,6 +227,40 @@ export const updateDistilled = internalMutation({
   },
 });
 
+// The person reopens a previously committed text/quote capture and corrects or
+// extends it (SessionDoc: click a note to edit, blur to save — same idiom as
+// the horizons/rituals click-to-edit fields). Other raw types (audio, image,
+// link, file) aren't editable here: their "text" is a derived transcript/
+// description, not something the person typed. A no-op on unchanged/empty
+// text leaves the capture untouched. Because distilled/boardWorthy/embedding
+// were computed over the old wording, an edit re-runs distillation exactly as
+// a fresh append does; a session member also re-bumps updatedAt and schedules
+// the digest refresh on the same 30s debounce ingest itself uses, so a burst
+// of edits costs one model call.
+export const update = mutation({
+  args: { captureId: v.id("captures"), rawText: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const c = await ctx.db.get(args.captureId);
+    if (!c || c.userId !== userId) throw new Error("Not found");
+    if (c.rawType !== "text" && c.rawType !== "quote") {
+      throw new Error("Only text captures can be edited");
+    }
+    const rawText = args.rawText.trim();
+    if (!rawText || rawText === (c.rawText ?? "")) return;
+    await ctx.db.patch(args.captureId, { rawText, extractedText: rawText });
+    if (c.sessionId) {
+      await ctx.db.patch(c.sessionId, { updatedAt: Date.now() });
+      await ctx.scheduler.runAfter(30_000, internal.ai.sessionDigest.digestSession, {
+        sessionId: c.sessionId,
+      });
+    }
+    await ctx.scheduler.runAfter(0, internal.ai.distill.distillCapture, {
+      captureId: args.captureId,
+    });
+  },
+});
+
 export const softDelete = mutation({
   args: { captureId: v.id("captures") },
   handler: async (ctx, args) => {

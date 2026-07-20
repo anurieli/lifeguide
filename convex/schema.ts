@@ -68,9 +68,13 @@ export default defineSchema({
     .index("by_surface", ["surfaceId"])
     .index("by_from", ["fromNode"]),
 
-  // A capture is the immutable event of a thought or inspiration; ingested async
+  // A capture is the event of a thought or inspiration; ingested async
   // (extraction + distillation); may become a node. The raw artifact is always kept
   // (rawText/rawUrl/rawFileId) so it can be reopened and re-analyzed after the fact.
+  // Audio/image/link/file raw artifacts stay immutable once stored; a text/quote
+  // capture's own rawText is the one exception — the person can reopen and correct
+  // or extend it (captures.update, ARI-123), which re-runs distillation over the
+  // new wording (see captures.update's own comment).
   captures: defineTable({
     userId: v.id("users"),
     source: v.union(

@@ -143,6 +143,11 @@ const LAUNCH_ENTRIES: { title: string; body: string; view: "today" | "core" | "s
     body: "Your brain-dumps can now be mapped into a visual thought map — see how your ideas connect, and teach it how you think.",
     view: "sessions",
   },
+  {
+    title: "Talk to your Coach, right where you are",
+    body: "The Talk to Coach button now holds the whole conversation. Tap it and a living orb opens the line in place — no new screen — moving with your voice while you talk, then filing what mattered when you're done.",
+    view: "today",
+  },
 ];
 
 export const seedLaunchEntries = internalMutation({

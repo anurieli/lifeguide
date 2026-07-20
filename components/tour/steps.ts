@@ -53,7 +53,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "tour-coach",
     placement: "left",
     title: "Talk to your Coach",
-    body: "Click here any time — your Coach sees whatever surface you're on and knows your Core. Ask it anything, or just think out loud.",
+    body: "Tap this and just talk — the call happens right here, no new screen. Your Coach sees whatever surface you're on and knows your Core. Prefer typing? The small bubble above it opens the chat.",
   },
   {
     id: "settings",

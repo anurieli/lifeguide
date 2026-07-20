@@ -14,7 +14,6 @@ import { Whiteboard } from "@/components/whiteboard/Whiteboard";
 import { MobileBoard } from "@/components/whiteboard/MobileBoard";
 import { Settings } from "@/components/settings/Settings";
 import { CoachDock } from "@/components/coach/CoachDock";
-import { SpeakSurface } from "@/components/voice/SpeakSurface";
 import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
 import { WhatsNewFeed } from "@/components/whatsnew/WhatsNewFeed";
 import { MusicProvider } from "@/components/music/MusicProvider";
@@ -50,10 +49,9 @@ export function AppShell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
 
 function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   const [view, setView] = useState<View>("today");
-  // Coach text dock open state (desktop secondary). The Listener voice call is the
-  // primary way in — it opens as a full-screen surface.
+  // Coach text dock open state (desktop secondary). The voice call is the primary
+  // way in — it runs in place inside CoachDock's CoachOrb, no overlay.
   const [coachOpen, setCoachOpen] = useState(false);
-  const [speakOpen, setSpeakOpen] = useState(false);
   // The open entry in the Sessions view.
   const [activeSessionId, setActiveSessionId] = useState<Id<"sessions"> | null>(null);
   const createSession = useMutation(api.sessions.create);
@@ -74,11 +72,6 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   useEffect(() => {
     window.localStorage.setItem(VIEW_STORAGE_KEY, view);
   }, [view]);
-
-  const openSpeak = () => {
-    clientLog("talk.open", { view });
-    setSpeakOpen(true);
-  };
 
   // The entry currently on screen, when it holds nothing at all — no captures,
   // no take saving into it. The ➕ inside it must not spawn a second empty note.
@@ -243,7 +236,6 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
         surfaceId={surfaceId}
         open={coachOpen}
         onToggle={() => setCoachOpen((o) => !o)}
-        onSpeak={openSpeak}
         stepAside={view === "sessions" && activeSessionId !== null}
       />
       <FeedbackWidget view={view} coachOpen={coachOpen} />
@@ -254,8 +246,6 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
       <div className="hidden md:block">
         <AtmospherePlayer />
       </div>
-      {/* The Listener: always-available voice. Opens full-screen over everything. */}
-      {speakOpen && <SpeakSurface onClose={() => setSpeakOpen(false)} />}
       {/* The guided product tour (ARI-19): fires once per user after onboarding,
           drives `view` across its five stops via the same `nav` the rail uses. */}
       <Tour view={view} onNav={nav} />

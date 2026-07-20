@@ -23,7 +23,7 @@ A small pill sits near the bottom of the shell, labeled **"What's new"** with a 
 | Author an entry | `/admin` → What's New → **New entry** | Owner writes `title` + `body` + picks the linked `view`; inserts a `whatsNew` row, published immediately | Manual (owner-gated) | `whatsNew` |
 | Edit an entry | `/admin` → What's New → pencil icon | Owner edits title/body/view on an existing row | Manual (owner-gated) | `whatsNew` |
 | Delete an entry | `/admin` → What's New → trash icon | Owner removes a `whatsNew` row outright (e.g. a mistake); anyone who hadn't seen it simply stops seeing it — no "it was deleted" notice | Manual (owner-gated) | `whatsNew` |
-| Seed the launch entries | `npx convex run whatsNew:seedLaunchEntries` | One-shot `internalMutation` publishing the hand-written launch entries (Life Wheel, Talk-to-fill-Core, guided tour, thought maps) so the feed isn't empty on day one; idempotent (skips a title that already exists), stamps `createdBy` to the owner (must have signed in once). Still manual authorship — copy is hand-written in code, not generated from `CHANGELOG.md` (ADR 0026) | Owner (CLI) | `whatsNew` |
+| Seed the launch entries | `npx convex run whatsNew:seedLaunchEntries` | One-shot `internalMutation` publishing the hand-written launch entries (Life Wheel, Talk-to-fill-Core, guided tour, thought maps, the in-place Coach orb) so the feed isn't empty on day one; idempotent (skips a title that already exists), stamps `createdBy` to the owner (must have signed in once). Still manual authorship — copy is hand-written in code, not generated from `CHANGELOG.md` (ADR 0026) | Owner (CLI) | `whatsNew` |
 
 There is no Coach path for What's New: it is not something the Coach curates or narrates — see §4.
 

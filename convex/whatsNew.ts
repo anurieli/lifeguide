@@ -155,6 +155,11 @@ export const LAUNCH_ENTRIES: { title: string; body: string; view: "today" | "cor
     body: "The Goals page is now about the things you're actually chasing. Anything without a deadline is a someday aspiration; give it a date and it becomes a real Goal. The AI drafts what it actually takes — a roadmap of steps with real dependencies — and your Coach can now create or update goals for you when you just say so.",
     view: "goals",
   },
+  {
+    title: "Your brain-dump, itemized",
+    body: "Each thing you add to a session — a note, a recording, a photo — now shows as its own card in the entry. Tap one to expand it, press play to hear a recording again.",
+    view: "sessions",
+  },
 ];
 
 export const seedLaunchEntries = internalMutation({

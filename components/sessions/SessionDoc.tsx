@@ -27,6 +27,7 @@ import {
 } from "@/components/thoughts/utils";
 import { caretPosition, CaretPos } from "./caret";
 import { ThoughtMapView } from "./ThoughtMapView";
+import { CaptureItem, CaptureDoc } from "./CaptureItem";
 
 /**
  * The living entry: one continuous document. Captures render in the order they
@@ -38,115 +39,6 @@ import { ThoughtMapView } from "./ThoughtMapView";
  * live take itself belongs to RecordingProvider, so it keeps recording if the
  * person navigates away. Leaving an entry with no content deletes it.
  */
-// Past this length a spoken passage renders as a preview: a long ramble must not
-// swallow the page. Tap the text (or the toggle) to expand and collapse.
-const TRANSCRIPT_PREVIEW_CHARS = 320;
-const TRANSCRIPT_PREVIEW_LINES = 4;
-
-function Transcript({ text }: { text: string }) {
-  const [expanded, setExpanded] = useState(false);
-  if (text.length <= TRANSCRIPT_PREVIEW_CHARS) {
-    return (
-      <p className="text-[15px] leading-relaxed text-ink whitespace-pre-wrap">{text}</p>
-    );
-  }
-  const toggle = () => setExpanded((e) => !e);
-  return (
-    <div>
-      <p
-        onClick={toggle}
-        className="text-[15px] leading-relaxed text-ink whitespace-pre-wrap cursor-pointer"
-        style={
-          expanded
-            ? undefined
-            : {
-                display: "-webkit-box",
-                WebkitLineClamp: TRANSCRIPT_PREVIEW_LINES,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-              }
-        }
-      >
-        {text}
-      </p>
-      <button type="button" onClick={toggle} className="mt-1 text-[12.5px] text-gold">
-        {expanded ? "Show less" : "Show more"}
-      </button>
-    </div>
-  );
-}
-
-// A committed text/quote capture is click-to-edit, same idiom as the horizons/
-// rituals fields: click the note, it becomes a textarea prefilled with its
-// current text, blur (or Cmd/Ctrl+Enter) saves via captures.update. Audio,
-// image, link, and file captures aren't editable here — their rendered text is
-// a derived transcript/description, not something the person typed.
-function EditableCapture({
-  capture,
-  onSave,
-}: {
-  capture: CaptureDoc;
-  onSave: (text: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(capture.rawText ?? "");
-  const taRef = useRef<HTMLTextAreaElement>(null);
-
-  const startEditing = () => {
-    setDraft(capture.rawText ?? "");
-    setEditing(true);
-  };
-
-  // Auto-grow to fit the existing text the moment the field opens, and put the
-  // caret at the end (like clicking into the trailing document editor).
-  useEffect(() => {
-    const ta = taRef.current;
-    if (!editing || !ta) return;
-    ta.style.height = "auto";
-    ta.style.height = `${ta.scrollHeight}px`;
-    ta.focus();
-    ta.setSelectionRange(ta.value.length, ta.value.length);
-  }, [editing]);
-
-  if (editing) {
-    return (
-      <textarea
-        ref={taRef}
-        value={draft}
-        onChange={(e) => {
-          setDraft(e.target.value);
-          e.target.style.height = "auto";
-          e.target.style.height = `${e.target.scrollHeight}px`;
-        }}
-        onKeyDown={(e) => {
-          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-            e.preventDefault();
-            e.currentTarget.blur();
-          }
-        }}
-        onBlur={() => {
-          setEditing(false);
-          const trimmed = draft.trim();
-          if (trimmed && trimmed !== (capture.rawText ?? "")) onSave(trimmed);
-        }}
-        rows={1}
-        aria-label="Edit this note"
-        className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink outline-none overflow-hidden border border-gold/50 rounded-md px-2 py-1 -mx-2 -my-1"
-      />
-    );
-  }
-
-  return (
-    <p
-      onClick={startEditing}
-      className="text-[15px] leading-relaxed text-ink whitespace-pre-wrap cursor-text rounded-md px-2 py-1 -mx-2 -my-1 hover:bg-paper-2/60 transition"
-    >
-      {capture.rawText}
-    </p>
-  );
-}
-
-type CaptureDoc = NonNullable<FunctionReturnType<typeof api.sessions.get>>["captures"][number];
 type ReplyDoc = FunctionReturnType<typeof api.sessions.replies>[number];
 
 function capitalize(s: string): string {
@@ -643,119 +535,85 @@ export function SessionDoc({
               Speak, or tap anywhere and write.
             </p>
           )}
-          {thread.map((item) =>
-            item.kind === "reply" ? (
-              <ReplyBlock key={item.reply._id} reply={item.reply} />
-            ) : (
-              <div key={item.capture._id}>
-                {item.capture.rawType === "audio" && (
-                  <div>
-                    {item.capture.extractedText ? (
-                      <Transcript text={item.capture.extractedText} />
-                    ) : item.capture.extraction?.status === "error" ? (
-                      <p className="text-[13px] text-ink-mute">
-                        Transcription failed, the recording is safe.{" "}
-                        <button
-                          type="button"
-                          onClick={() => void reprocess({ captureId: item.capture._id })}
-                          className="text-gold"
-                        >
-                          Try again
-                        </button>
-                      </p>
-                    ) : (
-                      <p className="text-[13px] text-ink-mute animate-pulse">Listening back…</p>
-                    )}
-                    {item.capture.fileUrl && (
-                      <audio
-                        controls
-                        preload="none"
-                        src={item.capture.fileUrl}
-                        className="mt-2 h-9 w-full max-w-[320px]"
-                      />
-                    )}
-                  </div>
-                )}
-                {(item.capture.rawType === "text" || item.capture.rawType === "quote") && (
-                  <EditableCapture
+          {/* The brain-dump box: every piece added to this entry (free text, a
+              recording, a photo) is its own itemized, expandable card inside one
+              visually contained box — not a flat blob of running text. Replies
+              from the interviewer (dynamic mode) stay interleaved chronologically
+              in their existing quieter style, just nested in the same box. A
+              text/quote card is click-to-edit in place (ARI-123's idiom, now
+              living inside CaptureItem itself); other raw types stay read-only. */}
+          {(thread.length > 0 ||
+            pendingHere.length > 0 ||
+            failedHere ||
+            showListening ||
+            (isLive && rec.recording)) && (
+            <div className="rounded-2xl border border-line-2 bg-paper-2/40 p-3.5 flex flex-col gap-2.5">
+              {thread.map((item) =>
+                item.kind === "reply" ? (
+                  <ReplyBlock key={item.reply._id} reply={item.reply} />
+                ) : (
+                  <CaptureItem
+                    key={item.capture._id}
                     capture={item.capture}
-                    onSave={(rawText) =>
-                      void updateCaptureText({ captureId: item.capture._id, rawText })
+                    onRetry={(captureId) => void reprocess({ captureId })}
+                    onSave={(captureId, rawText) =>
+                      void updateCaptureText({ captureId, rawText })
                     }
                   />
-                )}
-                {(item.capture.rawType === "link" || item.capture.rawType === "video_link") &&
-                  item.capture.rawUrl && (
-                    <a
-                      href={item.capture.rawUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[14px] text-gold underline underline-offset-2 break-all"
-                    >
-                      {item.capture.rawUrl}
-                    </a>
-                  )}
-                {item.capture.rawType === "image" && item.capture.fileUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={item.capture.fileUrl}
-                    alt=""
-                    className="rounded-xl max-h-80 object-contain"
+                ),
+              )}
+              {/* Takes saving right now: on the page the instant recording stops,
+                  upload + transcription running behind them. The real capture row
+                  replaces this the moment the server has it. */}
+              {pendingHere.map((t) => (
+                <div
+                  key={t.startedAt}
+                  className="flex items-center gap-2.5 px-0.5 pointer-events-none select-none"
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-gold animate-pulse" />
+                  <span className="text-[14px] tabular-nums text-ink-soft">
+                    {formatElapsed(t.durationMs)}
+                  </span>
+                  <span className="text-[12.5px] text-ink-mute">Processing…</span>
+                </div>
+              ))}
+              {failedHere && !isLive && (
+                <p className="text-[13px] text-ink-mute px-0.5">
+                  That take didn&apos;t save; it&apos;s still here.{" "}
+                  <button
+                    type="button"
+                    onClick={() => void rec.retryFailed()}
+                    className="text-gold"
+                  >
+                    Try again
+                  </button>
+                </p>
+              )}
+              {/* No dead air (conversation mode): a placeholder in the interviewer's
+                  own voice/position, standing in until the real pending reply row
+                  replaces it. */}
+              {showListening && (
+                <div className="pl-3.5 border-l-2 border-gold/35">
+                  <div className="text-[10.5px] font-medium tracking-wide text-gold/80 uppercase mb-1">
+                    {capitalize(session.interviewer || "coach")}
+                  </div>
+                  <p className="text-[13px] text-ink-mute animate-pulse">listening…</p>
+                </div>
+              )}
+              {/* A live take renders in-flow, part of the document as it happens. */}
+              {isLive && rec.recording && (
+                <div className="flex items-center gap-2.5 px-0.5 pointer-events-none select-none">
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full bg-gold ${rec.paused ? "" : "animate-pulse"}`}
                   />
-                )}
-              </div>
-            ),
-          )}
-          {/* Takes saving right now: on the page the instant recording stops,
-              upload + transcription running behind them. The real capture row
-              replaces this the moment the server has it. */}
-          {pendingHere.map((t) => (
-            <div
-              key={t.startedAt}
-              className="flex items-center gap-2.5 pointer-events-none select-none"
-            >
-              <span className="w-2.5 h-2.5 rounded-full bg-gold animate-pulse" />
-              <span className="text-[14px] tabular-nums text-ink-soft">
-                {formatElapsed(t.durationMs)}
-              </span>
-              <span className="text-[12.5px] text-ink-mute">Processing…</span>
-            </div>
-          ))}
-          {failedHere && !isLive && (
-            <p className="text-[13px] text-ink-mute">
-              That take didn&apos;t save; it&apos;s still here.{" "}
-              <button
-                type="button"
-                onClick={() => void rec.retryFailed()}
-                className="text-gold"
-              >
-                Try again
-              </button>
-            </p>
-          )}
-          {/* No dead air (conversation mode): a placeholder in the interviewer's
-              own voice/position, standing in until the real pending reply row
-              replaces it. */}
-          {showListening && (
-            <div className="pl-3.5 border-l-2 border-gold/35">
-              <div className="text-[10.5px] font-medium tracking-wide text-gold/80 uppercase mb-1">
-                {capitalize(session.interviewer || "coach")}
-              </div>
-              <p className="text-[13px] text-ink-mute animate-pulse">listening…</p>
-            </div>
-          )}
-          {/* A live take renders in-flow, part of the document as it happens. */}
-          {isLive && rec.recording && (
-            <div className="flex items-center gap-2.5 pointer-events-none select-none">
-              <span
-                className={`w-2.5 h-2.5 rounded-full bg-gold ${rec.paused ? "" : "animate-pulse"}`}
-              />
-              <span className="text-[14px] tabular-nums text-ink-soft">
-                {formatElapsed(rec.elapsedMs)}
-              </span>
-              <span className="text-[12.5px] text-ink-mute">
-                {rec.paused ? "Paused" : "Listening…"}
-              </span>
+                  <span className="text-[14px] tabular-nums text-ink-soft">
+                    {formatElapsed(rec.elapsedMs)}
+                  </span>
+                  <span className="text-[12.5px] text-ink-mute">
+                    {rec.paused ? "Paused" : "Listening…"}
+                  </span>
+                </div>
+              )}
             </div>
           )}
           <div className="relative">

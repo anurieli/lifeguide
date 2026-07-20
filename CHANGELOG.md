@@ -7,6 +7,12 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-20 · ADR 0027 accepted: one Coach, one brain, two interchangeable postures
+
+Ariel blessed ADR 0027 and resolved its open decision #5: **one Coach everywhere** (multiple agents is confusing), with two interchangeable **postures** on one brain — **intake** (vent space, Socratic draw-out, bigger-picture building; the /speak orb's default) and **direction** (guidance; the chat dock's default). Surfaces set the default posture; the Coach may flip mid-conversation. Explicitly experimental: posture wording ships as an easily-tuned framing block, revisited after real use. ADR status flipped to accepted with the resolution recorded; the Proposal section gained the posture axis. Implementation is unblocked and tracked in ARI-109 (four independently-shippable steps, step 1 = shared context into voice mints).
+
+**Docs touched:** `docs/decisions/0027-one-coach-voice-and-text-as-io.md` (status + posture axis), `docs/decisions/README.md` (index row), `CHANGELOG.md`.
+
 ## 2026-07-20 · ADR 0027 (proposed): One Coach — voice and text as I/O modes on a single agent
 
 Design memo, no code. Ariel's prompt ("maybe the coach should just be the audio interface") taken as architecture: collapse the four conversational personas (text Coach, Listener orb, Conversational Core, onboarding interviewer) into **one Coach** with voice and text as I/O modes; surfaces become *framings* prepended to a single persona; one memory spine (voice-call summaries fold into the Coach's `messages` thread, recent text turns join voice mints; raw transcripts stay in `interviewSessions`). Covers the concrete wiring (shared `buildCoachSystemPrompt`, two engines kept deliberately per ADR 0004), five forced decisions with leans (Listener as surface not character; summaries cross the boundary; onboarding merges last; `coachTone` governs voice; and the one call only Ariel can make: Coach-as-center vs. Listener-as-distinct-character), a four-step independently-shippable migration path, and risks (Realtime prompt budget, tone bleed, mint cost). Supersedes ARI-21's direction; reuses ADR 0023/0024 machinery unchanged. Status **proposed** — awaiting Ariel's bless before any implementation issue is opened.

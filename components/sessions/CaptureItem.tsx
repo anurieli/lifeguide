@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -11,6 +11,9 @@ import { ChevronDown, FileText, ImageIcon, Link2, Mic, Pause, Play } from "lucid
  * voice recording, a photo) renders as its own itemized card — a one-line
  * preview by default, tapping the card expands it in place. A voice recording
  * carries its own play button so it can be replayed without expanding the card.
+ * A text/quote card's expanded content is itself click-to-edit (ARI-123, folded
+ * in here on rebase — see EditableText below); other raw types stay read-only,
+ * their rendered text being derived, not typed.
  * See docs/product/features/sessions.md ("The entry — itemized captures").
  */
 export type CaptureDoc = NonNullable<
@@ -109,12 +112,88 @@ function LeadingIcon({ capture }: { capture: CaptureDoc }) {
   return <FileText className={cls} />;
 }
 
+// A committed text/quote capture is click-to-edit, same idiom as the horizons/
+// rituals fields (and the pre-CaptureItem `EditableCapture` in SessionDoc.tsx,
+// ARI-123): click the note, it becomes a textarea prefilled with its current
+// text, blur (or Cmd/Ctrl+Enter) saves via captures.update. Lives inside an
+// already-expanded card, so every click here stops propagation — it must never
+// also collapse the card out from under the person mid-edit.
+function EditableText({
+  capture,
+  onSave,
+}: {
+  capture: CaptureDoc;
+  onSave: (text: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(capture.rawText ?? "");
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
+  const startEditing = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDraft(capture.rawText ?? "");
+    setEditing(true);
+  };
+
+  // Auto-grow to fit the existing text the moment the field opens, and put the
+  // caret at the end (like clicking into the trailing document editor).
+  useEffect(() => {
+    const ta = taRef.current;
+    if (!editing || !ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  }, [editing]);
+
+  if (editing) {
+    return (
+      <textarea
+        ref={taRef}
+        value={draft}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          e.target.style.height = "auto";
+          e.target.style.height = `${e.target.scrollHeight}px`;
+        }}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
+        }}
+        onBlur={(e) => {
+          e.stopPropagation();
+          setEditing(false);
+          const trimmed = draft.trim();
+          if (trimmed && trimmed !== (capture.rawText ?? "")) onSave(trimmed);
+        }}
+        rows={1}
+        aria-label="Edit this note"
+        className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink outline-none overflow-hidden border border-gold/50 rounded-md px-2 py-1 -mx-2 -my-1"
+      />
+    );
+  }
+
+  return (
+    <p
+      onClick={startEditing}
+      className="text-[15px] leading-relaxed text-ink whitespace-pre-wrap cursor-text rounded-md px-2 py-1 -mx-2 -my-1 hover:bg-paper-2/60 transition"
+    >
+      {capture.rawText}
+    </p>
+  );
+}
+
 export function CaptureItem({
   capture,
   onRetry,
+  onSave,
 }: {
   capture: CaptureDoc;
   onRetry: (captureId: Id<"captures">) => void;
+  onSave: (captureId: Id<"captures">, rawText: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const preview = previewOf(capture);
@@ -173,9 +252,10 @@ export function CaptureItem({
               <p className="text-[13px] text-ink-mute animate-pulse">Listening back…</p>
             ))}
           {(capture.rawType === "text" || capture.rawType === "quote") && (
-            <p className="text-[15px] leading-relaxed text-ink whitespace-pre-wrap">
-              {capture.rawText}
-            </p>
+            <EditableText
+              capture={capture}
+              onSave={(rawText) => onSave(capture._id, rawText)}
+            />
           )}
           {(capture.rawType === "link" || capture.rawType === "video_link") && capture.rawUrl && (
             <a

@@ -7,6 +7,12 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-20 · Feedback: out-of-band admin triage (internal fns for CLI/automation)
+
+Gives owner tooling a way to read and resolve the feedback queue from a terminal, so a fix and its source ticket close in one flow without clicking through `/admin`. The public `listAll`/`resolve` paths gate on `getAuthUserId`, which a `npx convex run` has no identity for; so `convex/feedback.ts` now also exposes three **internal** functions — `adminList` (whole queue or one status, flattened: id/status/type/view/submitter/text/linear), `adminSetStatus` ({id, status}, stamping resolved/pending timestamps; `open` clears them), and `adminResolveMany` ({ids}) — callable only server-side, from the Convex dashboard, or via `npx convex run` with a deploy key, never from a client (owner-only in practice). No schema change; reads/writes the existing `feedback` table. Wrapped by the new `lifeguide-feedback` skill (kept in `~/.claude/skills/`, not this repo), which documents the loop (fix → mark the Linear ticket Done → resolve the feedback row) and the two keys it needs (`CONVEX_DEPLOY_KEY`, `LINEAR_API_KEY`). `npx tsc --noEmit` clean.
+
+**Docs touched:** `docs/product/features/feedback-widget.md` (§9 new "Out-of-band triage" paragraph), `CHANGELOG.md`.
+
 ## 2026-07-20 · Hotfix: Goals v2 schema migration for existing prod rows
 
 PR #74's deploy was rejected by Convex schema validation: ADR 0029's "no production goals data" premise was false — prod carried Todoist-synced goals in the old Orbit shape (`area`/`kind`). Production kept serving the previous deploy; no data was lost or touched. Fix: `area?`/`kind?` return to the `goals` schema as deprecated validate-only optionals (nothing reads or writes them), and a new idempotent internal mutation `goals.migrateDropAreaKind` strips both fields from every row. **Ariel must run `npx convex run goals:migrateDropAreaKind --prod` once** (alongside the still-pending `whatsNew:seedLaunchEntries`); after that a follow-up can delete the two schema lines. Locked by `tests/convex/goals-migration.test.ts` (strips old rows, leaves clean rows, idempotent).

@@ -105,6 +105,8 @@ The inbox lives in `components/feedback/FeedbackInbox.tsx` — a self-contained,
 
 **Close.** **Dealt with** moves a ticket to the closed pile (`resolve`); **Reopen** returns it to **Needs you** (`reopen`, clearing the pending/resolved marks).
 
+**Out-of-band triage (owner tooling, no browser).** The panel's read/resolve mutations gate on `getAuthUserId`, so a `npx convex run` (which carries no user identity) can't drive them. For an agent/automation triaging the queue from a terminal, `convex/feedback.ts` also exposes three **internal** functions — `adminList` (the whole queue or one status, flattened: id, status, type, view, submitter, note, linked Linear ticket), `adminSetStatus` ({id, status}), and `adminResolveMany` ({ids}) — callable only server-side, from the Convex dashboard, or via `npx convex run` with a deploy key (never from a client, so they're owner-only in practice). This lets a fix be shipped and its source ticket marked **dealt_with** in the same flow, without clicking through `/admin`. Added 2026-07-20; wrapped by the `lifeguide-feedback` skill, which also documents the two keys involved (`CONVEX_DEPLOY_KEY`, `LINEAR_API_KEY`).
+
 ## 10. Open questions
 
 - **Inline replies via Resend** — sending the reply from within the panel (a verified sending domain + API key) instead of handing off to `mailto`, plus threading, is the next slice. Deferred here.

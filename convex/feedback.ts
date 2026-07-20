@@ -13,7 +13,7 @@
 // holds regardless of which surface (dev or prod) is calling.
 // ============================================================================
 
-import { mutation, query, internalQuery, MutationCtx } from "./_generated/server";
+import { mutation, query, internalQuery, internalMutation, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
@@ -189,5 +189,76 @@ export const markExported = mutation({
       status: row.status === "dealt_with" ? "dealt_with" : "pending",
       pendingAt: row.pendingAt ?? Date.now(),
     });
+  },
+});
+
+// ── Admin triage OUT OF BAND (owner tooling, no browser login) ────────────────
+// The public list/resolve paths above gate on getAuthUserId, so a `npx convex run`
+// (which carries no user identity) can't drive them. These are INTERNAL — never
+// exposed to a client, only callable server-side, from the Convex dashboard, or via
+// `npx convex run` with a deploy key — so an agent working on LifeGuide can read the
+// queue and mark tickets dealt-with as it ships the fixes, closing the loop without
+// anyone clicking through /admin. Owner-only in practice: reaching them at all
+// requires the deployment's admin/deploy key. See the `lifeguide-feedback` skill.
+
+const ADMIN_STATUS = v.union(v.literal("open"), v.literal("pending"), v.literal("dealt_with"));
+
+// The whole queue (or one status), newest first, flattened for a terminal: id,
+// status, type, view, submitter, the note, and any linked Linear ticket.
+export const adminList = internalQuery({
+  args: { status: v.optional(ADMIN_STATUS) },
+  handler: async (ctx, args) => {
+    const rows = await ctx.db.query("feedback").order("desc").collect();
+    const filtered = args.status ? rows.filter((r) => r.status === args.status) : rows;
+    return await Promise.all(
+      filtered.map(async (r) => {
+        const u = await ctx.db.get(r.userId);
+        return {
+          id: r._id,
+          status: r.status,
+          type: r.type,
+          view: r.view,
+          text: r.text,
+          submitter: u?.name ?? u?.email ?? "anonymous",
+          createdAt: r.createdAt,
+          linear: r.linear ?? null,
+        };
+      }),
+    );
+  },
+});
+
+// Set one ticket's status (open / pending / dealt_with), stamping the matching
+// timestamp. `open` clears the pending/resolved marks (a true reopen).
+export const adminSetStatus = internalMutation({
+  args: { id: v.id("feedback"), status: ADMIN_STATUS },
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.id);
+    if (!row) throw new Error("Not found");
+    const now = Date.now();
+    if (args.status === "dealt_with") {
+      await ctx.db.patch(args.id, { status: "dealt_with", resolvedAt: row.resolvedAt ?? now });
+    } else if (args.status === "pending") {
+      await ctx.db.patch(args.id, { status: "pending", pendingAt: row.pendingAt ?? now });
+    } else {
+      await ctx.db.patch(args.id, { status: "open", resolvedAt: undefined, pendingAt: undefined });
+    }
+    return { id: args.id, status: args.status };
+  },
+});
+
+// Bulk mark dealt-with (e.g. after a batch of feedback becomes shipped fixes).
+export const adminResolveMany = internalMutation({
+  args: { ids: v.array(v.id("feedback")) },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    let resolved = 0;
+    for (const id of args.ids) {
+      const row = await ctx.db.get(id);
+      if (!row) continue;
+      await ctx.db.patch(id, { status: "dealt_with", resolvedAt: row.resolvedAt ?? now });
+      resolved++;
+    }
+    return { resolved };
   },
 });

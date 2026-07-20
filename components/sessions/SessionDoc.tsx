@@ -76,6 +76,76 @@ function Transcript({ text }: { text: string }) {
   );
 }
 
+// A committed text/quote capture is click-to-edit, same idiom as the horizons/
+// rituals fields: click the note, it becomes a textarea prefilled with its
+// current text, blur (or Cmd/Ctrl+Enter) saves via captures.update. Audio,
+// image, link, and file captures aren't editable here — their rendered text is
+// a derived transcript/description, not something the person typed.
+function EditableCapture({
+  capture,
+  onSave,
+}: {
+  capture: CaptureDoc;
+  onSave: (text: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(capture.rawText ?? "");
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
+  const startEditing = () => {
+    setDraft(capture.rawText ?? "");
+    setEditing(true);
+  };
+
+  // Auto-grow to fit the existing text the moment the field opens, and put the
+  // caret at the end (like clicking into the trailing document editor).
+  useEffect(() => {
+    const ta = taRef.current;
+    if (!editing || !ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  }, [editing]);
+
+  if (editing) {
+    return (
+      <textarea
+        ref={taRef}
+        value={draft}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          e.target.style.height = "auto";
+          e.target.style.height = `${e.target.scrollHeight}px`;
+        }}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
+        }}
+        onBlur={() => {
+          setEditing(false);
+          const trimmed = draft.trim();
+          if (trimmed && trimmed !== (capture.rawText ?? "")) onSave(trimmed);
+        }}
+        rows={1}
+        aria-label="Edit this note"
+        className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink outline-none overflow-hidden border border-gold/50 rounded-md px-2 py-1 -mx-2 -my-1"
+      />
+    );
+  }
+
+  return (
+    <p
+      onClick={startEditing}
+      className="text-[15px] leading-relaxed text-ink whitespace-pre-wrap cursor-text rounded-md px-2 py-1 -mx-2 -my-1 hover:bg-paper-2/60 transition"
+    >
+      {capture.rawText}
+    </p>
+  );
+}
+
 type CaptureDoc = NonNullable<FunctionReturnType<typeof api.sessions.get>>["captures"][number];
 type ReplyDoc = FunctionReturnType<typeof api.sessions.replies>[number];
 
@@ -221,6 +291,7 @@ export function SessionDoc({
   const replies = useQuery(api.sessions.replies, { sessionId }) ?? [];
   const createCapture = useMutation(api.captures.create);
   const reprocess = useMutation(api.captures.reprocess);
+  const updateCaptureText = useMutation(api.captures.update);
   const setDoing = useMutation(api.sessions.setDoing);
   const setTitle = useMutation(api.sessions.setTitle);
   const setMode = useMutation(api.sessions.setMode);
@@ -606,9 +677,12 @@ export function SessionDoc({
                   </div>
                 )}
                 {(item.capture.rawType === "text" || item.capture.rawType === "quote") && (
-                  <p className="text-[15px] leading-relaxed text-ink whitespace-pre-wrap">
-                    {item.capture.rawText}
-                  </p>
+                  <EditableCapture
+                    capture={item.capture}
+                    onSave={(rawText) =>
+                      void updateCaptureText({ captureId: item.capture._id, rawText })
+                    }
+                  />
                 )}
                 {(item.capture.rawType === "link" || item.capture.rawType === "video_link") &&
                   item.capture.rawUrl && (

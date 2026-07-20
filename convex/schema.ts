@@ -515,11 +515,6 @@ export default defineSchema({
     archived: v.optional(v.boolean()),
     // Two-way Todoist link: set when this goal mirrors a Todoist project.
     todoistProjectId: v.optional(v.string()),
-    // ARI-11: which pillar/domain (see `pillars` above) this goal strengthens, so the Life
-    // Wheel and the Coach can eventually connect "what I'm doing" to "what it builds."
-    // Optional and unenforced for v1 — no UI sets it yet, this is the relation the pillar
-    // entity needs to exist as a sane foundation for that wiring later.
-    pillarId: v.optional(v.id("pillars")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

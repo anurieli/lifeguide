@@ -122,7 +122,9 @@ export const remove = mutation({
 // Idempotent: an entry whose title already exists is skipped, so re-running is safe.
 // `createdBy` is stamped to the owner account (resolved by OWNER_EMAIL); the owner
 // must have signed in at least once so their `users` row exists.
-const LAUNCH_ENTRIES: { title: string; body: string; view: "today" | "core" | "sessions" }[] = [
+// Exported for the seed test, which asserts against the real list instead of a
+// hardcoded count (a stale count broke the suite when the fifth entry landed).
+export const LAUNCH_ENTRIES: { title: string; body: string; view: "today" | "core" | "sessions" | "goals" }[] = [
   {
     title: "Your Life Wheel",
     body: "Your Core now opens with a Life Wheel — a radar of the domains that make you, with a slider to rate how strong each part of your life feels right now.",
@@ -147,6 +149,11 @@ const LAUNCH_ENTRIES: { title: string; body: string; view: "today" | "core" | "s
     title: "Talk to your Coach, right where you are",
     body: "The Talk to Coach button now holds the whole conversation. Tap it and a living orb opens the line in place — no new screen — moving with your voice while you talk, then filing what mattered when you're done.",
     view: "today",
+  },
+  {
+    title: "Goals that start as aspirations",
+    body: "The Goals page is now about the things you're actually chasing. Anything without a deadline is a someday aspiration; give it a date and it becomes a real Goal. The AI drafts what it actually takes — a roadmap of steps with real dependencies — and your Coach can now create or update goals for you when you just say so.",
+    view: "goals",
   },
 ];
 

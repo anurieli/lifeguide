@@ -14,6 +14,8 @@ Inside the Morning Scroll, a **`tidbit` component** (a typed ritual step, so it 
 
 Generation is **lazy and cached**: the first time the scroll renders on a new day, it kicks the agent and shows *"Finding today's words…"*; the quote streams in the moment the agent lands (usually a second or two — it's Haiku). It is generated **at most once per person per day**; the ↻ is the only thing that spends another call. If generation fails, the step shows a gentle *"Couldn't find one just now."* with a **Try again**.
 
+Generation is **fail-safe** (hardened 2026-07-20): the whole handler — including the server-side context read — runs inside one try/catch, so *any* failure lands the row as `error` (with its Try again) rather than aborting the action and stranding the row on `pending`. Previously the context read sat outside the catch: if it threw, the row stayed `pending` forever and — because `ensureForDay` is a no-op whenever a row already exists — the scroll showed *"Finding today's words…"* with no way back. As a second belt: if a row somehow sits in `pending` for more than ~20s (a dropped scheduler run, a very slow agent), the step reveals a **Try again** beside the spinner so the person is never trapped watching it think.
+
 ## 3. Functions / actions
 
 | Action | Trigger | What it does | Manual / Coach | Data touched |
@@ -32,7 +34,7 @@ Generation is **lazy and cached**: the first time the scroll renders on a new da
 
 ## 5. States
 
-- **pending:** row exists, no text yet → "Finding today's words…".
+- **pending:** row exists, no text yet → "Finding today's words…". After ~20s in this state (a dropped schedule / slow agent) a **Try again** appears beside the spinner so it is never a dead end.
 - **done:** `text` (+ `attribution`, `model`, `generatedAt`) set → the quote with its author and the ↻.
 - **error:** generation failed → gentle fallback + Try again; never auto-retried in a render loop (only `ensureForDay` on a fresh day, or an explicit refresh).
 - **Overridden:** the person pinned their own `content` on the step → the agent is not called at all; their line shows.
@@ -42,6 +44,7 @@ Generation is **lazy and cached**: the first time the scroll renders on a new da
 
 - **Idempotent ensure:** re-renders never double-fire — an existing row (any status) makes `ensureForDay` a no-op, so the agent runs at most once per person per day.
 - **Stuck error:** an `error` row is left as-is by `ensureForDay` (never auto-retried); only the explicit ↻ / Try again re-runs it, so a failing key can't loop the agent.
+- **Stuck pending:** the agent handler is fully wrapped (context read included), so a failure always writes `error` instead of leaving the row `pending`. Should a row still sit `pending` (e.g. the scheduled action never ran), the ~20s **Try again** on the pending state is the escape hatch — it calls `refresh`, which resets the row and re-runs the agent.
 - **Malformed/absent context:** with little Core signal the agent is told to choose a broadly resonant quote; a thin profile still gets a real quote.
 - **Bad model output:** the action validates the JSON, trims, requires a non-empty `quote`, and defaults a missing author to "Unknown" (never invents a famous name); an empty result marks the row `error`.
 - **Deleted mid-flight:** if the tidbit's row is deleted while the agent runs, `writeInternal` no-ops.

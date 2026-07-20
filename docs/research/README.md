@@ -33,6 +33,14 @@ Top-level notes (not raw/internal, already resolved) are kept here for their rea
 |---|---|---|---|
 | [`listener-memory-backbone.md`](listener-memory-backbone.md) | What is the Listener's conversational-continuity backbone, and what is "a session per speaker"? | 2026-07-18 (ARI-23) | [ADR 0023](../decisions/0023-listener-memory-backbone.md), [`../product/features/listener.md`](../product/features/listener.md) |
 
+## Decision memos (open)
+
+Brainstorm / decision-memo notes: a design worked out and recorded, with the load-bearing calls left as open forks for Ariel. No code until the fork resolves.
+
+| Note | Question | Status | Tracks |
+|---|---|---|---|
+| [`context-artifacts-governance.md`](context-artifacts-governance.md) | Should the platform's context artifacts (Blueprint/Personal Code, Horizons, Core/Character, briefs, mantras, capture) be modeled as one first-class, categorizable, governed component kind — a registry + per-artifact agent-capability layer over the existing tables? | open (2026-07-20) | new Linear issue (context management); generalizes [ADR 0028](../decisions/0028-core-is-the-fixed-life-blueprint-plus-living-containers.md) past the Core |
+
 ## Raw Internal Notes
 
 | Note | Question | Status | Tracks |

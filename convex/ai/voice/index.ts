@@ -72,7 +72,13 @@ export const mintRealtimeSession = action({
   args: {
     sessionId: v.id("interviewSessions"),
   },
-  handler: async (ctx, { sessionId }) => {
+  // Explicit return type: the handler reads api.* queries from its own module
+  // graph, so without this annotation TypeScript's inference goes circular and
+  // the whole generated api degrades to `any`.
+  handler: async (
+    ctx,
+    { sessionId },
+  ): Promise<{ clientSecret: string; model: string; expiresAt: number; instructions: string }> => {
     // Authenticate
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
@@ -112,6 +118,10 @@ export const mintRealtimeSession = action({
       event: "voice_connected",
     });
 
-    return { clientSecret, model, expiresAt };
+    // `instructions` rides back so the surface can show the person what context
+    // their Coach opened with (the orb's "what it knows" panel). It is the
+    // person's own data — their persona, their last-call memory, their
+    // Blueprint status — never another user's.
+    return { clientSecret, model, expiresAt, instructions };
   },
 });

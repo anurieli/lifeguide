@@ -7,6 +7,12 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-20 · Coach orb: live streaming panel + "what it knows" context visibility
+
+A minimalist translucent panel now floats above the live orb: the Coach's current line streams into it as it speaks (last finished line held so it never blanks), your own words show faintly while you talk, and a "what it knows" toggle beside the status label reveals the exact context the session was minted with. To make that truthful rather than a paraphrase, `mintRealtimeSession` now returns its `instructions` (the person's own persona + memory + Blueprint status, never another user's) alongside the client secret; an explicit return-type annotation was added because the new return value made Convex's type inference go circular and silently degraded the whole generated api to `any`. Session logging needed no work — verified already complete: every orb call writes an `interviewSessions` row, both sides' turns persist via `appendTurn`, the mint logs to the AI hub (ADR 0017), ends stamp completed/tossed, and the memory backbone summarizes every call. Mid-call action approvals (Ariel's follow-on idea) deliberately deferred: the Coach takes no actions during a call today — everything files at the end, where the filing report is already the approval surface.
+
+**Docs touched:** `docs/product/features/listener.md` (live panel, context visibility).
+
 ## 2026-07-20 · Coach orb fixes: the giant-pill bug, a real corner row, icon controls with toss
 
 The first orb ship had a layout bug: `.coach-cta`'s `position: relative` loaded after Tailwind's utilities and overrode the pill's `fixed` class, dropping it into the app root's flex row as a giant full-height gradient column on the right (Ariel: "it takes up the whole right-hand side"). Fixed by removing position from the CSS rule (positioning now comes from the call site). The pill is now genuinely small and sits in a corner row with the chat toggle right beside it (CoachDock hosts the row). The live orb's text controls became three icon buttons: mute (mic toggle), toss (✕ — ends the session as `tossed`: memory backbone still summarizes per ADR 0023, but no Center run and no report, straight back to the pill), and end-and-file (✓). Also fixed `useRealtimeVoice` never resetting `ending`, which would have bricked the End button on any second call in the same mount.

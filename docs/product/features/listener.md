@@ -10,11 +10,13 @@ Lostness is easier to talk through than to type. The Listener answers it the sim
 
 ## 2. User-facing behavior
 
-A **talk button** (a microphone) is always present: the floating dock's primary action on desktop, the bottom-bar "Talk" tab on mobile, and the `/speak` URL from anywhere. Pressing it opens a calm full-screen surface: "Talk it through." Press **Start talking**, grant the mic, and the Listener opens with a warm one-liner and an invitation. From there it follows *your* thread — reflecting, asking one short question at a time, comfortable with silence.
+A **"Talk to Coach" pill** is always present in the desktop corner (the floating dock's primary action, `components/coach/CoachOrb.tsx`): a frosted pill over a slowly turning aurora gradient, with a small breathing orb inside. Tapping it does **not** open a window (Ariel, 2026-07-20 — "it should just allow you to speak right there"): the call starts in place. The pill shows "Connecting…", then grows into a **living orb** — layered hue-drifting gradient blobs that swell and glow with whoever is speaking (gold glow = the Listener, blue = you), driven by the real audio level. Grant the mic and the Listener opens with a warm one-liner and an invitation. From there it follows *your* thread — reflecting, asking one short question at a time, comfortable with silence.
+
+The full-screen "Talk it through" surface still exists at the **`/speak` URL** from anywhere (with the rolling transcript and Start talking flow); the corner orb is the same session machinery in smaller chrome.
 
 **The orb remembers the last call (ARI-23, the memory backbone, [ADR 0023](../../decisions/0023-listener-memory-backbone.md)).** The person never sees a "history" screen — the memory shows up as the Listener itself opening grounded instead of cold: when there's a summary of the last call on file, its opening line references it specifically ("how did things land with the career thing?") instead of a generic invitation. This is separate from the Center's identity filing: it's the Listener's memory of the *conversation*, not the Center's read on *who the person is*.
 
-A live two-color waveform shows who is speaking (gold = the Listener, blue = you), with the rolling transcript above it. Controls: **Pause** (holds the whole exchange), **Mute** (it keeps talking, can't hear you), **End**. Ending runs the [Center](the-center.md) ("Filing what you shared…") and then shows the **filing report**. **Close** leaves at any time. A small secondary button on desktop opens the text chat instead.
+On `/speak`, a live two-color waveform shows who is speaking with the rolling transcript above it, and controls are **Pause** / **Mute** / **End**; **Close** leaves at any time. In the corner orb, the orb itself is the who-is-speaking signal (its glow color and swell), the controls are **Mute** / **End** beneath it, and there is no on-screen transcript — the conversation is just spoken, calm by design (turns are still persisted identically). Either way, ending runs the [Center](the-center.md) ("Filing what you shared…") and then shows the **filing report** — full-screen on `/speak`, a compact corner panel for the orb. A small secondary button on desktop opens the text chat instead; it steps back while the orb owns the corner.
 
 ## 3. Functions / actions
 
@@ -39,13 +41,13 @@ A live two-color waveform shows who is speaking (gold = the Listener, blue = you
 
 ## 5. States
 
-- **Closed.** The talk button waits.
-- **Preparing.** Session being created ("Opening a quiet space…").
-- **Pre-start.** The calm intro + "Start talking".
-- **Connecting / Live.** WebRTC up; conversation streaming; Listening / Muted / Paused.
-- **Error.** Mic denied or realtime failed — the reason, "Try again", or "Not now".
-- **Filing.** Call ended; the Center is running.
-- **Report.** The filing report; "Done" closes.
+- **Closed.** The "Talk to Coach" pill waits in the corner (`/speak`: the URL waits).
+- **Preparing / Pre-start** (`/speak` only). Session being created ("Opening a quiet space…"), then the calm intro + "Start talking". The corner orb has no pre-start: the tap IS the start (session create + connect happen behind "Connecting…").
+- **Connecting / Live.** WebRTC up; conversation streaming; Listening / Muted / Paused. The corner orb is grown and moving; on `/speak` the waveform + transcript run.
+- **Error.** Mic denied or realtime failed — the reason, "Try again", or "Not now" (a small corner panel for the orb).
+- **Filing.** Call ended; the Center is running (the orb settles back into the pill, "Filing what you shared…").
+- **Report.** The filing report; "Done" closes. Full-screen on `/speak`, a compact corner panel for the orb.
+- **Stepped aside.** The open thought document hides the *idle* pill (pure capture space) — but never a live call: an in-flight orb stays on screen wherever the person navigates.
 
 ## 6. Edge cases
 

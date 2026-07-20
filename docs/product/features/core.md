@@ -1,5 +1,7 @@
 # The Core
 
+> **Accepted target-state change, 2026-07-20:** [ADR 0028](../../decisions/0028-core-is-the-fixed-life-blueprint-plus-living-containers.md) makes Core one umbrella over the fixed 18-question Life Blueprint and a source-linked Living Core. It absorbs and retires overlapping `coreFiles`/Pillar-folder behavior, makes Mirror derived, and reserves execution for Goals, Todoist, and Calendar. This file still documents built behavior and the older proposed curation model; where they conflict, ADR 0028 governs until implementation reconciles the feature docs.
+
 **Status:** partial · **Element of:** Core · **Owns:** `coreResponses` (the raw Blueprint answers) + `mirror` (the synthesized self)
 
 > The Core is the enduring "who you are" stream and the heart of the Mirror. Its one job: hold and keep honest the text layer behind the human, shaped by the Life Blueprint, published to everything.

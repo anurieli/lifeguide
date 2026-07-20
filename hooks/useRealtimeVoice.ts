@@ -50,6 +50,8 @@ export function useRealtimeVoice(config: RealtimeVoiceConfig) {
   const tracksRef = useRef<MediaStreamTrack[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const barsRef = useRef<(HTMLElement | null)[]>([]);
+  const orbRef = useRef<HTMLElement | null>(null);
+  const orbLevelRef = useRef(0);
 
   // Real audio analysis — one analyser per party, so each bar reacts to the
   // amplitude of whoever is actually talking.
@@ -65,6 +67,13 @@ export function useRealtimeVoice(config: RealtimeVoiceConfig) {
   /** Register a waveform bar element by index (called from the UI's render). */
   function registerBar(i: number, el: HTMLElement | null) {
     barsRef.current[i] = el;
+  }
+
+  /** Register a single "orb" element: the tick loop drives `--voice-level` (0..1,
+      smoothed) and `--voice-glow` (the speaking party's color) on it, so a CSS
+      orb can swell and glow with whoever is talking. Used by CoachOrb. */
+  function registerOrb(el: HTMLElement | null) {
+    orbRef.current = el;
   }
 
   // Drive the waveform from real audio. Each frame we read both analysers, pick
@@ -112,6 +121,15 @@ export function useRealtimeVoice(config: RealtimeVoiceConfig) {
         bar.style.transform = `scaleY(${scale.toFixed(3)})`;
         bar.style.background = color;
       });
+
+      const orb = orbRef.current;
+      if (orb) {
+        // Lerp toward the live level so the orb swells and settles instead of jittering.
+        const target = speaking ? Math.min(1, loudest * 3.2) : 0;
+        orbLevelRef.current += (target - orbLevelRef.current) * 0.18;
+        orb.style.setProperty("--voice-level", orbLevelRef.current.toFixed(3));
+        orb.style.setProperty("--voice-glow", color);
+      }
 
       rafRef.current = window.requestAnimationFrame(tick);
     };
@@ -342,6 +360,7 @@ export function useRealtimeVoice(config: RealtimeVoiceConfig) {
     end,
     reset,
     registerBar,
+    registerOrb,
     WAVE_BARS,
   };
 }

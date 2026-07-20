@@ -5,7 +5,8 @@ import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { View } from "@/components/shell/Rail";
-import { MessageCircle, Mic, Send } from "lucide-react";
+import { MessageCircle, Send } from "lucide-react";
+import { CoachOrb } from "./CoachOrb";
 
 const WELCOME =
   "I'm here. I can see whatever surface you're on, and I know what we've built so far. Ask me anything, or tell me what's on your mind.";
@@ -24,14 +25,12 @@ export function CoachDock({
   surfaceId,
   open,
   onToggle,
-  onSpeak,
   stepAside = false,
 }: {
   view: View;
   surfaceId: Id<"surfaces">;
   open: boolean;
   onToggle: () => void;
-  onSpeak: () => void;
   /** A surface that is pure capture (the open thought document) sets this; the
       whole dock — buttons and panel — yields until the person leaves. */
   stepAside?: boolean;
@@ -43,6 +42,9 @@ export function CoachDock({
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [errored, setErrored] = useState(false);
+  // The orb owns the corner while a call is anywhere past idle; the small
+  // "type instead" button steps back so the live orb has the space to itself.
+  const [orbBusy, setOrbBusy] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   const messages =
@@ -132,32 +134,23 @@ export function CoachDock({
         </div>
       </div>
 
-      {!stepAside && (
-        <>
-          {/* Primary: Talk. The Listener is the headline way to reach the Coach.
-              data-tour anchors the tour's "Coach" step; the button is desktop-only
-              (hidden below `md`), so on a phone that step's coachmark falls back
-              to a centered card instead of pointing at nothing — see
-              components/tour/useTourTarget.ts. */}
-          <button
-            onClick={onSpeak}
-            data-tour="tour-coach"
-            className="hidden md:flex fixed bottom-6 right-6 w-14 h-14 rounded-full bg-coach text-white z-[75] shadow-xl items-center justify-center hover:scale-105 transition"
-            title="Talk to your Coach"
-          >
-            <span className="absolute -inset-1 rounded-full border-2 border-gold opacity-50 animate-ping" />
-            <Mic className="w-[22px] h-[22px]" />
-          </button>
+      {/* Primary: Talk. The call happens right here — the pill grows into the
+          live orb in place, no window (Ariel, 2026-07-20). CoachOrb carries the
+          tour's data-tour="tour-coach" anchor and is desktop-only (hidden below
+          `md`), so on a phone that step's coachmark falls back to a centered
+          card — see components/tour/useTourTarget.ts. The orb handles stepAside
+          itself so a live call survives opening a thought document. */}
+      <CoachOrb stepAside={stepAside} onBusyChange={setOrbBusy} />
 
-          {/* Secondary: type instead. A small affordance above the talk button. */}
-          <button
-            onClick={onToggle}
-            className="hidden md:flex fixed bottom-[88px] right-[18px] w-9 h-9 rounded-full bg-card border border-line text-ink-soft z-[75] shadow-md items-center justify-center hover:border-gold transition"
-            title={open ? "Close chat" : "Type instead"}
-          >
-            <MessageCircle className="w-[17px] h-[17px]" />
-          </button>
-        </>
+      {/* Secondary: type instead. A small affordance above the talk pill. */}
+      {!stepAside && !orbBusy && (
+        <button
+          onClick={onToggle}
+          className="hidden md:flex fixed bottom-[88px] right-[18px] w-9 h-9 rounded-full bg-card border border-line text-ink-soft z-[75] shadow-md items-center justify-center hover:border-gold transition"
+          title={open ? "Close chat" : "Type instead"}
+        >
+          <MessageCircle className="w-[17px] h-[17px]" />
+        </button>
       )}
     </>
   );

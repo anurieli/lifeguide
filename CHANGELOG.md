@@ -7,6 +7,18 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-20 · The Coach orb: talk in place, no window
+
+The desktop "talk" button no longer opens the full-screen /speak overlay. It is now a "Talk to Coach" pill (frosted, over a slowly turning hue-drifting aurora gradient) that runs the whole call right where it sits: tap → "Connecting…" → the pill grows into a living gradient orb (three wavy blob layers) that swells and glows with whoever is speaking, driven by the real audio level (gold glow = Coach, blue = you). Mute/End sit under the orb; ending files the call via the Center as before and shows the filing report in a compact corner panel. Same session machinery as /speak (`interview.start` → mint → `appendTurn` → `center.synthesizeSession`); the full-screen surface remains at the /speak URL. New `components/coach/CoachOrb.tsx`; `useRealtimeVoice` gained `registerOrb` (drives `--voice-level`/`--voice-glow` per frame); orb/pill styles in `app/globals.css` (reduced-motion safe); `AppShell` dropped the overlay wiring; the tour's Coach step copy updated; a fifth What's New launch entry added to `seedLaunchEntries` (re-run `npx convex run whatsNew:seedLaunchEntries` to publish it). A live call survives stepAside (only the idle pill yields to the open thought document).
+
+**Docs touched:** `docs/product/features/listener.md` (orb entry point, states, in-place behavior), `docs/product/features/product-tour.md` (anchor now on the pill), `docs/product/features/whats-new.md` (seed entry list).
+
+## 2026-07-20 · ADR 0028: Core becomes the fixed Life Blueprint plus Living Core containers
+
+Decision memo, no code. Audited the proposed personal-database feature against the existing `coreResponses`, `coreFiles`, Pillars, Mirror, conduct `blueprint`, North Star, Horizons, Goals/Todoist, Board, Future Self, Thoughts, rituals, and Context Bus. ADR 0028 establishes one canonical owner for each concept: the fixed 18 remain the person's deliberate Blueprint declarations; open-ended personal meaning becomes source-linked Living Core artifacts with one home container; Pillars become domain lenses only; Mirror becomes derived; raw intake remains source material; and Goals, Todoist, and future Calendar remain execution. The decision evolves and retires the old file-system model rather than adding a parallel artifact store, renames the second user-facing Blueprint to Personal Code, resolves North Star and standing-Horizon duplication, and defines the migration, routing, Coach context, API, and MCP boundaries. The Core feature doc now points to the accepted target state while continuing to describe current built behavior.
+
+**Docs touched:** new `docs/decisions/0028-core-is-the-fixed-life-blueprint-plus-living-containers.md`, `docs/decisions/README.md`, `docs/product/features/core.md`, `CHANGELOG.md`.
+
 ## 2026-07-20 · ADR 0027 accepted: one Coach, one brain, two interchangeable postures
 
 Ariel blessed ADR 0027 and resolved its open decision #5: **one Coach everywhere** (multiple agents is confusing), with two interchangeable **postures** on one brain — **intake** (vent space, Socratic draw-out, bigger-picture building; the /speak orb's default) and **direction** (guidance; the chat dock's default). Surfaces set the default posture; the Coach may flip mid-conversation. Explicitly experimental: posture wording ships as an easily-tuned framing block, revisited after real use. ADR status flipped to accepted with the resolution recorded; the Proposal section gained the posture axis. Implementation is unblocked and tracked in ARI-109 (four independently-shippable steps, step 1 = shared context into voice mints).

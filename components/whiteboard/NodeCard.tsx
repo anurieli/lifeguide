@@ -190,9 +190,14 @@ export function NodeCard({
     // but never let the gesture fall through to the background marquee/pan.
     onPointerDownNode(modsFrom(e));
     e.stopPropagation();
-    // A text card edits on first click; once selected its whole body drags.
-    // Non-text cards (image/file/link) always drag from the body.
-    if (isText && !selected) return; // let the textarea own the caret
+    // Every card — text or not, selected or not — starts as a potential drag.
+    // We only decide "move" vs "click to edit" on release (see `up`): moving
+    // past the threshold moves the card; releasing in place is what focuses a
+    // text card's textarea. Capturing the pointer here (and, for text cards,
+    // preventing the browser's default caret placement) stops a click-drag
+    // from instead falling into the textarea's native focus/text-selection
+    // behavior, which used to highlight the card's text instead of moving it.
+    if (isText) e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setDragging(true);
     drag.current = { mx: e.clientX, my: e.clientY, moved: false, isText };
@@ -210,8 +215,17 @@ export function NodeCard({
     if (dragging) {
       const moved = drag.current?.moved ?? false;
       onDragEnd(moved);
-      // A click (no move) on a selected text card drops into editing.
-      if (!moved && drag.current?.isText) taRef.current?.focus();
+      // A click (no move) on a text card — selected or not — drops into editing.
+      // Pointerdown prevented the browser's default caret placement (see `down`),
+      // so focus it explicitly and land the caret at the end of the text.
+      if (!moved && drag.current?.isText) {
+        const ta = taRef.current;
+        if (ta) {
+          ta.focus();
+          const len = ta.value.length;
+          ta.setSelectionRange(len, len);
+        }
+      }
     }
     setDragging(false);
     drag.current = null;

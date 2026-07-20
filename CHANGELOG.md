@@ -7,6 +7,12 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-20 · Coach orb fixes: the giant-pill bug, a real corner row, icon controls with toss
+
+The first orb ship had a layout bug: `.coach-cta`'s `position: relative` loaded after Tailwind's utilities and overrode the pill's `fixed` class, dropping it into the app root's flex row as a giant full-height gradient column on the right (Ariel: "it takes up the whole right-hand side"). Fixed by removing position from the CSS rule (positioning now comes from the call site). The pill is now genuinely small and sits in a corner row with the chat toggle right beside it (CoachDock hosts the row). The live orb's text controls became three icon buttons: mute (mic toggle), toss (✕ — ends the session as `tossed`: memory backbone still summarizes per ADR 0023, but no Center run and no report, straight back to the pill), and end-and-file (✓). Also fixed `useRealtimeVoice` never resetting `ending`, which would have bricked the End button on any second call in the same mount.
+
+**Docs touched:** `docs/product/features/listener.md` (pill size/row, icon controls, toss behavior).
+
 ## 2026-07-20 · The Coach orb: talk in place, no window
 
 The desktop "talk" button no longer opens the full-screen /speak overlay. It is now a "Talk to Coach" pill (frosted, over a slowly turning hue-drifting aurora gradient) that runs the whole call right where it sits: tap → "Connecting…" → the pill grows into a living gradient orb (three wavy blob layers) that swells and glows with whoever is speaking, driven by the real audio level (gold glow = Coach, blue = you). Mute/End sit under the orb; ending files the call via the Center as before and shows the filing report in a compact corner panel. Same session machinery as /speak (`interview.start` → mint → `appendTurn` → `center.synthesizeSession`); the full-screen surface remains at the /speak URL. New `components/coach/CoachOrb.tsx`; `useRealtimeVoice` gained `registerOrb` (drives `--voice-level`/`--voice-glow` per frame); orb/pill styles in `app/globals.css` (reduced-motion safe); `AppShell` dropped the overlay wiring; the tour's Coach step copy updated; a fifth What's New launch entry added to `seedLaunchEntries` (re-run `npx convex run whatsNew:seedLaunchEntries` to publish it). A live call survives stepAside (only the idle pill yields to the open thought document).

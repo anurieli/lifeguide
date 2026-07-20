@@ -16,15 +16,15 @@ describe("whatsNew.seedLaunchEntries (ARI-107)", () => {
     await t.run(async (ctx) => ctx.db.insert("users", { email: OWNER_EMAIL }));
 
     const res = await t.mutation(internal.whatsNew.seedLaunchEntries, {});
-    expect(res.inserted).toBe(4);
+    expect(res.inserted).toBe(6);
     expect(res.skipped).toBe(0);
 
     // A different (non-owner) user sees every published entry, none seen yet.
     const readerId = await t.run(async (ctx) => ctx.db.insert("users", {}));
     const feed = await t.withIdentity({ subject: readerId }).query(api.whatsNew.feed, {});
-    expect(feed).toHaveLength(4);
+    expect(feed).toHaveLength(6);
     // Newest-first ordering: the last-seeded entry leads.
-    expect(feed[0].title).toBe("Thought maps for your sessions");
+    expect(feed[0].title).toBe("Your Blueprint, rebuilt");
   });
 
   it("is idempotent — re-running inserts nothing and never duplicates", async () => {
@@ -34,10 +34,10 @@ describe("whatsNew.seedLaunchEntries (ARI-107)", () => {
     await t.mutation(internal.whatsNew.seedLaunchEntries, {});
     const again = await t.mutation(internal.whatsNew.seedLaunchEntries, {});
     expect(again.inserted).toBe(0);
-    expect(again.skipped).toBe(4);
+    expect(again.skipped).toBe(6);
 
     const all = await t.run(async (ctx) => ctx.db.query("whatsNew").collect());
-    expect(all).toHaveLength(4);
+    expect(all).toHaveLength(6);
   });
 
   it("refuses to seed when the owner account does not exist yet", async () => {

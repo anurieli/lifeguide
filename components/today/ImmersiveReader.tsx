@@ -1,29 +1,44 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
 import { DailyRead } from "@/components/today/DailyRead";
 
 // ============================================================================
-// The immersive reader for "read" ritual steps: a full-screen in-page overlay
-// (ADR 0013 — an overlay with natural inner scroll, not scroll-pinning, so
-// mobile Safari behaves). The page behind holds still; the words scroll inside;
-// reaching the end marks the step read with a subtle confirmation and releases.
-// A visible close affordance means it is never a trap: closing early neither
-// marks nor blocks anything.
+// The immersive reader shell: a full-screen in-page overlay (ADR 0013 — an
+// overlay with natural inner scroll, not scroll-pinning, so mobile Safari
+// behaves). The page behind holds still; the words scroll inside.
+//
+// Reaching the end marks the content read (a "Read ✓" confirmation) and reveals
+// a pinned, explicit red release button — it does NOT auto-close (ADR 0013,
+// revised 2026-07-20: the original design auto-closed 1.1s after the bottom was
+// reached; Ariel wants the reader to stay open until he explicitly says he's
+// done). Only clicking that button, or the always-visible top X, closes it.
+// Closing via the top X early neither marks nor blocks anything — "Read again"
+// is always offered elsewhere.
+//
+// `ImmersiveShell` is the reusable piece (overlay, scroll detection, the
+// top-X / bottom-red-button chrome); `ImmersiveReader` wraps it with the
+// markdown `DailyRead` renderer for ritual "read" steps. The Blueprint's own
+// immersive view (components/settings/BlueprintImmersive.tsx) reuses the same
+// shell with structured pillar/item content instead.
 // ============================================================================
 
-export function ImmersiveReader({
+export function ImmersiveShell({
   title,
-  content,
   onFinished,
   onClose,
+  maxWidthClassName = "max-w-[560px]",
+  finishLabel = "Done",
+  children,
 }: {
   title: string;
-  content: string;
-  /** Reached the end: mark the step read. Fired once. */
+  /** Reached the end: mark the content read. Fired once. */
   onFinished: () => void;
   onClose: () => void;
+  maxWidthClassName?: string;
+  finishLabel?: string;
+  children: ReactNode;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [done, setDone] = useState(false);
@@ -34,9 +49,8 @@ export function ImmersiveReader({
     firedRef.current = true;
     setDone(true);
     onFinished();
-    // A beat for the confirmation to land, then release the page.
-    setTimeout(onClose, 1100);
-  }, [onFinished, onClose]);
+    // No auto-close: the person releases the reader themselves (below).
+  }, [onFinished]);
 
   // The page behind holds still while the reader is up.
   useEffect(() => {
@@ -48,7 +62,7 @@ export function ImmersiveReader({
   }, []);
 
   // Content shorter than the viewport has no end to scroll to: it counts as
-  // read after a considered pause.
+  // read after a considered pause. Still requires the explicit button to close.
   useEffect(() => {
     const el = scrollRef.current;
     if (el && el.scrollHeight <= el.clientHeight + 4) {
@@ -77,24 +91,52 @@ export function ImmersiveReader({
         </button>
       </div>
 
-      {/* the words */}
+      {/* the content */}
       <div
         ref={scrollRef}
         onScroll={onScroll}
         className="flex-1 overflow-y-auto overscroll-contain"
       >
-        <div className="max-w-[560px] mx-auto px-6 py-10 md:py-14 text-[17px]">
-          <DailyRead content={content} />
-          <div className="h-16" />
+        <div className={`${maxWidthClassName} mx-auto px-6 py-10 md:py-14 text-[17px]`}>
+          {children}
+          <div className="h-24" />
         </div>
       </div>
 
-      {/* the release */}
+      {/* the explicit release — the ONLY thing that closes the reader once the
+          end is reached. Pinned at the bottom, never auto-triggered. */}
       {done && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-ink text-white rounded-full px-5 py-2.5 text-sm flex items-center gap-2 shadow-lg">
-          <Check className="w-4 h-4" strokeWidth={2.5} /> Read
+        <div className="flex items-center justify-between gap-4 border-t border-line bg-paper/95 px-5 py-4 md:px-8">
+          <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-mute">
+            <Check className="w-4 h-4" strokeWidth={2.5} /> Read
+          </span>
+          <button
+            onClick={onClose}
+            className="rounded-full bg-red-600 px-6 py-2.5 text-sm font-medium text-white shadow-lg transition hover:bg-red-700"
+          >
+            {finishLabel}
+          </button>
         </div>
       )}
     </div>
+  );
+}
+
+export function ImmersiveReader({
+  title,
+  content,
+  onFinished,
+  onClose,
+}: {
+  title: string;
+  content: string;
+  /** Reached the end: mark the step read. Fired once. */
+  onFinished: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <ImmersiveShell title={title} onFinished={onFinished} onClose={onClose}>
+      <DailyRead content={content} />
+    </ImmersiveShell>
   );
 }

@@ -2,18 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAction, useMutation } from "convex/react";
+import { Check, Mic, MicOff, X } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useRealtimeVoice } from "@/hooks/useRealtimeVoice";
 import { FilingReport } from "@/components/voice/FilingReport";
 
 // The Coach orb: talking to the Coach happens right here, in place — no window.
-// Idle, it's the "Talk to Coach" pill in the corner. Tapped, the pill becomes a
-// living gradient orb that swells with whoever is speaking; ending the call
-// files it and shows the report in a small panel above the same corner. The
-// session machinery is identical to /speak (interview.start → mint →
-// appendTurn → center.synthesizeSession) — only the chrome differs. The
-// full-screen /speak surface remains for its own URL.
+// Idle, it's a small "Talk to Coach" pill in the corner row (CoachDock hosts the
+// row and puts the chat toggle beside it). Tapped, a living gradient orb grows
+// over the corner and swells with whoever is speaking. Under the orb: mute, a
+// toss (✕ — discard the conversation, nothing files), and end-and-file (✓).
+// Ending files through the Center and shows the report in a compact corner
+// panel. Same session machinery as /speak (interview.start → mint → appendTurn
+// → center.synthesizeSession); the full-screen /speak surface remains at its URL.
 
 const OPENING_PROMPT =
   "Open the conversation now. Greet the person warmly in one short sentence and invite them to share whatever is on their mind right now. Then follow where they go.";
@@ -41,7 +43,7 @@ export function CoachOrb({
   /** The open thought document is pure capture: the idle pill yields there.
       A live call never vanishes mid-sentence, though — only idle hides. */
   stepAside: boolean;
-  /** Lets the dock hide its "type instead" button while the orb owns the corner. */
+  /** Lets the dock hide its chat toggle while the orb owns the corner. */
   onBusyChange?: (busy: boolean) => void;
 }) {
   const [phase, setPhase] = useState<Phase>("call");
@@ -50,6 +52,10 @@ export function CoachOrb({
   // The mint/appendTurn closures need the id synchronously (before React re-renders).
   const sessionIdRef = useRef<Id<"interviewSessions"> | null>(null);
   const synthRan = useRef(false);
+  // Set just before voice.end() when the person tosses: end the session as
+  // "tossed" (the memory backbone still summarizes it — ADR 0023), skip the
+  // Center and the report entirely, snap back to the pill.
+  const tossRef = useRef(false);
 
   const startSession = useMutation(api.interview.start);
   const endSession = useMutation(api.interview.end);
@@ -70,12 +76,18 @@ export function CoachOrb({
     openingPrompt: OPENING_PROMPT,
     onEnd: async () => {
       const id = sessionIdRef.current;
+      if (tossRef.current) {
+        tossRef.current = false;
+        if (id) await endSession({ sessionId: id, status: "tossed" });
+        resetAll();
+        return;
+      }
       if (id) await endSession({ sessionId: id, status: "completed" });
       setPhase("filing");
     },
   });
 
-  // When the call ends, run the Center, then show the report.
+  // When the call ends (not tossed), run the Center, then show the report.
   useEffect(() => {
     if (phase !== "filing" || !sessionIdRef.current || synthRan.current) return;
     synthRan.current = true;
@@ -105,6 +117,11 @@ export function CoachOrb({
     await voice.start();
   };
 
+  const toss = () => {
+    tossRef.current = true;
+    void voice.end();
+  };
+
   const resetAll = () => {
     sessionIdRef.current = null;
     setSessionId(null);
@@ -116,7 +133,7 @@ export function CoachOrb({
   // ── Report: a small panel above the corner, same resolution flow as /speak ──
   if (phase === "report" && sessionId) {
     return (
-      <div className="hidden md:flex fixed bottom-6 right-6 z-[76] w-[400px] max-w-[calc(100vw-48px)] max-h-[70vh] rounded-[18px] bg-paper border border-line shadow-2xl flex-col overflow-hidden">
+      <div className="fixed bottom-6 right-6 z-[76] flex w-[400px] max-w-[calc(100vw-48px)] max-h-[70vh] rounded-[18px] bg-paper border border-line shadow-2xl flex-col overflow-hidden">
         <FilingReport sessionId={sessionId} onDone={resetAll} />
       </div>
     );
@@ -125,7 +142,7 @@ export function CoachOrb({
   // ── Filing: the orb settles while the Center files the call ──
   if (phase === "filing") {
     return (
-      <div className="coach-cta hidden md:flex fixed bottom-6 right-6 z-[75] items-center gap-2.5 px-5 py-3 text-[14px] text-[#2a2417] shadow-lg">
+      <div className="coach-cta relative flex items-center gap-2 px-3.5 py-2 text-[12.5px] text-[#2a2417] shadow-md">
         <span className="coach-cta-dot coach-cta-dot-fast" />
         Filing what you shared…
       </div>
@@ -135,7 +152,7 @@ export function CoachOrb({
   // ── Error: quiet, in place ──
   if (voice.micState === "error" || startFailed) {
     return (
-      <div className="hidden md:flex fixed bottom-6 right-6 z-[76] w-[320px] rounded-[18px] bg-card border border-line shadow-xl flex-col gap-3 p-4">
+      <div className="fixed bottom-6 right-6 z-[76] flex w-[320px] rounded-[18px] bg-card border border-line shadow-xl flex-col gap-3 p-4">
         <p className="text-[13.5px] text-ink-soft leading-relaxed">
           {startFailed
             ? "Could not open the line just now."
@@ -162,10 +179,10 @@ export function CoachOrb({
     );
   }
 
-  // ── Live: the orb, right where the button was ──
+  // ── Live: the orb, right where the pill was ──
   if (voice.micState === "live") {
     return (
-      <div className="hidden md:flex fixed bottom-6 right-6 z-[75] flex-col items-center gap-3">
+      <div className="fixed bottom-6 right-6 z-[75] flex flex-col items-center gap-3">
         <div className="coach-orb" ref={voice.registerOrb}>
           <span className="coach-orb-blob coach-orb-b1" />
           <span className="coach-orb-blob coach-orb-b2" />
@@ -174,30 +191,31 @@ export function CoachOrb({
         </div>
         <span className="text-[12px] text-ink-mute tracking-wide">{voice.statusLabel}</span>
         <div className="flex items-center gap-2">
-          <button
+          <OrbControl
+            title={voice.muted ? "Unmute" : "Mute"}
+            active={voice.muted}
             onClick={voice.toggleMute}
             disabled={voice.paused}
-            className={`rounded-full px-4 py-1.5 text-[12.5px] border transition disabled:opacity-40 ${
-              voice.muted
-                ? "bg-ink text-white border-ink"
-                : "bg-card text-ink-soft border-line hover:border-gold"
-            }`}
           >
-            {voice.muted ? "Unmute" : "Mute"}
-          </button>
-          <button
+            {voice.muted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          </OrbControl>
+          <OrbControl title="Toss this conversation" onClick={toss} disabled={voice.ending}>
+            <X className="w-4 h-4" />
+          </OrbControl>
+          <OrbControl
+            title="End and file"
+            primary
             onClick={() => void voice.end()}
             disabled={voice.ending}
-            className="rounded-full px-4 py-1.5 text-[12.5px] bg-ink text-white hover:bg-[#2a2f3a] disabled:opacity-50 transition"
           >
-            {voice.ending ? "Ending…" : "End"}
-          </button>
+            <Check className="w-4 h-4" />
+          </OrbControl>
         </div>
       </div>
     );
   }
 
-  // ── Idle / connecting: the pill ──
+  // ── Idle / connecting: a small pill, sitting in the dock's corner row ──
   if (stepAside) return null;
   const connecting = voice.micState === "connecting";
   return (
@@ -206,10 +224,44 @@ export function CoachOrb({
       disabled={connecting}
       data-tour="tour-coach"
       title="Talk to your Coach"
-      className="coach-cta hidden md:flex fixed bottom-6 right-6 z-[75] items-center gap-2.5 px-5 py-3 text-[14px] font-medium text-[#2a2417] shadow-lg hover:scale-[1.04] transition-transform"
+      className="coach-cta relative flex items-center gap-2 px-3.5 py-2 text-[12.5px] font-medium text-[#2a2417] shadow-md hover:scale-[1.04] transition-transform"
     >
       <span className={`coach-cta-dot ${connecting ? "coach-cta-dot-fast" : ""}`} />
       {connecting ? "Connecting…" : "Talk to Coach"}
+    </button>
+  );
+}
+
+function OrbControl({
+  title,
+  onClick,
+  children,
+  active = false,
+  primary = false,
+  disabled = false,
+}: {
+  title: string;
+  onClick: () => void;
+  children: React.ReactNode;
+  active?: boolean;
+  primary?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-label={title}
+      className={`w-9 h-9 rounded-full border flex items-center justify-center transition disabled:opacity-40 ${
+        primary
+          ? "bg-ink text-white border-ink hover:bg-[#2a2f3a]"
+          : active
+            ? "bg-ink text-white border-ink"
+            : "bg-card text-ink-soft border-line hover:border-gold"
+      }`}
+    >
+      {children}
     </button>
   );
 }

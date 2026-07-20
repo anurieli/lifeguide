@@ -134,24 +134,26 @@ export function CoachDock({
         </div>
       </div>
 
-      {/* Primary: Talk. The call happens right here — the pill grows into the
-          live orb in place, no window (Ariel, 2026-07-20). CoachOrb carries the
-          tour's data-tour="tour-coach" anchor and is desktop-only (hidden below
-          `md`), so on a phone that step's coachmark falls back to a centered
-          card — see components/tour/useTourTarget.ts. The orb handles stepAside
-          itself so a live call survives opening a thought document. */}
-      <CoachOrb stepAside={stepAside} onBusyChange={setOrbBusy} />
-
-      {/* Secondary: type instead. A small affordance above the talk pill. */}
-      {!stepAside && !orbBusy && (
-        <button
-          onClick={onToggle}
-          className="hidden md:flex fixed bottom-[88px] right-[18px] w-9 h-9 rounded-full bg-card border border-line text-ink-soft z-[75] shadow-md items-center justify-center hover:border-gold transition"
-          title={open ? "Close chat" : "Type instead"}
-        >
-          <MessageCircle className="w-[17px] h-[17px]" />
-        </button>
-      )}
+      {/* The corner row: the chat toggle sits right beside a small "Talk to
+          Coach" pill (Ariel, 2026-07-20) — the call happens in place, no window.
+          Desktop-only (hidden below `md`), so on a phone the tour's Coach step
+          (anchored on the pill's data-tour="tour-coach") falls back to a
+          centered card — see components/tour/useTourTarget.ts. CoachOrb handles
+          stepAside itself so a live call survives opening a thought document,
+          and its live/report/error states break out of the row with their own
+          fixed positioning. */}
+      <div className="hidden md:flex fixed bottom-6 right-6 z-[75] items-center gap-2">
+        {!stepAside && !orbBusy && (
+          <button
+            onClick={onToggle}
+            className="w-9 h-9 rounded-full bg-card border border-line text-ink-soft shadow-md flex items-center justify-center hover:border-gold transition"
+            title={open ? "Close chat" : "Type instead"}
+          >
+            <MessageCircle className="w-[17px] h-[17px]" />
+          </button>
+        )}
+        <CoachOrb stepAside={stepAside} onBusyChange={setOrbBusy} />
+      </div>
     </>
   );
 }

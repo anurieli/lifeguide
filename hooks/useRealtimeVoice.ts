@@ -189,6 +189,7 @@ export function useRealtimeVoice(config: RealtimeVoiceConfig) {
   async function start() {
     setMicState("connecting");
     setErrorMsg("");
+    setEnding(false);
     setCoachLive("");
     setUserLive("");
     setMuted(false);
@@ -337,10 +338,12 @@ export function useRealtimeVoice(config: RealtimeVoiceConfig) {
     }
   }
 
-  /** Reset back to idle (used by the error screen's "try again"). */
+  /** Reset back to idle (used by "try again" and by surfaces that host more
+      than one call per mount, like CoachOrb). */
   function reset() {
     setMicState("idle");
     setErrorMsg("");
+    setEnding(false);
   }
 
   const statusLabel = paused ? "Paused" : muted ? "Muted" : "Listening";

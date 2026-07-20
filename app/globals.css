@@ -252,9 +252,12 @@ body {
    useRealtimeVoice.registerOrb. See docs/product/features/listener.md.
    =========================================================================== */
 
-/* the idle call-to-action: a frosted pill over a slowly turning aurora */
+/* the idle call-to-action: a frosted pill over a slowly turning aurora.
+   NO position here — this rule loads after Tailwind's utilities, so setting
+   `position: relative` would beat a `fixed` utility on the same element and
+   dump the pill into the document flow (the "giant gradient column" bug,
+   2026-07-20). Position comes from utility classes at the call site. */
 .coach-cta {
-  position: relative;
   overflow: hidden;
   border-radius: 9999px;
   isolation: isolate;
@@ -301,8 +304,8 @@ body {
 
 /* the little living orb inside the pill */
 .coach-cta-dot {
-  width: 15px;
-  height: 15px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   flex-shrink: 0;
   background: radial-gradient(circle at 32% 28%, #ffffff, #b9a7f9 48%, #8ecdf7 85%);

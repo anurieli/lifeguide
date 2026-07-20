@@ -52,6 +52,9 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   // Coach text dock open state (desktop secondary). The voice call is the primary
   // way in — it runs in place inside CoachDock's CoachOrb, no overlay.
   const [coachOpen, setCoachOpen] = useState(false);
+  // "Talk to the Coach about this" from a Goals card drops text into the
+  // dock's composer (never auto-sent); `v` bumps so the same text can re-apply.
+  const [coachPrefill, setCoachPrefill] = useState<{ text: string; v: number } | null>(null);
   // The open entry in the Sessions view.
   const [activeSessionId, setActiveSessionId] = useState<Id<"sessions"> | null>(null);
   const createSession = useMutation(api.sessions.create);
@@ -185,7 +188,15 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
           )}
           {view === "today" && <Today onNavigate={setView} />}
           {view === "core" && <Core />}
-          {view === "goals" && <Goals onNavigate={setView} />}
+          {view === "goals" && (
+            <Goals
+              onNavigate={setView}
+              onTalkToCoach={(message) => {
+                setCoachPrefill({ text: message, v: Date.now() });
+                setCoachOpen(true);
+              }}
+            />
+          )}
           {view === "sessions" && (
             <Sessions
               activeSessionId={activeSessionId}
@@ -237,6 +248,7 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
         open={coachOpen}
         onToggle={() => setCoachOpen((o) => !o)}
         stepAside={view === "sessions" && activeSessionId !== null}
+        prefill={coachPrefill}
       />
       <FeedbackWidget view={view} coachOpen={coachOpen} />
       {/* What's New: a dismiss-by-click-through feed of shipped features, docked

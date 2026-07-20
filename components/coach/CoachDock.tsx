@@ -26,6 +26,7 @@ export function CoachDock({
   open,
   onToggle,
   stepAside = false,
+  prefill,
 }: {
   view: View;
   surfaceId: Id<"surfaces">;
@@ -34,6 +35,10 @@ export function CoachDock({
   /** A surface that is pure capture (the open thought document) sets this; the
       whole dock — buttons and panel — yields until the person leaves. */
   stepAside?: boolean;
+  /** A "talk to the Coach about this" affordance elsewhere (e.g. a Goals card)
+      drops text into the composer — never auto-sent, the person still hits
+      Send. `v` bumps on every request so the same text can be re-applied. */
+  prefill?: { text: string; v: number } | null;
 }) {
   const ask = useAction(api.coach.ask);
   // Persisted, reactive history. The user turn appears the instant the action commits it,
@@ -46,6 +51,14 @@ export function CoachDock({
   // "type instead" button steps back so the live orb has the space to itself.
   const [orbBusy, setOrbBusy] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const lastPrefillV = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (prefill && prefill.v !== lastPrefillV.current) {
+      lastPrefillV.current = prefill.v;
+      setInput(prefill.text);
+    }
+  }, [prefill]);
 
   const messages =
     stored && stored.length > 0

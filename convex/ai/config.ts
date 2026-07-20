@@ -82,6 +82,29 @@ board_worthy is the vision-board sieve: true ONLY if this is a piece of the life
 Be concrete and human. Never invent facts the input doesn't imply. If the input is thin, keep the essence short and honest.`,
   },
 
+  // Classifies whether the Coach's latest incoming message asks to create or
+  // update a goal/aspiration, before the conversational reply runs. Cheap and
+  // fast on purpose — it fires on every Coach turn (an explicit, accepted
+  // tradeoff: 2 model calls per turn instead of 1). Live (convex/coach.ts).
+  coachGoalIntent: {
+    label: "Coach · goal intent",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.1,
+    wired: true,
+    system: `You read one message from someone talking to their Coach in a personal life-mapping app, and decide whether it asks to create or update a goal/aspiration (a thing they're chasing in life, optionally with a deadline).
+
+Return ONLY a JSON object, no prose, in one of these exact shapes:
+{"action":"none"}
+{"action":"createGoal","name":"...","why":"optional reason, or omit","pillarId":"copy an id verbatim from the Known pillar ids list if one clearly fits, else omit","deadline":"YYYY-MM-DD if they gave one, else omit"}
+{"action":"updateGoal","goalId":"copy an id verbatim from the Known goal ids list — REQUIRED, never invent one","name":"optional new name","why":"optional","pillarId":"optional, from Known pillar ids","deadline":"optional YYYY-MM-DD"}
+
+Rules:
+- Default to {"action":"none"} on ANY ambiguity, vagueness, or if they're just talking about a goal rather than asking to create/change one.
+- NEVER invent a goalId or pillarId. Only use ids that appear verbatim in the "Known goal ids" / "Known pillar ids" lists you're given. If updateGoal is warranted but no known id clearly matches, return {"action":"none"} instead.
+- A deadline must be a real, resolvable date. If they said something vague like "soon" or "this year" without a specific date, omit deadline rather than guessing one.`,
+  },
+
   // The Coach's conversational reply. Live (system prompt is built per-call in coach.ts).
   // The Coach IS the product's power tool — it reasons over the person's full context and
   // must be perceptive and warm, not generic. Sonnet is the right tier (opus latency would
@@ -286,6 +309,28 @@ Return ONLY a JSON object, no prose, in this exact shape:
 {"title":"a 3-7 word noun phrase naming what the entry is about","summary":"one plain, warm sentence (max ~22 words) saying what was on their mind"}
 
 Ground both strictly in the text. Never invent facts, never address the person, never praise. If the entry is thin, keep it short and honest.`,
+  },
+
+  // Goals: draft a short "what this actually takes" summary + a 3-7 step
+  // starter roadmap the moment a goal/aspiration is created (or regenerated).
+  // Bounded, one-shot structuring from a handful of fields — the same tier as
+  // sessionDigest/thoughtMap, not the conversational tier. Live.
+  goalEnrich: {
+    label: "Goals · draft a roadmap",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    temperature: 0.4,
+    wired: true,
+    system: `You scope a goal or aspiration for someone using a personal life-mapping app. They may not have a deadline yet — that's fine, treat it as a someday aspiration and scope it the same way.
+
+Return ONLY a JSON object, no prose, in this exact shape:
+{"summary":"1-3 plain sentences on what this actually takes to accomplish — the real shape of the work, stated honestly","steps":[{"id":"s1","title":"a short, concrete step","nextMove":true,"blockedBy":[]},{"id":"s2","title":"...","nextMove":false,"blockedBy":["s1"]}]}
+
+Rules:
+- 3 to 7 steps. Concrete and sequenced, not generic ("research it" is too vague; "book a consult with a certified mountaineering guide" is right).
+- "blockedBy" lists the ids of OTHER steps in this same list that must finish first (a real dependency, not just "comes before"). Leave it empty when nothing genuinely blocks the step. Never create a cycle.
+- Exactly ONE step has "nextMove": true — the single most immediate, concrete thing they could actually go do right now. All others are false.
+- Ground the steps in what the goal actually requires. Never pad with filler steps just to hit a count.`,
   },
 
   // Session interviewer reply (ARI-18): the dynamic-mode conversation partner inside

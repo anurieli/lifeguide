@@ -1,6 +1,6 @@
 # 0027. One Coach: voice and text as I/O modes on a single agent and a single memory
 
-**Status:** proposed (design memo for Ariel, 2026-07-20; no code)
+**Status:** accepted (Ariel, 2026-07-20). Decision #5 resolved: **one Coach, one brain — two interchangeable postures.** Ariel: multiple agents is confusing ("you talk to the coach, you want to vent to the coach... it should be one that just knows how to behave in different scenarios"). The two postures are **intake** (let you vent, draw more out of you, Socratic questions, build the bigger picture) and **direction** (give guidance). A surface sets the *default* posture — the /speak orb opens in intake, the chat dock in direction — but they are explicitly interchangeable mid-conversation; the Coach flips when the moment calls for it. Flagged experimental: how it behaves in practice is unknown, so posture wording ships as an easily-tuned framing block and gets revisited after real use. Implementation tracked in ARI-109, migrating in the four steps below.
 
 ## Context
 
@@ -32,6 +32,8 @@ Ariel's prompt (2026-07-19): "maybe the coach should just be the audio interface
 - **Onboarding** → the Coach, framed "first meeting; draw out the Blueprint gently."
 
 The person talks to one entity that remembers them across mouths: a voice call last night is context for a typed question this morning, and vice versa.
+
+Underneath every framing sits one axis, the Coach's **posture** (added at acceptance): **intake** (listen, let them vent, Socratic questions to draw more out and build the bigger picture) versus **direction** (guide, advise, point somewhere). A framing is just a surface picking the default posture — /speak defaults to intake, the chat dock to direction, Core-fill is intake with a Blueprint goal — and the Coach may flip posture mid-conversation when the moment calls for it. The postures are interchangeable modes of one brain, never two characters.
 
 ## How it works (concretely)
 

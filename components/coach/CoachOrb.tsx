@@ -49,6 +49,11 @@ export function CoachOrb({
   const [phase, setPhase] = useState<Phase>("call");
   const [sessionId, setSessionId] = useState<Id<"interviewSessions"> | null>(null);
   const [startFailed, setStartFailed] = useState(false);
+  // The live panel above the orb: the Coach's current/last line, and the exact
+  // context the session was minted with ("what it knows"), shown on demand.
+  const [lastCoach, setLastCoach] = useState("");
+  const [loadedContext, setLoadedContext] = useState<string | null>(null);
+  const [showContext, setShowContext] = useState(false);
   // The mint/appendTurn closures need the id synchronously (before React re-renders).
   const sessionIdRef = useRef<Id<"interviewSessions"> | null>(null);
   const synthRan = useRef(false);
@@ -64,8 +69,13 @@ export function CoachOrb({
   const synthesize = useAction(api.center.synthesizeSession);
 
   const voice = useRealtimeVoice({
-    mint: () => mintSession({ sessionId: sessionIdRef.current! }),
+    mint: async () => {
+      const minted = await mintSession({ sessionId: sessionIdRef.current! });
+      setLoadedContext(minted.instructions ?? null);
+      return minted;
+    },
     onCoachTurn: (text) => {
+      setLastCoach(text);
       const id = sessionIdRef.current;
       if (id) void appendTurn({ sessionId: id, role: "coach", text }).catch(() => {});
     },
@@ -127,6 +137,9 @@ export function CoachOrb({
     setSessionId(null);
     setPhase("call");
     setStartFailed(false);
+    setLastCoach("");
+    setLoadedContext(null);
+    setShowContext(false);
     voice.reset();
   };
 
@@ -181,15 +194,55 @@ export function CoachOrb({
 
   // ── Live: the orb, right where the pill was ──
   if (voice.micState === "live") {
+    const liveText = voice.coachLive || lastCoach;
     return (
-      <div className="fixed bottom-6 right-6 z-[75] flex flex-col items-center gap-3">
+      <div className="fixed bottom-6 right-6 z-[75] flex flex-col items-end gap-3">
+        {/* The minimalist window above the orb: what the Coach is saying as it
+            streams, what it heard you say, and (on demand) the exact context
+            the session opened with. Transparent, calm, never required. */}
+        {(liveText || voice.userLive || showContext) && (
+          <div className="w-[320px] max-h-[40vh] overflow-y-auto rounded-[14px] bg-paper/75 backdrop-blur-md border border-line/60 shadow-lg px-4 py-3 flex flex-col gap-2">
+            {showContext && loadedContext && (
+              <div className="pb-2 border-b border-line/60">
+                <div className="text-[10.5px] uppercase tracking-[0.08em] text-ink-mute mb-1">
+                  What your Coach opened with
+                </div>
+                <p className="text-[11.5px] text-ink-mute leading-relaxed whitespace-pre-wrap">
+                  {loadedContext}
+                </p>
+              </div>
+            )}
+            {voice.userLive && (
+              <p className="text-[12.5px] text-ink-mute italic leading-relaxed">
+                “{voice.userLive}”
+              </p>
+            )}
+            {liveText && (
+              <p className="text-[13px] text-ink leading-relaxed whitespace-pre-wrap">
+                {liveText}
+                {voice.coachLive && <span className="vf-caret" />}
+              </p>
+            )}
+          </div>
+        )}
+        <div className="self-center flex flex-col items-center gap-3">
         <div className="coach-orb" ref={voice.registerOrb}>
           <span className="coach-orb-blob coach-orb-b1" />
           <span className="coach-orb-blob coach-orb-b2" />
           <span className="coach-orb-blob coach-orb-b3" />
           <span className="coach-orb-core" />
         </div>
-        <span className="text-[12px] text-ink-mute tracking-wide">{voice.statusLabel}</span>
+        <div className="flex items-center gap-2.5">
+          <span className="text-[12px] text-ink-mute tracking-wide">{voice.statusLabel}</span>
+          {loadedContext && (
+            <button
+              onClick={() => setShowContext((s) => !s)}
+              className="text-[11px] text-ink-mute underline underline-offset-2 hover:text-ink transition"
+            >
+              {showContext ? "hide context" : "what it knows"}
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <OrbControl
             title={voice.muted ? "Unmute" : "Mute"}
@@ -210,6 +263,7 @@ export function CoachOrb({
           >
             <Check className="w-4 h-4" />
           </OrbControl>
+        </div>
         </div>
       </div>
     );

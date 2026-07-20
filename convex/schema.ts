@@ -347,13 +347,53 @@ export default defineSchema({
   // lived), one document per user, seeded from the 8-pillar doctrine. A knowledge-base
   // entity at the pillar level, deliberately NOT a coreFiles row: the Core is the
   // person (character); the Blueprint is conduct. Ritual "read" steps with
-  // source="blueprint" resolve their words from here, so an edit in Settings changes
-  // what is read tomorrow morning. See docs/product/features/the-blueprint.md.
+  // source="blueprint" resolve their words from `content` (derived, see below), so an
+  // edit in Settings changes what is read tomorrow morning. See
+  // docs/product/features/the-blueprint.md.
+  //
+  // STRUCTURED, not free text (2026-07-20): the doctrine lives as `header` + `pillars`,
+  // each pillar and item carrying a stable string `id` so a mutation can target one
+  // exact unit. `content` is DERIVED — regenerated server-side on every structured
+  // mutation (convex/blueprintDoc.ts's `renderMarkdown`) so the existing read path
+  // (ritual "read" steps, ImmersiveReader/DailyRead) keeps working unchanged; nothing
+  // ever writes `content` directly except that regeneration (the legacy `update`
+  // mutation is the one exception, kept as a raw-override escape hatch).
+  // `header`/`pillars` are optional so pre-migration rows (old free-text-only shape)
+  // stay schema-valid until `blueprintDoc`'s lazy upgrade runs (see its header comment
+  // for the exact policy: untouched legacy seeds are replaced outright; genuinely
+  // edited free text is preserved, wrapped into one pillar, never discarded).
   blueprint: defineTable({
     userId: v.id("users"),
     title: v.string(),
-    content: v.string(), // markdown, fully user-editable
-    seedVersion: v.number(), // which seed it was adopted from; edits never re-seeded
+    header: v.optional(
+      v.object({
+        kicker: v.optional(v.string()),
+        title: v.string(),
+        intro: v.optional(v.string()),
+        source: v.optional(v.string()),
+        compiled: v.optional(v.string()),
+        structure: v.optional(v.string()),
+        howToRead: v.optional(v.string()),
+      }),
+    ),
+    pillars: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          name: v.string(),
+          subtitle: v.optional(v.string()),
+          items: v.array(
+            v.object({
+              id: v.string(),
+              practice: v.string(),
+              why: v.string(),
+            }),
+          ),
+        }),
+      ),
+    ),
+    content: v.string(), // markdown, DERIVED from header+pillars — see the note above
+    seedVersion: v.number(), // which seed it was adopted/upgraded from; edits never re-seeded
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),

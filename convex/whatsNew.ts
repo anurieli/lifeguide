@@ -122,9 +122,11 @@ export const remove = mutation({
 // Idempotent: an entry whose title already exists is skipped, so re-running is safe.
 // `createdBy` is stamped to the owner account (resolved by OWNER_EMAIL); the owner
 // must have signed in at least once so their `users` row exists.
-// Exported for the seed test, which asserts against the real list instead of a
-// hardcoded count (a stale count broke the suite when the fifth entry landed).
-export const LAUNCH_ENTRIES: { title: string; body: string; view: "today" | "core" | "sessions" | "goals" }[] = [
+export const LAUNCH_ENTRIES: {
+  title: string;
+  body: string;
+  view: "today" | "core" | "sessions" | "goals" | "settings";
+}[] = [
   {
     title: "Your Life Wheel",
     body: "Your Core now opens with a Life Wheel — a radar of the domains that make you, with a slider to rate how strong each part of your life feels right now.",
@@ -159,6 +161,11 @@ export const LAUNCH_ENTRIES: { title: string; body: string; view: "today" | "cor
     title: "Your brain-dump, itemized",
     body: "Each thing you add to a session — a note, a recording, a photo — now shows as its own card in the entry. Tap one to expand it, press play to hear a recording again.",
     view: "sessions",
+  },
+  {
+    title: "Your Blueprint, rebuilt",
+    body: "The Blueprint is now 8 pillars of structured, editable lines instead of one wall of text — open it from Settings for the full immersive read, practice by practice, each with its own reason why.",
+    view: "settings",
   },
 ];
 

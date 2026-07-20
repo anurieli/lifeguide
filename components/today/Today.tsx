@@ -7,7 +7,7 @@ import { api } from "@/convex/_generated/api";
 import { View } from "@/components/shell/Rail";
 import { filledCount } from "@/lib/levels";
 import { activeRitual, ritualOpensAtLabel } from "@/lib/ritual";
-import { RitualSequence } from "@/components/today/RitualSequence";
+import { RitualSequence, RitualSeal } from "@/components/today/RitualSequence";
 import { RitualsRail } from "@/components/today/RitualsRail";
 import { HorizonsCard } from "@/components/today/HorizonsCard";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -180,10 +180,8 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
             )}
           </div>
 
-          {/* the horizons ladder — the nested plan, right under the North Star */}
-          <HorizonsCard mode={mode} />
-
-          {/* the day's ritual — locked to the beat you're in; the other opens at its hour */}
+          {/* the day's ritual — locked to the beat you're in; the other opens at its hour.
+              It leads the spine now: the scroll first, then the horizons, then the seal. */}
           <div className="inline-flex bg-card border border-line rounded-full p-1 mb-2">
             <button
               className={tab(mode === "am", mode !== "am")}
@@ -217,6 +215,13 @@ export function Today({ onNavigate }: { onNavigate: (v: View) => void }) {
           </div>
 
           <RitualSequence ritual={active} />
+
+          {/* the horizons ladder — the nested plan, now set AFTER the scroll and just
+              before the seal: the last thing you shape before you close the day */}
+          <HorizonsCard mode={mode} />
+
+          {/* the seal — the final act of the day's spine, at the very bottom */}
+          <RitualSeal ritual={active} />
 
           {/* the rituals rail folds under the sequence on the phone */}
           <div className="lg:hidden mb-[18px]">

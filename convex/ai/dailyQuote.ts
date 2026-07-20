@@ -39,11 +39,16 @@ function buildInput(cx: {
 export const generate = internalAction({
   args: { tidbitId: v.id("dailyTidbits"), userId: v.id("users"), day: v.string() },
   handler: async (ctx, args) => {
-    const cx = await ctx.runQuery(internal.dailyTidbits.contextForInternal, {
-      userId: args.userId,
-      day: args.day,
-    });
+    // Everything the generation touches lives inside the try — INCLUDING the
+    // context read. If it threw outside (as it once did), the action aborted with
+    // the row still `pending`, and since ensureForDay is a no-op when any row
+    // exists, the scroll span "Finding today's words…" forever with no retry. Now
+    // any failure lands as `status: error`, which the UI surfaces with "Try again".
     try {
+      const cx = await ctx.runQuery(internal.dailyTidbits.contextForInternal, {
+        userId: args.userId,
+        day: args.day,
+      });
       const raw = await chatComplete(ctx, {
         taskId: "dailyQuote",
         fn: "ai/dailyQuote.generate",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { RefreshCw } from "lucide-react";
 import { api } from "@/convex/_generated/api";
@@ -32,6 +32,18 @@ export function DailyTidbit({
     if (own) return;
     if (row === null) void ensure({ day: dayKey, kind: "quote" });
   }, [own, row, ensure, dayKey]);
+
+  // Escape hatch for a stuck spinner: if the row sits in `pending` (or hasn't been
+  // written yet) for too long — a dropped scheduler run, a slow agent — reveal a
+  // "Try again" after 20s so the person is never trapped watching it think forever.
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    setSlow(false);
+    if (own) return;
+    if (row?.status && row.status !== "pending") return; // resolved (done/error) — no timer
+    const t = setTimeout(() => setSlow(true), 20000);
+    return () => clearTimeout(t);
+  }, [own, row?.status, row?._id]);
 
   const label = <div className="text-[11px] tracking-[0.14em] uppercase text-ink-mute mb-1">Today&apos;s quote</div>;
   const tone = checked ? "text-ink-mute" : "text-ink";
@@ -78,7 +90,17 @@ export function DailyTidbit({
           </button>
         </div>
       ) : (
-        <div className="text-[15px] text-ink-mute italic">Finding today&apos;s words…</div>
+        <div className="flex items-center gap-2">
+          <span className="text-[15px] text-ink-mute italic">Finding today&apos;s words…</span>
+          {slow && (
+            <button
+              onClick={() => void refresh({ day: dayKey, kind: "quote" })}
+              className="inline-flex items-center gap-1 text-[12.5px] text-ink-soft hover:text-ink transition"
+            >
+              <RefreshCw className="w-3 h-3" strokeWidth={2.2} /> Try again
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

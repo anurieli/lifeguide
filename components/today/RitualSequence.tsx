@@ -445,7 +445,6 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
   const seed = useMutation(api.rituals.seedDefaults);
   const upgrade = useMutation(api.rituals.upgradeToSeedVersion);
   const setChecked = useMutation(api.rituals.setChecked);
-  const complete = useMutation(api.rituals.complete);
   const addItem = useMutation(api.rituals.addItem);
   const updateItem = useMutation(api.rituals.updateItem);
   const removeItem = useMutation(api.rituals.removeItem);
@@ -871,26 +870,10 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
             </div>
           )}
 
-          {completedAt ? (
-            <div className="mt-3.5 rounded-xl bg-gold/10 border border-gold px-4 py-3 flex items-center justify-center gap-2 text-[14px] text-[#8A6A2E]">
-              <Check className="w-4 h-4" strokeWidth={2.5} />
-              {copy.sealed} ·{" "}
-              {new Date(completedAt).toLocaleTimeString([], {
-                hour: "numeric",
-                minute: "2-digit",
-              })}
-            </div>
-          ) : allChecked ? (
-            <div className="mt-3.5 rounded-xl border border-gold bg-gold/5 p-4 text-center">
-              <div className="text-[15px] text-ink mb-3">{copy.done}</div>
-              <button
-                onClick={() => void complete({ ritual, day: dayKey })}
-                className="bg-ink text-white rounded-xl px-6 py-2.5 text-sm w-full sm:w-auto"
-              >
-                {copy.seal}
-              </button>
-            </div>
-          ) : null}
+          {/* The seal (done + "seal the morning", or the sealed stamp) no longer
+              lives at the foot of this card. It renders as <RitualSeal> at the very
+              bottom of Today — after the Horizons ladder — so the last act of the
+              scroll is: walk the steps, set your horizons, THEN seal the day. */}
         </div>
       )}
 
@@ -905,6 +888,55 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
           onClose={() => setReaderItem(null)}
         />
       )}
+    </div>
+  );
+}
+
+// --- The seal, lifted out of the sequence card ----------------------------
+// The "seal the morning / close the day" act sits at the very bottom of Today,
+// below the Horizons ladder, so the day's spine reads top to bottom: walk the
+// scroll → set your horizons → seal. It reads the same reactive queries the
+// sequence does (Convex dedupes identical subscriptions, so this is free), and
+// only appears once every step of the ritual is checked. Empty until then.
+export function RitualSeal({ ritual }: { ritual: RitualType }) {
+  const items = useQuery(api.rituals.list, {}) as Item[] | undefined;
+  const dayKey = useMemo(() => ritualDayKey(new Date()), []);
+  const dayState = useQuery(api.rituals.day, { ritual, day: dayKey });
+  const complete = useMutation(api.rituals.complete);
+
+  if (items === undefined) return null;
+  const mine = items.filter((i) => i.ritual === ritual);
+  if (mine.length === 0) return null;
+
+  const checkedIds = dayState?.checkedIds ?? [];
+  const completedAt = dayState?.completedAt;
+  const allChecked = isRitualComplete(
+    mine.map((i) => i._id),
+    checkedIds,
+  );
+  const copy = COPY[ritual];
+
+  if (completedAt) {
+    return (
+      <div className="mb-[18px] rounded-xl bg-gold/10 border border-gold px-4 py-3 flex items-center justify-center gap-2 text-[14px] text-[#8A6A2E]">
+        <Check className="w-4 h-4" strokeWidth={2.5} />
+        {copy.sealed} ·{" "}
+        {new Date(completedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+      </div>
+    );
+  }
+
+  if (!allChecked) return null;
+
+  return (
+    <div className="mb-[18px] rounded-xl border border-gold bg-gold/5 p-4 text-center">
+      <div className="text-[15px] text-ink mb-3">{copy.done}</div>
+      <button
+        onClick={() => void complete({ ritual, day: dayKey })}
+        className="bg-ink text-white rounded-xl px-6 py-2.5 text-sm w-full sm:w-auto"
+      >
+        {copy.seal}
+      </button>
     </div>
   );
 }

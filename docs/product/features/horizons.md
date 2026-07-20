@@ -6,19 +6,19 @@
 
 ## 1. Purpose
 
-Lostness is partly not knowing how today connects to the life you want. Horizons makes that ladder explicit and always-present: **North Star → 5-year → 1-year → 1-month → this week → today**. It sits at the top of Today, under the North Star, so the person can always see the through-line from "the most important thing today" up to who they're becoming — and edit any rung in place. It is the planner's spine the rest of the day hangs off (the morning crafts the near rungs; the night reviews them; the daily-quote agent and the Coach draw on the standing rungs for context).
+Lostness is partly not knowing how today connects to the life you want. Horizons makes that ladder explicit and always-present: **North Star → 5-year → 1-year → 1-month → this week → today**. It sits low in the day's spine — **after the ritual scroll and just before the seal** (moved there 2026-07-20, Ariel: the scroll leads, then you set your horizons, then you close the day) — so setting the near rungs is the last thing the person shapes before sealing. The person can always see the through-line from "the most important thing today" up to who they're becoming, and edit any rung in place. It is the planner's spine the rest of the day hangs off (the morning crafts the near rungs; the night reviews them; the daily-quote agent and the Coach draw on the standing rungs for context).
 
 The ladder is deliberately distinct from the [Goals board (Orbit)](goals.md): Orbit is the wide space of *Big Things* with a why and a triage inbox; Horizons is the *time-nested* through-line — one line per horizon, up to three goals for the near periods. They complement (a Big Thing can inform this month's rung) but neither owns the other.
 
 ## 2. User-facing behavior
 
-A card at the top of Today, under the North Star, titled **Horizons** (with a layered icon). It leads with the **near** rungs because those are what the day acts on:
+A card low in Today — below the ritual scroll, above the seal — titled **Horizons** (with a layered icon). It leads with the **near** rungs because those are what the day acts on:
 
 - **Today** (a target icon, gold-emphasized): up to three goals — *"What's the most important thing today? Add up to two more."* Each is a checkable line; type a goal and hit enter, click a line to edit, hover to remove. In the **night scroll** the label reframes to **"Today — what got done?"** so the same three lines become the review.
 - **This week** (a calendar icon): up to three goals for the week. On **Sundays** the label nudges **"This week — Sunday, set it."** The week's goals persist all week (Mon–Sun), whichever day you set them.
 - **The whole ladder** (a toggle): expands the **standing** rungs — **5-year vision**, **1-year goal**, **This month** — each a single evolving line you click to edit. Folded away by default so the card stays calm; opened when you want to set direction or feel the through-line.
 
-The **North Star** itself stays its own card just above (already `settings.northStar`); Horizons renders as the rungs *beneath* it. Nothing here nags: an empty rung shows its crafting prompt in muted italics and waits.
+The **North Star** stays its own card near the top of Today (already `settings.northStar`), the ladder's crown; Horizons renders its rungs lower down, after the scroll. Nothing here nags: an empty rung shows its crafting prompt in muted italics and waits.
 
 ## 3. Functions / actions
 
@@ -35,8 +35,8 @@ No Coach path yet (§9) — but the standing rungs are already read as context b
 
 ## 4. Dynamics and interactions with other elements
 
-- **Hosted by [Home (Today)](dashboard.md):** the card renders under the North Star card, above the ritual scroll; beat-aware via the `mode` (`am`/`pm`) Today already computes.
-- **Crowns from `settings.northStar`:** the North Star is not a `horizons` row — it stays in settings (referenced across the app) and is the ladder's crown, shown by the North Star card directly above.
+- **Hosted by [Home (Today)](dashboard.md):** the card renders below the ritual scroll and above the seal (`RitualSeal`); beat-aware via the `mode` (`am`/`pm`) Today already computes.
+- **Crowns from `settings.northStar`:** the North Star is not a `horizons` row — it stays in settings (referenced across the app) and is the ladder's crown, shown by the North Star card near the top of Today.
 - **Drawn by the [daily tidbit agent](daily-tidbit.md):** `dailyTidbits.contextForInternal` reads the standing rungs (`period: "std"`) so the daily quote is chosen against the person's actual direction, not just the Mirror.
 - **Sibling of [Goals / Orbit](goals.md):** the time-nested ladder vs. the wide board of Big Things; complementary, neither nested in the other.
 - **Feeds the night review:** the daily goals set in the morning are the exact lines the night scroll reviews ("what got done?") — same rows, no copy.

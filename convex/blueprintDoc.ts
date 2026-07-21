@@ -1,4 +1,4 @@
-import { mutation, query, MutationCtx } from "./_generated/server";
+import { internalMutation, mutation, query, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
@@ -527,6 +527,28 @@ async function upgradeIfNeeded(ctx: MutationCtx, doc: Doc<"blueprint">): Promise
   }
   return (await ctx.db.get(doc._id))!;
 }
+
+// The v1 → v2 upgrade above is LAZY: it only runs from a mutation, because a
+// Convex query cannot write. That made it unreachable for exactly the people who
+// needed it — the UI only called `adopt` when a document was MISSING, so anyone
+// who already had a v1 document never triggered it and kept reading old content
+// in the new shell. The UI now calls `adopt` unconditionally on open, and this
+// migration sweeps every existing row so nobody waits for a click.
+// Idempotent: an already-structured document is skipped by upgradeIfNeeded.
+// Run: `npx convex run blueprintDoc:migrateUpgradeAll --prod`
+export const migrateUpgradeAll = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const docs = await ctx.db.query("blueprint").collect();
+    let upgraded = 0;
+    for (const doc of docs) {
+      if (doc.pillars !== undefined) continue;
+      await upgradeIfNeeded(ctx, doc);
+      upgraded++;
+    }
+    return { scanned: docs.length, upgraded, skipped: docs.length - upgraded };
+  },
+});
 
 // Ensure the user has a Blueprint document, creating it from the seed if missing,
 // and upgrading it to the structured seed if it predates it (see upgradeIfNeeded).

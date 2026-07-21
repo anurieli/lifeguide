@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../convex/schema";
-import { api } from "../../convex/_generated/api";
+import { api, internal } from "../../convex/_generated/api";
 import { SEED_VERSION } from "../../convex/blueprintDoc";
 
 // Auth test-identity pattern: insert a real users row, use its _id as the subject.
@@ -371,5 +371,61 @@ describe("blueprintDoc: the derived content / morning-read path", () => {
     // RitualSequence.readContent() resolves source="blueprint" steps from
     // blueprintDoc.get().content — this is that same contract, tested directly.
     expect(doc!.content).toContain("Read this every morning.");
+  });
+});
+
+// The v1 → v2 upgrade was written as lazy (mutation-only, since a Convex query
+// cannot write) but the UI only called `adopt` when a document was MISSING — so
+// for everyone who already had a v1 document the upgrade was unreachable and
+// they kept reading the old free-text content inside the new structured shell.
+// This sweeps every row regardless of what the UI does.
+describe("blueprintDoc.migrateUpgradeAll (v1 → v2 sweep)", () => {
+  it("upgrades a legacy v1 doc that no mutation ever touched, and is idempotent", async () => {
+    const t = convexTest(schema);
+    const userId = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", {});
+      const now = Date.now();
+      // Exactly the pre-2026-07-20 shape: free text, no header, no pillars.
+      await ctx.db.insert("blueprint", {
+        userId,
+        title: "The Blueprint for Life",
+        content: LEGACY_SEED_V1,
+        seedVersion: 1,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return userId;
+    });
+
+    const before = await t.run(async (ctx) =>
+      ctx.db
+        .query("blueprint")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .first(),
+    );
+    expect(before!.pillars).toBeUndefined();
+
+    const res = await t.mutation(internal.blueprintDoc.migrateUpgradeAll, {});
+    expect(res.upgraded).toBe(1);
+
+    const after = await t.run(async (ctx) =>
+      ctx.db
+        .query("blueprint")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .first(),
+    );
+    expect(after!.pillars).toHaveLength(8);
+    expect(after!.seedVersion).toBe(2);
+    expect(after!.header?.title).toBe("The Blueprint for Living");
+    // Every rule carries its why.
+    for (const p of after!.pillars!) {
+      expect(p.items.length).toBeGreaterThan(0);
+      for (const it of p.items) expect(it.why.trim()).not.toBe("");
+    }
+
+    // Running it again changes nothing.
+    const again = await t.mutation(internal.blueprintDoc.migrateUpgradeAll, {});
+    expect(again.upgraded).toBe(0);
+    expect(again.skipped).toBe(1);
   });
 });

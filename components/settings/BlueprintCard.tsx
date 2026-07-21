@@ -47,7 +47,10 @@ export function BlueprintCard() {
         </div>
         <button
           onClick={async () => {
-            if (!doc) await adopt({});
+            // Unconditional, not `if (!doc)`: `adopt` is idempotent AND carries
+            // the v1 → v2 structured upgrade. Gating it on a missing document
+            // made the upgrade unreachable for everyone who already had one.
+            await adopt({});
             setOpen(true);
           }}
           className="border border-line rounded-full px-4 py-1.5 text-[13px] text-ink-soft hover:border-gold transition flex-shrink-0"

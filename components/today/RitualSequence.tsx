@@ -786,7 +786,10 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
                     </div>
                     <button
                       onClick={() => {
-                        if (item.source === "blueprint" && !blueprint) void adoptDoc({});
+                        // Unconditional (not `&& !blueprint`): adopt is idempotent
+                        // and carries the v1 → v2 structured upgrade, which a
+                        // missing-doc guard made unreachable for existing docs.
+                        if (item.source === "blueprint") void adoptDoc({});
                         setReaderItem(item);
                       }}
                       className="mt-2 inline-flex items-center gap-1.5 border border-line rounded-full px-3.5 py-1.5 text-[13px] text-ink-soft hover:border-gold transition"

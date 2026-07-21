@@ -19,6 +19,8 @@ A slim vertical tab labeled **"Feedback?"** rests against the right edge of the 
 - **Attach** — tap the image button to pick from the photo library / camera roll (`accept="image/*"`).
 - **Screenshot this page** — tap the camera button (the third action, beside mic and attach) to capture the current page in one click. The shot is added as a *visible* attachment tagged with a small "Page" badge, so the user can preview and remove it before sending. The button shows a spinner while capturing and is timeout-capped so a slow render can't hang the composer.
 
+Every successful add — paste, attach, or screenshot — surfaces the same two signals so it never reads as a no-op: a **"N image(s) attached" count line** above the thumbnail row, and a brief pop-in animation on the new tile (skipped under `prefers-reduced-motion`). This matters most for paste/attach, which (unlike the screenshot button's spinner) have no other transitional feedback of their own — the OS file dialog just closes and, without the count line and pop-in, a real attach could look like nothing happened.
+
 Attachments upload to `_storage` on submit, in parallel and each independently — one failed upload doesn't drop the rest or the note.
 
 On submit the widget also silently attaches page context: the current route and app view, the page title, viewport size, the user agent, and the page's recent JS/console errors. It captures a PNG snapshot of the visible page **as a fallback** (`shotId`) only when the user did *not* attach a screenshot themselves — that auto-capture is timeout-capped and uploads concurrently with the attachments, so Submit never blocks in series on it. The widget itself is excluded from every shot.
@@ -58,6 +60,7 @@ This element **owns** the `feedback` table and **draws** nothing from the user-s
 
 - **Docked (resting):** the "Feedback?" tab at its remembered vertical position (icon-only nub on mobile).
 - **Composer open:** type selector + textarea + attachment thumbnails (photos + "Page"-tagged screenshots) + mic + image picker + screenshot + Submit.
+- **Image just attached:** an "N image(s) attached" count line appears above the thumbnail row and the new tile pops in — the confirmation that the attach (paste, file picker, or screenshot) actually landed.
 - **Capturing:** the screenshot button shows a spinner while html2canvas renders the page; disabled meanwhile and when the 4-image limit is reached.
 - **Yielded (mobile):** hidden entirely while the Coach sheet is open; returns when it closes.
 - **Listening:** textarea is read-only and shows the live transcript; mic shows a stop icon.

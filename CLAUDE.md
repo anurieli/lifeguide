@@ -79,6 +79,7 @@ It is distinct from each user's **Personal Knowledge Base** (per-user, client-si
 Every feature doc (one per component, the units) must describe **all** of: purpose, user-facing behavior, every function/action, dynamics and interactions with other components, states, edge cases, AI involvement, data touched, and open questions. "All possible uses, functions, and dynamics" is the bar. If a behavior exists, it is written down.
 
 ## Working principles (from the concept — honor these in every build)
+- **The Core is built by living, one entry at a time.** The journal is the Core's **main incremental intake**: each day it asks one thing the Core still doesn't know, and the answer writes to the Core's own `coreResponses` keys. The grid / Zen / voice modes are sit-down paths; this is the one that fills the foundation without the person ever making that trip. Anyone building the Core, the journal, or the daily ritual must read **[ADR 0030](docs/decisions/0030-the-journal-is-the-cores-incremental-intake.md)** first — it carries the binding rules (one a day, never re-ask a settled question, one store, his words win, always skippable). Tracked by ARI-120.
 - **AI-first.** The app reflects the user's full context at all times via the Context Bus.
 - **Calm, never bombarding.** See `docs/design/interaction-principles.md`.
 - **Manual AND Coach** interaction are both first-class — the Coach is a power tool, not a gate.

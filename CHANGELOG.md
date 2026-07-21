@@ -7,6 +7,12 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-21 · ADR 0030: the journal is the Core's incremental intake (a main concept)
+
+Docs only, no code. Ariel: the journal entry section should help you *incrementally build up your Core*, and that should be a main concept — recorded so any agent building the Core finds it. Promotes what was filed as a single scroll feature (ARI-120, "a daily-rotating unanswered Core question in the Morning Scroll") into a product principle: **the Core is built by living, one entry at a time.** Each day the journal asks one thing the Core still doesn't know; answering it writes to the same `coreResponses` keys the grid/Zen/voice modes write, so `bpCount/18` moves because the person journaled, and the hour-long sit-down becomes optional rather than the price of entry. The three built modes are all *sit-down* paths — this is the fourth mode and the default long-run one. Grounded in what the docs already half-said: `core.md` §2 promised "he lives in the surfaces; the Core fills behind them" but named only ambient Coach distillation, and `journal.md` §1 already listed "draw out the background… so the Core backbone fills in over time" as job (1) with no mechanism attached. The ADR supplies the mechanism and six binding rules (one a day; never re-ask a settled question; deterministic per day with no persisted queue; one store — no parallel Core per ADR 0028; his words win — never silently overwrite, per ADR 0024; always skippable and absent once complete), plus open questions (new `core` ritual kind vs reusing `question`; morning-only; seal-counting; revisit cadence keyed to the Blueprint's malleability tags). Also noted: a journal entry is a natural Living Core artifact too (ADR 0028), deliberately left as a follow-on rather than folded in here.
+
+**Docs touched:** new `docs/decisions/0030-the-journal-is-the-cores-incremental-intake.md`, `docs/decisions/README.md` (index row), `docs/product/features/core.md` (§Modes — the journal as the fourth mode; §2 — new "Incremental, through the journal" bullet as the main path, ambient demoted to "the rest"), `docs/product/features/journal.md` (§1 — job (1) is the Core's main intake, not a side effect), `docs/product/features/daily-ritual.md` (§the morning journal — "where the journal is going"), `CLAUDE.md` (new first working principle so every agent loads it), `CHANGELOG.md`.
+
 
 ## 2026-07-20 · The Blueprint: structured pillars/items, an immersive view, and the reader no longer auto-closes
 

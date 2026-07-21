@@ -6,7 +6,9 @@
 
 ## 1. Purpose
 
-A lost person cannot reliably ask himself the right question. The Journal asks it for him. It exists to keep the daily pulse, the "where they have been lately" half of context (see [`../../architecture/context-bus.md`](../../architecture/context-bus.md)), and to do two jobs no other element does: (1) draw out the background that makes a person who he is, so the Core backbone fills in over time, and (2) keep checking he is still pointed at his goals and surface what is drifting. It is the two calm bookends of [the daily ritual](../concept-and-soul.md): morning before the day pulls him anywhere, night to feed the text layer. Not streaks, not guilt, not a wall of forms. Two minutes, twice, plus the occasional beat the Mirror earns by noticing something true.
+A lost person cannot reliably ask himself the right question. The Journal asks it for him. It exists to keep the daily pulse, the "where they have been lately" half of context (see [`../../architecture/context-bus.md`](../../architecture/context-bus.md)), and to do two jobs no other element does: (1) draw out the background that makes a person who he is, so the Core backbone fills in over time, and (2) keep checking he is still pointed at his goals and surface what is drifting.
+
+Job (1) is not a side effect — it is **the Core's main intake**. [ADR 0030](../../decisions/0030-the-journal-is-the-cores-incremental-intake.md) makes it explicit: every day the journal asks **one** thing the Core still doesn't know, and the answer writes to the Core's own `coreResponses` keys. The person is journaling; the foundation gets built underneath him, one entry at a time, without an hour-long sit-down. Any work on the journal's prompts should be read against that ADR's rules (one a day, never re-ask a settled question, one store, his words win, always skippable). It is the two calm bookends of [the daily ritual](../concept-and-soul.md): morning before the day pulls him anywhere, night to feed the text layer. Not streaks, not guilt, not a wall of forms. Two minutes, twice, plus the occasional beat the Mirror earns by noticing something true.
 
 ## 2. User-facing behavior
 

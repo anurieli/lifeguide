@@ -235,3 +235,41 @@ Deferred from this decision:
 - A standalone MCP server. The shared Core service and API boundary land first.
 
 Where the current Core, file-system, Pillars, Mirror, Blueprint-conduct, Horizons, Guide, Board, or Future Self documentation conflicts with this accepted target state, this decision governs. Those feature and architecture documents are reconciled when the implementation is planned and built.
+
+---
+
+## Addendum: intuitiveness critique (2026-07-20)
+
+This decision is defensible section by section. Every layer, container, and boundary rule earns its place *logically*. That is exactly why it needs pushback before implementation: **logical completeness is not the same as intuitiveness**, and this ADR optimized the first at the cost of the second.
+
+### The core problem
+
+Intuitiveness has a specific test: can a person say what Core *is* in one breath, and predict where a new thing goes without consulting a rule? Today the honest one-sentence answer is:
+
+> "An umbrella over a fixed 18-question questionnaire *and* a six-container artifact library, cross-tagged by life domain, summarized by a disposable Mirror, feeding the Coach under a four-level authority order."
+
+That is a system diagram, not one idea. The root cause is scope: Core is defined as "the durable database for everything meaningfully me." Because the scope is total, Core must draw a boundary against Goals, Board, Future Self, Sessions, Thoughts, Todoist, Calendar, Pillars, and Mirror. Each boundary is a rule. The sum of the rules is the unintuitiveness. Every section feels important *precisely because* the scope is total, and total scope is why no single mental model fits.
+
+### Specific friction points
+
+1. **One word, two objects.** Core = Life Blueprint (fixed slots, declarations, form-like) + Living Core (open-ended artifacts with provenance and history). These are two different mental models. The umbrella hides the duality rather than resolving it; the user must learn that "Core" sometimes means the 18 questions and sometimes the container library.
+
+2. **Six containers is a taxonomy the user must master before filing anything.** The "Container boundary rules" section is the tell: present-self vs desired-self, desired-self vs desired-world, source vs adopted-rule, event vs conclusion, vision vs commitment. If five rules are needed to explain the difference, the user will never *feel* it. "Where does this go?" becomes a live decision every time, which contradicts the calm/never-bombarding principle.
+
+3. **Two orthogonal axes per artifact.** Container (what kind of material) and Pillar (where in life) is elegant for a database and taxing for a human: two classification decisions per item.
+
+4. **Overlap-without-authority is a data-modeling insight, not a felt one.** "What Moves Me holds twenty role-model artifacts; Blueprint's Role Models answer holds the current shortlist." Nobody intuits why their role models live in two places at two authority levels.
+
+5. **The "canonical job / explicitly NOT" glossary is itself evidence of collision.** Having to legislate that Blueprint ≠ the-conduct-doc-now-Personal-Code, Pillars ≠ folders, Mirror ≠ editable, Core ≠ a third table means the surface names are colliding in users' heads. That table is cleanup after concepts that grew into each other.
+
+### Proposed reshape (for pressure-testing, not yet accepted)
+
+- **Demote the taxonomy from navigation to plumbing.** The routing pass (AI proposes destination, user confirms) already does the real filing. Lean all the way into it: the person dumps or talks, it gets filed, they browse "rooms" they never had to learn. Do not hand them six labeled buckets plus a boundary rulebook and ask them to sort.
+
+- **The six containers are not six peers.** The intuitive spine is three, and it maps to a natural narrative: **who I am / who I'm becoming / the life I want.** The other three are different *kinds* of thing: *What Moves Me* is an inspiration library (a source), *What I Want to Remember* is memory, *How I Choose to Live* is principles. Flattening all six to one level is part of why the model reads as a wall. Consider a two-tier presentation: the three identity rooms as the spine, the other three as adjacent libraries.
+
+- **Name the duality honestly.** "Life Blueprint" is already a distinct, ownable name for the fixed 18. Consider letting **Core = the living library**, with Blueprint standing as its own first-class thing beside it, rather than one word straining to cover two objects.
+
+### What this addendum does not change
+
+The ownership cleanup this ADR performs (one canonical owner per fact, Mirror as derived, Pillars as domains only, Goals/Calendar owning execution) is sound and should stand. The critique is about the **user-facing surface and vocabulary**, not the data-ownership model underneath. The reshape above should be resolved before Core's browse/edit UI is specced, since it determines navigation, not schema.

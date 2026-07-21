@@ -95,16 +95,14 @@ Slow, steady movement; open posture. Eye contact, full listening, speak slower. 
 // saved reels into 8 pillars. Canonical source: the JSON Ariel handed off (7
 // reels, compiled July 12, 2026); ids are fixed/deterministic (not random) so the
 // seed itself is stable and diffable across deploys.
+// Deliberately spare: a kicker, a title, and one line saying what this is. The
+// provenance (which reels, when compiled, how many pillars) and the "how to read
+// this" preamble were cut — they are facts ABOUT the document, not the doctrine,
+// and they pushed the actual rules below the fold every time it was opened.
 const SEED_HEADER: Header = {
   kicker: "Personal Operating System",
   title: BLUEPRINT_SEED_TITLE,
-  intro:
-    "One field guide assembled from seven saved reels. Every habit, system, and principle worth keeping, deduplicated and organized into eight pillars, each line carrying its own reason to matter.",
-  source: '7 saved reels ("Blueprint" collection)',
-  compiled: "July 12, 2026",
-  structure: "8 pillars",
-  howToRead:
-    "None of this is new to you; you saved all of it. This is the same material with the duplicates merged and the noise stripped, so seven scattered lists read as one system. Take the three or four lines that hit hardest and start there. The rest keeps.",
+  intro: "The rules for living.",
 };
 
 function item(pillarN: number, itemN: number, practice: string, why: string): SeedItem {
@@ -547,6 +545,40 @@ export const migrateUpgradeAll = internalMutation({
       upgraded++;
     }
     return { scanned: docs.length, upgraded, skipped: docs.length - upgraded };
+  },
+});
+
+// The v2 header carried provenance (source/compiled/structure) and a "how to
+// read this" preamble. Both were cut: they describe the document rather than
+// state the doctrine, and they pushed the actual rules below the fold. The UI
+// stopped rendering them, but a document seeded before that still stores the
+// long intro, which DOES render — so trim it here.
+// Only rewrites a header still carrying the seeded wording; a person's own
+// intro is left alone. Idempotent.
+// Run: `npx convex run blueprintDoc:migrateTrimHeader --prod`
+const LEGACY_SEED_INTRO_V2 =
+  "One field guide assembled from seven saved reels. Every habit, system, and principle worth keeping, deduplicated and organized into eight pillars, each line carrying its own reason to matter.";
+
+export const migrateTrimHeader = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const docs = await ctx.db.query("blueprint").collect();
+    let trimmed = 0;
+    for (const doc of docs) {
+      const h = doc.header;
+      if (!h || !doc.pillars) continue;
+      const hasStaleIntro = (h.intro ?? "").trim() === LEGACY_SEED_INTRO_V2;
+      const hasStaleMeta = Boolean(h.source || h.compiled || h.structure || h.howToRead);
+      if (!hasStaleIntro && !hasStaleMeta) continue;
+      const header: Header = {
+        kicker: h.kicker,
+        title: h.title,
+        intro: hasStaleIntro ? SEED_HEADER.intro : h.intro,
+      };
+      await patchDoc(ctx, doc, header, doc.pillars);
+      trimmed++;
+    }
+    return { scanned: docs.length, trimmed, skipped: docs.length - trimmed };
   },
 });
 

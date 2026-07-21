@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { Check, Plus, X } from "lucide-react";
 import { api } from "@/convex/_generated/api";
@@ -8,30 +8,33 @@ import { Doc } from "@/convex/_generated/dataModel";
 import { ImmersiveShell } from "@/components/today/ImmersiveReader";
 
 // ============================================================================
-// The Blueprint, full-screen. Two rules govern this surface:
+// The Blueprint, full-screen. Three rules govern this surface:
 //
-// 1. THERE IS NO EDIT MODE. The document reads as a clean document at rest —
-//    no toggle, no chrome, nothing to "enter". Editing affordances are latent
-//    and appear only under the cursor, then vanish. Reading is the default
-//    state and it is never dressed up as a form.
+// 1. THERE IS NO EDIT MODE. The document reads as a document at rest — no
+//    toggle, no chrome. Editing affordances are latent: they appear under the
+//    cursor and vanish when it leaves. Reading is the default state.
 //
-// 2. EVERY UNIT IS A COMPONENT. A section (pillar) is a component: a name, a
-//    purpose in subtext, and its rules. A rule is a component: the practice and
-//    its "why it pays off". A rule without a why cannot be saved — the why is
-//    the whole point of the doctrine, not an optional note.
+// 2. EVERY UNIT IS A COMPONENT. A section is a name, a purpose in subtext, and
+//    its rules. A rule is the practice and its reason. A rule without a reason
+//    cannot be saved — the why IS the doctrine, not an optional note.
 //
-// The two gestures:
+// 3. SPARE, NOT DECORATED. Tight padding, small gaps, no rules-between-things.
+//    The reason sits under its practice as quieter, smaller text; it needs no
+//    "Why it pays off" label and no dividing line, because the type scale
+//    already says which is which. Chrome competes with the words.
+//
+// The three gestures:
 //   ADD    — hovering the dead space under a section's last rule reveals a
-//            ghost slot. Clicking it opens an inline draft (practice + why)
-//            with X to cancel and ✓ to save, resolved in the same breath.
-//   REMOVE — hovering a rule reveals a minimal X on its right. It removes
-//            immediately; Convex's reactivity makes the UI follow at once.
+//            ghost slot; clicking opens an inline draft (practice + why).
+//   EDIT   — clicking an existing rule opens it in place, the practice and the
+//            reason as two separate fields. Blur or ⌘/Ctrl+Enter saves each
+//            independently; Escape reverts.
+//   REMOVE — hovering a rule reveals a minimal X on its right.
 //
-// The store is plain JSON (see convex/schema.ts's `blueprint.pillars`), and the
-// mutations this calls ARE the documented contract an agent uses to append to
-// the Blueprint — see "the coach-editable surface" in convex/blueprintDoc.ts.
-// A human hovering a ghost slot and an agent calling `addItem` travel the same
-// path and obey the same required-why rule.
+// The store is plain JSON (`blueprint.pillars`), and the mutations this calls
+// ARE the contract an agent appends through — see "the coach-editable surface"
+// in convex/blueprintDoc.ts. A human clicking a ghost slot and an agent calling
+// `addItem` travel the same path and obey the same required-why rule.
 // ============================================================================
 
 export type StructuredDoc = Doc<"blueprint"> & {
@@ -40,80 +43,214 @@ export type StructuredDoc = Doc<"blueprint"> & {
 };
 
 const FIELD =
-  "w-full bg-paper border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-gold transition resize-none";
+  "w-full bg-paper border border-line rounded-md px-2.5 py-1.5 text-ink outline-none focus:border-gold transition resize-none overflow-hidden";
 
-// A latent affordance: invisible at rest, revealed by the cursor, gone when it
-// leaves. Used for both "add a rule" and "add a section" so the two gestures
-// feel like one idea.
+// Grows to fit its content so an editing card never scrolls internally or
+// jumps in height when it opens.
+function useAutoSize(value: string) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return ref;
+}
+
+function AutoTextarea({
+  value,
+  onChange,
+  onCommit,
+  onCancel,
+  className,
+  placeholder,
+  autoFocus,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onCommit: () => void;
+  onCancel: () => void;
+  className: string;
+  placeholder: string;
+  autoFocus?: boolean;
+}) {
+  const ref = useAutoSize(value);
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      autoFocus={autoFocus}
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={onCommit}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          onCancel();
+        }
+        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+          e.preventDefault();
+          onCommit();
+        }
+      }}
+      className={`${FIELD} ${className}`}
+    />
+  );
+}
+
+// One rule: the practice, and beneath it, quieter and smaller, the reason.
+// Clicking anywhere opens it for editing in place.
+function RuleCard({
+  practice,
+  why,
+  onSave,
+  onRemove,
+}: {
+  practice: string;
+  why: string;
+  onSave: (next: { practice?: string; why?: string }) => void;
+  onRemove: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [p, setP] = useState(practice);
+  const [w, setW] = useState(why);
+
+  const cancel = () => {
+    setP(practice);
+    setW(why);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="rounded-lg border border-gold/50 bg-card px-3 py-2.5">
+        <AutoTextarea
+          autoFocus
+          value={p}
+          onChange={setP}
+          onCommit={() => {
+            const v = p.trim();
+            if (v && v !== practice) onSave({ practice: v });
+            else if (!v) setP(practice);
+          }}
+          onCancel={cancel}
+          placeholder="The rule"
+          className="text-[15px] leading-snug text-ink"
+        />
+        <AutoTextarea
+          value={w}
+          onChange={setW}
+          onCommit={() => {
+            const v = w.trim();
+            if (v && v !== why) onSave({ why: v });
+            else if (!v) setW(why);
+          }}
+          onCancel={cancel}
+          placeholder="Why it pays off"
+          className="mt-1.5 text-[12px] leading-snug text-ink-mute"
+        />
+        <div className="mt-1.5 flex justify-end">
+          <button
+            onClick={() => setEditing(false)}
+            aria-label="Done editing this rule"
+            className="rounded-full p-1 text-ink-mute transition hover:bg-line/50 hover:text-ink"
+          >
+            <Check className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={() => setEditing(true)}
+      className="group/rule relative cursor-text rounded-lg border border-line bg-card px-3 py-2.5 transition hover:border-line/80"
+    >
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+        aria-label="Remove this rule"
+        className="absolute right-1.5 top-1.5 rounded-full p-1 text-ink-mute opacity-0 transition hover:bg-line/50 hover:text-ink focus:opacity-100 group-hover/rule:opacity-100"
+      >
+        <X className="h-3 w-3" />
+      </button>
+      <div className="pr-6 text-[15px] leading-snug text-ink">{practice}</div>
+      {why && <div className="mt-1 text-[12px] leading-snug text-ink-mute">{why}</div>}
+    </div>
+  );
+}
+
+// A latent affordance: invisible at rest, revealed by the cursor. Used for both
+// "add a rule" and "add a section" so the two gestures feel like one idea.
 function GhostSlot({
   label,
   fields,
   onSave,
 }: {
   label: string;
-  fields: { key: string; placeholder: string; rows: number; required: boolean }[];
+  fields: { key: string; placeholder: string; required: boolean; className: string }[];
   onSave: (values: Record<string, string>) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
 
   const canSave = fields.every((f) => !f.required || (values[f.key] ?? "").trim().length > 0);
-
   const close = () => {
     setOpen(false);
     setValues({});
+  };
+  const save = () => {
+    if (!canSave) return;
+    onSave(values);
+    close();
   };
 
   if (!open) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="mt-1 flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-transparent text-ink-mute opacity-0 transition hover:border-line hover:opacity-100 focus:opacity-100 focus:outline-none"
+        className="mt-1 flex h-7 w-full items-center justify-center gap-1 rounded-lg border border-dashed border-transparent text-ink-mute opacity-0 transition hover:border-line hover:opacity-100 focus:opacity-100 focus:outline-none"
       >
-        <Plus className="h-4 w-4" />
-        <span className="text-[13px]">{label}</span>
+        <Plus className="h-3.5 w-3.5" />
+        <span className="text-[12px]">{label}</span>
       </button>
     );
   }
 
   return (
-    <div className="mt-2 rounded-xl border border-dashed border-gold/60 bg-card p-4">
+    <div className="mt-1 rounded-lg border border-dashed border-gold/60 bg-card px-3 py-2.5">
       {fields.map((f, i) => (
-        <textarea
+        <AutoTextarea
           key={f.key}
           autoFocus={i === 0}
-          rows={f.rows}
-          placeholder={f.placeholder}
           value={values[f.key] ?? ""}
-          onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") close();
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && canSave) {
-              onSave(values);
-              close();
-            }
-          }}
-          className={`${FIELD} ${i === 0 ? "text-[15px] leading-relaxed text-ink" : "mt-2 text-[13px] italic leading-relaxed text-ink-soft"}`}
+          onChange={(v) => setValues((prev) => ({ ...prev, [f.key]: v }))}
+          onCommit={() => {}}
+          onCancel={close}
+          placeholder={f.placeholder}
+          className={`${i > 0 ? "mt-1.5 " : ""}${f.className}`}
         />
       ))}
-      <div className="mt-2.5 flex items-center justify-end gap-1">
+      <div className="mt-1.5 flex items-center justify-end gap-0.5">
         <button
           onClick={close}
           aria-label="Cancel"
-          className="rounded-full p-1.5 text-ink-mute transition hover:bg-line/50 hover:text-ink"
+          className="rounded-full p-1 text-ink-mute transition hover:bg-line/50 hover:text-ink"
         >
-          <X className="h-4 w-4" />
+          <X className="h-3.5 w-3.5" />
         </button>
         <button
-          onClick={() => {
-            onSave(values);
-            close();
-          }}
+          onClick={save}
           disabled={!canSave}
           aria-label="Save"
-          className="rounded-full p-1.5 text-ink-mute transition hover:bg-line/50 hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
+          className="rounded-full p-1 text-ink-mute transition hover:bg-line/50 hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
         >
-          <Check className="h-4 w-4" />
+          <Check className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
@@ -134,6 +271,7 @@ export function BlueprintImmersive({
   const removePillar = useMutation(api.blueprintDoc.removePillar);
   const addItem = useMutation(api.blueprintDoc.addItem);
   const removeItem = useMutation(api.blueprintDoc.removeItem);
+  const updateItem = useMutation(api.blueprintDoc.updateItem);
 
   const { header, pillars } = doc;
 
@@ -142,103 +280,93 @@ export function BlueprintImmersive({
       title="The Blueprint"
       onFinished={onFinished}
       onClose={onClose}
-      maxWidthClassName="max-w-[680px]"
+      maxWidthClassName="max-w-[620px]"
     >
-      {/* The header reads as a document title page — never editable chrome. */}
-      <div className="mb-14">
+      {/* Spare title block: what this is, and nothing about itself. */}
+      <div className="mb-9">
         {header.kicker && (
-          <div className="mb-2 text-[11px] uppercase tracking-[0.18em] text-gold">
+          <div className="mb-1.5 text-[10px] uppercase tracking-[0.18em] text-gold">
             {header.kicker}
           </div>
         )}
-        <h1 className="mb-3 text-[28px] font-semibold tracking-tight text-ink">{header.title}</h1>
+        <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-ink">
+          {header.title}
+        </h1>
         {header.intro && (
-          <p className="text-[16px] leading-relaxed text-ink-soft">{header.intro}</p>
-        )}
-        {(header.source || header.compiled || header.structure) && (
-          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5 text-[12px] text-ink-mute">
-            {header.source && <span>Source: {header.source}</span>}
-            {header.compiled && <span>Compiled: {header.compiled}</span>}
-            {header.structure && <span>Structure: {header.structure}</span>}
-          </div>
-        )}
-        {header.howToRead && (
-          <div className="mt-5 border-l-2 border-gold/50 pl-4 text-[14px] italic leading-relaxed text-ink-soft">
-            {header.howToRead}
-          </div>
+          <p className="mt-1.5 text-[14px] leading-snug text-ink-mute">{header.intro}</p>
         )}
       </div>
 
-      {/* Each section: a number, a name, its purpose in subtext, then its rules. */}
       {pillars.map((pillar, i) => (
-        <section key={pillar.id} className="group/section mb-16">
-          <div className="mb-1 flex items-baseline gap-3">
-            <span className="text-[13px] font-medium tracking-wide text-gold">
+        <section key={pillar.id} className="group/section mb-8">
+          <div className="mb-0.5 flex items-baseline gap-2.5">
+            <span className="text-[12px] font-medium tracking-wide text-gold">
               {String(i + 1).padStart(2, "0")}
             </span>
-            <h2 className="text-[20px] font-semibold tracking-tight text-ink">{pillar.name}</h2>
+            <h2 className="text-[18px] font-semibold tracking-tight text-ink">{pillar.name}</h2>
             <button
               onClick={() => removePillar({ pillarId: pillar.id })}
               aria-label={`Remove the ${pillar.name} section`}
-              className="ml-auto rounded-full p-1.5 text-ink-mute opacity-0 transition hover:bg-line/50 hover:text-ink focus:opacity-100 group-hover/section:opacity-100"
+              className="ml-auto rounded-full p-1 text-ink-mute opacity-0 transition hover:bg-line/50 hover:text-ink focus:opacity-100 group-hover/section:opacity-100"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3 w-3" />
             </button>
           </div>
 
           {pillar.subtitle && (
-            <div className="mb-6 text-[14px] italic text-ink-mute">{pillar.subtitle}</div>
+            <div className="mb-2.5 text-[13px] leading-snug text-ink-mute">{pillar.subtitle}</div>
           )}
 
-          {/* Each rule is its own component: the practice, then why it pays off. */}
-          <div className="space-y-4">
+          <div className="space-y-1.5">
             {pillar.items.map((it) => (
-              <article
+              <RuleCard
                 key={it.id}
-                className="group/rule relative rounded-xl border border-line bg-card p-4"
-              >
-                <button
-                  onClick={() => removeItem({ pillarId: pillar.id, itemId: it.id })}
-                  aria-label="Remove this rule"
-                  className="absolute right-2 top-2 rounded-full p-1.5 text-ink-mute opacity-0 transition hover:bg-line/50 hover:text-ink focus:opacity-100 group-hover/rule:opacity-100"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-                <div className="pr-7 text-[15px] leading-relaxed text-ink">{it.practice}</div>
-                {it.why && (
-                  <div className="mt-2.5 border-t border-dashed border-line pt-2.5 text-[13px] italic leading-relaxed text-ink-soft">
-                    <span className="not-italic text-ink-mute">Why it pays off — </span>
-                    {it.why}
-                  </div>
-                )}
-              </article>
+                practice={it.practice}
+                why={it.why}
+                onSave={(next) => updateItem({ pillarId: pillar.id, itemId: it.id, ...next })}
+                onRemove={() => removeItem({ pillarId: pillar.id, itemId: it.id })}
+              />
             ))}
           </div>
 
-          {/* The dead space under the last rule: a ghost slot, latent until hovered. */}
           <GhostSlot
             label="Add a rule"
             fields={[
-              { key: "practice", placeholder: "The rule", rows: 2, required: true },
-              { key: "why", placeholder: "Why it pays off", rows: 2, required: true },
+              {
+                key: "practice",
+                placeholder: "The rule",
+                required: true,
+                className: "text-[15px] leading-snug text-ink",
+              },
+              {
+                key: "why",
+                placeholder: "Why it pays off",
+                required: true,
+                className: "text-[12px] leading-snug text-ink-mute",
+              },
             ]}
             onSave={(v) =>
-              addItem({
-                pillarId: pillar.id,
-                practice: v.practice.trim(),
-                why: v.why.trim(),
-              })
+              addItem({ pillarId: pillar.id, practice: v.practice.trim(), why: v.why.trim() })
             }
           />
         </section>
       ))}
 
-      {/* The same gesture, one level up: a new section. */}
       <GhostSlot
         label="Add a section"
         fields={[
-          { key: "name", placeholder: "Section name", rows: 1, required: true },
-          { key: "subtitle", placeholder: "What this section is about", rows: 2, required: false },
+          {
+            key: "name",
+            placeholder: "Section name",
+            required: true,
+            className: "text-[18px] font-semibold tracking-tight text-ink",
+          },
+          {
+            key: "subtitle",
+            placeholder: "What this section is about",
+            required: false,
+            className: "text-[13px] leading-snug text-ink-mute",
+          },
         ]}
         onSave={(v) => addPillar({ name: v.name.trim(), subtitle: (v.subtitle ?? "").trim() })}
       />

@@ -7,6 +7,20 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-21 · The Blueprint, made spare — and rules are click-to-edit
+
+Ariel, on the shipped version: make it minimalist. Tightened the whole surface and cut the chrome that was competing with the words.
+
+**Header.** Dropped the provenance line (Source / Compiled / Structure) and the "how to read this" preamble, and replaced the long assembled-from-seven-reels intro with one line: *"The rules for living."* Both were facts ABOUT the document rather than the doctrine, and together they pushed the actual rules below the fold on every open. `SEED_HEADER` trimmed to kicker + title + intro; `migrateTrimHeader` rewrites documents still carrying the seeded wording (a person's own intro is left alone; idempotent).
+
+**Rules.** Removed the dashed divider and the "Why it pays off — " label from every rule. The reason now sits directly under its practice as smaller, quieter text (12px muted vs 15px ink) — the type scale already says which is which, so the label and the line were redundant. Padding `p-4` to `px-3 py-2.5`, gap between rules `space-y-4` to `space-y-1.5`, and the **gap between sections halved** (`mb-16` to `mb-8`), plus a tighter title block and a narrower measure (680 to 620px).
+
+**Click-to-edit.** An existing rule now opens in place on click, with the practice and the reason as two independent fields — each saves on blur or Cmd/Ctrl+Enter, Escape reverts, and emptying a field restores the previous value rather than saving a blank. Uses the repo's established click-to-edit idiom (auto-growing textarea) and the existing `updateItem` mutation, so the coach-editable surface is unchanged. The X (remove) stops propagation so it never opens the editor it is dismissing.
+
+Suite 443 passing, tsc and lint clean.
+
+**Docs touched:** `docs/product/features/the-blueprint.md` (§2 — the spare header, the label-less reason, click-to-edit), `CHANGELOG.md`.
+
 ## 2026-07-21 · Fix: the Blueprint's v1 → v2 upgrade was unreachable for everyone who had one
 
 Ariel, on production, still saw the OLD free-text Blueprint inside the new reader. Read his prod row to find out why: `seedVersion: 1`, the v1 markdown in `content`, and **no `header` / `pillars` fields at all** — the structured upgrade had never run. Cause: `upgradeIfNeeded` is lazy and only runs from a mutation (a Convex query cannot write), and both UI entry points called `adopt` **only when a document was missing** — `if (!doc) await adopt({})` in `BlueprintCard.tsx`, `if (item.source === "blueprint" && !blueprint)` in `RitualSequence.tsx`. Anyone who already had a v1 document therefore never triggered it, `get` returned a doc with no `pillars`, and the UI fell back to the flat markdown reader: old content, new shell, no affordances. The upgrade was unreachable for exactly the population it existed to serve.

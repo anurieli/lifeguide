@@ -14,15 +14,16 @@ Until 2026-07-20 the document was one free-text markdown blob edited in a `<text
 
 Settings carries **The Blueprint** card: title, one line of what it is, and Open (or **Adopt it**, the first time). Open launches the **immersive Blueprint view** (`components/settings/BlueprintImmersive.tsx`) — the same full-screen overlay family as the [morning read's immersive reader](daily-ritual.md#the-immersive-reader) — rendering the header (kicker, title, intro, the Source/Compiled/Structure meta line, "How to read this") and then every pillar: a big number, the pillar name, its subtitle, and each item as its own separated card — the **practice** line, and directly beneath it, visually subordinate, its **"why it pays off"** reason. Lines never run together into a paragraph.
 
-An **Edit** toggle sits at the top of the opened Blueprint. In edit mode, every field becomes an input in place and the structural controls appear:
-- Remove a whole item (a practice + its why), or add a new item to any pillar.
-- Add an entire new pillar, or remove one outright (with its items).
-- Edit an item's `practice` and `why` as two independent fields.
-- Edit a pillar's name/subtitle, and the header's title/intro/meta/how-to-read.
+**There is no edit mode.** The document reads as a document at rest — no toggle, no chrome, nothing to "enter". Editing affordances are latent: they appear only under the cursor and vanish when it leaves, so reading is the default state and is never dressed up as a form. Two gestures:
 
-There is no raw markdown/free-text editor anywhere in this surface — every edit targets one named unit (the header, one pillar, or one item).
+- **Add** — hovering the dead space beneath a section's last rule reveals a **ghost slot** (a dashed outline and a `+`). Clicking it opens an inline draft with two fields, **the practice** and **why it pays off**, resolved in the same breath by **X** (cancel) or **✓** (save). ⌘/Ctrl+Enter saves, Escape cancels. Save stays disabled until *both* fields are filled. The identical gesture at the foot of the document adds a whole **section**.
+- **Remove** — hovering a rule reveals a minimal **X** on its right; a section's X sits beside its name. Either removes immediately, with no confirm — Convex's reactivity makes the UI follow at once.
 
-Beneath the card: **Read it each morning** adds the morning read step (idempotent; once present it shows a quiet "Read each morning ✓"). On the Today page, edit mode on *either* ritual offers **read from the Blueprint** independently — morning and night can each carry their own "Read the Blueprint" step, adopted and checked off on their own, both opening the plain [immersive reader](daily-ritual.md#the-immersive-reader) with this document's current words (rendered from the derived markdown — see §4).
+Every rule carries its why: a practice with no reason cannot be saved. This is enforced in `addItem` server-side, not merely in the UI, because that mutation is also the contract an **agent** appends through — a human hovering a ghost slot and an agent calling `addItem` travel the same path and obey the same rule (see §7).
+
+There is no raw markdown/free-text editor anywhere in this surface — every edit targets one named unit (one pillar, or one rule).
+
+Beneath the card: **Read it each morning** adds the morning read step (idempotent; once present it shows a quiet "Read each morning ✓"). On the Today page, edit mode on *either* ritual offers **read from the Blueprint** independently — morning and night can each carry their own "Read the Blueprint" step, adopted and checked off on their own. **A blueprint read opens the same structured `BlueprintImmersive` component the Settings entry point opens** — one Blueprint surface, not two that drift apart. Only a legacy document that has not yet been upgraded to the structured shape (no `pillars`) falls back to the flat markdown [immersive reader](daily-ritual.md#the-immersive-reader).
 
 Adoption is never destructive: adopting when a document exists simply returns it (upgrading it to the structured shape in place if it predates 2026-07-20 — see §4); an edited document is never re-seeded or clobbered, whatever buttons are pressed ([tested](../../../tests/convex/blueprintDoc.test.ts), [tested](../../../tests/convex/rituals.test.ts)).
 

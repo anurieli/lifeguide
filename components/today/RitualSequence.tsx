@@ -17,6 +17,7 @@ import { mantraForDay } from "@/lib/mantras";
 import { DailyTidbit } from "@/components/today/DailyTidbit";
 import { VoiceField } from "@/components/voice/VoiceField";
 import { ImmersiveReader } from "@/components/today/ImmersiveReader";
+import { BlueprintImmersive, type StructuredDoc } from "@/components/settings/BlueprintImmersive";
 
 // ============================================================================
 // The ritual as an ORDERED PRIMER SEQUENCE (ADR 0011), not a checklist. The
@@ -877,17 +878,33 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
         </div>
       )}
 
-      {readerItem && readContent(readerItem) && (
-        <ImmersiveReader
-          title={readerItem.title}
-          content={readContent(readerItem)}
-          onFinished={() => {
-            if (!checked.has(readerItem._id) && !sealed)
-              void setChecked({ ritual, day: dayKey, itemId: readerItem._id, checked: true });
-          }}
-          onClose={() => setReaderItem(null)}
-        />
-      )}
+      {/* A blueprint read renders the SAME structured component the Settings
+          entry point opens — one Blueprint surface, not two that drift apart.
+          Only a legacy doc with no `pillars` yet falls back to the flat
+          markdown reader. */}
+      {readerItem &&
+        (readerItem.source === "blueprint" && blueprint?.pillars && blueprint?.header ? (
+          <BlueprintImmersive
+            doc={blueprint as StructuredDoc}
+            onFinished={() => {
+              if (!checked.has(readerItem._id) && !sealed)
+                void setChecked({ ritual, day: dayKey, itemId: readerItem._id, checked: true });
+            }}
+            onClose={() => setReaderItem(null)}
+          />
+        ) : (
+          readContent(readerItem) && (
+            <ImmersiveReader
+              title={readerItem.title}
+              content={readContent(readerItem)}
+              onFinished={() => {
+                if (!checked.has(readerItem._id) && !sealed)
+                  void setChecked({ ritual, day: dayKey, itemId: readerItem._id, checked: true });
+              }}
+              onClose={() => setReaderItem(null)}
+            />
+          )
+        ))}
     </div>
   );
 }

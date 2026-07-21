@@ -240,8 +240,52 @@ describe("blueprintDoc: the coach-editable surface", () => {
       asUser.mutation(api.blueprintDoc.addItem, {
         pillarId: "does-not-exist",
         practice: "x",
+        why: "y",
       }),
     ).rejects.toThrow("Pillar not found");
+  });
+
+  // Every rule carries the reason it pays off. Enforced server-side, not just in
+  // the UI, because this mutation is the contract an agent appends through.
+  it("addItem rejects a rule with no why, and one with no practice", async () => {
+    const { asUser } = await setup();
+    await asUser.mutation(api.blueprintDoc.adopt, {});
+    const doc = await asUser.query(api.blueprintDoc.get, {});
+    const pillarId = doc!.pillars![0].id;
+
+    await expect(
+      asUser.mutation(api.blueprintDoc.addItem, {
+        pillarId,
+        practice: "Walk daily.",
+        why: "   ",
+      }),
+    ).rejects.toThrow("needs its why");
+
+    await expect(
+      asUser.mutation(api.blueprintDoc.addItem, {
+        pillarId,
+        practice: "  ",
+        why: "Because it compounds.",
+      }),
+    ).rejects.toThrow("needs a practice");
+  });
+
+  it("addItem trims the practice and why it stores", async () => {
+    const { asUser } = await setup();
+    await asUser.mutation(api.blueprintDoc.adopt, {});
+    const doc = await asUser.query(api.blueprintDoc.get, {});
+    const pillarId = doc!.pillars![0].id;
+
+    await asUser.mutation(api.blueprintDoc.addItem, {
+      pillarId,
+      practice: "  Cold showers.  ",
+      why: "  It builds the habit of choosing discomfort.  ",
+    });
+
+    const after = await asUser.query(api.blueprintDoc.get, {});
+    const added = after!.pillars!.find((p) => p.id === pillarId)!.items.at(-1)!;
+    expect(added.practice).toBe("Cold showers.");
+    expect(added.why).toBe("It builds the habit of choosing discomfort.");
   });
 
   it("removeItem removes exactly that item from its pillar", async () => {

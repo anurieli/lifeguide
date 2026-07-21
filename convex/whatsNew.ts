@@ -122,6 +122,8 @@ export const remove = mutation({
 // Idempotent: an entry whose title already exists is skipped, so re-running is safe.
 // `createdBy` is stamped to the owner account (resolved by OWNER_EMAIL); the owner
 // must have signed in at least once so their `users` row exists.
+// Exported for the seed test, which asserts against the real list instead of a
+// hardcoded count (a stale count broke the suite when the fifth entry landed).
 export const LAUNCH_ENTRIES: {
   title: string;
   body: string;

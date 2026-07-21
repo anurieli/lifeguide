@@ -711,13 +711,21 @@ export const updatePillar = mutation({
   },
 });
 
+// A rule is a practice AND the reason it pays off — the why is the doctrine's
+// whole point, not an optional note. This is enforced here, not just in the UI,
+// because this mutation is the contract an agent appends through: a human
+// hovering a ghost slot and an agent calling `addItem` obey the same rule.
 export const addItem = mutation({
-  args: { pillarId: v.string(), practice: v.string(), why: v.optional(v.string()) },
+  args: { pillarId: v.string(), practice: v.string(), why: v.string() },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
+    const practice = args.practice.trim();
+    const why = args.why.trim();
+    if (!practice) throw new Error("A rule needs a practice");
+    if (!why) throw new Error("A rule needs its why — every practice carries the reason it pays off");
     const doc = await getOwnedDoc(ctx, userId);
-    const newItem: SeedItem = { id: genId("item"), practice: args.practice, why: args.why ?? "" };
+    const newItem: SeedItem = { id: genId("item"), practice, why };
     const pillars = requirePillars(doc).map((p) =>
       p.id === args.pillarId ? { ...p, items: [...p.items, newItem] } : p,
     );

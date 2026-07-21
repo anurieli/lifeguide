@@ -39,7 +39,7 @@ No scores, no guilt: an unfinished day simply passes; a finished one gets one qu
 
 ### The immersive reader
 
-Tapping a read step opens a full-screen, in-page overlay ([ADR 0013](../../decisions/0013-immersive-reader-overlay.md)): the page holds still, the words scroll inside — one measure, generous line height, the doctrine rendered pillar by pillar. Reaching the end marks the step read with a subtle "Read ✓" and releases. A visible close sits in the header at all times (never a scroll trap); closing early marks nothing. Short texts count as read after a considered pause. "Read again" is always offered.
+Tapping a read step opens a full-screen, in-page overlay ([ADR 0013](../../decisions/0013-immersive-reader-overlay.md)): the page holds still, the words scroll inside — one measure, generous line height, the doctrine rendered pillar by pillar. Reaching the end marks the step read with a "Read ✓" confirmation and reveals a pinned **red "Done" button** — it does **not** auto-close (revised 2026-07-20; the original design released 1.1s after the bottom). Only tapping that button, or the always-visible header close, dismisses the overlay; closing early via the header X marks nothing. Short texts count as read after a considered pause, same rule: the button still has to be tapped. "Read again" is always offered. The Blueprint's own full-screen structured view (`components/settings/BlueprintImmersive.tsx`, opened from Settings, not from this reader) shares the same overlay/release chrome — see [the-blueprint.md](the-blueprint.md).
 
 ## 3. Functions / actions
 
@@ -49,7 +49,7 @@ Tapping a read step opens a full-screen, in-page overlay ([ADR 0013](../../decis
 | Seed the defaults | First ever open, zero items | `rituals.seedDefaults`: the 7 typed defaults; one-shot via `settings.ritualsSeededAt`; stamps `ritualsSeedVersion` | System | writes `ritualItems`, `settings` |
 | Upgrade + reconcile (v4) | First open of an older account | `rituals.upgradeToSeedVersion`: adds missing kinds (never a 2nd mantra beside a legacy read-mantra), then `reconcileMorningV4` folds mantra duplicates into one inline mantra + clears the stale "one move" question; once (ADR 0011) | System | writes `ritualItems`, `settings.ritualsSeedVersion` |
 | Walk / check a component | Tap the circle | `rituals.setChecked` in today's `ritualDays` row | Manual | writes `ritualDays.checkedIds` |
-| Read (immersive) | Tap Read on a `read` step | Opens the overlay; scroll-to-end auto-checks the step (ADR 0013) | Manual | writes `ritualDays.checkedIds` |
+| Read (immersive) | Tap Read on a `read` step | Opens the overlay; scroll-to-end checks the step and reveals the red Done button — tapping it (not the scroll itself) closes the overlay (ADR 0013) | Manual | writes `ritualDays.checkedIds` |
 | Show the mantra | A `mantra` step renders | Shows `content` inline, or `mantraForDay(dayKey)` from the rotating pool (`lib/mantras.ts`) — no reader, no tap-to-open | System | none |
 | Take in the mantra | Tap the circle on a `mantra` step | `rituals.setChecked` — the circle is the acknowledgment (mantra has no reader) | Manual | writes `ritualDays.checkedIds` |
 | Answer the question | Type/speak on a `question` step, then click out (auto-saves on blur — no Save button) | Publishes `ritual_question` `{ritual, day, itemId, question, answer}` to the Bus and checks the step; a non-empty, changed answer only. Answer shows in place and in the [Today log](dashboard.md) | Manual (voice via VoiceField) | writes `interactions`, `ritualDays.checkedIds` |
@@ -95,7 +95,7 @@ No Coach path yet (§9); the Coach sees completions and answers through the Bus.
 - **Roadmap, evening:** the builder always shows the count set for tomorrow; entries reorder/remove inline.
 - **Note, evening:** the ✳ field mirrors the saved note (another device's edit lands unless mid-edit); after the seal it is read-only ("Left for the morning") and hidden entirely if empty.
 - **Note, morning:** present → the gold ✳ card leads the scroll, read-only; absent → nothing renders (no empty-state nag).
-- **Reader open:** page scroll locked, close always visible; finish confirmation then release.
+- **Reader open:** page scroll locked, close always visible; finish confirmation then a pinned red Done button — release is explicit, never automatic (ADR 0013).
 - **Rail with no practices:** a quiet invitation + the single add.
 - **Deleting from the rail:** always behind the warning box; the confirm names the real consequence (gone from every day).
 

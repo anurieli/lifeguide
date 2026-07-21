@@ -1025,3 +1025,26 @@ body {
     transform: scaleY(0.6);
   }
 }
+
+/* Feedback widget — a freshly attached image (file picker, paste, or screenshot) pops in
+   instead of silently appearing, so the attach itself reads as an obvious UI change. Only
+   plays once per tile: React keys the tile on the object URL, so existing tiles never
+   remount and never replay this. */
+@keyframes fb-thumb-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.fb-thumb-in {
+  animation: fb-thumb-in 0.22s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fb-thumb-in {
+    animation: none;
+  }
+}

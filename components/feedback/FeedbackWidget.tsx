@@ -8,6 +8,7 @@ import { View } from "@/components/shell/Rail";
 import { useSpeechRecognition } from "@/lib/useSpeechRecognition";
 import { snapshotErrors } from "@/lib/errorBuffer";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { acceptImageFiles } from "@/lib/attachments";
 import { Mic, MicOff, Send, X, Check, Loader2, ImagePlus, Camera, MessageSquarePlus } from "lucide-react";
 
 const POS_KEY = "lifeguide.feedback.pos"; // remembered vertical position (px from top)
@@ -117,13 +118,12 @@ export function FeedbackWidget({ view, coachOpen = false }: { view: View; coachO
 
   const addImages = (files: Iterable<File>) => {
     setImages((prev) => {
-      const next = [...prev];
-      for (const f of files) {
-        if (!f.type.startsWith("image/")) continue;
-        if (next.length >= MAX_IMAGES) break;
-        next.push({ file: f, url: URL.createObjectURL(f), kind: "photo" });
-      }
-      return next;
+      const accepted = acceptImageFiles(prev.length, files, MAX_IMAGES);
+      if (accepted.length === 0) return prev; // no-op: nothing re-renders, which is correct
+      return [
+        ...prev,
+        ...accepted.map((f) => ({ file: f, url: URL.createObjectURL(f), kind: "photo" as const })),
+      ];
     });
   };
 
@@ -348,35 +348,48 @@ export function FeedbackWidget({ view, coachOpen = false }: { view: View; coachO
               className="w-full resize-none bg-paper border border-line rounded-xl px-3 py-2.5 text-ink text-[14px] outline-none placeholder:text-ink-mute focus:border-ink-mute"
             />
 
-            {/* Attachments — photos and page screenshots the user will send */}
+            {/* Attachments — photos and page screenshots the user will send. The count
+                line + pop-in animation on each new tile (fb-thumb-in, app/globals.css) are
+                the obvious confirmation that an attach actually landed — a native file-picker
+                selection or a paste has no other transitional feedback the way the screenshot
+                button's spinner does, so without these a successful attach could read as
+                nothing happened. */}
             {images.length > 0 && (
-              <div className="flex gap-2 flex-wrap">
-                {images.map((img, i) => (
-                  <div key={img.url} className="relative w-16 h-16 rounded-lg border border-line overflow-hidden bg-paper-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={img.url}
-                      alt={img.kind === "shot" ? `page screenshot ${i + 1}` : `attached photo ${i + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                    {img.kind === "shot" && (
-                      <span
-                        className="absolute bottom-0 left-0 flex items-center gap-0.5 px-1 py-0.5 bg-ink/70 text-white text-[9px] rounded-tr-md"
-                        title="Screenshot of this page"
-                      >
-                        <Camera className="w-2.5 h-2.5" />
-                        Page
-                      </span>
-                    )}
-                    <button
-                      onClick={() => removeImage(i)}
-                      className="absolute top-0 right-0 w-4 h-4 flex items-center justify-center bg-ink/70 text-white rounded-bl-md"
-                      aria-label={img.kind === "shot" ? "Remove screenshot" : "Remove photo"}
+              <div className="flex flex-col gap-1.5">
+                <div className="text-[11.5px] text-ink-soft font-medium">
+                  {images.length} {images.length === 1 ? "image" : "images"} attached
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {images.map((img, i) => (
+                    <div
+                      key={img.url}
+                      className="fb-thumb-in relative w-16 h-16 rounded-lg border border-line overflow-hidden bg-paper-2"
                     >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={img.url}
+                        alt={img.kind === "shot" ? `page screenshot ${i + 1}` : `attached photo ${i + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      {img.kind === "shot" && (
+                        <span
+                          className="absolute bottom-0 left-0 flex items-center gap-0.5 px-1 py-0.5 bg-ink/70 text-white text-[9px] rounded-tr-md"
+                          title="Screenshot of this page"
+                        >
+                          <Camera className="w-2.5 h-2.5" />
+                          Page
+                        </span>
+                      )}
+                      <button
+                        onClick={() => removeImage(i)}
+                        className="absolute top-0 right-0 w-4 h-4 flex items-center justify-center bg-ink/70 text-white rounded-bl-md"
+                        aria-label={img.kind === "shot" ? "Remove screenshot" : "Remove photo"}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

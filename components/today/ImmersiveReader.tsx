@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { Check, X } from "lucide-react";
+import { X } from "lucide-react";
 import { DailyRead } from "@/components/today/DailyRead";
 
 // ============================================================================
@@ -106,13 +106,10 @@ export function ImmersiveShell({
       {/* the explicit release — the ONLY thing that closes the reader once the
           end is reached. Pinned at the bottom, never auto-triggered. */}
       {done && (
-        <div className="flex items-center justify-between gap-4 border-t border-line bg-paper/95 px-5 py-4 md:px-8">
-          <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-mute">
-            <Check className="w-4 h-4" strokeWidth={2.5} /> Read
-          </span>
+        <div className="flex items-center justify-center border-t border-line bg-paper/95 px-5 py-4 md:px-8">
           <button
             onClick={onClose}
-            className="rounded-full bg-red-600 px-6 py-2.5 text-sm font-medium text-white shadow-lg transition hover:bg-red-700"
+            className="rounded-full bg-ink px-8 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
           >
             {finishLabel}
           </button>

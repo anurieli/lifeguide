@@ -7,6 +7,14 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-21 · Fix: the Blueprint's v1 → v2 upgrade was unreachable for everyone who had one
+
+Ariel, on production, still saw the OLD free-text Blueprint inside the new reader. Read his prod row to find out why: `seedVersion: 1`, the v1 markdown in `content`, and **no `header` / `pillars` fields at all** — the structured upgrade had never run. Cause: `upgradeIfNeeded` is lazy and only runs from a mutation (a Convex query cannot write), and both UI entry points called `adopt` **only when a document was missing** — `if (!doc) await adopt({})` in `BlueprintCard.tsx`, `if (item.source === "blueprint" && !blueprint)` in `RitualSequence.tsx`. Anyone who already had a v1 document therefore never triggered it, `get` returned a doc with no `pillars`, and the UI fell back to the flat markdown reader: old content, new shell, no affordances. The upgrade was unreachable for exactly the population it existed to serve.
+
+Fix, both halves: both call sites now call `adopt` **unconditionally** on open (it is idempotent and carries the upgrade), and a new internal `blueprintDoc.migrateUpgradeAll` sweeps every existing row so nobody waits for a click (`npx convex run blueprintDoc:migrateUpgradeAll --prod`; idempotent — already-structured docs are skipped). Regression test covers the exact shape that was stuck: a legacy v1 row no mutation ever touched upgrades to 8 pillars with every rule carrying a non-empty why, and a second run is a no-op. Suite 443 passing, tsc clean.
+
+**Docs touched:** `CHANGELOG.md`.
+
 ## 2026-07-21 · The Blueprint: no edit mode, hover-latent add/remove, one surface everywhere
 
 Reworked the Blueprint's interaction model on Ariel's spec: **there is no edit mode**. The Edit toggle and every in-place input are gone; the document reads as a document at rest and editing affordances are latent, appearing only under the cursor. Adding a rule is a **ghost slot** in the dead space under a section's last rule (dashed outline + `+` on hover) that opens an inline draft with *the practice* and *why it pays off*, resolved by X/✓ in the same breath (⌘/Ctrl+Enter saves, Escape cancels); the same gesture at the foot of the document adds a section. Removing is a minimal **X** revealed on hover at a rule's right (and beside a section's name), applied immediately with no confirm. Save is blocked until both fields are filled, and `addItem` now **requires a non-empty `why` server-side** (`why` went `v.optional(v.string())` → `v.string()`, both fields trimmed and validated) — every rule carries the reason it pays off, enforced in the mutation because that mutation is the contract an agent appends through, not just a UI nicety.

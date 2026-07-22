@@ -174,6 +174,11 @@ export const LAUNCH_ENTRIES: {
     body: "Today now opens with your morning scroll. Your Horizons ladder and ritual seal moved down to the very end, right as you close out the day. Today's quote also loads more reliably now, so you won't get stuck staring at a spinner.",
     view: "today",
   },
+  {
+    title: "The scroll count now matches what you see",
+    body: "The Morning and Night Scroll header counts only the cards actually in the scroll, so the number lines up with the steps in front of you. Your rail practices still count toward sealing the day.",
+    view: "today",
+  },
 ];
 
 export const seedLaunchEntries = internalMutation({

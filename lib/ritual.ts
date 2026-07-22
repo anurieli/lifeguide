@@ -114,6 +114,25 @@ export function isRitualComplete(itemIds: string[], checkedIds: string[]): boole
   return itemIds.every((id) => checked.has(id));
 }
 
+// The Morning/Night Scroll header shows progress over the RENDERED scroll cards
+// only: the non-`do` spine (read, mantra, question, roadmap, tidbit). `do`
+// practices live on the rituals rail, not in the scroll, so they must never move
+// either side of this bar (ARI-133): a header that counted them read "1 of 7"
+// while only 5 cards were on screen. Sealing is a SEPARATE bar (`isRitualComplete`
+// over EVERY item, rail practices included), so this narrower count never weakens
+// the seal. Empty spine gives zero of zero (the header hides itself in that case).
+export function scrollProgress(
+  items: { _id: string; kind: RitualItemKind }[],
+  checkedIds: string[],
+): { done: number; total: number } {
+  const checked = new Set(checkedIds);
+  const spine = items.filter((i) => i.kind !== "do");
+  return {
+    total: spine.length,
+    done: spine.filter((i) => checked.has(i._id)).length,
+  };
+}
+
 // The current run of consecutive "kept" days ending at the present, given the day
 // keys oldest→newest and the set of keys that count as kept (both bookends sealed).
 // Deliberately GENTLE (ADR 0018): today still in progress never breaks the run —

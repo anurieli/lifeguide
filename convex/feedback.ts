@@ -13,11 +13,12 @@
 // holds regardless of which surface (dev or prod) is calling.
 // ============================================================================
 
-import { mutation, query, internalQuery, internalMutation, MutationCtx } from "./_generated/server";
+import { mutation, query, internalQuery, internalMutation, MutationCtx, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
 import { isOwner } from "./owner";
+import { internal } from "./_generated/api";
 
 const TYPE = v.union(v.literal("bug"), v.literal("feature"), v.literal("other"));
 
@@ -28,6 +29,13 @@ async function actableRow(ctx: MutationCtx, userId: Id<"users">, id: Id<"feedbac
   if (!row) throw new Error("Not found");
   if (row.userId !== userId && !(await isOwner(ctx))) throw new Error("Not found");
   return row;
+}
+
+// A human-readable "who sent this" label, shared by both Linear paths (manual
+// export + auto-forward): "Name (email)" > "email" > "anonymous".
+async function submitterLabelFor(ctx: QueryCtx, userId: Id<"users">) {
+  const u = await ctx.db.get(userId);
+  return u?.name ? `${u.name}${u.email ? ` (${u.email})` : ""}` : u?.email ?? "anonymous";
 }
 
 // Record one feedback submission. Always created `open`.
@@ -49,12 +57,18 @@ export const submit = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
-    return await ctx.db.insert("feedback", {
+    const feedbackId = await ctx.db.insert("feedback", {
       userId,
       ...args,
       status: "open",
       createdAt: Date.now(),
     });
+    // Best-effort, async: forward this row to Linear as an `agent:cody` task.
+    // Scheduled (not awaited) so a Linear outage never slows or blocks submit;
+    // the action itself no-ops unless FEEDBACK_AUTOFORWARD is set (see
+    // convex/linear.ts autoForwardFeedback).
+    await ctx.scheduler.runAfter(0, internal.linear.autoForwardFeedback, { feedbackId });
+    return feedbackId;
   },
 });
 
@@ -148,10 +162,7 @@ export const getRowForExport = internalQuery({
     const row = await ctx.db.get(args.id);
     if (!row) throw new Error("Not found");
     if (row.userId !== userId && !(await isOwner(ctx))) throw new Error("Not found");
-    const u = await ctx.db.get(row.userId);
-    const submitterLabel = u?.name
-      ? `${u.name}${u.email ? ` (${u.email})` : ""}`
-      : u?.email ?? "anonymous";
+    const submitterLabel = await submitterLabelFor(ctx, row.userId);
     return {
       type: row.type,
       text: row.text,
@@ -186,6 +197,51 @@ export const markExported = mutation({
     await ctx.db.patch(args.id, {
       linear: { issueId: args.issueId, identifier: args.identifier, url: args.url, at: Date.now() },
       // Exporting means it's now being worked in Linear → pending (unless closed).
+      status: row.status === "dealt_with" ? "dealt_with" : "pending",
+      pendingAt: row.pendingAt ?? Date.now(),
+    });
+  },
+});
+
+// System-only read for the auto-forward action (convex/linear.ts
+// autoForwardFeedback), which runs from `ctx.scheduler` right after `submit` —
+// there is no user identity on that call, so this is intentionally NOT
+// auth-gated like `getRowForExport`. It is `internal`, so it is never reachable
+// from a client; the only caller is the scheduled action triggered by the
+// row's own submit.
+export const getRowForAutoForward = internalQuery({
+  args: { id: v.id("feedback") },
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.id);
+    if (!row) return null;
+    const submitterLabel = await submitterLabelFor(ctx, row.userId);
+    return {
+      type: row.type,
+      text: row.text,
+      view: row.view,
+      shotId: row.shotId,
+      imageIds: row.imageIds,
+      linear: row.linear,
+      submitterLabel,
+    };
+  },
+});
+
+// Same effect as `markExported`, for the auto-forward path: that action runs
+// from the scheduler with no user identity, so it cannot call the auth-gated
+// public mutation above. Internal-only — never exposed to a client.
+export const markExportedInternal = internalMutation({
+  args: {
+    id: v.id("feedback"),
+    issueId: v.string(),
+    identifier: v.string(),
+    url: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.id);
+    if (!row) return;
+    await ctx.db.patch(args.id, {
+      linear: { issueId: args.issueId, identifier: args.identifier, url: args.url, at: Date.now() },
       status: row.status === "dealt_with" ? "dealt_with" : "pending",
       pendingAt: row.pendingAt ?? Date.now(),
     });

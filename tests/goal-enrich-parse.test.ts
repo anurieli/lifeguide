@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseGoalEnrichment, parseGoalIntent } from "../convex/ai/parse";
+import { buildGoalIntentMessages, parseGoalEnrichment, parseGoalIntent } from "../convex/ai/parse";
 
 describe("parseGoalEnrichment", () => {
   it("parses clean JSON with a summary and steps", () => {
@@ -150,5 +150,35 @@ describe("parseGoalIntent", () => {
     expect(parseGoalIntent('{"action":"updateGoal","name":"x"}', goalIds, pillarIds)).toEqual({
       action: "none",
     });
+  });
+});
+
+// Regression: the ADR 0029 landing sent the ids context as a second `role:
+// "system"` message. chatComplete only prepends the coachGoalIntent task's
+// configured system prompt (which carries the classifier's real instructions
+// AND the word "json" that OpenAI's json_object response mode requires
+// somewhere in the prompt) when messages[0] isn't already role "system" — so
+// that variant silently dropped the real instructions and made every single
+// Coach turn 400 in production, since this call has no try/catch of its own
+// and its exception took the whole coach.ask reply down with it.
+describe("buildGoalIntentMessages", () => {
+  it("returns a single user-role message, never a system message", () => {
+    const messages = buildGoalIntentMessages(["g1"], ["p1"], "make a goal");
+    expect(messages).toHaveLength(1);
+    expect(messages[0].role).toBe("user");
+  });
+
+  it("includes the known ids and the raw message text in the one turn", () => {
+    const messages = buildGoalIntentMessages(["g1", "g2"], ["p1"], "climb Everest by 2027");
+    expect(messages[0].content).toContain("g1");
+    expect(messages[0].content).toContain("g2");
+    expect(messages[0].content).toContain("p1");
+    expect(messages[0].content).toContain("climb Everest by 2027");
+  });
+
+  it("reads as (none) when there are no known ids yet", () => {
+    const messages = buildGoalIntentMessages([], [], "anything");
+    expect(messages[0].content).toContain("Known goal ids:\n(none)");
+    expect(messages[0].content).toContain("Known pillar ids:\n(none)");
   });
 });

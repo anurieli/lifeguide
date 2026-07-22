@@ -9,11 +9,22 @@ import { LAUNCH_ENTRIES } from "../../convex/whatsNew";
 // the pill appears. These lock its two guarantees: it actually publishes (and the
 // feed then shows them), and it is idempotent (safe to re-run).
 
+// convex-test resolves its own internal `import.meta.glob` relative to its OWN
+// installed location, which — in this sandbox's symlinked node_modules — points at
+// a different checkout of this repo than the one this test file lives in. Passing
+// `modules` explicitly (computed relative to THIS file) makes edits to LAUNCH_ENTRIES
+// in this worktree's convex/whatsNew.ts actually get exercised (see whats-new.test.ts
+// for the same pattern; tests/convex/listener-memory.test.ts flagged the gotcha first).
+// (tsconfig has no vite/client types — this repo isn't Vite-built — hence the cast)
+const modules = (import.meta as unknown as { glob: (p: string) => Record<string, () => Promise<unknown>> }).glob(
+  "../../convex/**/*.*s",
+);
+
 const OWNER_EMAIL = "anurieli365@gmail.com";
 
 describe("whatsNew.seedLaunchEntries (ARI-107)", () => {
   it("publishes the launch entries; the feed then shows them to a fresh user", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     await t.run(async (ctx) => ctx.db.insert("users", { email: OWNER_EMAIL }));
 
     const res = await t.mutation(internal.whatsNew.seedLaunchEntries, {});
@@ -29,7 +40,7 @@ describe("whatsNew.seedLaunchEntries (ARI-107)", () => {
   });
 
   it("is idempotent — re-running inserts nothing and never duplicates", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     await t.run(async (ctx) => ctx.db.insert("users", { email: OWNER_EMAIL }));
 
     await t.mutation(internal.whatsNew.seedLaunchEntries, {});
@@ -42,7 +53,7 @@ describe("whatsNew.seedLaunchEntries (ARI-107)", () => {
   });
 
   it("refuses to seed when the owner account does not exist yet", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     await expect(t.mutation(internal.whatsNew.seedLaunchEntries, {})).rejects.toThrow(/owner/i);
   });
 });

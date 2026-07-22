@@ -169,6 +169,11 @@ export const LAUNCH_ENTRIES: {
     body: "The Blueprint is now 8 pillars of structured, editable lines instead of one wall of text — open it from Settings for the full immersive read, practice by practice, each with its own reason why.",
     view: "settings",
   },
+  {
+    title: "Today, back in order",
+    body: "Today now opens with your morning scroll. Your Horizons ladder and ritual seal moved down to the very end, right as you close out the day. Today's quote also loads more reliably now, so you won't get stuck staring at a spinner.",
+    view: "today",
+  },
 ];
 
 export const seedLaunchEntries = internalMutation({

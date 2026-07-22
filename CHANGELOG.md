@@ -7,6 +7,16 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-22 · What's New entry for the Today reorder + daily-quote fix
+
+Two already-shipped, user-facing changes (commit `eda2cbd`, merged via PR #73) never got a What's New announcement: the Today ritual reorder (morning scroll now leads, Horizons and the ritual seal moved to the bottom, seal last right before finishing the day) and the daily-quote fail-safe (Today's quote no longer strands on "Finding today's words…" forever). Added one launch-seed entry, "Today, back in order," to `LAUNCH_ENTRIES` in `convex/whatsNew.ts` covering both, linked to the `today` view. Per ADR 0026, entries are manually authored, not generated from this changelog.
+
+**Not yet live in production:** `LAUNCH_ENTRIES` is only inserted by running `npx convex run whatsNew:seedLaunchEntries` against a deployment (idempotent — skips titles that already exist). This environment's `.env.local` holds a production Convex deploy key, so per this task's hard constraint that mutation was **not** run here; it's called out in the PR for Ariel to run against prod when ready.
+
+Also fixed a pre-existing worktree-only test gap while touching this file: `tests/convex/whats-new-seed.test.ts` didn't pass an explicit `import.meta.glob` to `convexTest()`, so in this sandboxed worktree (symlinked `node_modules`, documented gotcha — see the `whats-new.test.ts` and `listener-memory.test.ts` comments) it was silently exercising a *different* checkout's stale `convex/whatsNew.ts` and would have missed the new entry. Patched to match the existing `whats-new.test.ts` pattern. `npx vitest run`: 448/448 green. `npx tsc --noEmit` and `npx next lint`: clean.
+
+**Docs touched:** `CHANGELOG.md` only — `docs/product/features/whats-new.md` already documents the `seedLaunchEntries` authoring flow generically (§3, §5) and needed no change for a new entry using that existing mechanism; the reorder/quote-fix behavior itself was already documented in `docs/product/features/daily-ritual.md`, `daily-tidbit.md`, and `horizons.md` by the original shipping commit (`eda2cbd`).
+
 ## 2026-07-21 · The Blueprint, made spare — and rules are click-to-edit
 
 Ariel, on the shipped version: make it minimalist. Tightened the whole surface and cut the chrome that was competing with the words.

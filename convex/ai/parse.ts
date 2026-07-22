@@ -91,6 +91,27 @@ export type GoalIntent =
       deadline?: string;
     };
 
+// The one message the classifier sees: the known ids plus the raw text, as a
+// SINGLE user turn. Deliberately never role "system" — chatComplete only
+// prepends the task's own configured system prompt (config.ts's
+// coachGoalIntent.system, which carries both the classifier's real
+// instructions and the word "json" that OpenAI's json_object response mode
+// requires somewhere in the prompt) when messages[0] isn't already role
+// "system". A second system message here silently dropped those
+// instructions and made every call 400 (see the coach.ts landing hotfix).
+export function buildGoalIntentMessages(
+  goalIds: string[],
+  pillarIds: string[],
+  message: string,
+): { role: "user"; content: string }[] {
+  return [
+    {
+      role: "user",
+      content: `Known goal ids:\n${goalIds.join("\n") || "(none)"}\n\nKnown pillar ids:\n${pillarIds.join("\n") || "(none)"}\n\nMessage: ${message}`,
+    },
+  ];
+}
+
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function parseGoalIntent(

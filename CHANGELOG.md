@@ -7,6 +7,12 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-22 · Hotfix: the Coach's text chat was completely broken in production
+
+Found by an end-to-end live smoke test against production (an isolated anonymous test account, driven through the real browser, not against a mock) run to verify ADR 0029's two AI paths — the goal roadmap draft worked cleanly (coherent dependency chain, correct next-move flag on the unblocked step), but asking the Coach anything at all in text chat failed with "I hit a snag reaching my thoughts just now." Root cause: `coach.ts`'s goal-intent classifier (landed in PR #74) sent the known-ids context as a second `role: "system"` message. `chatComplete` only prepends the task's own configured system prompt — which carries both the classifier's real instructions and the word "json" that OpenAI's `json_object` response mode requires somewhere in the prompt — when `messages[0]` isn't already role "system"; the second system message silently skipped that prepend, so the actual request reached OpenRouter missing "json" entirely and 400'd on every single call. Because this call had no try/catch of its own, the exception took the whole `coach.ask` action down with it — not just the goal-write feature, the entire Coach reply, for every message, for every user, since the moment PR #74 deployed. Fix: the ids context now rides as a single user turn (`ai/parse.ts`'s new `buildGoalIntentMessages`, extracted so it's independently testable), and the classification call is wrapped in try/catch so a future provider hiccup degrades to "no goal action detected" instead of killing the reply. Locked in by three new regression tests. Full suite green: 451 tests, tsc, lint, production build.
+
+**Docs touched:** `docs/product/features/goals.md` (§ The Coach can create and edit goals — the bug, the fix, and the graceful-degradation note), `CHANGELOG.md`.
+
 ## 2026-07-21 · The Blueprint, made spare — and rules are click-to-edit
 
 Ariel, on the shipped version: make it minimalist. Tightened the whole surface and cut the chrome that was competing with the words.

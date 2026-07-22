@@ -4,7 +4,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { chatComplete } from "./ai/openai";
-import { parseGoalIntent } from "./ai/parse";
+import { buildGoalIntentMessages, parseGoalIntent } from "./ai/parse";
 import { assembleContext } from "./context/assemble";
 import { ContextFragment } from "./context/types";
 
@@ -52,22 +52,25 @@ export const ask = action({
     // ground itself in what was actually just done. A thin wrapper over the
     // EXISTING goals.createGoal/updateGoal mutations — never a new write path.
     // Explicit, accepted tradeoff: every Coach turn now costs 2 model calls.
+    // See ai/parse.ts's buildGoalIntentMessages for why this is a single user
+    // turn, never a second system message (that variant 400'd every call).
+    // Wrapped in try/catch so a future provider hiccup degrades to "no goal
+    // action detected" instead of taking the whole reply down with it.
     let goalActionNote: string | null = null;
     const ids = await ctx.runQuery(api.goals.intentIds, {});
-    const intentRaw = await chatComplete(ctx, {
-      taskId: "coachGoalIntent",
-      fn: "coach.ask#goalIntent",
-      userId,
-      jsonMode: true,
-      messages: [
-        {
-          role: "system",
-          content: `Known goal ids:\n${ids.goalIds.join("\n") || "(none)"}\n\nKnown pillar ids:\n${ids.pillarIds.join("\n") || "(none)"}`,
-        },
-        { role: "user", content: args.message },
-      ],
-    });
-    const intent = parseGoalIntent(intentRaw, new Set(ids.goalIds), new Set(ids.pillarIds));
+    let intent: ReturnType<typeof parseGoalIntent> = { action: "none" };
+    try {
+      const intentRaw = await chatComplete(ctx, {
+        taskId: "coachGoalIntent",
+        fn: "coach.ask#goalIntent",
+        userId,
+        jsonMode: true,
+        messages: buildGoalIntentMessages(ids.goalIds, ids.pillarIds, args.message),
+      });
+      intent = parseGoalIntent(intentRaw, new Set(ids.goalIds), new Set(ids.pillarIds));
+    } catch (e) {
+      console.error("coach.ask#goalIntent failed (non-fatal, falling back to no goal action)", e);
+    }
     if (intent.action === "createGoal") {
       await ctx.runMutation(api.goals.createGoal, {
         name: intent.name,

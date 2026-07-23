@@ -159,12 +159,16 @@ export const getInternal = internalQuery({
 // Generation succeeded: attach the stored image and clear the "generating" flag.
 // Clearing attribution (to undefined) deletes the field, so the card — which keys
 // off fileId-present + attribution — flips from spinner to the rendered image.
+// `title` is also cleared: on a redo of a previously-failed node it still holds the
+// old error note, and the mobile row renders `title` as the caption, so a stale
+// failure message would otherwise linger over the now-successful image.
 export const finishGeneratedImage = internalMutation({
   args: { nodeId: v.id("nodes"), fileId: v.id("_storage") },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.nodeId, {
       fileId: args.fileId,
       attribution: undefined,
+      title: undefined,
       updatedAt: Date.now(),
     });
   },

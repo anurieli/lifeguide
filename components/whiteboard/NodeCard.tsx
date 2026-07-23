@@ -5,8 +5,9 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { NodeDoc } from "@/lib/types";
 import { SelectionMods } from "@/lib/selection";
-import { ImagePlus, FileText, Loader2, Sparkles } from "lucide-react";
+import { ImagePlus, FileText, Loader2, Sparkles, RotateCcw } from "lucide-react";
 import { DocPreview } from "./DocPreview";
+import { generatedImageState, redoPromptFor } from "@/lib/generatedImage";
 
 type Props = {
   node: NodeDoc;
@@ -101,6 +102,13 @@ export function NodeCard({
     if (aiMode) aiRef.current?.focus();
   }, [aiMode]);
 
+  // Open AI mode with the prompt seeded. Used by Redo / Edit-prompt on a
+  // generated_image so the person edits the original prompt rather than a blank.
+  const enterAiMode = (initial: string) => {
+    setAiPrompt(initial);
+    setAiMode(true);
+  };
+
   const submitAi = () => {
     const p = aiPrompt.trim();
     if (!p) return;
@@ -158,6 +166,7 @@ export function NodeCard({
   }, [autoFocus]);
 
   const isTextual = node.type === "text" || node.type === "quote";
+  const isGeneratedImage = node.type === "generated_image";
 
   // Grow (or shrink) the card to exactly fit the textarea's content so text
   // never scrolls inside a fixed frame. Measures at auto-height, then floors to
@@ -311,10 +320,14 @@ export function NodeCard({
         />
       )}
 
-      {(node.type === "text" || node.type === "quote") && aiMode && (
-        <div className="flex flex-col h-full p-2.5 gap-2" onPointerDown={(e) => e.stopPropagation()}>
+      {aiMode && (
+        // The image prompt editor. A blank text card enters this to compose a new
+        // image; a finished (or failed) generated_image re-enters it via Redo /
+        // Edit prompt with the original prompt seeded, and regenerates in place.
+        <div className="flex flex-col h-full p-2.5 gap-2 rounded-xl bg-card" onPointerDown={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#7c3aed]">
-            <Sparkles className="w-3.5 h-3.5" /> Generate with AI
+            <Sparkles className="w-3.5 h-3.5" />
+            {isGeneratedImage ? "Edit prompt & regenerate" : "Generate with AI"}
           </div>
           <textarea
             ref={aiRef}
@@ -341,7 +354,7 @@ export function NodeCard({
               disabled={!aiPrompt.trim()}
               className="text-xs px-2.5 py-1 rounded-md bg-[#7c3aed] text-white disabled:opacity-40 transition"
             >
-              Generate
+              {isGeneratedImage ? "Regenerate" : "Generate"}
             </button>
           </div>
         </div>
@@ -394,35 +407,78 @@ export function NodeCard({
         </div>
       )}
 
-      {node.type === "generated_image" &&
-        (img ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={img} alt="" className="w-full h-full object-cover rounded-xl" draggable={false} />
-        ) : node.attribution === "error" ? (
-          <div className="flex flex-col items-center justify-center h-full p-3 text-center gap-1.5">
-            <span className="text-xs text-ink-mute">Couldn&apos;t generate that image.</span>
-            {node.text && (
-              <span className="text-[11px] text-ink-mute/80 line-clamp-2">“{node.text}”</span>
-            )}
-            {node.title && (
-              <span className="text-[10px] text-ink-mute/70 line-clamp-2">{node.title}</span>
-            )}
-            <button
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={() => onGenerateImage(node.text ?? "")}
-              className="mt-1 text-xs px-2.5 py-1 rounded-md bg-[#7c3aed] text-white transition"
-            >
-              Try again
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full p-3 text-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin text-[#7c3aed]" />
-            <span className="text-[11px] text-ink-mute line-clamp-3">
-              {node.text ? `Generating “${node.text}”…` : "Generating…"}
-            </span>
-          </div>
-        ))}
+      {isGeneratedImage &&
+        !aiMode &&
+        // "generating" wins over a lingering fileId: a Redo re-runs this same node
+        // and the previous image stays until the new one is filed, so the spinner
+        // must show meanwhile (generatedImageState encodes the precedence).
+        (() => {
+          const state = generatedImageState(node.attribution, !!img);
+          if (state === "ready") {
+            return (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img}
+                  alt=""
+                  className="w-full h-full object-cover rounded-xl"
+                  draggable={false}
+                />
+                {/* Redo: open the prompt editor prefilled, regenerate in place.
+                    stopPropagation so it never starts a card drag. */}
+                <button
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => enterAiMode(redoPromptFor(node.text))}
+                  style={{
+                    transform: `translate(-6px, -6px) scale(${1 / scale})`,
+                    transformOrigin: "100% 100%",
+                  }}
+                  className="absolute bottom-0 right-0 flex items-center gap-1 px-2 py-1 rounded-md bg-ink/70 text-paper text-[11px] opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Redo this image with a new or edited prompt"
+                >
+                  <RotateCcw className="w-3 h-3" /> Redo
+                </button>
+              </>
+            );
+          }
+          if (state === "error") {
+            return (
+              <div className="flex flex-col items-center justify-center h-full p-3 text-center gap-1.5">
+                <span className="text-xs text-ink-mute">Couldn&apos;t generate that image.</span>
+                {node.text && (
+                  <span className="text-[11px] text-ink-mute/80 line-clamp-2">“{node.text}”</span>
+                )}
+                {node.title && (
+                  <span className="text-[10px] text-ink-mute/70 line-clamp-2">{node.title}</span>
+                )}
+                <div className="mt-1 flex items-center gap-2">
+                  <button
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => onGenerateImage(node.text ?? "")}
+                    className="text-xs px-2.5 py-1 rounded-md bg-[#7c3aed] text-white transition"
+                  >
+                    Try again
+                  </button>
+                  <button
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => enterAiMode(redoPromptFor(node.text))}
+                    className="text-xs px-2.5 py-1 rounded-md border border-line text-ink-mute hover:text-ink transition"
+                  >
+                    Edit prompt
+                  </button>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div className="flex flex-col items-center justify-center h-full p-3 text-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-[#7c3aed]" />
+              <span className="text-[11px] text-ink-mute line-clamp-3">
+                {node.text ? `Generating “${node.text}”…` : "Generating…"}
+              </span>
+            </div>
+          );
+        })()}
 
       {/* attach an image file into an empty card */}
       {isEmptyText && !aiMode && (

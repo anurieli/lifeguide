@@ -10,6 +10,16 @@ import { internal } from "../../convex/_generated/api";
 // coverage: mock global.fetch, run the real action handler, no live deployment,
 // no network. See convex/linear.ts for the implementation this pins.
 
+// convex-test resolves its default function-module glob relative to its OWN
+// installed location, which (through this worktree's symlinked node_modules)
+// points at the primary checkout, where convex/linear.ts lacks autoForwardFeedback.
+// Passing `modules` computed relative to THIS file makes it load this worktree's
+// convex/linear.ts (same convention as tests/convex/whats-new-seed.test.ts).
+// (tsconfig has no vite/client types, this repo isn't Vite-built, hence the cast)
+const modules = (import.meta as unknown as { glob: (p: string) => Record<string, () => Promise<unknown>> }).glob(
+  "../../convex/**/*.*s",
+);
+
 const BASE = {
   type: "bug" as const,
   text: "the button does nothing\nsecond line the title should not include",
@@ -22,7 +32,7 @@ const BASE = {
 };
 
 async function setup() {
-  const t = convexTest(schema);
+  const t = convexTest(schema, modules);
   const userId = await t.run(async (ctx) => ctx.db.insert("users", { name: "Alice" }));
   return { t, asUser: t.withIdentity({ subject: userId }) };
 }

@@ -1,11 +1,13 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useState } from "react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { SurfaceId, NodeDoc, CaptureDoc } from "@/lib/types";
 import { useNodes } from "@/hooks/useNodes";
 import { useCaptures } from "@/hooks/useCaptures";
+import { generatedImageState, redoPromptFor } from "@/lib/generatedImage";
 import { PageHeader } from "@/components/shell/PageHeader";
 import {
   Sparkles,
@@ -16,6 +18,7 @@ import {
   Quote as QuoteIcon,
   Loader2,
   Download,
+  RotateCcw,
 } from "lucide-react";
 
 // The phone rendering of the Vision Board. The desktop surface is an infinite
@@ -24,8 +27,23 @@ import {
 // vertical list — every item and its data, top to bottom. Placing, dismissing,
 // and reading all still work; only the spatial canvas is dropped.
 export function MobileBoard({ surfaceId }: { surfaceId: SurfaceId }) {
-  const { nodes, remove } = useNodes(surfaceId);
+  const { nodes, remove, morph } = useNodes(surfaceId);
   const { inbox, place, softDelete } = useCaptures();
+  const generateImage = useAction(api.ai.imageGen.generateInto);
+
+  // Redo a generated_image in place: morph it back to "generating" with the (edited)
+  // prompt for an instant spinner, then re-run the action. Mirrors the desktop
+  // handleGenerateImage; the list has no dimensions to preserve. On failure the node
+  // is flagged "error" so the row can offer Try again / Edit prompt again.
+  const regenerate = async (nodeId: Id<"nodes">, prompt: string) => {
+    const p = prompt.trim();
+    if (!p) return;
+    await morph({ nodeId, type: "generated_image", text: p, attribution: "generating" });
+    generateImage({ nodeId, prompt: p }).catch((err) => {
+      console.error("image generation failed", err);
+      void morph({ nodeId, type: "generated_image", attribution: "error" });
+    });
+  };
 
   // Newest first so a just-added card lands at the top of the list.
   const items = [...nodes].sort((a, b) => b.createdAt - a.createdAt);
@@ -78,6 +96,7 @@ export function MobileBoard({ surfaceId }: { surfaceId: SurfaceId }) {
                 key={n._id}
                 node={n}
                 onDelete={() => void remove({ nodeId: n._id })}
+                onRegenerate={(prompt) => void regenerate(n._id, prompt)}
               />
             ))}
           </div>
@@ -105,7 +124,15 @@ function Pillars({ pillars }: { pillars: string[] }) {
 }
 
 // ---- A single board node as a list row ---------------------------------
-function NodeItem({ node, onDelete }: { node: NodeDoc; onDelete: () => void }) {
+function NodeItem({
+  node,
+  onDelete,
+  onRegenerate,
+}: {
+  node: NodeDoc;
+  onDelete: () => void;
+  onRegenerate: (prompt: string) => void;
+}) {
   // Resolve a stored file's URL the same way NodeCard does (imageUrl wins if set).
   const fileUrl = useQuery(
     api.files.getUrl,
@@ -122,33 +149,35 @@ function NodeItem({ node, onDelete }: { node: NodeDoc; onDelete: () => void }) {
       >
         <X className="w-3.5 h-3.5" />
       </button>
-      <NodeBody node={node} img={img} />
+      <NodeBody node={node} img={img} onRegenerate={onRegenerate} />
     </div>
   );
 }
 
-function NodeBody({ node, img }: { node: NodeDoc; img: string | undefined }) {
+function NodeBody({
+  node,
+  img,
+  onRegenerate,
+}: {
+  node: NodeDoc;
+  img: string | undefined;
+  onRegenerate: (prompt: string) => void;
+}) {
   const text = node.text?.trim();
 
-  // Image / generated image: the picture, with any caption or prompt beneath.
-  if (node.type === "image" || node.type === "generated_image") {
-    const generating = node.type === "generated_image" && node.attribution === "generating";
-    const errored = node.type === "generated_image" && node.attribution === "error";
+  // Generated image: the picture (or spinner / error), plus in-place Redo.
+  if (node.type === "generated_image") {
+    return <GeneratedImage node={node} img={img} onRegenerate={onRegenerate} />;
+  }
+
+  // Uploaded image: the picture, with any caption beneath.
+  if (node.type === "image") {
     return (
       <div>
-        {img ? (
+        {img && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={img} alt="" className="w-full max-h-72 object-cover" />
-        ) : generating ? (
-          <div className="flex items-center justify-center gap-2 h-40 text-ink-mute">
-            <Loader2 className="w-4 h-4 animate-spin text-[#7c3aed]" />
-            <span className="text-xs">Generating…</span>
-          </div>
-        ) : errored ? (
-          <div className="flex items-center justify-center h-40 text-xs text-ink-mute">
-            Couldn&apos;t generate that image.
-          </div>
-        ) : null}
+        )}
         {(node.title || text) && (
           <div className="p-3">
             {node.title && <div className="text-sm font-medium text-ink">{node.title}</div>}
@@ -243,6 +272,125 @@ function NodeBody({ node, img }: { node: NodeDoc; img: string | undefined }) {
         {text || <span className="text-ink-mute">Empty card</span>}
       </div>
       <Pillars pillars={node.pillars} />
+    </div>
+  );
+}
+
+// ---- A generated_image row, with in-place Redo -------------------------
+// The phone equivalent of the desktop card's Redo: a finished image can be
+// regenerated with an edited prompt, an errored one retried or edited, all
+// without leaving the list. Uses generatedImageState so a Redo's lingering
+// image never masks the spinner while the new one renders.
+function GeneratedImage({
+  node,
+  img,
+  onRegenerate,
+}: {
+  node: NodeDoc;
+  img: string | undefined;
+  onRegenerate: (prompt: string) => void;
+}) {
+  const text = node.text?.trim();
+  const state = generatedImageState(node.attribution, !!img);
+  const [editing, setEditing] = useState(false);
+  const [prompt, setPrompt] = useState("");
+
+  const openEditor = () => {
+    setPrompt(redoPromptFor(node.text));
+    setEditing(true);
+  };
+  const submit = () => {
+    if (!prompt.trim()) return;
+    setEditing(false);
+    onRegenerate(prompt);
+  };
+
+  if (editing) {
+    return (
+      <div className="p-3 flex flex-col gap-2">
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#7c3aed]">
+          <Sparkles className="w-3.5 h-3.5" /> Edit prompt &amp; regenerate
+        </div>
+        <textarea
+          value={prompt}
+          autoFocus
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Describe an image to generate…"
+          className="w-full min-h-20 rounded-lg border border-line bg-paper/60 p-2 text-sm text-ink outline-none resize-none"
+        />
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setEditing(false)}
+            className="text-xs text-ink-mute hover:text-ink transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={submit}
+            disabled={!prompt.trim()}
+            className="text-xs px-2.5 py-1 rounded-md bg-[#7c3aed] text-white disabled:opacity-40 transition"
+          >
+            Regenerate
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {state === "ready" && (
+        <div className="relative">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={img} alt="" className="w-full max-h-72 object-cover" />
+          <button
+            onClick={openEditor}
+            aria-label="Redo image"
+            className="absolute bottom-2 right-2 flex items-center gap-1 px-2 py-1 rounded-md bg-ink/70 text-paper text-[11px] transition active:opacity-90"
+          >
+            <RotateCcw className="w-3 h-3" /> Redo
+          </button>
+        </div>
+      )}
+      {state === "generating" && (
+        <div className="flex items-center justify-center gap-2 h-40 text-ink-mute">
+          <Loader2 className="w-4 h-4 animate-spin text-[#7c3aed]" />
+          <span className="text-xs">Generating…</span>
+        </div>
+      )}
+      {state === "error" && (
+        <div className="flex flex-col items-center justify-center gap-2 h-40 px-3 text-center">
+          <span className="text-xs text-ink-mute">Couldn&apos;t generate that image.</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onRegenerate(node.text ?? "")}
+              className="text-xs px-2.5 py-1 rounded-md bg-[#7c3aed] text-white transition"
+            >
+              Try again
+            </button>
+            <button
+              onClick={openEditor}
+              className="text-xs px-2.5 py-1 rounded-md border border-line text-ink-mute hover:text-ink transition"
+            >
+              Edit prompt
+            </button>
+          </div>
+        </div>
+      )}
+      {/* On error, node.title holds the failure note, so only the caption block
+          renders once the image is ready or generating (never the raw error). */}
+      {state !== "error" && (node.title || text) && (
+        <div className="p-3">
+          {node.title && <div className="text-sm font-medium text-ink">{node.title}</div>}
+          {text && <div className="text-xs text-ink-soft mt-0.5 line-clamp-4">{text}</div>}
+          <Pillars pillars={node.pillars} />
+        </div>
+      )}
+      {state !== "error" && !node.title && !text && node.pillars.length > 0 && (
+        <div className="p-3">
+          <Pillars pillars={node.pillars} />
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { Type, Sparkles, ImagePlus } from "lucide-react";
+import { closeThenAct } from "@/lib/canvasMenu";
 
 type Props = {
   x: number;
@@ -12,8 +13,12 @@ type Props = {
 };
 
 // Right-click menu for empty canvas: add a text card, start an AI image generation,
-// or upload an image — each placed where the click landed. A full-screen transparent
-// backdrop closes it on any outside press (or a second right-click).
+// or upload an image, each placed where the click landed. Picking any action runs it
+// through `closeThenAct`, which closes the menu first (via onClose) and then fires the
+// action, so the menu never lingers over the card it just created; the parent's action
+// closes over the clicked position, so closing first never loses it. A full-screen
+// transparent backdrop closes it on any outside press (or a second right-click); Escape
+// closes it too. Closing without a pick never creates anything.
 export function CanvasMenu({ x, y, onAddText, onGenerate, onUpload, onClose }: Props) {
   // Keep the menu on-screen if the click was near the right/bottom edge.
   const left = typeof window !== "undefined" ? Math.min(x, window.innerWidth - 210) : x;
@@ -37,13 +42,13 @@ export function CanvasMenu({ x, y, onAddText, onGenerate, onUpload, onClose }: P
         style={{ left, top }}
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <button className={item} onClick={onAddText}>
+        <button className={item} onClick={closeThenAct(onClose, onAddText)}>
           <Type className={icon} /> Add text
         </button>
-        <button className={item} onClick={onGenerate}>
+        <button className={item} onClick={closeThenAct(onClose, onGenerate)}>
           <Sparkles className={icon} /> Generate image with AI
         </button>
-        <button className={item} onClick={onUpload}>
+        <button className={item} onClick={closeThenAct(onClose, onUpload)}>
           <ImagePlus className={icon} /> Upload image
         </button>
       </div>

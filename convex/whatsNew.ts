@@ -127,7 +127,7 @@ export const remove = mutation({
 export const LAUNCH_ENTRIES: {
   title: string;
   body: string;
-  view: "today" | "core" | "sessions" | "goals" | "settings";
+  view: "today" | "core" | "sessions" | "goals" | "settings" | "board";
 }[] = [
   {
     title: "Your Life Wheel",
@@ -178,6 +178,11 @@ export const LAUNCH_ENTRIES: {
     title: "The scroll count now matches what you see",
     body: "The Morning and Night Scroll header counts only the cards actually in the scroll, so the number lines up with the steps in front of you. Your rail practices still count toward sealing the day.",
     view: "today",
+  },
+  {
+    title: "The board's add menu gets out of the way",
+    body: "Right-click your vision board, pick Add text, Generate image with AI, or Upload image, and the little menu now closes the moment you choose, so it no longer sits over the card it just made. Your new card still lands exactly where you clicked.",
+    view: "board",
   },
 ];
 

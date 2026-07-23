@@ -283,6 +283,11 @@ export const LAUNCH_ENTRIES: {
     body: "A long spoken take now shows a short summary at a glance, and expands into a tidied, easy-to-read version with the filler and false starts smoothed out. A very long take just shows its full transcript rather than a shortened version. Your original recording and its exact words are always kept, and the play button still hears you as you spoke.",
     view: "sessions",
   },
+  {
+    title: "A morning scroll that's truly yours",
+    body: "Two calmer touches in the Morning Scroll. The mantra is now editable right where you read it: tap the line and make it your own, and keeping it makes it your mantra going forward. And setting tomorrow's roadmap no longer means keeping a second to-do list. You now pull from the goals you're already tracking, and checking one off in the morning checks it off on your Goals board too.",
+    view: "today",
+  },
 ];
 
 export const seedLaunchEntries = internalMutation({

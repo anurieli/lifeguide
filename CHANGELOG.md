@@ -105,6 +105,21 @@ ARI-146: A completed AI-generated image now exposes Redo on desktop and mobile. 
 Added a shared generated-image state helper, focused client and Convex regression coverage, and a board-linked What's New entry. Full suite 487 passing, typecheck clean, lint clean with three pre-existing warnings, and production build successful.
 
 **Docs touched:** `docs/product/features/vision-board.md`, `CHANGELOG.md`.
+## 2026-07-23 · Morning Scroll: edit the mantra in place, and a roadmap built from goals you already track
+
+Two changes to the daily ritual, both from ARI-144.
+
+**Mantra, editable in place.** In the Morning Scroll the mantra line is now editable right where it is read: a calm pencil affordance on hover, and tapping the words opens a field seeded with today's resolved mantra (the person's fixed line, or the day's pool line). Saving writes the person's own words to `content`, so the rotating pool line becomes a fixed mantra going forward; blank or unchanged keeps the pool. Editing never toggles the acknowledgment circle. Scoped to the morning; a Night Scroll mantra stays edited through the shared Edit mode.
+
+**Roadmap pulls from goals, not a second list.** Setting tomorrow's roadmap no longer means typing a parallel to-do list. "Pull from your goals" now picks canonical open `goalTasks` rows (unchecked, not "waiting"), labeled with its goal; each entry is a pointer at the real task, not a copy. Supported in both beats: the Night Scroll sets tomorrow, the Morning Scroll adds to today. A live link resolves the task's current content (a rename on the Goals board shows through) and its current checked state (a completion or reopen there is reflected, and a stale local mark never wins). Checking a linked entry off in the morning mirrors back to the canonical task and reuses its Todoist push (`todoist.pushChecked`). Legacy free-form entries (and `roadmap.add`) are preserved and behave exactly as before; if a linked task is later deleted, the entry falls back to its stored snapshot text and its own `doneAt`, rendering as a plain entry.
+
+**Daily quote unchanged.** Left exactly as it was, by Ariel's direction.
+
+A hand-written What's New entry ("A morning scroll that's truly yours") ships with the change.
+
+Verification: full suite 458 passing across 60 files; focused roadmap suite 15 passing; `npx tsc --noEmit` clean; `npm run lint` passed with three pre-existing warnings; `npm run build` passed.
+
+**Docs touched:** `docs/product/features/daily-ritual.md`, `docs/product/features/goals.md`, `docs/architecture/data-model.md`, `docs/product/features/whats-new.md`, `CHANGELOG.md`.
 
 ## 2026-07-21 · The Blueprint, made spare — and rules are click-to-edit
 

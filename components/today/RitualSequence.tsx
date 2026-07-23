@@ -2,7 +2,7 @@
 
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowDown, ArrowUp, BookOpen, Check, Plus, X } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, Check, Pencil, Plus, X } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import {
@@ -283,32 +283,26 @@ function RoadmapStep({
   onAllDone: () => void;
 }) {
   const entries = useQuery(api.roadmap.forDay, { day: targetDay });
-  const add = useMutation(api.roadmap.add);
+  const available = useQuery(api.roadmap.availableTasks, { day: targetDay });
   const update = useMutation(api.roadmap.update);
   const setDone = useMutation(api.roadmap.setDone);
+  const addFromTask = useMutation(api.roadmap.addFromTask);
   const remove = useMutation(api.roadmap.remove);
   const move = useMutation(api.roadmap.move);
-  const [text, setText] = useState("");
   const [noteFor, setNoteFor] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
   const building = ritual === "night";
 
   if (entries === undefined) return <div className="flex-1" />;
-
-  const submit = async () => {
-    const t = text.trim();
-    if (!t) return;
-    setText("");
-    await add({ day: targetDay, text: t });
-  };
 
   return (
     <div className="min-w-0 flex-1">
       <div className="text-[13px] text-ink-mute mb-2">
         {building
-          ? "What does tomorrow start with? Type it, hit enter, next."
+          ? "What does tomorrow start with? Pull from your goals below."
           : entries.length > 0
             ? "Left by last-night you. Walk it, top to bottom."
-            : "What does today start with? Set the first thing:"}
+            : "What does today start with? Pull from your goals below."}
       </div>
 
       {entries.map((e, i) => (
@@ -320,22 +314,22 @@ function RoadmapStep({
           ) : (
             <button
               onClick={async () => {
-                const done = !e.doneAt;
+                const done = !e.done;
                 await setDone({ entryId: e._id, done });
-                if (done && entries.every((x) => x._id === e._id || x.doneAt)) onAllDone();
+                if (done && entries.every((x) => x._id === e._id || x.done)) onAllDone();
               }}
               disabled={sealed}
-              aria-label={e.doneAt ? "Mark not done" : "Mark done"}
+              aria-label={e.done ? "Mark not done" : "Mark done"}
               className={`w-[18px] h-[18px] rounded-full border flex items-center justify-center flex-shrink-0 mt-1 transition disabled:cursor-default ${
-                e.doneAt ? "bg-gold border-gold text-white" : "border-line-2 bg-paper"
+                e.done ? "bg-gold border-gold text-white" : "border-line-2 bg-paper"
               }`}
             >
-              {e.doneAt && <Check className="w-3 h-3" strokeWidth={3} />}
+              {e.done && <Check className="w-3 h-3" strokeWidth={3} />}
             </button>
           )}
           <div className="min-w-0 flex-1">
             <span
-              className={`block text-[14.5px] ${e.doneAt && !building ? "text-ink-mute line-through decoration-line-2" : "text-ink"}`}
+              className={`block text-[14.5px] ${e.done && !building ? "text-ink-mute line-through decoration-line-2" : "text-ink"}`}
             >
               {e.text}
             </span>
@@ -389,7 +383,7 @@ function RoadmapStep({
               <button
                 onClick={() => remove({ entryId: e._id })}
                 className="p-1 text-ink-mute hover:text-ink"
-                aria-label="Remove"
+                aria-label="Remove from the roadmap"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -398,14 +392,45 @@ function RoadmapStep({
         </div>
       ))}
 
+      {/* Pick from the canonical Goals tasks: the roadmap is a selection over what
+          you're already tracking, never a second to-do list (ARI-144). */}
       {!sealed && (
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && void submit()}
-          placeholder={building ? "Then what? (enter to add)" : "Add to today… (enter)"}
-          className={`${EDIT_FIELD} mt-2`}
-        />
+        <div className="mt-2">
+          <button
+            onClick={() => setPicking((p) => !p)}
+            className="inline-flex items-center gap-1 border border-line rounded-full px-3.5 py-1.5 text-[13px] text-ink-soft hover:border-gold transition"
+          >
+            <Plus className="w-3.5 h-3.5" /> Pull from your goals
+          </button>
+          {picking && (
+            <div className="mt-2 border border-line rounded-xl overflow-hidden">
+              {available === undefined ? (
+                <div className="text-[13px] text-ink-mute px-3 py-2.5">Loading…</div>
+              ) : available.length === 0 ? (
+                <div className="text-[13px] text-ink-mute px-3 py-3 leading-relaxed">
+                  No open tasks to pull. Add tasks on the Goals board, then set your roadmap from them.
+                </div>
+              ) : (
+                <div className="max-h-64 overflow-auto divide-y divide-line">
+                  {available.map((t) => (
+                    <button
+                      key={t._id}
+                      onClick={() => void addFromTask({ day: targetDay, goalTaskId: t._id })}
+                      className="w-full text-left px-3 py-2.5 hover:bg-gold/[0.05] transition flex items-center justify-between gap-3"
+                    >
+                      <span className="text-[14px] text-ink min-w-0 truncate">{t.content}</span>
+                      {t.goalName && (
+                        <span className="text-[11.5px] text-ink-mute flex-shrink-0">
+                          {t.goalName}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
       {building && entries.length > 0 && (
         <div className="text-[12px] text-ink-mute mt-2">
@@ -413,6 +438,100 @@ function RoadmapStep({
         </div>
       )}
       {building && <NoteToMorning targetDay={targetDay} sealed={sealed} />}
+    </div>
+  );
+}
+
+// --- The mantra component: read it, or make it yours in place -------------
+// The mantra shows inline (it is short, read in a breath). In the Morning Scroll
+// the line itself is directly editable outside the global Edit mode: tap it and it
+// becomes a field seeded with today's resolved words, the person's own fixed line,
+// or the day's line drawn from the rotating pool. Saving a pool line makes it the
+// FIXED mantra going forward (writing `content` via ritualItems.updateItem). The
+// check circle beside it stays the acknowledgment: editing the text never toggles
+// it, and the small pencil keeps the affordance discoverable but calm. The request
+// was scoped to the morning (Ariel, ARI-144), so a Night Scroll mantra renders
+// read-only here and is still edited through the shared Edit mode. (ARI-144.)
+
+function MantraStep({
+  item,
+  resolved,
+  isChecked,
+  editable,
+  onSave,
+}: {
+  item: Item;
+  resolved: string;
+  isChecked: boolean;
+  // Direct in-place editing is Morning-Scroll only; false renders read-only.
+  editable: boolean;
+  onSave: (content: string) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(resolved);
+  // Mirror the resolved line while not editing: the pool line changes at the 4am
+  // rollover, or another device sets a fixed line.
+  useEffect(() => {
+    if (!editing) setDraft(resolved);
+  }, [resolved, editing]);
+
+  const save = async () => {
+    setEditing(false);
+    const next = draft.trim();
+    if (!next || next === resolved) {
+      setDraft(resolved);
+      return;
+    }
+    await onSave(next);
+  };
+
+  return (
+    <div className="min-w-0 flex-1">
+      <div className="text-[11px] tracking-[0.14em] uppercase text-ink-mute mb-1 flex items-center gap-1.5">
+        {item.title}
+        {editable && !editing && (
+          <button
+            onClick={() => setEditing(true)}
+            className="opacity-0 group-hover:opacity-60 hover:!opacity-100 transition text-ink-mute"
+            aria-label="Edit the mantra"
+          >
+            <Pencil className="w-3 h-3" />
+          </button>
+        )}
+      </div>
+      {editable && editing ? (
+        <textarea
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => void save()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              (e.target as HTMLTextAreaElement).blur();
+            } else if (e.key === "Escape") {
+              setDraft(resolved);
+              setEditing(false);
+            }
+          }}
+          rows={2}
+          className={`${EDIT_FIELD} text-[16px] resize-none leading-relaxed`}
+        />
+      ) : editable ? (
+        <button
+          onClick={() => setEditing(true)}
+          title="Make this line your own"
+          className={`block text-left w-full text-[16px] leading-relaxed transition hover:text-ink ${
+            isChecked ? "text-ink-mute" : "text-ink"
+          }`}
+        >
+          {resolved}
+        </button>
+      ) : (
+        <div className={`text-[16px] leading-relaxed ${isChecked ? "text-ink-mute" : "text-ink"}`}>
+          {resolved}
+        </div>
+      )}
     </div>
   );
 }
@@ -768,7 +887,7 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
             return (
               <div
                 key={item._id}
-                className={`flex items-start gap-3 py-3.5 border-b border-line last:border-b-0 ${
+                className={`group flex items-start gap-3 py-3.5 border-b border-line last:border-b-0 ${
                   isCurrent ? "-mx-3 px-3 rounded-xl bg-gold/[0.04]" : ""
                 }`}
               >
@@ -804,20 +923,19 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
                   </div>
                 )}
                 {item.kind === "mantra" && (
-                  // Shown inline — the mantra IS the step. No Read button: it is
-                  // short, read in a breath. The circle is the acknowledgment.
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[11px] tracking-[0.14em] uppercase text-ink-mute mb-1">
-                      {item.title}
-                    </div>
-                    <div
-                      className={`text-[16px] leading-relaxed ${
-                        isChecked ? "text-ink-mute" : "text-ink"
-                      }`}
-                    >
-                      {mantraFor(item)}
-                    </div>
-                  </div>
+                  // Shown inline: the mantra IS the step. No Read button, it is
+                  // short, read in a breath. The circle is the acknowledgment; in the
+                  // Morning Scroll the line itself is editable in place (make it
+                  // yours). Night stays read-only here, edited via Edit mode. (ARI-144.)
+                  <MantraStep
+                    item={item}
+                    resolved={mantraFor(item)}
+                    isChecked={isChecked}
+                    editable={ritual === "morning"}
+                    onSave={async (content) => {
+                      await updateItem({ itemId: item._id, content });
+                    }}
+                  />
                 )}
                 {item.kind === "tidbit" && (
                   <DailyTidbit

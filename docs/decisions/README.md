@@ -34,6 +34,7 @@ Architecture Decision Records for LifeGuide. One file per notable decision, numb
 | [0028](0028-core-is-the-fixed-life-blueprint-plus-living-containers.md) | Core is the fixed Life Blueprint plus Living Core containers | accepted (product direction, not implemented) | 2026-07-20 |
 | [0029](0029-aspirations-goals-and-roadmap-steps.md) | Aspirations, Goals, and roadmap steps (written 2026-07-18 as "0022" on a diverged branch; renumbered on landing) | accepted (live) | 2026-07-20 |
 | [0030](0030-the-journal-is-the-cores-incremental-intake.md) | The journal is the Core's incremental intake: one unanswered Blueprint slot a day, answered by journaling | accepted (product direction, not implemented) | 2026-07-21 |
+| [0031](0031-feedback-autoforward-to-linear.md) | App feedback auto-forwards to Linear as `agent:cody` tasks, flag-gated | accepted (built, flag off by default) | 2026-07-22 |
 
 
 See [`../README.md`](../README.md) for the documentation map and the two seeds, and [`../product/concept-and-soul.md`](../product/concept-and-soul.md) for the current source of truth.

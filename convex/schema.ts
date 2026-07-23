@@ -350,7 +350,12 @@ export default defineSchema({
     order: v.number(),
     doneAt: v.optional(v.number()), // tapped done the next morning
     createdAt: v.number(),
-  }).index("by_user_day", ["userId", "day", "order"]),
+  })
+    .index("by_user_day", ["userId", "day", "order"])
+    // Reverse lookup from a canonical task to the entries pointing at it, so
+    // `goals.deleteTask` can freeze each linked entry's snapshot before the task
+    // goes away (ARI-144) without scanning every entry.
+    .index("by_goal_task", ["goalTaskId"]),
 
   // A note to tomorrow-morning-you: one short free-form message written during the
   // night scroll and read at the top of the next morning scroll — the last thing

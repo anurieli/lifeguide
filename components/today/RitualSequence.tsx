@@ -15,6 +15,8 @@ import {
 } from "@/lib/ritual";
 import { DailyExercise, journalPromptFor, questionForDay } from "@/lib/questions";
 import { mantraForDay } from "@/lib/mantras";
+import { cancelMantra, commitMantra, reopenAfterFailedSave } from "@/lib/mantraEdit";
+import { PickFailure, recordPickFailure } from "@/lib/roadmapPick";
 import { DailyTidbit } from "@/components/today/DailyTidbit";
 import { VoiceField } from "@/components/voice/VoiceField";
 import { ImmersiveReader } from "@/components/today/ImmersiveReader";
@@ -291,6 +293,9 @@ function RoadmapStep({
   const move = useMutation(api.roadmap.move);
   const [noteFor, setNoteFor] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
+  // A calm notice for a pick that didn't land (the task went stale on the Goals board
+  // between the list render and the tap). Cleared on the next good pick or on close.
+  const [pickError, setPickError] = useState<PickFailure | null>(null);
   const building = ritual === "night";
 
   if (entries === undefined) return <div className="flex-1" />;
@@ -397,7 +402,10 @@ function RoadmapStep({
       {!sealed && (
         <div className="mt-2">
           <button
-            onClick={() => setPicking((p) => !p)}
+            onClick={() => {
+              if (picking) setPickError(null); // closing the picker clears any stale notice
+              setPicking(!picking);
+            }}
             className="inline-flex items-center gap-1 border border-line rounded-full px-3.5 py-1.5 text-[13px] text-ink-soft hover:border-gold transition"
           >
             <Plus className="w-3.5 h-3.5" /> Pull from your goals
@@ -415,7 +423,17 @@ function RoadmapStep({
                   {available.map((t) => (
                     <button
                       key={t._id}
-                      onClick={() => void addFromTask({ day: targetDay, goalTaskId: t._id })}
+                      onClick={async () => {
+                        try {
+                          await addFromTask({ day: targetDay, goalTaskId: t._id });
+                          setPickError(null); // a good pick clears any prior notice
+                        } catch (err) {
+                          // The task went stale (deleted / checked / waiting elsewhere).
+                          // Keep it calm: explain, don't alarm; the list drops the row
+                          // on its own as the reactive query catches up.
+                          setPickError(recordPickFailure(String(t._id), err));
+                        }
+                      }}
                       className="w-full text-left px-3 py-2.5 hover:bg-gold/[0.05] transition flex items-center justify-between gap-3"
                     >
                       <span className="text-[14px] text-ink min-w-0 truncate">{t.content}</span>
@@ -426,6 +444,11 @@ function RoadmapStep({
                       )}
                     </button>
                   ))}
+                </div>
+              )}
+              {pickError && (
+                <div className="text-[12.5px] text-ink-mute px-3 py-2.5 border-t border-line leading-relaxed">
+                  {pickError.message}
                 </div>
               )}
             </div>
@@ -476,13 +499,18 @@ function MantraStep({
   }, [resolved, editing]);
 
   const save = async () => {
-    setEditing(false);
-    const next = draft.trim();
-    if (!next || next === resolved) {
-      setDraft(resolved);
-      return;
+    const { state, persist } = commitMantra({ editing, draft }, resolved);
+    setEditing(state.editing);
+    setDraft(state.draft);
+    if (persist === null) return; // empty or unchanged: the resolved line stands
+    try {
+      await onSave(persist);
+    } catch {
+      // The save didn't land: keep the words and reopen so the edit isn't lost.
+      const reopened = reopenAfterFailedSave(persist);
+      setEditing(reopened.editing);
+      setDraft(reopened.draft);
     }
-    await onSave(next);
   };
 
   return (
@@ -510,8 +538,9 @@ function MantraStep({
               e.preventDefault();
               (e.target as HTMLTextAreaElement).blur();
             } else if (e.key === "Escape") {
-              setDraft(resolved);
-              setEditing(false);
+              const c = cancelMantra(resolved);
+              setDraft(c.draft);
+              setEditing(c.editing);
             }
           }}
           rows={2}

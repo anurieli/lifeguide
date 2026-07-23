@@ -30,7 +30,12 @@ async function makeTask(
   t: ReturnType<typeof convexTest>,
   userId: Id<"users">,
   content: string,
-  opts: { goalName?: string; checked?: boolean; waiting?: boolean } = {},
+  opts: {
+    goalName?: string;
+    checked?: boolean;
+    waiting?: boolean;
+    todoistTaskId?: string;
+  } = {},
 ): Promise<Id<"goalTasks">> {
   return await t.run(async (ctx) => {
     let goalId: Id<"goals"> | undefined = undefined;
@@ -49,11 +54,25 @@ async function makeTask(
       goalId,
       content,
       checked: opts.checked ?? false,
+      completedAt: opts.checked ? Date.now() : undefined,
       waiting: opts.waiting,
+      todoistTaskId: opts.todoistTaskId,
       sortOrder: Date.now(),
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+  });
+}
+
+// The Todoist push actions scheduled so far, newest last. A linked morning check
+// mirrors through to Todoist exactly as a board check would (ARI-144); these tests
+// assert the push is queued without running the (key-less) action for real.
+async function scheduledPushes(t: ReturnType<typeof convexTest>) {
+  return await t.run(async (ctx) => {
+    const all = await ctx.db.system.query("_scheduled_functions").collect();
+    return all
+      .filter((f) => f.name.includes("pushChecked"))
+      .map((f) => f.args[0] as { todoistTaskId: string; checked: boolean });
   });
 }
 
@@ -267,5 +286,142 @@ describe("roadmap linked to goal tasks (ARI-144)", () => {
     // follow it back to not-done even though the stale local doneAt is still set.
     await t.run(async (ctx) => ctx.db.patch(taskId, { checked: false, completedAt: undefined }));
     expect((await asUser.query(api.roadmap.forDay, { day: TOMORROW }))[0].done).toBe(false);
+  });
+
+  it("setDone on a linked task with a Todoist id queues the push (without running it)", async () => {
+    const { t, asUser, userId } = await setup();
+    const taskId = await makeTask(t, userId, "Synced task", { todoistTaskId: "td-1" });
+    const entryId = (await asUser.mutation(api.roadmap.addFromTask, {
+      day: TOMORROW,
+      goalTaskId: taskId,
+    })) as Id<"roadmapEntries">;
+
+    expect(await scheduledPushes(t)).toHaveLength(0);
+    await asUser.mutation(api.roadmap.setDone, { entryId, done: true });
+    // The morning check mirrors to the canonical task and schedules exactly one push
+    // carrying that task's Todoist id + the new checked state. The action itself never
+    // runs here (no key), so this asserts the queue, not a live Todoist call.
+    const pushes = await scheduledPushes(t);
+    expect(pushes).toHaveLength(1);
+    expect(pushes[0].todoistTaskId).toBe("td-1");
+    expect(pushes[0].checked).toBe(true);
+
+    // Reopening in the morning queues the mirror-back push too.
+    await asUser.mutation(api.roadmap.setDone, { entryId, done: false });
+    const after = await scheduledPushes(t);
+    expect(after).toHaveLength(2);
+    expect(after[1].checked).toBe(false);
+  });
+
+  it("does NOT queue a Todoist push when the linked task carries no Todoist id", async () => {
+    const { t, asUser, userId } = await setup();
+    const taskId = await makeTask(t, userId, "Unsynced task");
+    const entryId = (await asUser.mutation(api.roadmap.addFromTask, {
+      day: TOMORROW,
+      goalTaskId: taskId,
+    })) as Id<"roadmapEntries">;
+    await asUser.mutation(api.roadmap.setDone, { entryId, done: true });
+    expect(await scheduledPushes(t)).toHaveLength(0);
+  });
+});
+
+// Delete-time freezing (ARI-144): deleting the canonical task through the REAL
+// `goals.deleteTask` mutation must freeze each linked entry's LATEST resolved
+// snapshot (current content + current canonical checked state), not the pick-time
+// copy, then sever the link so the row lives on as a plain frozen line.
+describe("goals.deleteTask freezes linked roadmap entries (ARI-144)", () => {
+  it("freezes the task's LATEST renamed content, not the pick-time snapshot", async () => {
+    const { t, asUser, userId } = await setup();
+    const taskId = await makeTask(t, userId, "Old name");
+    const entryId = (await asUser.mutation(api.roadmap.addFromTask, {
+      day: TOMORROW,
+      goalTaskId: taskId,
+    })) as Id<"roadmapEntries">;
+    // Rename on the Goals board AFTER picking, then delete via the real mutation.
+    await asUser.mutation(api.goals.updateTask, { id: taskId, content: "New name" });
+    await asUser.mutation(api.goals.deleteTask, { id: taskId });
+
+    const rows = await asUser.query(api.roadmap.forDay, { day: TOMORROW });
+    expect(rows[0].text).toBe("New name"); // the LATEST content is frozen, not "Old name"
+    expect(rows[0].goalTaskId).toBeUndefined(); // link severed → plain frozen line
+    // The stored row itself carries the frozen text (no live task left to resolve).
+    const stored = await t.run(async (ctx) => ctx.db.get(entryId));
+    expect(stored?.text).toBe("New name");
+    expect(stored?.goalTaskId).toBeUndefined();
+  });
+
+  it("freezes the LATEST canonical checked state (done on the board → frozen done)", async () => {
+    const { t, asUser, userId } = await setup();
+    const taskId = await makeTask(t, userId, "Finish it");
+    const entryId = (await asUser.mutation(api.roadmap.addFromTask, {
+      day: TOMORROW,
+      goalTaskId: taskId,
+    })) as Id<"roadmapEntries">;
+    // Complete the task on the Goals board via the real mutation, then delete it.
+    await asUser.mutation(api.goals.setChecked, { id: taskId, checked: true });
+    await asUser.mutation(api.goals.deleteTask, { id: taskId });
+
+    const rows = await asUser.query(api.roadmap.forDay, { day: TOMORROW });
+    expect(rows[0].done).toBe(true); // canonical done is frozen into the row's doneAt
+    const stored = await t.run(async (ctx) => ctx.db.get(entryId));
+    expect(stored?.doneAt).toBeTypeOf("number");
+    expect(stored?.goalTaskId).toBeUndefined();
+  });
+
+  it("roadmap-check then canonical reopen then delete freezes as NOT done (canonical wins over stale local doneAt)", async () => {
+    const { t, asUser, userId } = await setup();
+    const taskId = await makeTask(t, userId, "Round trip");
+    const entryId = (await asUser.mutation(api.roadmap.addFromTask, {
+      day: TOMORROW,
+      goalTaskId: taskId,
+    })) as Id<"roadmapEntries">;
+    // Check it off in the morning: this stamps the entry's OWN doneAt and completes
+    // the canonical task.
+    await asUser.mutation(api.roadmap.setDone, { entryId, done: true });
+    expect(await t.run(async (ctx) => (await ctx.db.get(entryId))?.doneAt)).toBeTypeOf("number");
+    // Reopen the canonical task on the Goals board (leaving the stale local doneAt set).
+    await asUser.mutation(api.goals.setChecked, { id: taskId, checked: false });
+    // Delete the task: freezing must trust the canonical NOT-checked state and clear the
+    // stale local doneAt, or the row would wrongly read as done forever.
+    await asUser.mutation(api.goals.deleteTask, { id: taskId });
+
+    const rows = await asUser.query(api.roadmap.forDay, { day: TOMORROW });
+    expect(rows[0].done).toBe(false);
+    const stored = await t.run(async (ctx) => ctx.db.get(entryId));
+    expect(stored?.doneAt).toBeUndefined(); // stale local doneAt cleared at freeze time
+    expect(stored?.goalTaskId).toBeUndefined();
+  });
+
+  it("deleting one user's task never patches another user's roadmap entry, even with corrupt cross-user data", async () => {
+    const { t, asUser, userId } = await setup();
+    const otherId = await t.run(async (ctx) => ctx.db.insert("users", {}));
+    const asOther = t.withIdentity({ subject: otherId });
+    // My task, legitimately linked from my own roadmap.
+    const taskId = await makeTask(t, userId, "Mine");
+    const mineEntry = (await asUser.mutation(api.roadmap.addFromTask, {
+      day: TOMORROW,
+      goalTaskId: taskId,
+    })) as Id<"roadmapEntries">;
+    // Corrupt data: the OTHER user has a roadmap entry pointing at MY task id (something
+    // `addFromTask` would never allow, forced directly here).
+    const foreignEntry = await t.run(async (ctx) =>
+      ctx.db.insert("roadmapEntries", {
+        userId: otherId,
+        day: TOMORROW,
+        text: "theirs, untouched",
+        goalTaskId: taskId,
+        order: 0,
+        createdAt: Date.now(),
+      }),
+    );
+    await asUser.mutation(api.goals.deleteTask, { id: taskId });
+
+    // My own entry was frozen; the other user's entry was left exactly as it was.
+    const foreign = await t.run(async (ctx) => ctx.db.get(foreignEntry));
+    expect(foreign?.text).toBe("theirs, untouched");
+    expect(foreign?.goalTaskId).toBe(taskId); // NOT severed by my delete
+    const theirs = await asOther.query(api.roadmap.forDay, { day: TOMORROW });
+    expect(theirs[0].text).toBe("theirs, untouched");
+    void mineEntry;
   });
 });

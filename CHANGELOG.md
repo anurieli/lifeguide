@@ -7,6 +7,16 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-23 · Listener: app feedback no longer surfaces as a personal topic; "what it knows" shows labeled sources
+
+Found live, talking to the orb: a feature request spoken during a Listener call ("add mute and end buttons") got summarized by the post-call memory pass (`convex/ai/listenerMemory.ts`, `listenerSummary` task) exactly like a personal topic, then came back the next call as "worth a light check-in." Root cause: the summarizer's system prompt (`convex/ai/config.ts`) had no concept of "this is talk about the app itself," so it folded meta/product commentary into `summary`/`topics`/`open_threads` alongside real personal disclosure. Fixed by adding an explicit exclusion rule to that prompt. Confirmed via the transcript/prompt path (`convex/interview.ts` → `lib/listenerMemory.ts`) that this was never a data leak between the separate feedback/capture tables and the Listener's memory — it was the summarizer over-applying to something spoken out loud in a real call.
+
+Separately, the same investigation found the orb's "what it knows" panel (`components/coach/CoachOrb.tsx`) was showing `mintRealtimeSession`'s raw, fully-assembled `instructions` string verbatim — persona, memory, and the model's own self-instructions on how to open the call, all as one undifferentiated blob, reading like a debug dump rather than something meant for a person to read. `mintRealtimeSession` (`convex/ai/voice/index.ts`) now also returns `contextSources: {label, detail}[]`, built per experience (`listen`/`core`/onboarding) via the new `buildListenerContextSources` in `lib/listenerMemory.ts`; the panel renders those labeled sections and the raw `instructions` string is used only to seed the actual realtime session, never displayed. Went through the `lifeguide-gate` skill before starting (both bugs surfaced mid-investigation, not pre-scoped work); commit `7ed31a4` on `fix/listener-summary-and-context-panel`, full test suite green (451 tests) plus 4 new regression tests for `buildListenerContextSources`.
+
+**Docs touched:** `docs/product/features/listener.md` (the panel's behavior description, the memory-backbone's meta-talk exclusion, a new edge case entry, and a pointer to `buildListenerContextSources`).
+
+---
+
 ## 2026-07-22 · What's New entry for the Today reorder + daily-quote fix
 
 Two already-shipped, user-facing changes (commit `eda2cbd`, merged via PR #73) never got a What's New announcement: the Today ritual reorder (morning scroll now leads, Horizons and the ritual seal moved to the bottom, seal last right before finishing the day) and the daily-quote fail-safe (Today's quote no longer strands on "Finding today's words…" forever). Added one launch-seed entry, "Today, back in order," to `LAUNCH_ENTRIES` in `convex/whatsNew.ts` covering both, linked to the `today` view. Per ADR 0026, entries are manually authored, not generated from this changelog.

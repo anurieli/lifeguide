@@ -331,15 +331,31 @@ export default defineSchema({
   // before (ADR 0012). `day` is the TARGET ritual day key (the morning it belongs
   // to), so an entry added at 23:00 and one at 1:30am both land on the upcoming
   // morning. `note` carries the where / the info needed to just execute.
+  //
+  // A roadmap entry is now a POINTER at a canonical Goals task, not an independent
+  // to-do (ARI-144): new night additions pick an open `goalTasks` row, and
+  // `goalTaskId` links to it. `text` is kept as a SNAPSHOT of the task's content at
+  // pick time, used only as a safe fallback when the linked task is later deleted;
+  // while the link is live the morning display resolves the task's CURRENT content
+  // (a rename is reflected). Checking a linked entry off in the morning mirrors
+  // through to the canonical task and its Todoist push (convex/roadmap.ts's setDone).
+  // Legacy free-form entries (written before this change) have no `goalTaskId` and
+  // keep rendering/behaving exactly as before: `text` is their real content.
   roadmapEntries: defineTable({
     userId: v.id("users"),
     day: v.string(), // "YYYY-MM-DD" ritual day key (lib/ritual.ts)
-    text: v.string(), // what to do
+    text: v.string(), // what to do (linked entries: a snapshot of the task content, fallback only)
     note: v.optional(v.string()), // where / info needed
+    goalTaskId: v.optional(v.id("goalTasks")), // the canonical task this entry points at (ARI-144)
     order: v.number(),
     doneAt: v.optional(v.number()), // tapped done the next morning
     createdAt: v.number(),
-  }).index("by_user_day", ["userId", "day", "order"]),
+  })
+    .index("by_user_day", ["userId", "day", "order"])
+    // Reverse lookup from a canonical task to the entries pointing at it, so
+    // `goals.deleteTask` can freeze each linked entry's snapshot before the task
+    // goes away (ARI-144) without scanning every entry.
+    .index("by_goal_task", ["goalTaskId"]),
 
   // A note to tomorrow-morning-you: one short free-form message written during the
   // night scroll and read at the top of the next morning scroll — the last thing

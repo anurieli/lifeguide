@@ -484,7 +484,31 @@ export const deleteTask = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
-    await ownedTask(ctx, userId, args.id);
+    const task = await ownedTask(ctx, userId, args.id);
+    // Before the canonical task disappears, freeze the LATEST snapshot into every
+    // roadmap entry that points at it (ARI-144). While the link is live, a linked
+    // entry resolves the task's CURRENT content and its checked state (convex/roadmap.ts's
+    // forDay); once the task is gone that resolution is lost, so we must capture what
+    // was showing THE MOMENT it was deleted (not the pick-time snapshot), or a rename
+    // and a completion made after picking would silently revert on delete. So: copy the
+    // current content into `text`, mirror the current completion into `doneAt` (the
+    // canonical checked state is the single source of truth, so a not-checked task
+    // clears any stale local doneAt), and clear `goalTaskId` so the entry becomes a
+    // plain frozen line. We only touch entries owned by THIS user: `addFromTask` already
+    // guarantees a link's entry and task share an owner, so the filter is defense in
+    // depth against corrupt data (one person's delete must never patch another's row).
+    const linked = await ctx.db
+      .query("roadmapEntries")
+      .withIndex("by_goal_task", (q) => q.eq("goalTaskId", args.id))
+      .collect();
+    for (const entry of linked) {
+      if (entry.userId !== userId) continue;
+      await ctx.db.patch(entry._id, {
+        text: task.content,
+        doneAt: task.checked ? (task.completedAt ?? Date.now()) : undefined,
+        goalTaskId: undefined,
+      });
+    }
     await ctx.db.delete(args.id);
   },
 });

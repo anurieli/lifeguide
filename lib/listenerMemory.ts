@@ -17,6 +17,11 @@ export type SessionSummary = {
   openThreads: string[];
 };
 
+/** One labeled block in the orb's "what it knows" panel — a source the person
+ *  can actually make sense of, as opposed to the model's raw, undifferentiated
+ *  prompt text. */
+export type ContextSource = { label: string; detail: string };
+
 const INPUT_CAP = 8_000;
 
 /** The summarization model's input: the call transcript, speaker-labeled, capped. */
@@ -80,4 +85,22 @@ export function buildListenerOpeningAddendum(prev: SessionSummary | null): strin
     "Open THIS call already oriented: greet them warmly and reference what you last talked about specifically (e.g. \"how did things land with X?\") instead of the generic opener above. Keep it short and natural, not a report — and if what they bring up now is clearly something new, follow THAT instead.",
   );
   return parts.join(" ");
+}
+
+/**
+ * The display counterpart to `buildListenerOpeningAddendum`: the same last-call
+ * memory, broken into labeled sources for the "what it knows" panel instead of
+ * folded into one paragraph of self-instructions aimed at the model (e.g. "open
+ * already oriented..."). That line is real, useful text for the model and noise
+ * for a person reading the panel, so it's deliberately left out here. Empty
+ * array when there's no previous summary yet (first-ever call, or the previous
+ * summary pass never produced usable text).
+ */
+export function buildListenerContextSources(prev: SessionSummary | null): ContextSource[] {
+  if (!prev || !prev.text) return [];
+  const sources: ContextSource[] = [{ label: "What you last talked about", detail: prev.text }];
+  if (prev.openThreads.length > 0) {
+    sources.push({ label: "Left open from last time", detail: prev.openThreads.join("; ") });
+  }
+  return sources;
 }

@@ -7,6 +7,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useRealtimeVoice } from "@/hooks/useRealtimeVoice";
 import { FilingReport } from "@/components/voice/FilingReport";
+import type { ContextSource } from "@/lib/listenerMemory";
 
 // The Coach orb: talking to the Coach happens right here, in place — no window.
 // Idle, it's a small "Talk to Coach" pill in the corner row (CoachDock hosts the
@@ -52,7 +53,7 @@ export function CoachOrb({
   // The live panel above the orb: the Coach's current/last line, and the exact
   // context the session was minted with ("what it knows"), shown on demand.
   const [lastCoach, setLastCoach] = useState("");
-  const [loadedContext, setLoadedContext] = useState<string | null>(null);
+  const [contextSources, setContextSources] = useState<ContextSource[] | null>(null);
   const [showContext, setShowContext] = useState(false);
   // The mint/appendTurn closures need the id synchronously (before React re-renders).
   const sessionIdRef = useRef<Id<"interviewSessions"> | null>(null);
@@ -71,7 +72,7 @@ export function CoachOrb({
   const voice = useRealtimeVoice({
     mint: async () => {
       const minted = await mintSession({ sessionId: sessionIdRef.current! });
-      setLoadedContext(minted.instructions ?? null);
+      setContextSources(minted.contextSources ?? null);
       return minted;
     },
     onCoachTurn: (text) => {
@@ -138,7 +139,7 @@ export function CoachOrb({
     setPhase("call");
     setStartFailed(false);
     setLastCoach("");
-    setLoadedContext(null);
+    setContextSources(null);
     setShowContext(false);
     voice.reset();
   };
@@ -202,14 +203,19 @@ export function CoachOrb({
             the session opened with. Transparent, calm, never required. */}
         {(liveText || voice.userLive || showContext) && (
           <div className="w-[320px] max-h-[40vh] overflow-y-auto rounded-[14px] bg-paper/75 backdrop-blur-md border border-line/60 shadow-lg px-4 py-3 flex flex-col gap-2">
-            {showContext && loadedContext && (
-              <div className="pb-2 border-b border-line/60">
+            {showContext && contextSources && contextSources.length > 0 && (
+              <div className="pb-2 border-b border-line/60 flex flex-col gap-2">
                 <div className="text-[10.5px] uppercase tracking-[0.08em] text-ink-mute mb-1">
                   What your Coach opened with
                 </div>
-                <p className="text-[11.5px] text-ink-mute leading-relaxed whitespace-pre-wrap">
-                  {loadedContext}
-                </p>
+                {contextSources.map((source) => (
+                  <div key={source.label}>
+                    <div className="text-[10.5px] font-medium text-ink-soft mb-0.5">{source.label}</div>
+                    <p className="text-[11.5px] text-ink-mute leading-relaxed whitespace-pre-wrap">
+                      {source.detail}
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
             {voice.userLive && (
@@ -234,7 +240,7 @@ export function CoachOrb({
         </div>
         <div className="flex items-center gap-2.5">
           <span className="text-[12px] text-ink-mute tracking-wide">{voice.statusLabel}</span>
-          {loadedContext && (
+          {contextSources && contextSources.length > 0 && (
             <button
               onClick={() => setShowContext((s) => !s)}
               className="text-[11px] text-ink-mute underline underline-offset-2 hover:text-ink transition"

@@ -396,7 +396,9 @@ Example — if someone said "I keep saying yes to everything. Actually, no, it's
 Return ONLY a JSON object, no prose, in this exact shape:
 {"summary":"2-4 plain sentences: what they talked about and where it landed","topics":["1-5 short topic tags"],"open_threads":["0-3 short phrases naming something left unresolved or half-said, worth checking on next time"]}
 
-Ground everything strictly in what was actually said. Never invent, never address the person directly (write ABOUT the conversation, not TO them), never praise or evaluate. If the call was thin or circular, keep the summary short and honest rather than padding it. open_threads should be genuinely open questions or intentions, not just "they talked about X" restated.`,
+Ground everything strictly in what was actually said. Never invent, never address the person directly (write ABOUT the conversation, not TO them), never praise or evaluate. If the call was thin or circular, keep the summary short and honest rather than padding it. open_threads should be genuinely open questions or intentions, not just "they talked about X" restated.
+
+If part of the call was the person talking ABOUT the LifeGuide app itself — a bug, a feature they want built, feedback on how something works — that is product/meta talk, not something about their life. Leave it out of summary, topics, and open_threads entirely. It is not a thread to check in on next time.`,
   },
 };
 

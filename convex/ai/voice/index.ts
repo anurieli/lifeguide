@@ -6,7 +6,8 @@ import { getVoiceProvider } from "./provider";
 import { logAi } from "../openai";
 import { BLUEPRINT } from "../../../lib/blueprint";
 import { buildListenerInstructions } from "../../../agents/listener/persona";
-import { buildListenerOpeningAddendum } from "../../../lib/listenerMemory";
+import { buildListenerOpeningAddendum, buildListenerContextSources } from "../../../lib/listenerMemory";
+import type { ContextSource } from "../../../lib/listenerMemory";
 import type { ActionCtx } from "../../_generated/server";
 import type { Id } from "../../_generated/dataModel";
 
@@ -48,24 +49,42 @@ ${remainingList}
 Ask one thing at a time, warm and unhurried, like a real conversation, not a form read aloud. Follow their thread over your own order; let them skip or wander. Never be pushy.`.trim();
 }
 
-/** Pick the realtime persona for a session. "listen" sessions get the Listener (free-form,
- *  reflective), grounded in a summary of the person's last call when one exists (ARI-23,
- *  the memory backbone — see docs/decisions/0023-listener-memory-backbone.md); "core"
- *  sessions get `buildCoreInstructions` (built by the caller below, since it needs the
- *  person's current core answers — ADR 0024); everything else (onboarding) gets the fixed
- *  blueprint interviewer. */
+const LISTENER_ROLE_SOURCE: ContextSource = {
+  label: "Who it's being",
+  detail: "The Listener — warm, unhurried, follows your thread, no checklist, never rushes to fix.",
+};
+
+const INTERVIEW_ROLE_SOURCE: ContextSource = {
+  label: "What this call is for",
+  detail: "A calm onboarding walk through your Life Blueprint, one question at a time, skip anything.",
+};
+
+/** Pick the realtime persona for a session, and the labeled sources for the orb's
+ *  "what it knows" panel (kept separate from the model's own instructions text —
+ *  the panel is for a person to read, the instructions are for the model to
+ *  follow, and the two shouldn't be the same undifferentiated blob). "listen"
+ *  sessions get the Listener (free-form, reflective), grounded in a summary of
+ *  the person's last call when one exists (ARI-23, the memory backbone — see
+ *  docs/decisions/0023-listener-memory-backbone.md); everything else (onboarding)
+ *  gets the fixed blueprint interviewer. "core" sessions are handled by the
+ *  caller below, since they need the person's current core answers (ADR 0024). */
 async function instructionsFor(
   ctx: ActionCtx,
   experienceId: string,
   userId: Id<"users">,
   sessionId: Id<"interviewSessions">,
-): Promise<string> {
-  if (experienceId !== "listen") return INTERVIEW_INSTRUCTIONS;
+): Promise<{ instructions: string; contextSources: ContextSource[] }> {
+  if (experienceId !== "listen") {
+    return { instructions: INTERVIEW_INSTRUCTIONS, contextSources: [INTERVIEW_ROLE_SOURCE] };
+  }
   const prev = await ctx.runQuery(internal.interview.latestListenSummaryInternal, {
     userId,
     excludeSessionId: sessionId,
   });
-  return buildListenerInstructions(buildListenerOpeningAddendum(prev));
+  return {
+    instructions: buildListenerInstructions(buildListenerOpeningAddendum(prev)),
+    contextSources: [LISTENER_ROLE_SOURCE, ...buildListenerContextSources(prev)],
+  };
 }
 
 export const mintRealtimeSession = action({
@@ -78,7 +97,13 @@ export const mintRealtimeSession = action({
   handler: async (
     ctx,
     { sessionId },
-  ): Promise<{ clientSecret: string; model: string; expiresAt: number; instructions: string }> => {
+  ): Promise<{
+    clientSecret: string;
+    model: string;
+    expiresAt: number;
+    instructions: string;
+    contextSources: ContextSource[];
+  }> => {
     // Authenticate
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
@@ -91,10 +116,19 @@ export const mintRealtimeSession = action({
     // sessions (Core's Conversational mode) get a personalized prompt built from the
     // person's current Core answers; everything else uses the fixed persona.
     const started = Date.now();
-    const instructions =
-      session.experienceId === "core"
-        ? buildCoreInstructions(await ctx.runQuery(api.core.get, {}))
-        : await instructionsFor(ctx, session.experienceId, userId, sessionId);
+    let instructions: string;
+    let contextSources: ContextSource[];
+    if (session.experienceId === "core") {
+      instructions = buildCoreInstructions(await ctx.runQuery(api.core.get, {}));
+      contextSources = [{ label: "Where your Blueprint stands", detail: instructions }];
+    } else {
+      ({ instructions, contextSources } = await instructionsFor(
+        ctx,
+        session.experienceId,
+        userId,
+        sessionId,
+      ));
+    }
     const { clientSecret, model, expiresAt } = await getVoiceProvider().mint(instructions);
     // Log the mint (ADR 0017). The conversation itself runs client-side over WebRTC,
     // so per-token usage never reaches the server; this row marks that a realtime
@@ -118,10 +152,13 @@ export const mintRealtimeSession = action({
       event: "voice_connected",
     });
 
-    // `instructions` rides back so the surface can show the person what context
-    // their Coach opened with (the orb's "what it knows" panel). It is the
+    // `contextSources` rides back so the surface can show the person, in plain
+    // labeled sections, what context their Coach opened with (the orb's "what it
+    // knows" panel) — not the raw model prompt, which mixes real context with
+    // the model's own self-instructions and reads like a system dump. It is the
     // person's own data — their persona, their last-call memory, their
-    // Blueprint status — never another user's.
-    return { clientSecret, model, expiresAt, instructions };
+    // Blueprint status — never another user's. `instructions` still rides back
+    // too (unchanged), since it's what actually seeds the realtime session.
+    return { clientSecret, model, expiresAt, instructions, contextSources };
   },
 });

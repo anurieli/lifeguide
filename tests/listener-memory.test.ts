@@ -3,6 +3,7 @@ import {
   assembleSummaryInput,
   parseSessionSummary,
   buildListenerOpeningAddendum,
+  buildListenerContextSources,
 } from "../lib/listenerMemory";
 import { LISTENER_INSTRUCTIONS, buildListenerInstructions } from "../agents/listener/persona";
 
@@ -110,6 +111,46 @@ describe("buildListenerOpeningAddendum", () => {
   it("omits the open-threads line when there are none", () => {
     const out = buildListenerOpeningAddendum({ text: "A short call.", topics: [], openThreads: [] });
     expect(out).not.toContain("Left open");
+  });
+});
+
+describe("buildListenerContextSources", () => {
+  it("returns an empty array when there is no previous summary", () => {
+    expect(buildListenerContextSources(null)).toEqual([]);
+    expect(buildListenerContextSources({ text: "", topics: [], openThreads: [] })).toEqual([]);
+  });
+
+  it("returns a labeled 'what you last talked about' source", () => {
+    const out = buildListenerContextSources({
+      text: "They were wrestling with a career change.",
+      topics: [],
+      openThreads: [],
+    });
+    expect(out).toEqual([
+      { label: "What you last talked about", detail: "They were wrestling with a career change." },
+    ]);
+  });
+
+  it("adds a labeled open-threads source when present, joined by semicolons", () => {
+    const out = buildListenerContextSources({
+      text: "A call about work stress.",
+      topics: ["work"],
+      openThreads: ["whether to talk to their manager", "the gym habit"],
+    });
+    expect(out).toContainEqual({
+      label: "Left open from last time",
+      detail: "whether to talk to their manager; the gym habit",
+    });
+  });
+
+  it("never includes the model-facing 'open THIS call already oriented' instruction", () => {
+    const out = buildListenerContextSources({
+      text: "A short call.",
+      topics: [],
+      openThreads: ["something"],
+    });
+    const joined = out.map((s) => s.detail).join(" ");
+    expect(joined).not.toContain("Open THIS call already oriented");
   });
 });
 

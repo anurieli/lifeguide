@@ -269,11 +269,6 @@ export const LAUNCH_ENTRIES: {
     view: "board",
   },
   {
-    title: "Big Things on your Goals page",
-    body: "Not everything is a goal. Big Things is a new section at the top of Goals for the meetings, projects, and commitments that already occupy your time and headspace. Capture one in a few words, add context and a date if it helps, and leave it there: no roadmap, no pressure. When one is ready to become something you're chasing, tap Promote to goal and the Coach drafts what it takes.",
-    view: "goals",
-  },
-  {
     title: "No more stuck 'listening…' in a session",
     body: "In a Conversation session, the coach's brief \"listening…\" line now clears itself if a turn goes unanswered, instead of hanging there when you reopen an old entry. The instant bridge after you speak or type is unchanged.",
     view: "sessions",

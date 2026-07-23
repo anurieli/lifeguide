@@ -23,22 +23,6 @@ body {
   background: rgba(184, 148, 90, 0.32);
 }
 
-/* Hover-reveal control: a secondary action that stays calm at rest on pointer
-   devices (it fades in only when its `.group` parent is hovered) but is ALWAYS
-   visible and tappable on touch devices, where there is no hover to reveal it.
-   Used by the Big Things card Archive action (components/goals/Goals.tsx). */
-.hover-reveal {
-  opacity: 1;
-}
-@media (hover: hover) {
-  .hover-reveal {
-    opacity: 0;
-  }
-  .group:hover .hover-reveal {
-    opacity: 1;
-  }
-}
-
 /* ===========================================================================
    VoiceField — motion + the recording canvas. Kept here so the component stays
    markup-only and the animation lives in one place. Transform/opacity only

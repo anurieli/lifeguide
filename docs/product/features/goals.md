@@ -13,22 +13,6 @@ Same as before: a `Goals` tab in the left rail (desktop) and the fifth slot of t
 
 ## User-facing behavior
 
-### Big Things (above the gallery)
-Not everything a person carries is a goal. **Big Things** is a lightweight capture layer, rendered **prominently above the Goals/Aspirations gallery**, for the active commitments that occupy real time and mental space but aren't aspirations to chase: a **pending big meeting**, an **ongoing big project**, an obligation in flight. It exists so those don't have to be forced into the goal model just to be held somewhere.
-
-Each Big Thing is deliberately spare: a **title**, an optional free-form **context** (what it is, where it stands), and an optional **date** (the meeting day, a milestone). That's the whole shape: **no roadmap, no AI, no pillar, no status**. Capture is instant (title only is enough); title, context, and date are all **click-to-edit in place**; a Big Thing can be **archived** when it's done or no longer relevant. Live Big Things sort soonest-dated first, then undated by most recently captured.
-
-**Crucially, creating or editing a Big Thing triggers no AI pass and creates no goal.** That is the entire reason it's a separate layer (see "Why a separate table" below). It stays a held note until the person decides otherwise.
-
-**Promote to goal** is the one bridge. It is an explicit, per-item action that:
-- creates a **normal Goal** (identical to a hand-created one: `status: "planning"`, `roadmapDraft: "pending"`) and **triggers the standard AI roadmap draft** (`convex/ai/goalEnrich.ts`); this is the first moment any AI runs for it;
-- maps the Big Thing's fields into the goal: **title → name**, **`date` → the goal's `deadline`** (the minimal default: a dated Big Thing becomes a dated Goal, an undated one lands as an aspiration), and **`context` → the goal's `why`** so nothing the person wrote is lost;
-- **retires the source Big Thing in place** (`archived: true` + `promotedToGoalId`), so it leaves the Big Things section and can never live in both sections at once.
-
-Promotion happens **atomically in a single mutation** (`bigThings.promote`): the goal insert, the roadmap-draft schedule, and the source retirement all commit together. It is **ownership-safe** (another user's Big Thing is rejected) and **idempotent-guarded** (a row already promoted returns its existing goal id rather than creating a duplicate). After a promotion the UI expands the newly created goal so the person lands on its drafting roadmap.
-
-**Why a separate table.** Big Things ride their own `bigThings` table and `convex/bigThings.ts` module rather than a `goals` row, because every goal/aspiration create **always** schedules the roadmap-drafting pass, and that coupling is the whole identity of a goal. A commitment you just want to hold must have **no** such side effect, so it can't be a goal with the AI turned off. Keeping it additive also means the goals board, Coach goal context, and enrichment paths are untouched.
-
 ### The gallery
 - Goals with a `deadline` are grouped into sections by **Pillar** (Health & Fitness, Work & Money, etc. — the same `pillars` table used elsewhere in the app), plus an "Unsorted" section for goals with no pillar. Filter chips (All / each pillar / Unsorted) narrow the gallery.
 - An **Aspirations** section (dimmer cards, a "Someday" tag instead of a due-date badge, no status-color border) holds everything with no deadline yet, always rendered last. **+ New — what are you chasing?** lives in this section: creating one only ever asks for a name — pillar, deadline, and why are filled in later from the expanded card.
@@ -64,7 +48,7 @@ The Daily Ritual's roadmap loop is a **selection over these goals**, not a secon
 
 ## Data touched
 
-Tables `goals`, `roadmapSteps` (new), `goalTasks`, `bigThings` (new, ARI-141), and the `pillars` table (now genuinely linked via `goals.pillarId`, not just a shared concept). API: `convex/goals.ts` (board/tasks queries, goal + enrichment + Coach-context plumbing), `convex/roadmapSteps.ts` (new: step CRUD, computed `blocked`, cycle guard), `convex/bigThings.ts` (new, ARI-141: Big Things list/create/update/archive + the atomic `promote` into a goal), `convex/todoist.ts` (unchanged sync mechanics, insert path narrowed to drop `kind`/`area`). See [`../../architecture/data-model.md`](../../architecture/data-model.md) for exact field shapes, and [`../../design/goals.md`](../../design/goals.md) for the Big Things interaction detail.
+Tables `goals`, `roadmapSteps` (new), `goalTasks`, and the `pillars` table (now genuinely linked via `goals.pillarId`, not just a shared concept). API: `convex/goals.ts` (board/tasks queries, goal + enrichment + Coach-context plumbing), `convex/roadmapSteps.ts` (new — step CRUD, computed `blocked`, cycle guard), `convex/todoist.ts` (unchanged sync mechanics, insert path narrowed to drop `kind`/`area`). See [`../../architecture/data-model.md`](../../architecture/data-model.md) for exact field shapes.
 
 `goals.pillarId?` (ARI-11, [ADR 0022](../../decisions/0022-identity-is-not-a-pillar.md)) is an optional relation to `pillars` — which domain this goal strengthens. Added to the schema as a foundation for a future pass; nothing in this board reads or writes it yet.
 

@@ -644,29 +644,6 @@ export default defineSchema({
     .index("by_user_goal", ["userId", "goalId"])
     .index("by_user_todoist", ["userId", "todoistTaskId"]),
 
-  // Big Things: a lightweight capture layer for the active commitments that occupy
-  // real time and mental space but are NOT (yet) aspirations/goals: a pending big
-  // meeting, an ongoing big project, an obligation in flight. Deliberately its OWN
-  // additive table, NOT a `goals` row: creating a goal/aspiration always triggers the
-  // AI roadmap-drafting pass (convex/ai/goalEnrich.ts), and a Big Thing must have NO
-  // such side effect; it is just a held note until the person explicitly promotes it.
-  // `date` is an optional single day it hangs on (the meeting date, a milestone); it
-  // maps to the promoted goal's `deadline` on promotion (see convex/bigThings.ts). A
-  // promoted Big Thing is retired in place: `archived` true + `promotedToGoalId` set,
-  // so it leaves the section and can never duplicate the goal it became. See
-  // docs/product/features/goals.md (Big Things section).
-  bigThings: defineTable({
-    userId: v.id("users"),
-    title: v.string(),
-    context: v.optional(v.string()), // free-form notes: what it is, where it stands
-    date: v.optional(v.string()), // YYYY-MM-DD; optional single day it hangs on
-    sortOrder: v.number(),
-    archived: v.optional(v.boolean()),
-    promotedToGoalId: v.optional(v.id("goals")), // set when promoted into a Goal (also archived)
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_user", ["userId"]),
-
   // The Core: the user's answers to the fixed Life Blueprint (3 sections, 18 questions). The
   // question/section skeleton lives in code (lib/blueprint.ts, recovered from the original app);
   // this table holds only the user's written response per question, keyed by the blueprint key.

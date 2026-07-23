@@ -2,6 +2,8 @@
 // Tolerant: handles clean JSON, prose-wrapped JSON, and garbage. Kept pure so it is unit-tested
 // without a model or the Convex runtime.
 
+import { LONG_AUDIO_DISTILL_INPUT_CAP, type AudioReadable } from "../../lib/audioReadable";
+
 export type Distilled = { title: string; essence: string; pillars: string[] };
 export type BoardWorthy = { verdict: boolean; reason: string };
 
@@ -60,6 +62,22 @@ export function parseBoardWorthy(raw: string): BoardWorthy {
   const reason =
     typeof obj.board_reason === "string" ? obj.board_reason.trim().slice(0, 200) : "";
   return { verdict, reason };
+}
+
+// The long-audio "made readable" pair (ARI-145), read from the SAME distill response
+// for a long spoken take (convex/ai/distill.ts appends the request only past the
+// lib/audioReadable.ts threshold). Returns null unless BOTH fields came back non-empty,
+// so a partial or garbled response leaves `captures.readable` unset and the UI falls
+// back to the raw transcript. Same tolerant, pure discipline as parseDistilled.
+export function parseReadable(raw: string): AudioReadable | null {
+  const obj = tolerantJson(raw);
+  const summary = typeof obj.summary === "string" ? obj.summary.trim().slice(0, 600) : "";
+  // Matches the long-audio input cap: `cleaned` is the full tidied thought, so it may be
+  // roughly as long as the transcript the model was given.
+  const cleaned =
+    typeof obj.cleaned === "string" ? obj.cleaned.trim().slice(0, LONG_AUDIO_DISTILL_INPUT_CAP) : "";
+  if (!summary || !cleaned) return null;
+  return { summary, cleaned };
 }
 
 // A goal/aspiration's AI-drafted roadmap: a short "what this takes" summary

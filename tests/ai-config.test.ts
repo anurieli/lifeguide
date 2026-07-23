@@ -38,4 +38,22 @@ describe("AI config registry", () => {
     expect(TASKS.distill.wired).toBe(true);
     expect(TASKS.coachReply.wired).toBe(true);
   });
+
+  it("the distill prompt permits summary/cleaned only on the long-audio request, not by default", () => {
+    // Pins the ARI-145 contract: the base JSON shape carries no summary/cleaned, but the
+    // prompt explicitly allows the distill.ts long-audio follow-up to add exactly those
+    // two fields. This is the fix for the config.ts <-> distill.ts conflict where the
+    // "exact shape" wording would have told the model to drop summary/cleaned.
+    const sys = TASKS.distill.system ?? "";
+    // The base shape stays title/essence/pillars/board_worthy/board_reason.
+    expect(sys).toContain('"title"');
+    expect(sys).toContain('"board_worthy"');
+    // It names both extra fields as a conditional, opt-in addition.
+    expect(sys).toContain('"summary"');
+    expect(sys).toContain('"cleaned"');
+    // And makes the "only when a later message asks" gate explicit, not a blanket allow.
+    expect(sys).toMatch(/only\b/i);
+    expect(sys).toMatch(/later message/i);
+    expect(sys).toMatch(/Never include "summary" or "cleaned"/i);
+  });
 });

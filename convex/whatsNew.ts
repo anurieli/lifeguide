@@ -278,6 +278,11 @@ export const LAUNCH_ENTRIES: {
     body: "Not quite right? Use Redo on any AI-generated image on your vision board. The prompt reopens with your original words to tweak, and the same card regenerates in place. It works on your phone too, and a failed image now lets you edit the prompt before trying again.",
     view: "board",
   },
+  {
+    title: "Long recordings, made readable",
+    body: "A long spoken take now shows a short summary at a glance, and expands into a tidied, easy-to-read version with the filler and false starts smoothed out. A very long take just shows its full transcript rather than a shortened version. Your original recording and its exact words are always kept, and the play button still hears you as you spoke.",
+    view: "sessions",
+  },
 ];
 
 export const seedLaunchEntries = internalMutation({

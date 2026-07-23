@@ -263,6 +263,11 @@ export const LAUNCH_ENTRIES: {
     body: "When an update is about one thing on a page, tapping it walks you straight there and spotlights it, like a tiny tour. Clicking an item removes it; the rest stay. New at the bottom: See All to revisit anything you've cleared, and Clear All to catch up in one tap.",
     view: "today",
   },
+  {
+    title: "The board's add menu gets out of the way",
+    body: "Right-click your vision board, pick Add text, Generate image with AI, or Upload image, and the little menu now closes the moment you choose, so it no longer sits over the card it just made. Your new card still lands exactly where you clicked.",
+    view: "board",
+  },
 ];
 
 export const seedLaunchEntries = internalMutation({

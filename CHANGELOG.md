@@ -7,6 +7,16 @@ Format per entry: `## YYYY-MM-DD · Title` → short summary → **Docs touched:
 
 ---
 
+## 2026-07-23 · Fix: the vision board's add menu now closes when you pick an action (ARI-137)
+
+The right-click canvas menu (Add text / Generate image with AI / Upload image) ran its action but stayed open, sitting over the very card it created until you clicked elsewhere. Now each of the three picks closes the menu first and then runs the action, so it never lingers over the new node. Each action still closes over the clicked board position (Whiteboard's callbacks capture `menu.world`), so closing the menu first never loses where the click landed and the new card still drops there. The other close paths are unchanged: an outside press, a second right-click, or Escape still close the menu without creating anything.
+
+The close-first-then-act step is one shared boundary: a small pure `closeThenAct(onClose, action)` (new `lib/canvasMenu.ts`) that all three `CanvasMenu` buttons route through, instead of duplicating the logic in each handler. It is regression-covered in new `tests/canvas-menu.test.ts` (3 cases: close runs before the action; the action still sees a world position captured before the close; the action fires exactly once), with no new DOM test dependency. Also seeded the user-facing What's New entry (`convex/whatsNew.ts`, `view: "board"`). Client-only, no schema change; no Convex deploy run in this environment.
+
+The 6 focused canvas-menu and What's New seed tests pass. The post-rebase suite passes 464 tests across 61 files when excluding the upstream `linear-autoforward` file, whose 5 tests cannot resolve the newly landed `convex/linear.ts` through this worktree's shared `node_modules` symlink; the full command reports only those 5 environment-specific failures. `npx tsc --noEmit` is clean, `npm run lint` is clean apart from three pre-existing warnings, and `npm run build` succeeds.
+
+**Docs touched:** `docs/product/features/vision-board.md` (§2 adding-directly behavior; §6 new "Add menu closes on choice" edge case), `CHANGELOG.md`.
+
 ## 2026-07-23 · Listener: app feedback no longer surfaces as a personal topic; "what it knows" shows labeled sources
 
 Found live, talking to the orb: a feature request spoken during a Listener call ("add mute and end buttons") got summarized by the post-call memory pass (`convex/ai/listenerMemory.ts`, `listenerSummary` task) exactly like a personal topic, then came back the next call as "worth a light check-in." Root cause: the summarizer's system prompt (`convex/ai/config.ts`) had no concept of "this is talk about the app itself," so it folded meta/product commentary into `summary`/`topics`/`open_threads` alongside real personal disclosure. Fixed by adding an explicit exclusion rule to that prompt. Confirmed via the transcript/prompt path (`convex/interview.ts` → `lib/listenerMemory.ts`) that this was never a data leak between the separate feedback/capture tables and the Listener's memory — it was the summarizer over-applying to something spoken out loud in a real call.

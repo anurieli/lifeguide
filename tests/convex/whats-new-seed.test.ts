@@ -10,12 +10,12 @@ import { LAUNCH_ENTRIES } from "../../convex/whatsNew";
 // feed then shows them), and it is idempotent (safe to re-run).
 
 // convex-test resolves its own internal `import.meta.glob` relative to its OWN
-// installed location, which — in this sandbox's symlinked node_modules — points at
+// installed location, which in this sandbox's symlinked node_modules points at
 // a different checkout of this repo than the one this test file lives in. Passing
 // `modules` explicitly (computed relative to THIS file) makes edits to LAUNCH_ENTRIES
 // in this worktree's convex/whatsNew.ts actually get exercised (see whats-new.test.ts
 // for the same pattern; tests/convex/listener-memory.test.ts flagged the gotcha first).
-// (tsconfig has no vite/client types — this repo isn't Vite-built — hence the cast)
+// (tsconfig has no vite/client types, this repo isn't Vite-built, hence the cast)
 const modules = (import.meta as unknown as { glob: (p: string) => Record<string, () => Promise<unknown>> }).glob(
   "../../convex/**/*.*s",
 );

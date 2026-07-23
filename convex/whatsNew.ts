@@ -1,19 +1,25 @@
 // ============================================================================
 // WHAT'S NEW — owner-authored feed of shipped features, dismissed by click-through.
 // ============================================================================
-// Every entry is `{ title, body, view, publishedAt }`, authored by the owner through
-// the /admin surface (owner-gated per convex/owner.ts, ADR 0006). `feed` is what the
-// bottom-of-shell component reads: every published entry the CALLING user hasn't
-// clicked yet. Clicking an entry navigates to its `view` and calls `markSeen`, which
-// writes a `whatsNewSeen` row for that (user, entry) pair — the click-through itself
-// is the acknowledgment. There is no generic dismiss: an entry stays in the feed
-// until its own row is opened. See docs/product/features/whats-new.md, ADR 0026.
+// Every entry is `{ title, body, view, publishedAt, componentTarget? }`, authored by
+// the owner through the /admin surface (owner-gated per convex/owner.ts, ADR 0006).
+// `feed` is what the bottom-of-shell component reads: every published entry the
+// CALLING user hasn't clicked yet. `history` returns EVERY published entry with a
+// per-user `seen` flag (the "See All" list, incl. already-removed items). Clicking an
+// entry navigates to its `view` and, if it carries a `componentTarget`, spotlights
+// that one component after it mounts (see convex/whatsNewTargets.ts), then calls
+// `markSeen`, which writes a `whatsNewSeen` row for that (user, entry) pair: the
+// click-through itself is the acknowledgment. `clearAll` marks every currently
+// published entry seen for the caller in one go. Both `markSeen` and `clearAll` are
+// idempotent and never write a duplicate row. See docs/product/features/whats-new.md,
+// ADR 0026.
 // ============================================================================
 
 import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { isOwner, OWNER_EMAIL } from "./owner";
+import { componentTargetValidator, type WhatsNewTarget } from "./whatsNewTargets";
 
 const VIEW = v.union(
   v.literal("today"),
@@ -46,6 +52,30 @@ export const feed = query({
   },
 });
 
+// Every published entry, newest first, each tagged with a per-caller `seen` flag.
+// This is what "See All" reads: the full history including entries the caller has
+// already clicked through (which `feed` omits). The pill stays reachable whenever
+// this is non-empty, so past items are never stranded. Unauthenticated → empty.
+export const history = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+    const entries = await ctx.db
+      .query("whatsNew")
+      .withIndex("by_publishedAt")
+      .order("desc")
+      .collect();
+    if (entries.length === 0) return [];
+    const seenRows = await ctx.db
+      .query("whatsNewSeen")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    const seenIds = new Set(seenRows.map((r) => r.whatsNewId));
+    return entries.map((e) => ({ ...e, seen: seenIds.has(e._id) }));
+  },
+});
+
 // Record the click-through: the person clicked this specific entry and was
 // navigated to its linked surface. Idempotent — clicking twice is a no-op.
 export const markSeen = mutation({
@@ -59,6 +89,34 @@ export const markSeen = mutation({
       .first();
     if (existing) return;
     await ctx.db.insert("whatsNewSeen", { userId, whatsNewId: args.id, seenAt: Date.now() });
+  },
+});
+
+// "Clear All": mark every currently published entry seen for the caller at once, so
+// the feed empties without visiting each one. Idempotent and duplicate-safe: it
+// reads the caller's existing `whatsNewSeen` rows first and only inserts for entries
+// not already recorded, so re-running it (or clearing after some were clicked) never
+// writes a second row for the same (user, entry). Per-user, like markSeen; other
+// people's feeds are untouched. Returns how many rows it actually wrote.
+export const clearAll = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    const entries = await ctx.db.query("whatsNew").collect();
+    const seenRows = await ctx.db
+      .query("whatsNewSeen")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    const seenIds = new Set(seenRows.map((r) => r.whatsNewId));
+    const now = Date.now();
+    let marked = 0;
+    for (const entry of entries) {
+      if (seenIds.has(entry._id)) continue;
+      await ctx.db.insert("whatsNewSeen", { userId, whatsNewId: entry._id, seenAt: now });
+      marked++;
+    }
+    return { marked };
   },
 });
 
@@ -79,7 +137,13 @@ export const listAll = query({
 });
 
 export const create = mutation({
-  args: { title: v.string(), body: v.string(), view: VIEW },
+  args: {
+    title: v.string(),
+    body: v.string(),
+    view: VIEW,
+    // Absent → page-level navigation only; a key → spotlight that component.
+    componentTarget: v.optional(componentTargetValidator),
+  },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
@@ -94,10 +158,24 @@ export const update = mutation({
     title: v.optional(v.string()),
     body: v.optional(v.string()),
     view: v.optional(VIEW),
+    // Tri-state: omit to leave the target unchanged, a key to set/replace it, or
+    // `null` to clear it back to page-level (undefined can't cross the wire, so
+    // clearing needs an explicit sentinel).
+    componentTarget: v.optional(v.union(componentTargetValidator, v.null())),
   },
   handler: async (ctx, args) => {
     if (!(await isOwner(ctx))) throw new Error("Not authorized");
-    const { id, ...patch } = args;
+    const { id, componentTarget, ...rest } = args;
+    const patch: {
+      title?: string;
+      body?: string;
+      view?: typeof rest.view;
+      componentTarget?: WhatsNewTarget | undefined;
+    } = { ...rest };
+    if (componentTarget !== undefined) {
+      // null → remove the field (patching a field to undefined deletes it in Convex).
+      patch.componentTarget = componentTarget === null ? undefined : componentTarget;
+    }
     await ctx.db.patch(id, patch);
   },
 });
@@ -127,7 +205,8 @@ export const remove = mutation({
 export const LAUNCH_ENTRIES: {
   title: string;
   body: string;
-  view: "today" | "core" | "sessions" | "goals" | "settings" | "board";
+  view: "today" | "core" | "board" | "sessions" | "goals" | "settings";
+  componentTarget?: WhatsNewTarget;
 }[] = [
   {
     title: "Your Life Wheel",
@@ -180,6 +259,11 @@ export const LAUNCH_ENTRIES: {
     view: "today",
   },
   {
+    title: "What's New now points you right to it",
+    body: "When an update is about one thing on a page, tapping it walks you straight there and spotlights it, like a tiny tour. Clicking an item removes it; the rest stay. New at the bottom: See All to revisit anything you've cleared, and Clear All to catch up in one tap.",
+    view: "today",
+  },
+  {
     title: "The board's add menu gets out of the way",
     body: "Right-click your vision board, pick Add text, Generate image with AI, or Upload image, and the little menu now closes the moment you choose, so it no longer sits over the card it just made. Your new card still lands exactly where you clicked.",
     view: "board",
@@ -188,6 +272,16 @@ export const LAUNCH_ENTRIES: {
     title: "Big Things on your Goals page",
     body: "Not everything is a goal. Big Things is a new section at the top of Goals for the meetings, projects, and commitments that already occupy your time and headspace. Capture one in a few words, add context and a date if it helps, and leave it there: no roadmap, no pressure. When one is ready to become something you're chasing, tap Promote to goal and the Coach drafts what it takes.",
     view: "goals",
+  },
+  {
+    title: "No more stuck 'listening…' in a session",
+    body: "In a Conversation session, the coach's brief \"listening…\" line now clears itself if a turn goes unanswered, instead of hanging there when you reopen an old entry. The instant bridge after you speak or type is unchanged.",
+    view: "sessions",
+  },
+  {
+    title: "Redo an AI image on your board",
+    body: "Not quite right? Use Redo on any AI-generated image on your vision board. The prompt reopens with your original words to tweak, and the same card regenerates in place. It works on your phone too, and a failed image now lets you edit the prompt before trying again.",
+    view: "board",
   },
 ];
 

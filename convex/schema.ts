@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { authTables } from "@convex-dev/auth/server";
 import { v } from "convex/values";
+import { componentTargetValidator } from "./whatsNewTargets";
 
 const node_type = v.union(
   v.literal("text"),
@@ -849,6 +850,11 @@ export default defineSchema({
     ),
     publishedAt: v.number(),
     createdBy: v.id("users"), // the owner who authored it
+    // Optional: point at a single component ON the `view` rather than the whole
+    // page. A key from convex/whatsNewTargets.ts; when set, clicking the entry
+    // navigates to the page and then spotlights the mapped `data-tour` anchor
+    // (see components/whatsnew/targets.ts). Absent → page-level navigation only.
+    componentTarget: v.optional(componentTargetValidator),
   }).index("by_publishedAt", ["publishedAt"]),
 
   // Per-user click-through state for What's New. One row per (user, entry) is

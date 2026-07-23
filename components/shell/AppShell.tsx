@@ -16,6 +16,7 @@ import { Settings } from "@/components/settings/Settings";
 import { CoachDock } from "@/components/coach/CoachDock";
 import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
 import { WhatsNewFeed } from "@/components/whatsnew/WhatsNewFeed";
+import { WhatsNewSpotlight, type WhatsNewSpotlightState } from "@/components/whatsnew/WhatsNewSpotlight";
 import { MusicProvider } from "@/components/music/MusicProvider";
 import { AtmospherePlayer } from "@/components/music/AtmospherePlayer";
 import { Sessions } from "@/components/sessions/Sessions";
@@ -57,6 +58,9 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   const [coachPrefill, setCoachPrefill] = useState<{ text: string; v: number } | null>(null);
   // The open entry in the Sessions view.
   const [activeSessionId, setActiveSessionId] = useState<Id<"sessions"> | null>(null);
+  // A What's New component spotlight to draw once its page mounts (set when a
+  // component-targeted entry is clicked; cleared on dismiss). See WhatsNewFeed.
+  const [whatsNewSpotlight, setWhatsNewSpotlight] = useState<WhatsNewSpotlightState | null>(null);
   const createSession = useMutation(api.sessions.create);
   const rec = useRecording();
   const isMobile = useIsMobile();
@@ -158,6 +162,11 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
   const nav = (v: View) => {
     // The Sessions tab always shows the list, even from inside an entry.
     if (v === "sessions") setActiveSessionId(null);
+    // Ordinary shell navigation dismisses any open What's New spotlight — it was
+    // anchored to the page you just left. The WhatsNewFeed click path also routes
+    // through here, but it calls nav() and THEN sets a fresh spotlight in the same
+    // event, so its setState lands after this null and wins (React batches both).
+    setWhatsNewSpotlight(null);
     setView(v);
   };
 
@@ -252,8 +261,16 @@ function Shell({ surfaceId }: { surfaceId: Id<"surfaces"> }) {
       />
       <FeedbackWidget view={view} coachOpen={coachOpen} />
       {/* What's New: a dismiss-by-click-through feed of shipped features, docked
-          near the bottom of the shell. Hidden entirely once nothing is unseen. */}
-      <WhatsNewFeed onNavigate={nav} />
+          near the bottom of the shell. Shown whenever any published entry exists
+          (so See All stays reachable); a targeted entry hands us a spotlight to
+          draw once its page mounts. */}
+      <WhatsNewFeed onNavigate={nav} onSpotlight={setWhatsNewSpotlight} />
+      {whatsNewSpotlight && (
+        <WhatsNewSpotlight
+          {...whatsNewSpotlight}
+          onDismiss={() => setWhatsNewSpotlight(null)}
+        />
+      )}
       {/* Atmosphere: ambient music, desktop only. The phone stays capture-first. */}
       <div className="hidden md:block">
         <AtmospherePlayer />

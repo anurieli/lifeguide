@@ -3,12 +3,15 @@
 // ============================================================================
 // WHAT'S NEW ADMIN — the owner-gated authoring panel for the bottom-of-shell feed.
 // ============================================================================
-// A self-contained, embeddable panel (lives in /admin today, no route dependency —
+// A self-contained, embeddable panel (lives in /admin today, no route dependency,
 // mirrors components/feedback/FeedbackInbox.tsx). `enabled` gates the query the same
 // way FeedbackInbox does (skip when the page-level isDev||isOwner check fails); the
 // real security boundary is server-side isOwner in convex/whatsNew.ts regardless of
-// this flag. Create / edit / delete entries with user-facing title + body + which
-// tab (View) the entry links to. See docs/product/features/whats-new.md, ADR 0026.
+// this flag. Create / edit / delete entries with user-facing title + body, the tab
+// (View) the entry links to, and, optionally, a single component ON that tab to
+// spotlight (a key from the stable registry, components/whatsnew/targets.ts). Picking
+// a component fixes the tab (the registry knows where it lives), so the tab dropdown
+// only shows for page-level entries. See docs/product/features/whats-new.md, ADR 0026.
 // ============================================================================
 
 import { useState } from "react";
@@ -16,12 +19,14 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { View } from "@/components/shell/Rail";
+import { WHATS_NEW_TARGETS, WHATS_NEW_TARGET_OPTIONS } from "./targets";
+import type { WhatsNewTarget } from "@/convex/whatsNewTargets";
 import { Pencil, Trash2, Plus } from "lucide-react";
 
 const VIEWS: View[] = ["today", "core", "board", "goals", "sessions", "settings"];
 
-type Draft = { title: string; body: string; view: View };
-const EMPTY: Draft = { title: "", body: "", view: "today" };
+type Draft = { title: string; body: string; view: View; target: WhatsNewTarget | "" };
+const EMPTY: Draft = { title: "", body: "", view: "today", target: "" };
 
 export function WhatsNewAdmin({ enabled = true }: { enabled?: boolean }) {
   const entries = useQuery(api.whatsNew.listAll, enabled ? {} : "skip");
@@ -40,8 +45,14 @@ export function WhatsNewAdmin({ enabled = true }: { enabled?: boolean }) {
     setComposing(true);
   };
 
-  const startEdit = (id: Id<"whatsNew">, title: string, body: string, view: View) => {
-    setDraft({ title, body, view });
+  const startEdit = (
+    id: Id<"whatsNew">,
+    title: string,
+    body: string,
+    view: View,
+    target: WhatsNewTarget | "",
+  ) => {
+    setDraft({ title, body, view, target });
     setEditingId(id);
     setComposing(true);
   };
@@ -52,14 +63,22 @@ export function WhatsNewAdmin({ enabled = true }: { enabled?: boolean }) {
     setDraft(EMPTY);
   };
 
+  // Choosing a component fixes the tab it lives on (the registry knows), so the two
+  // can never disagree; choosing "None" leaves the tab as the owner set it.
+  const setTarget = (target: WhatsNewTarget | "") => {
+    setDraft((d) => ({ ...d, target, view: target ? WHATS_NEW_TARGETS[target].view : d.view }));
+  };
+
   const save = async () => {
     if (!draft.title.trim() || !draft.body.trim()) return;
     setBusy(true);
     try {
+      const base = { title: draft.title.trim(), body: draft.body.trim(), view: draft.view };
       if (editingId) {
-        await update({ id: editingId, title: draft.title.trim(), body: draft.body.trim(), view: draft.view });
+        // null clears a previously-set target back to page-level.
+        await update({ id: editingId, ...base, componentTarget: draft.target || null });
       } else {
-        await create({ title: draft.title.trim(), body: draft.body.trim(), view: draft.view });
+        await create({ ...base, componentTarget: draft.target || undefined });
       }
       cancel();
     } finally {
@@ -99,19 +118,40 @@ export function WhatsNewAdmin({ enabled = true }: { enabled?: boolean }) {
             rows={3}
             className="text-[13.5px] px-3 py-2 rounded-lg border border-line bg-paper outline-none focus:border-ink-mute resize-none"
           />
-          <div className="flex items-center gap-2">
-            <span className="text-[12.5px] text-ink-mute">Links to</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[12.5px] text-ink-mute">Spotlight</span>
             <select
-              value={draft.view}
-              onChange={(e) => setDraft((d) => ({ ...d, view: e.target.value as View }))}
+              value={draft.target}
+              onChange={(e) => setTarget(e.target.value as WhatsNewTarget | "")}
               className="text-[13px] px-2 py-1.5 rounded-lg border border-line bg-paper outline-none"
             >
-              {VIEWS.map((v) => (
-                <option key={v} value={v}>
-                  {v}
+              <option value="">None (whole page)</option>
+              {WHATS_NEW_TARGET_OPTIONS.map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.label}
                 </option>
               ))}
             </select>
+            {draft.target === "" ? (
+              <>
+                <span className="text-[12.5px] text-ink-mute">on tab</span>
+                <select
+                  value={draft.view}
+                  onChange={(e) => setDraft((d) => ({ ...d, view: e.target.value as View }))}
+                  className="text-[13px] px-2 py-1.5 rounded-lg border border-line bg-paper outline-none"
+                >
+                  {VIEWS.map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <span className="text-[12.5px] text-ink-mute">
+                on <span className="font-medium text-ink-soft">{draft.view}</span>
+              </span>
+            )}
           </div>
           <div className="flex gap-2 justify-end">
             <button
@@ -148,14 +188,28 @@ export function WhatsNewAdmin({ enabled = true }: { enabled?: boolean }) {
                 <div className="text-[13.5px] font-medium text-ink">{e.title}</div>
                 <div className="text-[12.5px] text-ink-mute mt-0.5">{e.body}</div>
                 <div className="text-[11px] text-ink-mute mt-1">
-                  links to <span className="font-medium">{e.view}</span> ·{" "}
-                  {new Date(e.publishedAt).toLocaleDateString()}
+                  {e.componentTarget ? (
+                    <>
+                      spotlights{" "}
+                      <span className="font-medium">
+                        {WHATS_NEW_TARGETS[e.componentTarget]?.label ?? e.componentTarget}
+                      </span>{" "}
+                      on <span className="font-medium">{e.view}</span>
+                    </>
+                  ) : (
+                    <>
+                      links to <span className="font-medium">{e.view}</span>
+                    </>
+                  )}{" "}
+                  · {new Date(e.publishedAt).toLocaleDateString()}
                 </div>
               </div>
               <div className="flex gap-1.5 flex-shrink-0">
                 <button
                   type="button"
-                  onClick={() => startEdit(e._id, e.title, e.body, e.view as View)}
+                  onClick={() =>
+                    startEdit(e._id, e.title, e.body, e.view as View, e.componentTarget ?? "")
+                  }
                   aria-label="Edit"
                   className="w-7 h-7 rounded-lg border border-line text-ink-mute hover:text-ink flex items-center justify-center transition"
                 >

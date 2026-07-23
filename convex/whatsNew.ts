@@ -184,6 +184,11 @@ export const LAUNCH_ENTRIES: {
     body: "Right-click your vision board, pick Add text, Generate image with AI, or Upload image, and the little menu now closes the moment you choose, so it no longer sits over the card it just made. Your new card still lands exactly where you clicked.",
     view: "board",
   },
+  {
+    title: "Big Things on your Goals page",
+    body: "Not everything is a goal. Big Things is a new section at the top of Goals for the meetings, projects, and commitments that already occupy your time and headspace. Capture one in a few words, add context and a date if it helps, and leave it there: no roadmap, no pressure. When one is ready to become something you're chasing, tap Promote to goal and the Coach drafts what it takes.",
+    view: "goals",
+  },
 ];
 
 export const seedLaunchEntries = internalMutation({

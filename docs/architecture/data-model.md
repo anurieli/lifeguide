@@ -70,6 +70,12 @@ Day-to-day, Todoist-synced execution items — Today/Inbox/Waiting triage, disti
 
 The AI-drafted (and user-editable) roadmap for a goal/aspiration: a small dependency graph, not a flat checklist. `{ userId, goalId, title, status: todo|doing|done, isNextMove?, blockedBy: Id<roadmapSteps>[], source: ai|manual, sortOrder, createdAt, updatedAt }`, indexed `by_user_goal [userId, goalId]`. Whether a step is **blocked is computed**, never stored (any `blockedBy` step not yet `done` blocks it; a dangling id whose step was deleted resolves as non-blocking, avoiding fan-out cleanup on delete). Cycle handling is trust-split ([ADR 0029](../decisions/0029-aspirations-goals-and-roadmap-steps.md)): an AI-drafted batch silently breaks cycles (same technique as `thoughtMaps`' cycle guard, below); a user's live edit (`roadmapSteps.setBlockedBy`) is rejected outright rather than silently dropped. Drafted by `convex/ai/goalEnrich.ts` on goal create/regenerate; `source: "manual"` steps a person adds by hand are never touched by a regenerate. See [`../product/features/goals.md`](../product/features/goals.md).
 
+### bigThings
+
+The lightweight layer above the Goals gallery for active commitments that occupy time or mental space without yet being goals. `{ userId, title, context?, date?, sortOrder, archived?, promotedToGoalId?, createdAt, updatedAt }`, indexed `by_user [userId]`. Every query and mutation is scoped to the authenticated `userId`; cross-user update, archive, and promotion attempts are rejected. `date` is an optional `YYYY-MM-DD` anchor such as a meeting date or milestone. Capture and edit have no AI, roadmap, goal, pillar, or status side effects.
+
+`bigThings.promote` is the only bridge into `goals`. In one mutation it inserts a normal planning goal, maps `title` to `name`, `context` to `why`, and `date` to `deadline`, schedules the standard `goalEnrich` roadmap draft, then retires the source with `archived: true` and `promotedToGoalId`. A repeated promotion returns the existing goal id, so it cannot create duplicates. The date-to-deadline mapping is the deliberately minimal ARI-141 assumption and is called out for review. See [`../product/features/goals.md`](../product/features/goals.md) and [`../design/goals.md`](../design/goals.md).
+
 ### ritualItems / ritualDays / roadmapEntries / morningNotes (the Daily Ritual)
 The two ordered component sequences that bookend the day, plus the roadmap loop (see [`../product/features/daily-ritual.md`](../product/features/daily-ritual.md)).
 
@@ -93,10 +99,6 @@ Per-user app settings. `{ userId, onboardedAt?, morningCheckin, eveningCheckin, 
 ### horizons (the goal ladder)
 
 `horizons { userId, scope: five_year|one_year|one_month|weekly|daily, period, text, order, doneAt?, createdAt, updatedAt }`, indexed `by_user_scope_period [userId, scope, period, order]`. The nested plan from the far 5-year vision down to today (see [`../product/features/horizons.md`](../product/features/horizons.md)). `period` addresses which instance of a rung: `"std"` for the standing rungs (five_year/one_year/one_month — one evolving line, order 0), the week's **Monday key** for `weekly`, the **ritual day key** for `daily` (all from `lib/horizons.ts periodKeyFor`, timezone-stable). Weekly/daily rungs hold up to 3 (`MAX_PER_PERIOD`) ordered, checkable goals (`doneAt`); standing rungs are single-line and not checkable (enforced in `convex/horizons.ts`). North Star is **not** here — it stays in `settings.northStar` and renders as the ladder's crown.
-
-### goals / goalTasks (the Goals board, "Orbit")
-
-`goals { userId, name, parentId?, kind: big|shelf, status: active|planning|ongoing, area: business|personal|people, why?, sortOrder, archived?, todoistProjectId?, pillarId?, createdAt, updatedAt }`, indexed `by_user` and `by_user_todoist [userId, todoistProjectId]`. The Big Things board (see [`../product/features/goals.md`](../product/features/goals.md)) — this is the **live** shape, distinct from the horizon-based `goals` sketched in "Proposed" below, which that feature superseded when it actually shipped. `pillarId?` (ARI-11) is the relation from a goal to the domain (`pillars`) it strengthens; optional and not yet set by any UI — it exists so the pillar entity is a sane foundation for wiring goals into the Life Wheel/Coach later, not something this change builds out. `goalTasks { userId, goalId?, content, description?, dueDate?, priority?, checked, completedAt?, waiting?, waitingOn?, waitingSince?, sortOrder, todoistTaskId?, createdAt, updatedAt }`, indexed `by_user`, `by_user_goal`, `by_user_todoist`. Tasks on the board; `goalId` unset = the Inbox.
 
 ### dailyTidbits (the daily quote)
 

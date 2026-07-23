@@ -189,6 +189,11 @@ export const LAUNCH_ENTRIES: {
     body: "In a Conversation session, the coach's brief \"listening…\" line now clears itself if a turn goes unanswered, instead of hanging there when you reopen an old entry. The instant bridge after you speak or type is unchanged.",
     view: "sessions",
   },
+  {
+    title: "Redo an AI image on your board",
+    body: "Not quite right? Use Redo on any AI-generated image on your vision board. The prompt reopens with your original words to tweak, and the same card regenerates in place. It works on your phone too, and a failed image now lets you edit the prompt before trying again.",
+    view: "board",
+  },
 ];
 
 export const seedLaunchEntries = internalMutation({

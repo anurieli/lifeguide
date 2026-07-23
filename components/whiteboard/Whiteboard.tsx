@@ -370,12 +370,16 @@ export function Whiteboard({ surfaceId, active }: { surfaceId: SurfaceId; active
     const p = prompt.trim();
     if (!p) return;
     setAiModeId(null);
+    // A Redo re-runs an existing generated_image: keep whatever size the person
+    // gave it. Only a fresh card (any other type morphing in) gets the default.
+    const existing = nodeById.get(nodeId);
+    const isRedo = existing?.type === "generated_image";
     await morph({
       nodeId: nodeId as Id<"nodes">,
       type: "generated_image",
       text: p,
       attribution: "generating",
-      dimensions: { width: 280, height: 280 },
+      ...(isRedo ? {} : { dimensions: { width: 280, height: 280 } }),
     });
     generateImage({ nodeId: nodeId as Id<"nodes">, prompt: p }).catch((err) => {
       console.error("image generation failed", err);

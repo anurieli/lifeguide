@@ -57,7 +57,7 @@ The rebuild is complete. The set below is written fresh to the evolved vision; n
 - [`architecture/security-privacy.md`](architecture/security-privacy.md): the trust contract (multi-tenant isolation, server-only keys, likeness-photo handling).
 
 **Design**
-- [`design/interaction-principles.md`](design/interaction-principles.md), [`design/design-system.md`](design/design-system.md), [`design/screens.md`](design/screens.md).
+- [`design/interaction-principles.md`](design/interaction-principles.md), [`design/design-system.md`](design/design-system.md), [`design/screens.md`](design/screens.md), [`design/goals.md`](design/goals.md).
 
 **Decisions**
 - [`decisions/`](decisions/README.md): the evolved-vision pivot and docs reset, Future Self as its own element, OpenRouter.

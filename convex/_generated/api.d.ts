@@ -30,6 +30,7 @@ import type * as aiKeys from "../aiKeys.js";
 import type * as aiLogs from "../aiLogs.js";
 import type * as aiModels from "../aiModels.js";
 import type * as auth from "../auth.js";
+import type * as bigThings from "../bigThings.js";
 import type * as blueprintDoc from "../blueprintDoc.js";
 import type * as captures from "../captures.js";
 import type * as center from "../center.js";
@@ -97,6 +98,7 @@ declare const fullApi: ApiFromModules<{
   aiLogs: typeof aiLogs;
   aiModels: typeof aiModels;
   auth: typeof auth;
+  bigThings: typeof bigThings;
   blueprintDoc: typeof blueprintDoc;
   captures: typeof captures;
   center: typeof center;

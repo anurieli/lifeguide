@@ -142,6 +142,16 @@ export default defineSchema({
         pillars: v.array(v.string()),
       }),
     ),
+    // "Long audio, made readable" (ARI-145). Set by the distill pass for a LONG spoken
+    // take ONLY — an audio capture whose transcript passes lib/audioReadable.ts's
+    // threshold: `summary` is a concise gist shown at the card's collapsed top state,
+    // `cleaned` is the full transcript with filler/false-starts removed and grammar
+    // repaired, shown on expand. Purely additive and optional: the raw machine
+    // transcript stays untouched in `extractedText` and the audio blob in `rawFileId`,
+    // so nothing is lost. Absent for short notes, for captures distilled before this
+    // feature, or when the AI failed — the UI then falls back to the raw transcript.
+    // See docs/product/features/sessions.md.
+    readable: v.optional(v.object({ summary: v.string(), cleaned: v.string() })),
     embedding: v.optional(v.array(v.float64())),
     placedAt: v.optional(v.number()),
     nodeId: v.optional(v.id("nodes")),

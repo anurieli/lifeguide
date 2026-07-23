@@ -216,12 +216,16 @@ export const updateDistilled = internalMutation({
     boardWorthy: v.optional(
       v.object({ verdict: v.boolean(), reason: v.string(), at: v.number() }),
     ),
+    // ARI-145: the long-audio readable pair, derived in the same distill call. Only
+    // ever passed for a long spoken take; omitted (and left unset) otherwise.
+    readable: v.optional(v.object({ summary: v.string(), cleaned: v.string() })),
     embedding: v.optional(v.array(v.float64())),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.captureId, {
       distilled: args.distilled,
       ...(args.boardWorthy ? { boardWorthy: args.boardWorthy } : {}),
+      ...(args.readable ? { readable: args.readable } : {}),
       embedding: args.embedding,
     });
   },

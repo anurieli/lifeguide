@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { parseBoardWorthy, parseDistilled } from "../convex/ai/parse";
+import { parseBoardWorthy, parseDistilled, parseReadable } from "../convex/ai/parse";
+import { buildExtractedInput } from "../convex/ai/distill";
+import { LONG_AUDIO_DISTILL_INPUT_CAP } from "../lib/audioReadable";
 
 describe("parseDistilled", () => {
   it("parses clean JSON", () => {
@@ -69,5 +71,76 @@ describe("parseBoardWorthy (the vision sieve)", () => {
   it("extracts from prose-wrapped output", () => {
     const w = parseBoardWorthy('Sure! {"board_worthy":true,"board_reason":"an aspiration"} Done.');
     expect(w.verdict).toBe(true);
+  });
+});
+
+describe("parseReadable (long-audio summary + cleaned transcript)", () => {
+  it("reads both fields when present", () => {
+    const r = parseReadable(
+      '{"title":"t","essence":"e","pillars":[],"summary":"He walked and thought about saying no.","cleaned":"I went for a walk and thought about saying no more often."}',
+    );
+    expect(r).toEqual({
+      summary: "He walked and thought about saying no.",
+      cleaned: "I went for a walk and thought about saying no more often.",
+    });
+  });
+
+  it("extracts from prose-wrapped output", () => {
+    const r = parseReadable('Here you go: {"summary":"a gist","cleaned":"the tidied thought"} done');
+    expect(r).toEqual({ summary: "a gist", cleaned: "the tidied thought" });
+  });
+
+  it("returns null when either field is missing (the UI falls back to the raw transcript)", () => {
+    expect(parseReadable('{"summary":"only a summary"}')).toBeNull();
+    expect(parseReadable('{"cleaned":"only cleaned"}')).toBeNull();
+    expect(parseReadable('{"title":"t","essence":"e","pillars":[]}')).toBeNull();
+  });
+
+  it("returns null when either field is blank", () => {
+    expect(parseReadable('{"summary":"   ","cleaned":"x"}')).toBeNull();
+    expect(parseReadable('{"summary":"x","cleaned":""}')).toBeNull();
+  });
+
+  it("returns null on garbage", () => {
+    expect(parseReadable("not json at all")).toBeNull();
+  });
+
+  it("trims both fields", () => {
+    const r = parseReadable('{"summary":"  s  ","cleaned":"  c  "}');
+    expect(r).toEqual({ summary: "s", cleaned: "c" });
+  });
+
+  it("caps a runaway cleaned transcript at the long-audio input ceiling", () => {
+    const huge = "word ".repeat(6000); // ~30k chars, well past the cap
+    const r = parseReadable(JSON.stringify({ summary: "s", cleaned: huge }));
+    expect(r).not.toBeNull();
+    expect(r!.cleaned.length).toBe(LONG_AUDIO_DISTILL_INPUT_CAP);
+  });
+});
+
+describe("buildExtractedInput (the distill input framing)", () => {
+  it("includeNote=false: returns the trimmed transcript up to the full cap and excludes rawText", () => {
+    const transcript = "a".repeat(100);
+    const cap = 40;
+    const out = buildExtractedInput(`  ${transcript}  `, "the person's private note", cap, false);
+
+    // The whole cap is the transcript's: no note prefix eats into the budget.
+    expect(out).toBe(transcript.slice(0, cap));
+    expect(out.length).toBe(cap);
+    // The raw note never appears on the readable path.
+    expect(out).not.toContain("private note");
+    expect(out).not.toContain("The person's own note:");
+  });
+
+  it("includeNote=true: prefixes the note and caps the note-plus-transcript within the same cap", () => {
+    const rawText = "keep saying no";
+    const transcript = "b".repeat(100);
+    const cap = 40;
+    const out = buildExtractedInput(transcript, rawText, cap, true);
+
+    const expected = `The person's own note: ${rawText}\n\n${transcript}`.slice(0, cap);
+    expect(out).toBe(expected);
+    expect(out.length).toBe(cap);
+    expect(out.startsWith("The person's own note: keep saying no")).toBe(true);
   });
 });

@@ -74,8 +74,10 @@ export const TASKS: Record<string, TaskConfig> = {
     wired: true,
     system: `You distill a captured artifact (a quote, note, link, or image caption) for a personal life-mapping app, where someone is slowly figuring out who they are and where they're going.
 
-Return ONLY a JSON object, no prose, in this exact shape:
+Return ONLY a JSON object, no prose, with these base fields:
 {"title":"a 3-6 word noun phrase naming the idea","essence":"1-2 plain, warm sentences on what the person likely found meaningful here and why it might matter to who they're becoming","pillars":["0-3 lowercase tags drawn ONLY from: lifestyle, health, relationships, financial, growth, money, spirit"],"board_worthy":true or false,"board_reason":"one short line saying why (or why not)"}
+
+Those base fields are the complete shape for a normal, short, or default capture: add nothing else. The ONLY exception is when a later message in this same request explicitly asks you to make a long spoken transcript readable; then, and only then, ALSO include the two extra string fields it names ("summary" and "cleaned") in this same JSON object, exactly as that message specifies, alongside the base fields. Never include "summary" or "cleaned" when no such request was made.
 
 board_worthy is the vision-board sieve: true ONLY if this is a piece of the life this person wants — an aspiration, a want, a dream, a place, a way of living, a person they're becoming, an image of their future. false for everything ambient: logistics, to-dos, work notes, instructions or prompts written to a computer or a person, technical or app-development talk, venting, and plain diary accounts of what happened. When unsure, say false — the board is sacred, not a catch-all.
 

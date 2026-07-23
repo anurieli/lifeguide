@@ -27,7 +27,10 @@ export const LONG_AUDIO_READABLE_THRESHOLD = 700;
 // that stays comfortably inside the model's context window (~16k chars is roughly
 // 4k tokens in, a similar amount back). It is a safety ceiling, not a target: the raw
 // machine transcript in `extractedText` and the audio blob in `rawFileId` are never
-// touched, so a take past this cap keeps every word and simply cleans the leading span.
+// touched. A take PAST this cap keeps every word, and rather than show a cleaned span
+// that silently stops short of the very end, `selectAudioDisplay` expands to the full
+// raw transcript for such a take (see there) so the reader never gets a truncated
+// "cleaned" version passed off as the whole thought.
 export const LONG_AUDIO_DISTILL_INPUT_CAP = 16000;
 
 // True only for an audio capture whose transcript is long enough to be worth the
@@ -49,6 +52,13 @@ export function isLongAudioTranscript(
 // raw transcript verbatim for both — the graceful, never-lose-the-words default.
 // `hasCleaned` lets the card note honestly that the expanded text was tidied and the
 // spoken original is still one tap (play) away.
+//
+// One honest edge for a VERY long take: `cleaned` can only cover the first
+// LONG_AUDIO_DISTILL_INPUT_CAP characters the model was sent, so for a transcript past
+// that cap the cleaned text is a truncated prefix, not the whole thought. There we still
+// use the derived `summary` as the collapsed preview, but expand to the FULL raw
+// transcript instead of the cut-off cleaned span, and report `hasCleaned: false` so the
+// card does not claim it was tidied. Normal long takes and short takes are unaffected.
 export function selectAudioDisplay(args: {
   transcript: string | undefined | null;
   readable: AudioReadable | undefined | null;
@@ -57,6 +67,9 @@ export function selectAudioDisplay(args: {
   const summary = args.readable?.summary?.trim() ?? "";
   const cleaned = args.readable?.cleaned?.trim() ?? "";
   if (summary && cleaned) {
+    if (transcript.length > LONG_AUDIO_DISTILL_INPUT_CAP) {
+      return { preview: summary, expanded: transcript, hasCleaned: false };
+    }
     return { preview: summary, expanded: cleaned, hasCleaned: true };
   }
   return { preview: transcript, expanded: transcript, hasCleaned: false };

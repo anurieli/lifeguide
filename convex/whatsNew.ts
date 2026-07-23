@@ -181,7 +181,7 @@ export const LAUNCH_ENTRIES: {
   },
   {
     title: "Long recordings, made readable",
-    body: "A long spoken take now shows a short summary at a glance, and expands into a tidied, easy-to-read version of the whole thing, with the filler and false starts smoothed out. Your original recording and its exact words are always kept, and the play button still hears you as you spoke.",
+    body: "A long spoken take now shows a short summary at a glance, and expands into a tidied, easy-to-read version with the filler and false starts smoothed out. A very long take just shows its full transcript rather than a shortened version. Your original recording and its exact words are always kept, and the play button still hears you as you spoke.",
     view: "sessions",
   },
 ];

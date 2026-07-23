@@ -35,7 +35,13 @@ export const distillCapture = internalAction({
     // transcript up to a larger documented cap (LONG_AUDIO_DISTILL_INPUT_CAP) instead of
     // the default 6000-char slice that suits the title/essence/sieve job.
     const wantReadable = isLongAudioTranscript(capture.rawType, capture.extractedText);
-    const input = buildInput(capture, wantReadable ? LONG_AUDIO_DISTILL_INPUT_CAP : DEFAULT_INPUT_CAP);
+    const input = buildInput(
+      capture,
+      wantReadable ? LONG_AUDIO_DISTILL_INPUT_CAP : DEFAULT_INPUT_CAP,
+      // The readable path must clean the transcript ONLY: no note prefix, so it neither
+      // eats the transcript budget nor lands inside the grammar-cleaned "cleaned" field.
+      !wantReadable,
+    );
     if (!input) return; // nothing textual to distill yet (e.g. a bare image) — placed as-is
 
     const messages: { role: "user"; content: string }[] = [{ role: "user", content: input }];
@@ -68,19 +74,40 @@ export const distillCapture = internalAction({
   },
 });
 
-function buildInput(capture: Doc<"captures">, textCap: number): string | null {
+function buildInput(
+  capture: Doc<"captures">,
+  textCap: number,
+  includeNote: boolean,
+): string | null {
   // Prefer the ingested text (transcript, article body, image description): it is the
   // richest signal. Fall back to the raw text, then the bare URL. `textCap` is the
   // default 6000 for most captures, raised on the long-audio readable path so the
   // cleaned output isn't silently truncated (ARI-145).
   if (capture.extractedText && capture.extractedText.trim()) {
-    const note =
-      capture.rawText && capture.rawText.trim() && capture.rawText !== capture.extractedText
-        ? `The person's own note: ${capture.rawText.trim().slice(0, 500)}\n\n`
-        : "";
-    return (note + capture.extractedText.trim()).slice(0, textCap);
+    return buildExtractedInput(capture.extractedText, capture.rawText, textCap, includeNote);
   }
   if (capture.rawText && capture.rawText.trim()) return capture.rawText.trim().slice(0, 4000);
   if (capture.rawUrl) return `A link the person saved and found worth keeping: ${capture.rawUrl}`;
   return null;
+}
+
+// Build the distill input from the extracted text, optionally framed by the person's own
+// note. On the default path (`includeNote: true`) the note is prefixed and the whole thing
+// is capped, matching long-standing behavior. On the long-audio readable path
+// (`includeNote: false`) it returns exactly the transcript slice up to `textCap`: the note
+// must not consume the transcript budget nor bleed into the grammar-cleaned transcript
+// (ARI-145). Pure and exported for unit testing without the Convex runtime.
+export function buildExtractedInput(
+  extractedText: string,
+  rawText: string | undefined | null,
+  textCap: number,
+  includeNote: boolean,
+): string {
+  const transcript = extractedText.trim();
+  if (!includeNote) return transcript.slice(0, textCap);
+  const note =
+    rawText && rawText.trim() && rawText !== extractedText
+      ? `The person's own note: ${rawText.trim().slice(0, 500)}\n\n`
+      : "";
+  return (note + transcript).slice(0, textCap);
 }

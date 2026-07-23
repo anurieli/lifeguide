@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  LONG_AUDIO_DISTILL_INPUT_CAP,
   LONG_AUDIO_READABLE_THRESHOLD,
   isLongAudioTranscript,
   selectAudioDisplay,
@@ -88,5 +89,42 @@ describe("selectAudioDisplay (what the card shows)", () => {
     expect(d.preview).toBe("");
     expect(d.expanded).toBe("");
     expect(d.hasCleaned).toBe(false);
+  });
+
+  it("keeps the cleaned expand for a transcript at or under the model input cap", () => {
+    const atCap = "y".repeat(LONG_AUDIO_DISTILL_INPUT_CAP);
+    const d = selectAudioDisplay({
+      transcript: atCap,
+      readable: { summary: "the gist", cleaned: "the tidied full thought" },
+    });
+    expect(d.preview).toBe("the gist");
+    expect(d.expanded).toBe("the tidied full thought");
+    expect(d.hasCleaned).toBe(true);
+  });
+
+  it("expands to the FULL raw transcript (not a truncated cleaned prefix) past the input cap", () => {
+    // A take longer than the cap could only be cleaned up to the cap, so `cleaned` is a
+    // truncated prefix. Keep the summary collapsed, but expand to every spoken word and
+    // do not claim it was tidied.
+    const huge = "z".repeat(LONG_AUDIO_DISTILL_INPUT_CAP + 1);
+    const d = selectAudioDisplay({
+      transcript: huge,
+      readable: { summary: "the gist", cleaned: "only the leading span, cut short" },
+    });
+    expect(d.preview).toBe("the gist");
+    expect(d.expanded).toBe(huge);
+    expect(d.hasCleaned).toBe(false);
+  });
+
+  it("measures the cap against the trimmed transcript, ignoring surrounding whitespace", () => {
+    // Padding whitespace must not tip a take that is really within the cap into the
+    // full-raw fallback: the trimmed body is exactly at the cap, so the cleaned expand stays.
+    const atCap = "w".repeat(LONG_AUDIO_DISTILL_INPUT_CAP);
+    const d = selectAudioDisplay({
+      transcript: `\n\n  ${atCap}  \n\n`,
+      readable: { summary: "the gist", cleaned: "the tidied full thought" },
+    });
+    expect(d.expanded).toBe("the tidied full thought");
+    expect(d.hasCleaned).toBe(true);
   });
 });

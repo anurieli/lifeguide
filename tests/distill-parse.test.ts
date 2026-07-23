@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseBoardWorthy, parseDistilled, parseReadable } from "../convex/ai/parse";
+import { buildExtractedInput } from "../convex/ai/distill";
 import { LONG_AUDIO_DISTILL_INPUT_CAP } from "../lib/audioReadable";
 
 describe("parseDistilled", () => {
@@ -114,5 +115,32 @@ describe("parseReadable (long-audio summary + cleaned transcript)", () => {
     const r = parseReadable(JSON.stringify({ summary: "s", cleaned: huge }));
     expect(r).not.toBeNull();
     expect(r!.cleaned.length).toBe(LONG_AUDIO_DISTILL_INPUT_CAP);
+  });
+});
+
+describe("buildExtractedInput (the distill input framing)", () => {
+  it("includeNote=false: returns the trimmed transcript up to the full cap and excludes rawText", () => {
+    const transcript = "a".repeat(100);
+    const cap = 40;
+    const out = buildExtractedInput(`  ${transcript}  `, "the person's private note", cap, false);
+
+    // The whole cap is the transcript's: no note prefix eats into the budget.
+    expect(out).toBe(transcript.slice(0, cap));
+    expect(out.length).toBe(cap);
+    // The raw note never appears on the readable path.
+    expect(out).not.toContain("private note");
+    expect(out).not.toContain("The person's own note:");
+  });
+
+  it("includeNote=true: prefixes the note and caps the note-plus-transcript within the same cap", () => {
+    const rawText = "keep saying no";
+    const transcript = "b".repeat(100);
+    const cap = 40;
+    const out = buildExtractedInput(transcript, rawText, cap, true);
+
+    const expected = `The person's own note: ${rawText}\n\n${transcript}`.slice(0, cap);
+    expect(out).toBe(expected);
+    expect(out.length).toBe(cap);
+    expect(out.startsWith("The person's own note: keep saying no")).toBe(true);
   });
 });

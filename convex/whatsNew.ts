@@ -179,6 +179,11 @@ export const LAUNCH_ENTRIES: {
     body: "The Morning and Night Scroll header counts only the cards actually in the scroll, so the number lines up with the steps in front of you. Your rail practices still count toward sealing the day.",
     view: "today",
   },
+  {
+    title: "Long recordings, made readable",
+    body: "A long spoken take now shows a short summary at a glance, and expands into a tidied, easy-to-read version of the whole thing, with the filler and false starts smoothed out. Your original recording and its exact words are always kept, and the play button still hears you as you spoke.",
+    view: "sessions",
+  },
 ];
 
 export const seedLaunchEntries = internalMutation({

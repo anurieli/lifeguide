@@ -5,6 +5,7 @@ import { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { ChevronDown, FileText, ImageIcon, Link2, Mic, Pause, Play } from "lucide-react";
+import { selectAudioDisplay } from "@/lib/audioReadable";
 
 /**
  * ARI-122: the brain-dump box. Each capture added to a session (free text, a
@@ -88,7 +89,13 @@ function AudioPlayButton({ src }: { src: string }) {
 // a plain label for a photo (which gets its own thumbnail alongside instead).
 function previewOf(capture: CaptureDoc): string {
   if (capture.rawType === "audio") {
-    if (capture.extractedText) return capture.extractedText;
+    // For a long take (ARI-145) the collapsed preview is the concise summary; a short
+    // note (or a missing/failed derivation) falls back to the raw transcript.
+    if (capture.extractedText)
+      return selectAudioDisplay({
+        transcript: capture.extractedText,
+        readable: capture.readable,
+      }).preview;
     if (capture.extraction?.status === "error")
       return "Transcription failed — the recording is safe.";
     return "Listening back…";
@@ -231,9 +238,27 @@ export function CaptureItem({
         <div className="px-3.5 pb-3.5 pt-0.5 border-t border-line/60">
           {capture.rawType === "audio" &&
             (capture.extractedText ? (
-              <p className="text-[15px] leading-relaxed text-ink whitespace-pre-wrap">
-                {capture.extractedText}
-              </p>
+              (() => {
+                // Expanded: the grammar-cleaned thought for a long take, or the raw
+                // transcript verbatim otherwise (ARI-145). When cleaned, a quiet note
+                // says the words were tidied and the spoken original is a play away.
+                const display = selectAudioDisplay({
+                  transcript: capture.extractedText,
+                  readable: capture.readable,
+                });
+                return (
+                  <>
+                    <p className="text-[15px] leading-relaxed text-ink whitespace-pre-wrap">
+                      {display.expanded}
+                    </p>
+                    {display.hasCleaned && (
+                      <p className="mt-2 text-[11px] text-ink-mute">
+                        Tidied for reading. Press play for the recording as spoken.
+                      </p>
+                    )}
+                  </>
+                );
+              })()
             ) : capture.extraction?.status === "error" ? (
               <p className="text-[13px] text-ink-mute">
                 Transcription failed, the recording is safe.{" "}

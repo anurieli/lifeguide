@@ -72,6 +72,13 @@ Fix: the bridge rule is now a pure, time-injected predicate, `shouldShowListenin
 Checks run: after the rebase onto current origin/main and this harness fix, full `npm run test` is green, 479 tests across 63 files, full `npm run lint` clean apart from three pre-existing warnings in `ZenCore.tsx`, `QrHandoff.tsx`, and `ThoughtCard.tsx`, and `npm run build` compiled and generated all pages successfully with those same warnings. Adding a `LAUNCH_ENTRIES` item exposed that the symlinked-worktree `convex-test` default bundle resolved a stale sibling-checkout copy of the array while the test's direct import sees this worktree's array, so `tests/convex/whats-new-seed.test.ts` now supplies its own worktree-local `import.meta.glob` modules bundle, following existing test convention. The user-facing What's New feed carries a matching entry (`convex/whatsNew.ts`'s `LAUNCH_ENTRIES`, view: sessions). Please double-check: the rebase brought in `tests/convex/linear-autoforward.test.ts`, whose five tests failed because `convexTest(schema)` resolved its default function-module glob through the worktree's symlinked `node_modules` into the primary checkout, where `convex/linear.ts` lacks `autoForwardFeedback`; that test now supplies the same worktree-local `import.meta.glob` modules bundle. This adjacent worktree-only test harness fix was necessary after the rebase and does not alter runtime product code.
 
 **Docs touched:** `docs/product/features/sessions.md` (Conversation section + the read-thread and edge-case rows, rewritten for per-capture `afterCaptureId` matching, the 30s window, the render-time clock, and the one-shot client deadline timer), `CHANGELOG.md`.
+## 2026-07-23 · Vision Board AI images can be redone in place (f9979ea)
+
+ARI-146: A completed AI-generated image now exposes Redo on desktop and mobile. Redo opens the existing prompt editor prefilled with the original prompt, accepts changes, and regenerates the same node in place while preserving its size. The generating state takes precedence over the previous stored image, failed images keep Try again and gain Edit prompt, and a successful retry clears the stale error note.
+
+Added a shared generated-image state helper, focused client and Convex regression coverage, and a board-linked What's New entry. Full suite 487 passing, typecheck clean, lint clean with three pre-existing warnings, and production build successful.
+
+**Docs touched:** `docs/product/features/vision-board.md`, `CHANGELOG.md`.
 
 ## 2026-07-21 · The Blueprint, made spare — and rules are click-to-edit
 

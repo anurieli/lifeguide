@@ -62,6 +62,31 @@ export function parseBoardWorthy(raw: string): BoardWorthy {
   return { verdict, reason };
 }
 
+// The daily-quote agent's output (convex/ai/dailyQuote.ts): one real, attributed
+// inspirational quote. STRICT by design: both a non-empty quote AND a non-empty
+// attribution are required. A missing, non-string, or blank value for either
+// returns null, and the caller marks the tidbit row `error` rather than showing a
+// half-quote. We never fabricate an attribution: a blank author is a rejection, not
+// a cue to stamp "Unknown" (that default let unattributed lines through, ARI-134).
+// Tolerance is only about the WRAPPER: tolerantJson already accepts bare JSON,
+// Markdown-fenced JSON, and JSON sitting inside a sentence of prose.
+export type DailyQuote = { text: string; attribution: string };
+
+const QUOTE_CAP = 400;
+const ATTRIBUTION_CAP = 120;
+
+export function parseDailyQuote(raw: string): DailyQuote | null {
+  const obj = tolerantJson(raw);
+  // Valid JSON that is not an object (the literal `null`, an array, a number)
+  // leaves nothing to read; reject rather than crash on null property access.
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return null;
+  const text = typeof obj.quote === "string" ? obj.quote.trim().slice(0, QUOTE_CAP) : "";
+  const attribution =
+    typeof obj.author === "string" ? obj.author.trim().slice(0, ATTRIBUTION_CAP) : "";
+  if (!text || !attribution) return null;
+  return { text, attribution };
+}
+
 // A goal/aspiration's AI-drafted roadmap: a short "what this takes" summary
 // plus 3-7 steps. `blockedByIndexes` are 0-based indexes into this same
 // `steps` array (resolved from the model's own local ids, e.g. "s1") — the

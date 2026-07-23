@@ -21,7 +21,7 @@ Generation is **fail-safe** (hardened 2026-07-20): the whole handler — includi
 | Action | Trigger | What it does | Manual / Coach | Data touched |
 |---|---|---|---|---|
 | Ensure today's tidbit | The `tidbit` step renders (no fixed content) | `dailyTidbits.ensureForDay({day, kind})` — if today has no row, writes a `pending` row and schedules the agent; idempotent (runs at most once/day) | System | writes `dailyTidbits`, schedules the agent |
-| Generate the quote | The scheduled agent | `internal.ai.dailyQuote.generate` — reads Core context, calls the `dailyQuote` node (Haiku), writes `{status: done, text, attribution, model}`; logged to `aiLogs` | AI (agent) | reads context, writes `dailyTidbits`, `aiLogs` |
+| Generate the quote | The scheduled agent | `internal.ai.dailyQuote.generate`: reads Core context, calls the `dailyQuote` node (Haiku), parses the reply with `parseDailyQuote` (tolerant of fenced / prose-wrapped JSON), and on a valid quote+author writes `{status: done, text, attribution, model}`; anything unusable writes `{status: error}`. Logged to `aiLogs` | AI (agent) | reads context, writes `dailyTidbits`, `aiLogs` |
 | Show the quote | Row streams to the client | `dailyTidbits.forDay({day, kind})` — reactive; shows pending / done+quote / error | System | reads `dailyTidbits` |
 | Find another | Tap ↻ | `dailyTidbits.refresh` — resets today's row to `pending` and re-runs the agent | Manual | writes `dailyTidbits`, schedules the agent |
 | Pin my own line | Type text on the tidbit step in edit | `rituals.updateItem({content})` — a non-empty `content` overrides the agent for that step | Manual | writes `ritualItems` |
@@ -46,7 +46,7 @@ Generation is **fail-safe** (hardened 2026-07-20): the whole handler — includi
 - **Stuck error:** an `error` row is left as-is by `ensureForDay` (never auto-retried); only the explicit ↻ / Try again re-runs it, so a failing key can't loop the agent.
 - **Stuck pending:** the agent handler is fully wrapped (context read included), so a failure always writes `error` instead of leaving the row `pending`. Should a row still sit `pending` (e.g. the scheduled action never ran), the ~20s **Try again** on the pending state is the escape hatch — it calls `refresh`, which resets the row and re-runs the agent.
 - **Malformed/absent context:** with little Core signal the agent is told to choose a broadly resonant quote; a thin profile still gets a real quote.
-- **Bad model output:** the action validates the JSON, trims, requires a non-empty `quote`, and defaults a missing author to "Unknown" (never invents a famous name); an empty result marks the row `error`.
+- **Bad model output (hardened 2026-07-23, ARI-134):** the action parses the reply through a narrow, tolerant extractor (`parseDailyQuote` in `convex/ai/parse.ts`). It is tolerant of the *wrapper* (bare JSON, a Markdown ```` ```json ```` fence, or JSON sitting inside a line of prose all parse) and strict on the *content*: a usable quote needs **both** a non-empty `quote` and a non-empty `author`. Any missing, non-string, or blank value for either (or JSON that won't parse) is rejected and the row lands `error` with its Try again. It no longer stamps a missing author as "Unknown"; an unattributed line is a rejection, not a half-quote. (A model that itself chooses to return `"Unknown"` as the author is a real value and still accepted.)
 - **Deleted mid-flight:** if the tidbit's row is deleted while the agent runs, `writeInternal` no-ops.
 - **Malformed day key:** `ensureForDay` / `forDay` reject non-`YYYY-MM-DD` keys.
 
@@ -65,12 +65,12 @@ Exact shape in [`../../architecture/data-model.md`](../../architecture/data-mode
 
 **Writes elsewhere:** `aiLogs` (every agent call).
 
-**Code:** `convex/ai/config.ts` (the `dailyQuote` node), `convex/ai/dailyQuote.ts` (the agent), `convex/dailyTidbits.ts` (ensure/refresh/forDay + context + write), `components/today/DailyTidbit.tsx` (the inline step), wired as a `tidbit` kind in `components/today/RitualSequence.tsx`. Tests: `tests/convex/daily-tidbit.test.ts`.
+**Code:** `convex/ai/config.ts` (the `dailyQuote` node), `convex/ai/dailyQuote.ts` (the agent), `convex/ai/parse.ts` (`parseDailyQuote`, the tolerant/strict output parser), `convex/dailyTidbits.ts` (ensure/refresh/forDay + context + write), `components/today/DailyTidbit.tsx` (the inline step), wired as a `tidbit` kind in `components/today/RitualSequence.tsx`. Tests: `tests/convex/daily-tidbit.test.ts` (covers the parser plus the refresh/write-back recovery path), `tests/daily-quote-parse.test.ts` (the parser).
 
 ## 9. Open questions
 
 - **When to generate:** lazy-on-render (as built) vs. a nightly pre-warm so the morning quote is already there.
 - **More tidbit kinds:** a daily fact, a passage, or the **inspirational image** (the heavier idea from the same brainstorm) — each a new `kind` + AI node; the image needs the gate for cost/caching.
 - **De-dupe depth:** the last ~8 quotes are excluded; should it be a longer memory, or a "seen" set?
-- **Author accuracy:** the model is told to prefer "Unknown" over a wrong attribution — do we ever verify?
+- **Author accuracy:** the model is told to prefer "Unknown" over a wrong attribution, and the parser now requires *some* non-empty author (rejecting a blank one rather than inventing a name). Do we ever verify the attribution itself?
 - **Cost ceiling:** one Haiku call per active person per day; revisit if the active base grows.

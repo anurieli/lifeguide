@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../convex/schema";
 import { api, internal } from "../../convex/_generated/api";
+import { parseDailyQuote } from "../../convex/ai/parse";
 
 async function setup() {
   const t = convexTest(schema);
@@ -93,5 +94,80 @@ describe("dailyTidbits: the lazy daily quote", () => {
     await expect(
       asUser.mutation(api.dailyTidbits.ensureForDay, { day: "someday", kind: "quote" }),
     ).rejects.toThrow();
+  });
+});
+
+// ─── The generate action's parse-and-write path (ARI-134) ──────────────────────
+//
+// The one thing the daily-quote agent OWNS beyond the model call is: parse the reply
+// with parseDailyQuote, then write the result back onto the row. We do NOT execute
+// chatComplete under convex-test: the model call genuinely needs a live key (the repo
+// documents this, and the OpenAI SDK bypasses a swapped global.fetch and hits the
+// provider for real), so a "mocked" action run is neither deterministic nor offline.
+// Instead we cover the two pieces the action actually owns, deterministically:
+//   1. the exact parse the action performs (convex/ai/dailyQuote.generate calls
+//      parseDailyQuote) — tolerant of fenced / prose JSON, strict on the fields; and
+//   2. the write-back through the REAL dailyTidbits.writeInternal mutation, including
+//      the Try-again recovery: a refreshed (previously errored) row lands `done` with
+//      text + attribution and the stale error cleared.
+// The wider wrapper/rejection matrix lives in tests/daily-quote-parse.test.ts.
+describe("ai/dailyQuote.generate -- parse-and-write path (ARI-134)", () => {
+  it("parses the fenced JSON a model returns, and rejects a missing-author reply", () => {
+    // The exact wrapper the failing model produced (fenced ```json): the action's
+    // parseDailyQuote call accepts it and yields a clean text + attribution.
+    const good = parseDailyQuote(
+      '```json\n{"quote":"The impediment to action advances action.","author":"Marcus Aurelius"}\n```',
+    );
+    expect(good).toEqual({
+      text: "The impediment to action advances action.",
+      attribution: "Marcus Aurelius",
+    });
+    // A missing author is a rejection (-> the action throws -> the row lands `error`),
+    // never a fabricated "Unknown": the ARI-134 bug.
+    expect(parseDailyQuote('Sorry, here you go: {"quote":"A line with no author"}')).toBeNull();
+  });
+
+  it("a Try-again re-run recovers a prior error row: refresh -> pending -> writeInternal done", async () => {
+    const { t, asUser } = await setup();
+    const id = await asUser.mutation(api.dailyTidbits.ensureForDay, { day: DAY, kind: "quote" });
+
+    // First run: unusable output -> the action lands the row `error`, nothing persisted.
+    await t.mutation(internal.dailyTidbits.writeInternal, {
+      tidbitId: id,
+      status: "error",
+      error: "unusable quote payload",
+    });
+    let row = await asUser.query(api.dailyTidbits.forDay, { day: DAY, kind: "quote" });
+    expect(row!.status).toBe("error");
+    expect(row!.error).toBe("unusable quote payload");
+    expect(row!.text).toBeUndefined();
+    expect(row!.attribution).toBeUndefined();
+
+    // Try again: refresh resets the SAME row to pending and clears the stale error.
+    const reId = await asUser.mutation(api.dailyTidbits.refresh, { day: DAY, kind: "quote" });
+    expect(reId).toEqual(id);
+    row = await asUser.query(api.dailyTidbits.forDay, { day: DAY, kind: "quote" });
+    expect(row!.status).toBe("pending");
+
+    // A good reply, parsed the way the action parses it, is written back through the
+    // real mutation: the row lands `done` with text + attribution, error gone.
+    const parsed = parseDailyQuote(
+      '{"quote":"Well done is better than well said.","author":"Benjamin Franklin"}',
+    );
+    expect(parsed).not.toBeNull();
+    await t.mutation(internal.dailyTidbits.writeInternal, {
+      tidbitId: reId,
+      status: "done",
+      text: parsed!.text,
+      attribution: parsed!.attribution,
+      model: "anthropic/claude-haiku-4.5",
+    });
+
+    row = await asUser.query(api.dailyTidbits.forDay, { day: DAY, kind: "quote" });
+    expect(row!.status).toBe("done");
+    expect(row!.text).toBe("Well done is better than well said.");
+    expect(row!.attribution).toBe("Benjamin Franklin");
+    expect(row!.error).toBeUndefined();
+    expect(row!.generatedAt).toBeTypeOf("number");
   });
 });

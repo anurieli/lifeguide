@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { chatComplete } from "./openai";
+import { parseDailyQuote } from "./parse";
 import { TASKS } from "./config";
 
 // ============================================================================
@@ -56,16 +57,18 @@ export const generate = internalAction({
         jsonMode: true,
         messages: [{ role: "user", content: buildInput(cx) }],
       });
-      const parsed = JSON.parse(raw || "{}");
-      const text = typeof parsed.quote === "string" ? parsed.quote.trim().slice(0, 400) : "";
-      const attribution =
-        typeof parsed.author === "string" ? parsed.author.trim().slice(0, 120) : "";
-      if (!text) throw new Error("empty quote");
+      // Tolerant on the wrapper (bare JSON, ```json fences, or JSON inside a line
+      // of prose), strict on the content: a usable quote needs BOTH a non-empty
+      // quote and a non-empty attribution. Anything missing/blank/non-string ->
+      // null -> we throw, so the row lands `error` instead of a half-quote. We
+      // never stamp "Unknown" for a missing author (ARI-134).
+      const parsed = parseDailyQuote(raw ?? "");
+      if (!parsed) throw new Error("unusable quote payload");
       await ctx.runMutation(internal.dailyTidbits.writeInternal, {
         tidbitId: args.tidbitId,
         status: "done",
-        text,
-        attribution: attribution || "Unknown",
+        text: parsed.text,
+        attribution: parsed.attribution,
         model: TASKS.dailyQuote.model,
       });
     } catch (e: any) {

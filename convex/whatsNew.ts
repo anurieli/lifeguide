@@ -179,6 +179,11 @@ export const LAUNCH_ENTRIES: {
     body: "The Morning and Night Scroll header counts only the cards actually in the scroll, so the number lines up with the steps in front of you. Your rail practices still count toward sealing the day.",
     view: "today",
   },
+  {
+    title: "A steadier morning quote",
+    body: "Today's quote in your Morning Scroll now lands reliably. It used to occasionally get stuck finding your words when the wording came back in an unexpected shape; it reads that cleanly now, and only ever shows a real, fully attributed line.",
+    view: "today",
+  },
 ];
 
 export const seedLaunchEntries = internalMutation({

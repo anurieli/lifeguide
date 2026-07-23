@@ -11,6 +11,7 @@ import {
   ritualDayKey,
   ritualDayRange,
   RitualType,
+  scrollProgress,
 } from "@/lib/ritual";
 import { DailyExercise, journalPromptFor, questionForDay } from "@/lib/questions";
 import { mantraForDay } from "@/lib/mantras";
@@ -485,6 +486,9 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
     mine.map((i) => i._id),
     checkedIds,
   );
+  // The header bar counts only the rendered scroll cards (the non-`do` spine), so
+  // it matches what is on screen; the seal below still counts every item (ARI-133).
+  const scroll = scrollProgress(mine, checkedIds);
   const copy = COPY[ritual];
   const currentId = sealed ? null : spine.find((i) => !checked.has(i._id))?._id ?? null;
 
@@ -528,9 +532,9 @@ export function RitualSequence({ ritual }: { ritual: RitualType }) {
       <div className="flex items-center justify-between mb-1.5">
         <div className="text-[11px] tracking-[0.16em] uppercase text-ink-mute">
           {copy.label}
-          {mine.length > 0 && !completedAt && (
+          {scroll.total > 0 && !completedAt && (
             <span className="ml-2 normal-case tracking-normal">
-              {mine.filter((i) => checked.has(i._id)).length}/{mine.length}
+              {scroll.done}/{scroll.total}
             </span>
           )}
         </div>

@@ -11,8 +11,10 @@ import {
   formatCountdown,
   currentStreak,
   keepingUpStatus,
+  scrollProgress,
   DAY_ROLLOVER_HOUR,
   NIGHT_START_HOUR,
+  RitualItemKind,
 } from "../lib/ritual";
 
 // Local-time construction: new Date(y, monthIndex, day, hour, minute).
@@ -166,6 +168,49 @@ describe("isRitualComplete (completion detection)", () => {
 
   it("ignores stale checked ids from deleted items", () => {
     expect(isRitualComplete(["a", "b"], ["a", "b", "deleted-long-ago"])).toBe(true);
+  });
+});
+
+describe("scrollProgress (the header bar counts only rendered scroll cards, ARI-133)", () => {
+  const item = (id: string, kind: RitualItemKind) => ({ _id: id, kind });
+  // A morning: 5 rendered scroll cards + 2 `do`-rail practices that never render
+  // as cards. The header must read out of 5, not 7.
+  const items = [
+    item("read", "read"),
+    item("mantra", "mantra"),
+    item("roadmap", "roadmap"),
+    item("question", "question"),
+    item("tidbit", "tidbit"),
+    item("water", "do"),
+    item("pushups", "do"),
+  ];
+
+  it("totals the non-`do` spine, never the rail practices", () => {
+    expect(scrollProgress(items, []).total).toBe(5);
+  });
+
+  it("a checked `do` practice moves neither side of the visible bar", () => {
+    // Both rail practices checked, no scroll card touched: still 0 of 5.
+    expect(scrollProgress(items, ["water", "pushups"])).toEqual({ done: 0, total: 5 });
+  });
+
+  it("advances as visible scroll cards are checked", () => {
+    expect(scrollProgress(items, ["read", "mantra"]).done).toBe(2);
+    // A rail check alongside spine checks still only counts the spine ones.
+    expect(scrollProgress(items, ["read", "mantra", "water"]).done).toBe(2);
+  });
+
+  it("reads full only when every spine card is done (rail practices aside)", () => {
+    const spineAll = ["read", "mantra", "roadmap", "question", "tidbit"];
+    expect(scrollProgress(items, spineAll)).toEqual({ done: 5, total: 5 });
+  });
+
+  it("is zero of zero when the ritual is rail-only (no scroll cards)", () => {
+    expect(scrollProgress([item("water", "do")], ["water"])).toEqual({ done: 0, total: 0 });
+  });
+
+  it("ignores stale checked ids from deleted cards", () => {
+    expect(scrollProgress(items, ["read", "deleted-long-ago"]).done).toBe(1);
   });
 });
 

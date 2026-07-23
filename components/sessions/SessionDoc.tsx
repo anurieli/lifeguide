@@ -28,6 +28,7 @@ import {
 import { caretPosition, CaretPos } from "./caret";
 import { ThoughtMapView } from "./ThoughtMapView";
 import { CaptureItem, CaptureDoc } from "./CaptureItem";
+import { shouldShowListening, LISTENING_WINDOW_MS } from "@/lib/sessionListening";
 
 /**
  * The living entry: one continuous document. Captures render in the order they
@@ -214,6 +215,11 @@ export function SessionDoc({
   // Where the text caret sits inside the trailing editor (desktop: the capture
   // pair rides it). null = no caret; the pair rests below the last content.
   const [caret, setCaret] = useState<CaretPos | null>(null);
+  // The "listening…" bridge reads a fresh Date.now() at render time (below), so its
+  // correctness never depends on this state. This tick exists only as the mechanism
+  // by which the bridge's own deadline timer (below) forces one re-render, clearing an
+  // orphaned unanswered capture even when Convex sends nothing.
+  const [, bumpListeningTick] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
 
@@ -231,6 +237,42 @@ export function SessionDoc({
     const t = window.setTimeout(() => setConfirmDiscard(false), 2500);
     return () => window.clearTimeout(t);
   }, [confirmDiscard]);
+
+  // The "listening…" bridge auto-expires (ARI-135). When it hangs on a fresh but
+  // still-unanswered capture, nothing else re-renders this component at the 30s
+  // deadline: Convex only pushes on a real reply/capture change, which is exactly
+  // what is missing for an orphaned turn. Schedule one re-render at that deadline so
+  // shouldShowListening flips itself off. Only armed for the fresh-capture case;
+  // an in-flight pending take, a quiet session, or an already-answered/already-expired
+  // turn needs no timer.
+  const listeningMode = doc?.session.mode ?? "quiet";
+  // The actual latest capture row (max createdAt; a tie goes to the one later in the
+  // array, i.e. the fresher insert), and whether any reply already targets it by
+  // afterCaptureId. Coverage is per-capture, never inferred from reply timing: a
+  // prior-turn or opener reply points at an earlier capture, so it leaves a fresh
+  // current-turn capture uncovered (ARI-135).
+  const listeningLatestCapture = doc?.captures.length
+    ? doc.captures.reduce((latest, c) => (c.createdAt >= latest.createdAt ? c : latest))
+    : null;
+  const listeningLatestCaptureAt = listeningLatestCapture?.createdAt ?? 0;
+  const listeningHasReplyForLatestCapture =
+    listeningLatestCapture !== null &&
+    replies.some((r) => r.afterCaptureId === listeningLatestCapture._id);
+  useEffect(() => {
+    if (listeningMode !== "dynamic") return;
+    if (pendingHere.length > 0) return;
+    if (listeningHasReplyForLatestCapture) return;
+    if (listeningLatestCaptureAt === 0) return;
+    // One re-render at the capture's deadline. Convex only pushes on a real
+    // reply/capture change, which is exactly what is missing for an orphaned turn;
+    // this timer flips shouldShowListening off at the 30s mark on its own. If the
+    // capture is already past its deadline (remaining <= 0), no timer is needed:
+    // render-time Date.now() below already hides it immediately, no stale-clock flash.
+    const remaining = listeningLatestCaptureAt + LISTENING_WINDOW_MS - Date.now();
+    if (remaining <= 0) return;
+    const t = window.setTimeout(() => bumpListeningTick((n) => n + 1), remaining);
+    return () => window.clearTimeout(t);
+  }, [listeningMode, pendingHere.length, listeningHasReplyForLatestCapture, listeningLatestCaptureAt, sessionId]);
 
   // No husks: leaving an entry that never got content removes it. This runs on the
   // explicit back action, not effect cleanup — StrictMode's dev double-mount would
@@ -353,21 +395,23 @@ export function SessionDoc({
   ].sort((a, b) => a.at - b.at);
 
   // No dead air (dynamic mode only): the instant a take is saved or a text
-  // capture commits, show a client-side "listening…" line at the thread bottom
-  // — bridging the gap before the real pending reply row ("thinking…") shows
-  // up. `pendingHere` covers the moment a take just stopped (saving/uploading,
-  // before it's even a real capture yet); otherwise it's on as long as the
-  // newest capture is newer than the newest reply — the same signal
-  // ai/sessionReply.maybeReply itself uses to decide whether it still owes a
-  // reply. Never shown while still actively speaking (that's its own live
-  // pulsing row), and it steps aside the moment a real reply row exists,
-  // pending or done or error — that row's own rendering takes over from there.
-  const latestCaptureAt = captures.length ? Math.max(...captures.map((c) => c.createdAt)) : 0;
-  const latestReplyAt = replies.length ? Math.max(...replies.map((r) => r.createdAt)) : 0;
-  const showListening =
-    mode === "dynamic" &&
-    !(isLive && rec.recording) &&
-    (pendingHere.length > 0 || latestCaptureAt > latestReplyAt);
+  // capture commits, show a client-side "listening…" line at the thread bottom,
+  // bridging the gap before the real pending reply row ("thinking…") shows up.
+  // The full rule (in-flight take always bridges; a reply that targets the latest
+  // capture by afterCaptureId takes over whatever its status; otherwise a fresh
+  // unanswered capture bridges only within LISTENING_WINDOW_MS so an orphaned old
+  // capture never hangs the placeholder; never while actively speaking) lives in the
+  // pure, tested lib/sessionListening.ts. Reading Date.now() at render time keeps
+  // the predicate off any stale clock; the deadline timer above only forces the
+  // re-render that lets an expired bridge clear itself without a Convex update.
+  const showListening = shouldShowListening({
+    mode,
+    isRecording: isLive && rec.recording,
+    pendingTakeCount: pendingHere.length,
+    latestCaptureAt: listeningLatestCaptureAt,
+    hasReplyForLatestCapture: listeningHasReplyForLatestCapture,
+    now: Date.now(),
+  });
 
   // The live-take pill — discard · pause/resume · save — shared by the desktop
   // caret row and the phone's floating corner.

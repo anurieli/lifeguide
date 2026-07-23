@@ -268,6 +268,11 @@ export const LAUNCH_ENTRIES: {
     body: "Right-click your vision board, pick Add text, Generate image with AI, or Upload image, and the little menu now closes the moment you choose, so it no longer sits over the card it just made. Your new card still lands exactly where you clicked.",
     view: "board",
   },
+  {
+    title: "No more stuck 'listening…' in a session",
+    body: "In a Conversation session, the coach's brief \"listening…\" line now clears itself if a turn goes unanswered, instead of hanging there when you reopen an old entry. The instant bridge after you speak or type is unchanged.",
+    view: "sessions",
+  },
 ];
 
 export const seedLaunchEntries = internalMutation({

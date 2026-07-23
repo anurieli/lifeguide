@@ -242,6 +242,12 @@ export function DocPreview({ fileUrl, fileName, mimeType, width, height, scale, 
       // container fills that space and provides the flex column layout for
       // the header + scrollable body. The "group" class enables the resize
       // handle opacity transition on hover.
+      // NOTE: the document preview is deliberately NOT marked `data-node-content`.
+      // Its body is a cross-origin sandboxed iframe / <embed>, which swallows pointer
+      // events unpredictably, so the select-first content contract can't be applied
+      // reliably here. The card drags from the preview body, the resize handle and
+      // download link keep their own stopPropagation, and the preview scrolls
+      // internally (overflow-auto / native viewer). (ARI-139)
       className="group/preview w-full h-full rounded-xl overflow-hidden flex flex-col"
       style={{ width, height }}
     >

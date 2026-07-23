@@ -278,6 +278,11 @@ export const LAUNCH_ENTRIES: {
     body: "Not quite right? Use Redo on any AI-generated image on your vision board. The prompt reopens with your original words to tweak, and the same card regenerates in place. It works on your phone too, and a failed image now lets you edit the prompt before trying again.",
     view: "board",
   },
+  {
+    title: "Highlight, delete, and undo on your vision board",
+    body: "Your vision board now feels like a real editor. Click a card once to select it, then click again inside to place your cursor and highlight text like normal. Select cards and press Command+Delete to remove them, and Command+Z brings back whatever you just deleted.",
+    view: "board",
+  },
 ];
 
 export const seedLaunchEntries = internalMutation({

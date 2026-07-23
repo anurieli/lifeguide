@@ -5,8 +5,13 @@ import {
   selectionFromMarquee,
   marqueeWorldRect,
   normalizeScreenRect,
+  cardPointerIntent,
+  boardKeyAction,
+  isEditableElement,
   type SelectableNode,
 } from "../lib/selection";
+
+const NO_MODS = { shift: false, meta: false };
 
 describe("rectContainsRect", () => {
   const outer = { x: 0, y: 0, w: 100, h: 100 };
@@ -70,6 +75,85 @@ describe("marqueeWorldRect", () => {
     // viewport: translate (50,20), scale 2.  world = (screen - offset) / scale
     const r = marqueeWorldRect({ x: 250, y: 120 }, { x: 50, y: 20 }, { x: 50, y: 20, scale: 2 });
     expect(r).toEqual({ x: 0, y: 0, w: 100, h: 50 });
+  });
+});
+
+describe("cardPointerIntent (ARI-139 select-first / interact-second)", () => {
+  it("an unselected card drives the card gesture even on its content (immediate drag)", () => {
+    expect(
+      cardPointerIntent({ soleSelected: false, onInteractiveContent: true, mods: NO_MODS }),
+    ).toBe("card");
+  });
+  it("the sole-selected card yields to its own interactive content (caret / highlight)", () => {
+    expect(
+      cardPointerIntent({ soleSelected: true, onInteractiveContent: true, mods: NO_MODS }),
+    ).toBe("content");
+  });
+  it("the sole-selected card still drags from non-content chrome", () => {
+    expect(
+      cardPointerIntent({ soleSelected: true, onInteractiveContent: false, mods: NO_MODS }),
+    ).toBe("card");
+  });
+  it("a modifier press is always the card gesture, never content (selection toggle/extend)", () => {
+    expect(
+      cardPointerIntent({ soleSelected: true, onInteractiveContent: true, mods: { shift: true, meta: false } }),
+    ).toBe("card");
+    expect(
+      cardPointerIntent({ soleSelected: true, onInteractiveContent: true, mods: { shift: false, meta: true } }),
+    ).toBe("card");
+  });
+  it("a card inside a group (not sole) drags the group, not its content", () => {
+    // soleSelected is false for a card in a multi-selection, so a press on its
+    // content still runs the card gesture (group drag), never native editing.
+    expect(
+      cardPointerIntent({ soleSelected: false, onInteractiveContent: true, mods: NO_MODS }),
+    ).toBe("card");
+  });
+});
+
+describe("boardKeyAction (ARI-139 keyboard map)", () => {
+  const base = { editing: false, hasSelection: true };
+  it("Escape always clears, even mid-edit", () => {
+    expect(boardKeyAction({ ...base, key: "Escape", meta: false })).toBe("clear");
+    expect(boardKeyAction({ ...base, key: "Escape", meta: false, editing: true })).toBe("clear");
+  });
+  it("Backspace / Delete delete a non-empty selection", () => {
+    expect(boardKeyAction({ ...base, key: "Backspace", meta: false })).toBe("delete");
+    expect(boardKeyAction({ ...base, key: "Delete", meta: false })).toBe("delete");
+  });
+  it("Command+Backspace deletes the selection (the ⌘⌫ gesture)", () => {
+    expect(boardKeyAction({ ...base, key: "Backspace", meta: true })).toBe("delete");
+  });
+  it("does not delete when nothing is selected", () => {
+    expect(boardKeyAction({ ...base, key: "Backspace", meta: true, hasSelection: false })).toBe("none");
+  });
+  it("Command+Z is undo; Command+A is select-all", () => {
+    expect(boardKeyAction({ ...base, key: "z", meta: true })).toBe("undo");
+    expect(boardKeyAction({ ...base, key: "Z", meta: true })).toBe("undo");
+    expect(boardKeyAction({ ...base, key: "a", meta: true })).toBe("selectAll");
+  });
+  it("never hijacks a shortcut while a field is being edited (delete/undo/select-all inert)", () => {
+    const editing = { ...base, editing: true };
+    expect(boardKeyAction({ ...editing, key: "Backspace", meta: true })).toBe("none");
+    expect(boardKeyAction({ ...editing, key: "z", meta: true })).toBe("none");
+    expect(boardKeyAction({ ...editing, key: "a", meta: true })).toBe("none");
+  });
+  it("plain letter keys with no modifier do nothing", () => {
+    expect(boardKeyAction({ ...base, key: "z", meta: false })).toBe("none");
+    expect(boardKeyAction({ ...base, key: "a", meta: false })).toBe("none");
+  });
+});
+
+describe("isEditableElement (ARI-139 blur-before-select)", () => {
+  it("is true for a textarea, input, or contenteditable (the old editor to blur)", () => {
+    expect(isEditableElement({ tagName: "TEXTAREA" })).toBe(true);
+    expect(isEditableElement({ tagName: "INPUT" })).toBe(true);
+    expect(isEditableElement({ tagName: "DIV", isContentEditable: true })).toBe(true);
+  });
+  it("is false for a non-editable element or null (nothing to blur)", () => {
+    expect(isEditableElement({ tagName: "DIV" })).toBe(false);
+    expect(isEditableElement({ tagName: "DIV", isContentEditable: false })).toBe(false);
+    expect(isEditableElement(null)).toBe(false);
   });
 });
 

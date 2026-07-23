@@ -123,6 +123,21 @@ export const remove = mutation({
   },
 });
 
+// Undo a delete: flip a soft-deleted node back to active. Same ownership gate as
+// remove, and it reuses the existing isActive soft-delete model (no schema change).
+// Restoring an already-active node is a harmless no-op. Powers ⌘/Ctrl+Z on
+// the board (ARI-139).
+export const restore = mutation({
+  args: { nodeId: v.id("nodes") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const n = await ctx.db.get(args.nodeId);
+    if (!n || n.userId !== userId) throw new Error("Not found");
+    if (n.isActive) return;
+    await ctx.db.patch(args.nodeId, { isActive: true, updatedAt: Date.now() });
+  },
+});
+
 // Change a card's type and content in place. Powers the unified "add anything" card:
 // a blank card starts as text and morphs to image/link when you paste into it.
 export const morph = mutation({

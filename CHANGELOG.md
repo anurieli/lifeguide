@@ -94,6 +94,19 @@ ARI-146: A completed AI-generated image now exposes Redo on desktop and mobile. 
 Added a shared generated-image state helper, focused client and Convex regression coverage, and a board-linked What's New entry. Full suite 487 passing, typecheck clean, lint clean with three pre-existing warnings, and production build successful.
 
 **Docs touched:** `docs/product/features/vision-board.md`, `CHANGELOG.md`.
+## 2026-07-23 · Vision board: ⌘⌫ delete with ⌘Z undo, highlight text inside a card, menu that closes
+
+Three fixes to how the vision board feels, from Ariel (ARI-139).
+
+**Delete + undo.** A selected card (or cards) now deletes on **⌘/Ctrl+⌫** as well as ⌫/Delete, and **⌘/Ctrl+Z** restores the most recently deleted batch. Undo reuses the existing soft-delete model: a new ownership-gated `nodes.restore` mutation flips `isActive` back to true (no schema field added), and the board keeps an ephemeral stack of deleted id-batches so repeated presses walk back. Deletes from the per-card × are undoable too. None of the shortcuts fire while a text field is being edited (native caret/undo/select-all stay intact); Esc still always clears.
+
+**Select-first, interact-second.** Highlighting text inside a card was impossible: every press captured the pointer and forced the caret to the end. The gesture is now two-step: a completed click *selects* a card, and a second press inside the now-sole-selected card's own content is handed to the browser natively, so the caret lands where you press and drag-to-highlight works. An unselected card still starts an immediate press-drag, a sole-selected card still drags from its non-content chrome, and modifier clicks or group members always run the card gesture so group drag is never hijacked. The same contract applies to link cards (a second click follows the link). Document previews are deliberately left out (their sandboxed iframe/embed swallows pointer events unpredictably), so a file card always drags and its preview scrolls internally. The board's gesture legend now includes select-first interaction, ⌘⌫ deletion, and undo. The decision lives in two pure, unit-tested helpers in `lib/selection.ts`: `cardPointerIntent` (gesture) and `boardKeyAction` (keyboard).
+
+**Right-click menu.** Every canvas-menu action (Add text / Generate image with AI / Upload image) now closes the menu **before** it creates or opens anything, so the menu no longer lingers over the card it just spawned; the original clicked world point is preserved so the new card still lands where you clicked.
+
+Tests: extended `tests/selection.test.ts` with `cardPointerIntent` and `boardKeyAction` cases (including ⌘⌫ delete, ⌘Z undo, the editing guard, and group-drag-over-content), and added `tests/convex/nodes.test.ts` covering the remove → restore round-trip and its ownership refusals. Full suite green (523 tests across 67 files), `npm run lint`, `npx tsc --noEmit`, and `npm run build` clean apart from the repo's three existing lint warnings. Not manually verified in a running browser (no live Convex deployment in this environment); reasoned through the pointer/keyboard paths instead.
+
+**Docs touched:** `docs/product/features/vision-board.md` (§2 select-first/interact-second + ⌘⌫/⌘Z; §3 table rows for undo, delete, and the closing menu; §6 rewritten click-vs-drag-vs-interact, delete/undo-while-editing, and a new undo edge case), `convex/whatsNew.ts` (What's New seed entry, `view: "board"`), `CHANGELOG.md`.
 
 ## 2026-07-21 · The Blueprint, made spare — and rules are click-to-edit
 

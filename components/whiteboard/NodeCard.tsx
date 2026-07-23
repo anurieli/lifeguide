@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { NodeDoc } from "@/lib/types";
-import { SelectionMods } from "@/lib/selection";
+import { SelectionMods, cardPointerIntent, isEditableElement } from "@/lib/selection";
 import { ImagePlus, FileText, Loader2, Sparkles, RotateCcw } from "lucide-react";
 import { DocPreview } from "./DocPreview";
 import { generatedImageState, redoPromptFor } from "@/lib/generatedImage";
@@ -14,6 +14,14 @@ type Props = {
   scale: number;
   autoFocus: boolean;
   selected: boolean;
+  /**
+   * This card is selected AND it is the only selected card. When true, a press on
+   * the card's own interactive content (its textarea or link)
+   * is handed to the browser natively (caret / highlight / follow), instead of
+   * starting a card drag. In a multi-selection this is false so a press still
+   * drags the whole group. See `cardPointerIntent`.
+   */
+  soleSelected: boolean;
   /**
    * Parent-controlled render position. When provided it overrides node.position
    * — used for the live drag offset and for optimistic post-commit placement so
@@ -64,6 +72,7 @@ export function NodeCard({
   scale,
   autoFocus,
   selected,
+  soleSelected,
   posOverride,
   onPointerDownNode,
   onDragDelta,
@@ -82,7 +91,13 @@ export function NodeCard({
 }: Props) {
   // Drag is driven here (pointer capture lives on the card) but the resulting
   // position is owned by the Whiteboard so a whole selection moves together.
-  const drag = useRef<{ mx: number; my: number; moved: boolean; isText: boolean } | null>(null);
+  const drag = useRef<{ mx: number; my: number; moved: boolean } | null>(null);
+  // Gesture-local flag: true when the current press took the card path (select/drag)
+  // on interactive content, so the native click that follows must be suppressed
+  // (a first click that only selected the card must never follow a link). A ref, not
+  // the `soleSelected` prop, because selection can rerender between pointerdown and
+  // click and a prop read at click time would leak a navigation through.
+  const suppressContentClick = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -194,22 +209,47 @@ export function NodeCard({
   const img = node.imageUrl ?? fileUrl ?? undefined;
 
   const down = (e: React.PointerEvent) => {
-    const isText = (e.target as HTMLElement).tagName === "TEXTAREA";
-    // Always tell the board about the click (selection is harmless while editing),
-    // but never let the gesture fall through to the background marquee/pan.
-    onPointerDownNode(modsFrom(e));
+    const mods = modsFrom(e);
+    // Interactive native content is marked `data-node-content` (the textarea or a
+    // link's <a>). The sole-selected card yields those to the
+    // browser; everything else drives the card's own select/drag gesture.
+    const onContent = !!(e.target as HTMLElement).closest("[data-node-content]");
+    const intent = cardPointerIntent({ soleSelected, onInteractiveContent: onContent, mods });
+
+    if (intent === "content") {
+      // Select-first, interact-second: the card is already the sole selection and
+      // the press landed on its own content, so let the browser place the caret,
+      // highlight text, or follow the link natively. We only stop the gesture from
+      // reaching the background (marquee/pan): no pointer capture and no
+      // preventDefault, or native text selection wouldn't work.
+      suppressContentClick.current = false; // let the ensuing native click through
+      e.stopPropagation();
+      return;
+    }
+
+    // Card gesture. Selecting this card must move keyboard focus off whatever
+    // editable was being edited on another card, BEFORE we preventDefault below and
+    // suppress the native focus change. Otherwise the old textarea keeps focus, its
+    // onBlur never persists, and board shortcuts (Command+Backspace) keep targeting
+    // it and read as "editing", so the delete is silently suppressed. Not done on the
+    // content path (it returned above), which must keep caret placement/highlighting.
+    const active = typeof document !== "undefined" ? document.activeElement : null;
+    if (active && isEditableElement(active as HTMLElement)) {
+      (active as HTMLElement).blur();
+    }
+    // Tell the board about the click (it owns selection + drag group),
+    // and never let it fall through to the background marquee/pan.
+    onPointerDownNode(mods);
     e.stopPropagation();
-    // Every card — text or not, selected or not — starts as a potential drag.
-    // We only decide "move" vs "click to edit" on release (see `up`): moving
-    // past the threshold moves the card; releasing in place is what focuses a
-    // text card's textarea. Capturing the pointer here (and, for text cards,
-    // preventing the browser's default caret placement) stops a click-drag
-    // from instead falling into the textarea's native focus/text-selection
-    // behavior, which used to highlight the card's text instead of moving it.
-    if (isText) e.preventDefault();
+    // On an unselected card (or any card inside a group) a press-drag must move the
+    // card, so suppress the browser's native caret / image-ghost on the content, and
+    // suppress the click that follows so a first click never navigates or downloads.
+    // Interacting inside only happens once the card is the sole selection (above).
+    suppressContentClick.current = onContent;
+    if (onContent) e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setDragging(true);
-    drag.current = { mx: e.clientX, my: e.clientY, moved: false, isText };
+    drag.current = { mx: e.clientX, my: e.clientY, moved: false };
   };
   const move = (e: React.PointerEvent) => {
     if (!dragging || !drag.current) return;
@@ -221,21 +261,10 @@ export function NodeCard({
   };
   const up = (e: React.PointerEvent) => {
     (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
-    if (dragging) {
-      const moved = drag.current?.moved ?? false;
-      onDragEnd(moved);
-      // A click (no move) on a text card — selected or not — drops into editing.
-      // Pointerdown prevented the browser's default caret placement (see `down`),
-      // so focus it explicitly and land the caret at the end of the text.
-      if (!moved && drag.current?.isText) {
-        const ta = taRef.current;
-        if (ta) {
-          ta.focus();
-          const len = ta.value.length;
-          ta.setSelectionRange(len, len);
-        }
-      }
-    }
+    // A completed click (no move) selects the card; it does not force editing.
+    // Dropping into a text card's caret/highlight is a *second* press on the
+    // now-sole-selected card, handled natively by the content branch in `down`.
+    if (dragging) onDragEnd(drag.current?.moved ?? false);
     setDragging(false);
     drag.current = null;
   };
@@ -308,12 +337,16 @@ export function NodeCard({
       {(node.type === "text" || node.type === "quote") && !aiMode && (
         <textarea
           ref={taRef}
+          data-node-content
           defaultValue={node.text ?? ""}
           onBlur={onBlur}
           onInput={autosizeText}
           onPaste={onPaste}
           onKeyDown={onTextKeyDown}
           placeholder={isQuote ? "A quote that hit you…" : "Type, paste, drop a link, or / for AI…"}
+          // Text cursor only while it is actually interactive (the sole selection);
+          // otherwise match the card so an unselected card still reads as draggable.
+          style={{ cursor: soleSelected ? "text" : dragging ? "grabbing" : "grab" }}
           className={`w-full h-full p-3 bg-transparent resize-none outline-none text-sm text-ink placeholder:text-ink-mute ${
             isQuote ? "italic" : ""
           }`}
@@ -365,7 +398,17 @@ export function NodeCard({
           href={node.attribution ?? "#"}
           target="_blank"
           rel="noreferrer"
-          onPointerDown={(e) => e.stopPropagation()}
+          data-node-content
+          onClick={(e) => {
+            // Follow the link only when this press was the content gesture. A first
+            // click that merely selected the card suppresses navigation, keyed off
+            // the gesture-local flag so a rerender of `soleSelected` mid-gesture
+            // can't leak a navigation through (select-first, interact-second).
+            if (suppressContentClick.current) {
+              e.preventDefault();
+              suppressContentClick.current = false;
+            }
+          }}
           className="block p-3 text-sm h-full overflow-hidden"
         >
           {node.title && <div className="font-medium text-ink">{node.title}</div>}

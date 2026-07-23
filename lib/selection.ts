@@ -41,6 +41,77 @@ export function nextSelectionOnClick(
   return new Set([id]);
 }
 
+/**
+ * What a pointer-down on a card means: drive the card's own gesture (select /
+ * drag) or yield to the card's native interactive content (place a caret,
+ * highlight text, or follow a link).
+ *
+ * The select-first / interact-second contract (ARI-139):
+ *  - Any modifier click → "card" (it toggles/extends the selection, never edits).
+ *  - The sole-selected card, pressed on its own interactive content → "content":
+ *    the browser handles the caret / highlight / link natively.
+ *  - Everything else (an unselected card, a card pressed on its chrome, or any
+ *    card while a group is selected) → "card": press-drag moves it, a completed
+ *    click selects it. This preserves immediate drag on an unselected card and
+ *    keeps whole-body / group drag working.
+ *
+ * `soleSelected` means this card is selected AND it is the only selected card;
+ * a card inside a multi-selection is deliberately NOT content-interactive so a
+ * press still drags the whole group.
+ */
+export type CardPointerIntent = "card" | "content";
+
+export function cardPointerIntent(opts: {
+  soleSelected: boolean;
+  onInteractiveContent: boolean;
+  mods: SelectionMods;
+}): CardPointerIntent {
+  if (opts.mods.shift || opts.mods.meta) return "card";
+  if (opts.soleSelected && opts.onInteractiveContent) return "content";
+  return "card";
+}
+
+/**
+ * True for elements that own native text editing (textarea, input, or any
+ * contenteditable). Used to decide whether a focused element must be blurred when
+ * selecting another card: if it stays focused, board shortcuts (Command+Backspace)
+ * keep targeting it and read as "editing", so they get suppressed (ARI-139).
+ */
+export function isEditableElement(
+  el: { tagName?: string; isContentEditable?: boolean } | null,
+): boolean {
+  if (!el) return false;
+  return el.tagName === "TEXTAREA" || el.tagName === "INPUT" || el.isContentEditable === true;
+}
+
+/**
+ * The board's keyboard map, as a pure decision so the shortcut rules (including
+ * the "never hijack while editing" guard) are testable without a DOM (ARI-139).
+ *
+ *  - Escape always clears (a universal cancel, allowed even mid-edit).
+ *  - While an input/textarea/contenteditable is being edited, every other
+ *    shortcut is inert so native editing (caret, undo, select-all) is untouched.
+ *  - ⌫/Delete (with or without a modifier, so ⌘⌫ counts) deletes the selection.
+ *  - ⌘/Ctrl+Z restores the most recently deleted selection (undo).
+ *  - ⌘/Ctrl+A selects every card.
+ */
+export type BoardKeyAction = "clear" | "delete" | "undo" | "selectAll" | "none";
+
+export function boardKeyAction(e: {
+  key: string;
+  meta: boolean;
+  editing: boolean;
+  hasSelection: boolean;
+}): BoardKeyAction {
+  if (e.key === "Escape") return "clear";
+  if (e.editing) return "none";
+  const k = e.key.toLowerCase();
+  if ((e.key === "Delete" || e.key === "Backspace") && e.hasSelection) return "delete";
+  if (e.meta && k === "z") return "undo";
+  if (e.meta && k === "a") return "selectAll";
+  return "none";
+}
+
 /** Normalize two screen points into a positive-extent rect (drag any direction). */
 export function normalizeScreenRect(a: Point, b: Point): Rect {
   return {

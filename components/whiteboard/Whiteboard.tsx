@@ -23,6 +23,7 @@ import { Rect, boardCentroid, rectsOverlap } from "@/lib/geometry";
 import { useSelection } from "@/hooks/useSelection";
 import {
   SelectionMods,
+  boardKeyAction,
   marqueeWorldRect,
   normalizeScreenRect,
   selectionFromMarquee,
@@ -38,7 +39,7 @@ const GATHER_GAP = 20;
 // not a mount — and each access re-centers on the whole board.
 export function Whiteboard({ surfaceId, active }: { surfaceId: SurfaceId; active: boolean }) {
   const { vp, pan, zoomAt, panTo } = useViewport();
-  const { nodes, create, move, resize, setText, remove, morph } = useNodes(surfaceId);
+  const { nodes, create, move, resize, setText, remove, restore, morph } = useNodes(surfaceId);
   const { edges, connect, remove: removeEdge } = useEdges(surfaceId);
   const { inbox, create: createCapture, softDelete, place, generateUploadUrl } = useCaptures();
 
@@ -111,35 +112,72 @@ export function Whiteboard({ surfaceId, active }: { surfaceId: SurfaceId; active
     return optimistic.has(id) ? base : null;
   };
 
+  // Undo stack for deletes: each entry is one deleted batch (the node ids removed
+  // together). ⌘/Ctrl+Z pops the newest batch and restores it. Soft-delete makes
+  // this cheap (restore just flips isActive back), so no schema change is needed.
+  const deletedBatches = useRef<string[][]>([]);
+
+  const deleteNodes = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return;
+      for (const id of ids) void remove({ nodeId: id as Id<"nodes"> });
+      deletedBatches.current.push([...ids]);
+    },
+    [remove],
+  );
+
   const deleteSelected = useCallback(() => {
     if (selected.size === 0) return;
-    for (const id of selected) void remove({ nodeId: id as Id<"nodes"> });
+    deleteNodes([...selected]);
     clear();
-  }, [selected, remove, clear]);
+  }, [selected, deleteNodes, clear]);
 
+  const undoDelete = useCallback(() => {
+    const batch = deletedBatches.current.pop();
+    if (!batch || batch.length === 0) return;
+    for (const id of batch) void restore({ nodeId: id as Id<"nodes"> });
+    replace(batch); // reselect what came back, so it's obvious the undo landed
+  }, [restore, replace]);
+
+  // Only the on-screen board answers keyboard shortcuts. The board stays mounted
+  // across nav (a prop flip, not a mount), so a window-wide listener on a hidden
+  // board would let Cmd+Z on another surface restore board cards and swallow the
+  // app's native shortcuts. Gate the whole handler on `active`.
   useEffect(() => {
+    if (!active) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       const editing =
         !!t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.isContentEditable);
-      if (e.key === "Escape") {
-        setLinkFrom(null);
-        setMenu(null);
-        clear();
-        return;
-      }
-      if (editing) return;
-      if ((e.key === "Delete" || e.key === "Backspace") && selected.size > 0) {
-        e.preventDefault();
-        deleteSelected();
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
-        e.preventDefault();
-        replace(nodes.map((n) => n._id as string));
+      const action = boardKeyAction({
+        key: e.key,
+        meta: e.metaKey || e.ctrlKey,
+        editing,
+        hasSelection: selected.size > 0,
+      });
+      switch (action) {
+        case "clear":
+          setLinkFrom(null);
+          setMenu(null);
+          clear();
+          break;
+        case "delete":
+          e.preventDefault();
+          deleteSelected();
+          break;
+        case "undo":
+          e.preventDefault();
+          undoDelete();
+          break;
+        case "selectAll":
+          e.preventDefault();
+          replace(nodes.map((n) => n._id as string));
+          break;
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selected, nodes, clear, replace, deleteSelected]);
+  }, [active, selected, nodes, clear, replace, deleteSelected, undoDelete]);
 
   const uploadFile = useCallback(
     async (file: File) => {
@@ -641,6 +679,7 @@ export function Whiteboard({ surfaceId, active }: { surfaceId: SurfaceId; active
             scale={vp.scale}
             autoFocus={n._id === focusId}
             selected={isSelected(n._id as string)}
+            soleSelected={selected.size === 1 && isSelected(n._id as string)}
             posOverride={renderPos(n._id as string, n.position)}
             onPointerDownNode={(mods) => handleNodeDown(n._id as string, mods)}
             onDragDelta={handleNodeDragDelta}
@@ -650,7 +689,7 @@ export function Whiteboard({ surfaceId, active }: { surfaceId: SurfaceId; active
             onGenerateImage={(prompt) => void handleGenerateImage(n._id as string, prompt)}
             onResize={(w, h) => void resize({ nodeId: n._id, dimensions: { width: w, height: h } })}
             onText={(t) => void setText({ nodeId: n._id, text: t })}
-            onDelete={() => void remove({ nodeId: n._id })}
+            onDelete={() => deleteNodes([n._id as string])}
             onUploadImage={(file) => void morphToImage(n._id, file)}
             onMorphLink={(url) => morphToLink(n._id, url)}
             onStartLink={() => setLinkFrom(n._id)}
@@ -685,9 +724,25 @@ export function Whiteboard({ surfaceId, active }: { surfaceId: SurfaceId; active
         <CanvasMenu
           x={menu.x}
           y={menu.y}
-          onAddText={() => void addTextAt(menu.world)}
-          onGenerate={() => void addTextAt(menu.world, true)}
-          onUpload={() => promptMenuUpload(menu.world)}
+          // Every action closes the menu *before* it creates/opens anything, so the
+          // right-click menu never lingers over the card it just spawned. The clicked
+          // world point is captured first so the new card still lands where the click
+          // was (setMenu(null) drops menu.world). (ARI-139)
+          onAddText={() => {
+            const w = menu.world;
+            setMenu(null);
+            void addTextAt(w);
+          }}
+          onGenerate={() => {
+            const w = menu.world;
+            setMenu(null);
+            void addTextAt(w, true);
+          }}
+          onUpload={() => {
+            const w = menu.world;
+            setMenu(null);
+            promptMenuUpload(w);
+          }}
           onClose={() => setMenu(null)}
         />
       )}

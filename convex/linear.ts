@@ -41,6 +41,40 @@ const TYPE_LABEL: Record<string, string> = {
 const AGENT_CODY_LABEL_ID = "1e31d2da-32df-444d-9ee8-b18f5e86cb41";
 const TODO_STATE_ID = "566dc2e2-f62e-4583-b5c4-a58d4cc1e249";
 
+// Type-routing label + workflow-state IDs on the LifeGuide team (discovered
+// 2026-07-24 via the Linear API; same fixed, non-env style as the two above).
+// autoForwardFeedback selects these by the feedback's own type — see the routing
+// table in ADR 0031.
+const BUG_LABEL_ID = "38fe1250-6761-48ae-9369-01543777ad48"; // "Bug"
+const FEATURE_LABEL_ID = "1d27c3d3-fc4e-4cc5-b789-45cd0e9f63ad"; // "Feature"
+// The team has no literal "Tweak" label; "Improvement" is its exact semantic
+// match (a tweak = "improve something that already exists"). If a dedicated
+// "Tweak" label is ever created on the team, repoint this constant at it.
+const TWEAK_LABEL_ID = "02037d25-de1f-47e9-89ec-705ac3500447"; // "Improvement"
+// Where a `feature` lands: parked to work on later, NOT in Cody's Todo queue.
+const BACKLOG_STATE_ID = "04852289-beb0-4708-bdc5-a36d6c3fe7d4"; // "Backlog"
+
+// Route a feedback row to its Linear labels + workflow state by TYPE (ADR 0031):
+//   bug     → agent:cody + Bug,         Todo    (Cody picks it up)
+//   tweak   → agent:cody + Improvement, Todo    (Cody picks it up)
+//   feature → Feature (NOT agent:cody), Backlog (parked; Cody must NOT take it)
+//   feedback→ null — not filed to Linear at all; it stays in the app only, since
+//             the agent that would act on it has no email/reply capability.
+// A `null` return means "create no issue, leave the row unlinked."
+function routeForType(type: string): { labelIds: string[]; stateId: string } | null {
+  switch (type) {
+    case "bug":
+      return { labelIds: [AGENT_CODY_LABEL_ID, BUG_LABEL_ID], stateId: TODO_STATE_ID };
+    case "tweak":
+      return { labelIds: [AGENT_CODY_LABEL_ID, TWEAK_LABEL_ID], stateId: TODO_STATE_ID };
+    case "feature":
+      return { labelIds: [FEATURE_LABEL_ID], stateId: BACKLOG_STATE_ID };
+    case "feedback":
+    default:
+      return null;
+  }
+}
+
 // Call the Linear GraphQL API with the personal API key. Throws with the first
 // GraphQL error message (Convex redacts thrown text to "Server Error" in prod, but
 // the message is still useful in dev + logs).
@@ -250,11 +284,15 @@ export const exportFeedback = action({
   },
 });
 
-// ── Auto-forward: every submission → a Linear `agent:cody` task ─────────────
+// ── Auto-forward: every submission → the right Linear lane, by type ─────────
 // See ADR 0031. Unlike `exportFeedback` (a deliberate, owner-triggered button),
-// this is a DUMB, reliable pipe: every feedback submission gets forwarded
-// as-is, untyped by a human, unfiltered, un-enriched — the downstream coding
-// agent (Cody) does the interpreting, not this pipeline. Scheduled from
+// this is a reliable, real-time pipe: every feedback submission is forwarded
+// as-is (unfiltered, un-enriched — the downstream agent does the interpreting),
+// but WHERE it lands is routed by the feedback's own type:
+//   bug / tweak → agent:cody + Bug/Improvement, Todo   (Cody picks it up)
+//   feature     → Feature, Backlog                     (parked, not for Cody)
+//   feedback    → not filed at all                     (stays in the app only)
+// See `routeForType` above for the exact labels/state. Scheduled from
 // `convex/feedback.ts` `submit` via `ctx.scheduler.runAfter(0, …)` so a Linear
 // outage or slow call never affects the user's submit.
 //
@@ -323,6 +361,12 @@ export const autoForwardFeedback = internalAction({
       if (!row) return; // row vanished between insert and this running
       if (row.linear) return; // already filed (e.g. manually exported first) — no-op
 
+      // Route by type. `feedback` (and any unknown type) is NOT filed to Linear:
+      // it stays in the app only, un-exported, so return before touching Linear
+      // and leave the row unlinked.
+      const route = routeForType(row.type);
+      if (!route) return;
+
       const teamId = process.env.LINEAR_TEAM_ID || DEFAULT_TEAM_ID;
       const projectId = process.env.LINEAR_PROJECT_ID || DEFAULT_PROJECT_ID;
 
@@ -336,8 +380,8 @@ export const autoForwardFeedback = internalAction({
         projectId,
         title: deriveAutoTitle(row.text),
         description: buildAutoForwardDescription(row, assetUrls),
-        labelIds: [AGENT_CODY_LABEL_ID],
-        stateId: TODO_STATE_ID,
+        labelIds: route.labelIds,
+        stateId: route.stateId,
       });
 
       await ctx.runMutation(internal.feedback.markExportedInternal, {

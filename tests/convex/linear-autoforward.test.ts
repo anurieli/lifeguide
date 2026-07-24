@@ -100,18 +100,12 @@ describe("linear.autoForwardFeedback", () => {
     expect(row!.linear).toBeUndefined();
   });
 
-  it("flag on + unlinked row: creates a Linear issue tagged agent:cody in Todo, and links the row", async () => {
-    process.env.FEEDBACK_AUTOFORWARD = "1";
-    process.env.LINEAR_API_KEY = "lin_test";
-    const { t } = await setup();
-    const userId = await t.run(async (ctx) => (await ctx.db.query("users").first())!._id);
-    const feedbackId = await insertRow(t, userId);
-
-    let issueCreateInput: any = null;
-    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+  // Reusable issueCreate mock: captures the input, returns a fixed created issue.
+  function mockIssueCreate(capture: (input: any) => void) {
+    return vi.fn(async (_url: string, init: RequestInit) => {
       const body = JSON.parse(init.body as string);
       if (body.query.includes("issueCreate")) {
-        issueCreateInput = body.variables.input;
+        capture(body.variables.input);
         return new Response(
           JSON.stringify({
             data: {
@@ -126,12 +120,27 @@ describe("linear.autoForwardFeedback", () => {
       }
       throw new Error(`unexpected fetch: ${body.query}`);
     });
+  }
+
+  it("type bug → agent:cody + Bug labels in Todo, and links the row", async () => {
+    process.env.FEEDBACK_AUTOFORWARD = "1";
+    process.env.LINEAR_API_KEY = "lin_test";
+    const { t } = await setup();
+    const userId = await t.run(async (ctx) => (await ctx.db.query("users").first())!._id);
+    const feedbackId = await insertRow(t, userId); // BASE.type === "bug"
+
+    let issueCreateInput: any = null;
+    const fetchMock = mockIssueCreate((input) => (issueCreateInput = input));
     global.fetch = fetchMock as unknown as typeof fetch;
 
     await t.action(internal.linear.autoForwardFeedback, { feedbackId });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(issueCreateInput.labelIds).toEqual(["1e31d2da-32df-444d-9ee8-b18f5e86cb41"]);
+    // agent:cody + Bug, in Todo — Cody picks it up.
+    expect(issueCreateInput.labelIds).toEqual([
+      "1e31d2da-32df-444d-9ee8-b18f5e86cb41",
+      "38fe1250-6761-48ae-9369-01543777ad48",
+    ]);
     expect(issueCreateInput.stateId).toBe("566dc2e2-f62e-4583-b5c4-a58d4cc1e249");
     expect(issueCreateInput.teamId).toBe("4b7ed3d5-b167-44cd-825c-becca23ac5c4");
     expect(issueCreateInput.projectId).toBe("e0af6c94-da8e-4ac3-8fd7-415f9c9cd2f8");
@@ -145,6 +154,75 @@ describe("linear.autoForwardFeedback", () => {
     expect(row!.linear?.identifier).toBe("ARI-500");
     expect(row!.linear?.url).toBe("https://linear.app/x/issue/ARI-500");
     expect(row!.status).toBe("pending");
+  });
+
+  it("type tweak → agent:cody + Improvement labels in Todo", async () => {
+    process.env.FEEDBACK_AUTOFORWARD = "1";
+    process.env.LINEAR_API_KEY = "lin_test";
+    const { t } = await setup();
+    const userId = await t.run(async (ctx) => (await ctx.db.query("users").first())!._id);
+    const feedbackId = await insertRow(t, userId, { type: "tweak" });
+
+    let issueCreateInput: any = null;
+    const fetchMock = mockIssueCreate((input) => (issueCreateInput = input));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await t.action(internal.linear.autoForwardFeedback, { feedbackId });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // agent:cody + Improvement (the "Tweak" equivalent), in Todo.
+    expect(issueCreateInput.labelIds).toEqual([
+      "1e31d2da-32df-444d-9ee8-b18f5e86cb41",
+      "02037d25-de1f-47e9-89ec-705ac3500447",
+    ]);
+    expect(issueCreateInput.stateId).toBe("566dc2e2-f62e-4583-b5c4-a58d4cc1e249");
+
+    const row = await t.run(async (ctx) => ctx.db.get(feedbackId));
+    expect(row!.linear?.identifier).toBe("ARI-500");
+    expect(row!.status).toBe("pending");
+  });
+
+  it("type feature → Feature label only (no agent:cody), parked in Backlog", async () => {
+    process.env.FEEDBACK_AUTOFORWARD = "1";
+    process.env.LINEAR_API_KEY = "lin_test";
+    const { t } = await setup();
+    const userId = await t.run(async (ctx) => (await ctx.db.query("users").first())!._id);
+    const feedbackId = await insertRow(t, userId, { type: "feature" });
+
+    let issueCreateInput: any = null;
+    const fetchMock = mockIssueCreate((input) => (issueCreateInput = input));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await t.action(internal.linear.autoForwardFeedback, { feedbackId });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // Feature only — Cody must NOT pick it up — and parked in Backlog, not Todo.
+    expect(issueCreateInput.labelIds).toEqual(["1d27c3d3-fc4e-4cc5-b789-45cd0e9f63ad"]);
+    expect(issueCreateInput.labelIds).not.toContain("1e31d2da-32df-444d-9ee8-b18f5e86cb41");
+    expect(issueCreateInput.stateId).toBe("04852289-beb0-4708-bdc5-a36d6c3fe7d4");
+
+    const row = await t.run(async (ctx) => ctx.db.get(feedbackId));
+    expect(row!.linear?.identifier).toBe("ARI-500");
+    expect(row!.status).toBe("pending");
+  });
+
+  it("type feedback → not filed at all: no Linear call, row left unlinked", async () => {
+    process.env.FEEDBACK_AUTOFORWARD = "1";
+    process.env.LINEAR_API_KEY = "lin_test";
+    const { t } = await setup();
+    const userId = await t.run(async (ctx) => (await ctx.db.query("users").first())!._id);
+    const feedbackId = await insertRow(t, userId, { type: "feedback" });
+
+    const fetchMock = vi.fn();
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await t.action(internal.linear.autoForwardFeedback, { feedbackId });
+
+    // Stays in the app only — no issue created, no status change, no link.
+    expect(fetchMock).not.toHaveBeenCalled();
+    const row = await t.run(async (ctx) => ctx.db.get(feedbackId));
+    expect(row!.linear).toBeUndefined();
+    expect(row!.status).toBe("open");
   });
 
   it("already-linked row is skipped — idempotent, no duplicate Linear call", async () => {

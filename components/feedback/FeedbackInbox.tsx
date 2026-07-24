@@ -1,22 +1,24 @@
 "use client";
 
 // ============================================================================
-// FEEDBACK INBOX — the collect / organize / act panel for feedback tickets.
+// FEEDBACK INBOX — a READ-ONLY window on the feedback queue.
 // ============================================================================
 // A self-contained, embeddable panel (today it lives in /admin, but it takes no
 // route dependency). It reads the owner's cross-user feedback queue and lets you:
 //   • filter by pile (Needs you · In progress · Dealt with) and by type (Bug/Tweak/Feature/Feedback)
-//   • Reply by email (mailto) — which moves the ticket to "In progress"
-//   • Export to Linear — create a real tracked issue with the photo attached,
-//     picking a title + urgency; the ticket links out and moves to "In progress"
-//   • Dealt with — close it into a separate pile (Reopen brings it back)
-// The lifecycle + Linear wiring live server-side in convex/feedback.ts + linear.ts.
+//   • see each ticket's status read-only, and open its Linear issue when one exists
+//   • Reply by email (mailto) to the submitter — a plain handoff, no status side effect
+// Since ADR 0031's type-routed auto-forward, LINEAR owns the lifecycle: every
+// bug/tweak/feature is filed to Linear in real time and its status is worked
+// there, so this surface no longer drives triage (no Mark-as-replied / Dealt
+// with / Reopen, no manual Export). `feedback`-type notes are not filed (they
+// stay in the app only) and simply show here. The wiring lives server-side in
+// convex/feedback.ts + linear.ts.
 // ============================================================================
 
 import { useMemo, useState } from "react";
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import {
   AlertCircle,
   CircleDashed,
@@ -24,8 +26,6 @@ import {
   Image as ImageIcon,
   Mail,
   ExternalLink,
-  Loader2,
-  ArrowUpRight,
 } from "lucide-react";
 
 type FeedbackType = "bug" | "tweak" | "feature" | "feedback";
@@ -49,39 +49,18 @@ const PILES: { key: Status; label: string }[] = [
   { key: "pending", label: "In progress" },
   { key: "dealt_with", label: "Dealt with" },
 ];
-
-// Urgency → Linear priority (0 none · 1 urgent · 2 high · 3 medium · 4 low).
-const URGENCY: { label: string; priority: number }[] = [
-  { label: "No urgency", priority: 0 },
-  { label: "Low", priority: 4 },
-  { label: "Medium", priority: 3 },
-  { label: "High", priority: 2 },
-  { label: "Urgent", priority: 1 },
-];
-
-// A sensible default Linear title from the note: first line, trimmed to length.
-function defaultTitle(type: string, text: string): string {
-  const firstLine = text.trim().split("\n")[0].trim();
-  const short = firstLine.length > 70 ? `${firstLine.slice(0, 70)}…` : firstLine;
-  return `[${TYPE_LABEL[type] ?? type}] ${short}`;
-}
+// Read-only status wording, shown on each row (Linear owns the lifecycle now).
+const STATUS_LABEL: Record<Status, string> = {
+  open: "Needs you",
+  pending: "In progress",
+  dealt_with: "Dealt with",
+};
 
 export function FeedbackInbox({ enabled = true }: { enabled?: boolean }) {
   const feedback = useQuery(api.feedback.listAll, enabled ? {} : "skip");
-  const markPending = useMutation(api.feedback.markPending);
-  const resolveFeedback = useMutation(api.feedback.resolve);
-  const reopenFeedback = useMutation(api.feedback.reopen);
-  const exportToLinear = useAction(api.linear.exportFeedback);
 
   const [pile, setPile] = useState<Status>("open");
   const [typeFilter, setTypeFilter] = useState<"all" | FeedbackType>("all");
-
-  // Per-ticket export form + async state, keyed by ticket id.
-  const [exportFor, setExportFor] = useState<Id<"feedback"> | null>(null);
-  const [title, setTitle] = useState("");
-  const [priority, setPriority] = useState(0);
-  const [busy, setBusy] = useState<Id<"feedback"> | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const counts = useMemo(() => {
     const c: Record<Status, number> = { open: 0, pending: 0, dealt_with: 0 };
@@ -96,26 +75,6 @@ export function FeedbackInbox({ enabled = true }: { enabled?: boolean }) {
       ),
     [feedback, pile, typeFilter],
   );
-
-  const openExport = (f: { _id: Id<"feedback">; type: string; text: string }) => {
-    setExportFor(f._id);
-    setTitle(defaultTitle(f.type, f.text));
-    setPriority(0);
-    setError(null);
-  };
-
-  const runExport = async (id: Id<"feedback">) => {
-    setBusy(id);
-    setError(null);
-    try {
-      await exportToLinear({ id, title, priority });
-      setExportFor(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(null);
-    }
-  };
 
   return (
     <div>
@@ -203,6 +162,10 @@ export function FeedbackInbox({ enabled = true }: { enabled?: boolean }) {
                     {f.errors.length > 0 && (
                       <span className="text-[#9B2C2C]">· {f.errors.length} error{f.errors.length > 1 ? "s" : ""}</span>
                     )}
+                    {/* Read-only status — Linear owns the lifecycle (ADR 0031). */}
+                    <span className={`inline-flex items-center gap-1 ${statusColor}`}>
+                      · <StatusIcon className="w-3 h-3" /> {STATUS_LABEL[f.status as Status]}
+                    </span>
                     {f.linear && (
                       <a
                         href={f.linear.url}
@@ -211,7 +174,7 @@ export function FeedbackInbox({ enabled = true }: { enabled?: boolean }) {
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-ink/5 text-ink-soft hover:bg-ink/10 transition font-medium"
                         title="Open the Linear issue"
                       >
-                        <ArrowUpRight className="w-3 h-3" /> {f.linear.identifier}
+                        <ExternalLink className="w-3 h-3" /> {f.linear.identifier}
                       </a>
                     )}
                   </div>
@@ -269,35 +232,11 @@ export function FeedbackInbox({ enabled = true }: { enabled?: boolean }) {
                     ))}
                   </div>
 
-                  {/* Actions */}
+                  {/* Actions — read-only surface. Linear owns the lifecycle now
+                      (ADR 0031): the only ways out are opening the Linear issue
+                      (when one exists) and a plain mailto reply to the submitter.
+                      `feedback`-type notes are never filed, so they show no link. */}
                   <div className="mt-3 flex items-center gap-2 flex-wrap">
-                    {replyHref ? (
-                      <>
-                        {/* Plain mailto handoff: we have no way to know whether the OS
-                            mail client actually opened or an email was sent (the browser's
-                            own "leave this site?" prompt can cancel it), so this must NOT
-                            mutate status on click — only "Mark as replied" below does. */}
-                        <a
-                          href={replyHref}
-                          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] border border-line text-ink-soft hover:bg-paper-2 transition"
-                          title={`Reply to ${f.submitter?.email}`}
-                        >
-                          <Mail className="w-3.5 h-3.5" /> Reply
-                        </a>
-                        {f.status === "open" && (
-                          <button
-                            onClick={() => void markPending({ id: f._id })}
-                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] border border-line text-ink-mute hover:bg-paper-2 transition"
-                            title="Mark this ticket as replied to / in progress"
-                          >
-                            <CircleDashed className="w-3.5 h-3.5" /> Mark as replied
-                          </button>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-[12px] text-ink-mute italic">no email to reply to</span>
-                    )}
-
                     {f.linear ? (
                       <a
                         href={f.linear.url}
@@ -306,82 +245,28 @@ export function FeedbackInbox({ enabled = true }: { enabled?: boolean }) {
                         className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] border border-line text-ink-soft hover:bg-paper-2 transition"
                         title="Open in Linear"
                       >
-                        <ExternalLink className="w-3.5 h-3.5" /> In Linear
+                        <ExternalLink className="w-3.5 h-3.5" /> View in Linear
                       </a>
                     ) : (
-                      <button
-                        onClick={() => openExport(f)}
-                        className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] border border-line text-ink-soft hover:bg-paper-2 transition"
-                      >
-                        <ArrowUpRight className="w-3.5 h-3.5" /> Export to Linear
-                      </button>
+                      <span className="text-[12px] text-ink-mute italic">
+                        {f.type === "feedback" ? "not filed — stays in the app" : "not filed to Linear yet"}
+                      </span>
                     )}
 
-                    {f.status !== "dealt_with" ? (
-                      <button
-                        onClick={() => void resolveFeedback({ id: f._id })}
-                        className="rounded-lg px-3 py-1.5 text-[13px] bg-ink text-white hover:opacity-90 transition"
+                    {replyHref ? (
+                      // Plain mailto handoff. No status side effect — Linear owns
+                      // status, and a mailto gives the page no completion signal.
+                      <a
+                        href={replyHref}
+                        className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] border border-line text-ink-soft hover:bg-paper-2 transition"
+                        title={`Reply to ${f.submitter?.email}`}
                       >
-                        Dealt with
-                      </button>
+                        <Mail className="w-3.5 h-3.5" /> Reply
+                      </a>
                     ) : (
-                      <button
-                        onClick={() => void reopenFeedback({ id: f._id })}
-                        className="rounded-lg px-3 py-1.5 text-[13px] border border-line text-ink-mute hover:bg-paper-2 transition"
-                      >
-                        Reopen
-                      </button>
+                      <span className="text-[12px] text-ink-mute italic">no email to reply to</span>
                     )}
                   </div>
-
-                  {/* Inline export composer */}
-                  {exportFor === f._id && (
-                    <div className="mt-3 rounded-xl border border-line bg-paper-2 p-3 flex flex-col gap-2.5">
-                      <div className="text-[12px] text-ink-mute">
-                        Creates a Linear issue with the note, page context, and the photo attached.
-                        Set the rest (assignee, status) in Linear.
-                      </div>
-                      <label className="text-[12px] text-ink-soft">
-                        Issue name
-                        <input
-                          value={title}
-                          onChange={(e) => setTitle(e.target.value)}
-                          className="mt-1 w-full bg-card border border-line rounded-lg px-3 py-2 text-ink text-[14px] outline-none focus:border-ink-mute"
-                        />
-                      </label>
-                      <label className="text-[12px] text-ink-soft">
-                        Urgency
-                        <select
-                          value={priority}
-                          onChange={(e) => setPriority(Number(e.target.value))}
-                          className="mt-1 w-full bg-card border border-line rounded-lg px-3 py-2 text-ink text-[14px] outline-none focus:border-ink-mute"
-                        >
-                          {URGENCY.map((u) => (
-                            <option key={u.priority} value={u.priority}>
-                              {u.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      {error && <div className="text-[12px] text-[#9B2C2C]">{error}</div>}
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => void runExport(f._id)}
-                          disabled={busy === f._id || !title.trim()}
-                          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] bg-ink text-white disabled:opacity-50 transition"
-                        >
-                          {busy === f._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
-                          {busy === f._id ? "Creating…" : "Create in Linear"}
-                        </button>
-                        <button
-                          onClick={() => { setExportFor(null); setError(null); }}
-                          className="rounded-lg px-3 py-1.5 text-[13px] border border-line text-ink-mute hover:bg-card transition"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             );

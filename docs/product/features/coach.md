@@ -26,6 +26,8 @@ Beneath the conversation it runs the **core-curator** role: continuously interna
 
 ## 3. Functions / actions
 
+> **Canonical inventory:** the always-current list of every tool the Coach can invoke and every context source it can read — plus the MCP-parity contract — lives in the [**Coach Capability Registry**](coach-capabilities.md). The table below is the narrative summary; the registry is the source of truth. Keep them in sync in the same change.
+
 | Action | Trigger | What it does | Manual / Coach | Data touched |
 |---|---|---|---|---|
 | `ask` (single-turn reply) | user sends a message | assembles Mirror + surface fragments, replies once, grounded and toned | Coach | reads `mirror`, `nodes`/`surfaces`, `settings` · **BUILT** |

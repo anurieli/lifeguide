@@ -2,6 +2,8 @@
 
 **Status:** accepted (live, 2026-07-15)
 
+> **Amendment (2026-07-24):** the widget's type tag went from three (`bug|feature|other`) to four — **Bug** (an issue) · **Tweak** (improve something that exists) · **Feature** (something new to add) · **Feedback** (general commentary). The legacy `other` value was migrated to `feedback`. The manual-export decision is unchanged; the type still only seeds the issue title prefix and the "Type as tagged" line in the description (no programmatic labels/routing — still deferred). References to `bug|feature|other` below are historical.
+
 ## Context
 
 The in-app feedback widget lands notes in a `feedback` table, surfaced in the `/admin` inbox with a two-state toggle (`open` ⇄ `dealt_with`) and a `mailto:` **Reply**. As dogfooding volume grows, Ariel wants bugs and features **worked in Linear** (assignee, status, board, priority), while the app stays the place they're *received* and *replied to*. Two questions fell out of that:
@@ -13,7 +15,7 @@ The in-app feedback widget lands notes in a `feedback` table, surfaced in the `/
 
 **Export to Linear is a deliberate button, not auto-sync.** In the inbox, **Export to Linear** opens a small inline form — issue **name** (prefilled from the note) and **urgency** (→ Linear priority) — and creates one real Linear issue via a Convex action (`convex/linear.ts` `exportFeedback`). The issue carries the note, the captured page context (route/view/title/viewport/UA + recent errors), and the snapshot/attached photos **uploaded to Linear as real assets** (Linear's `fileUpload` → PUT → `assetUrl`, embedded in the description). The ticket then stores `linear {issueId, identifier, url, at}`, links out to the card, and moves to `pending`. Export is **idempotent** — an already-exported ticket returns its existing link. Labels/assignee/status are left to be set in Linear.
 
-**A three-state triage lifecycle** replaces the binary: `open` (needs you) → `pending` (being dealt with — you replied *or* pushed to Linear) → `dealt_with` (closed, a separate pile). `reopen` returns a ticket to `open` and clears both `pendingAt`/`resolvedAt`. The inbox renders the three as piles with live counts, plus a type filter (All/Bugs/Features/Other). **Reply** now also flips a ticket to `pending` (`markPending`).
+**A three-state triage lifecycle** replaces the binary: `open` (needs you) → `pending` (being dealt with — you replied *or* pushed to Linear) → `dealt_with` (closed, a separate pile). `reopen` returns a ticket to `open` and clears both `pendingAt`/`resolvedAt`. The inbox renders the three as piles with live counts, plus a type filter (All/Bugs/Tweaks/Features/Feedback). **Reply** now also flips a ticket to `pending` (`markPending`).
 
 **Config is injected, not bound to a person.** `convex/linear.ts` reads `LINEAR_API_KEY` (required) and `LINEAR_TEAM_ID` / `LINEAR_PROJECT_ID` (optional; default to LifeGuide's Personal-team/LifeGuide-project). The inbox is a self-contained component (`components/feedback/FeedbackInbox.tsx`) with no route dependency. This keeps the widget + inbox + push extractable as a standalone/open-source package later, and keeps the module owner-agnostic.
 

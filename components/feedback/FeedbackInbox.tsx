@@ -5,7 +5,7 @@
 // ============================================================================
 // A self-contained, embeddable panel (today it lives in /admin, but it takes no
 // route dependency). It reads the owner's cross-user feedback queue and lets you:
-//   • filter by pile (Needs you · In progress · Dealt with) and by type (Bug/Feature/Other)
+//   • filter by pile (Needs you · In progress · Dealt with) and by type (Bug/Tweak/Feature/Feedback)
 //   • Reply by email (mailto) — which moves the ticket to "In progress"
 //   • Export to Linear — create a real tracked issue with the photo attached,
 //     picking a title + urgency; the ticket links out and moves to "In progress"
@@ -28,15 +28,21 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 
-type FeedbackType = "bug" | "feature" | "other";
+type FeedbackType = "bug" | "tweak" | "feature" | "feedback";
 type Status = "open" | "pending" | "dealt_with";
 
-const TYPE_LABEL: Record<string, string> = { bug: "Bug", feature: "Feature", other: "Other" };
+const TYPE_LABEL: Record<string, string> = {
+  bug: "Bug",
+  tweak: "Tweak",
+  feature: "Feature",
+  feedback: "Feedback",
+};
 const TYPE_FILTERS: { key: "all" | FeedbackType; label: string }[] = [
   { key: "all", label: "All" },
   { key: "bug", label: "Bugs" },
+  { key: "tweak", label: "Tweaks" },
   { key: "feature", label: "Features" },
-  { key: "other", label: "Other" },
+  { key: "feedback", label: "Feedback" },
 ];
 const PILES: { key: Status; label: string }[] = [
   { key: "open", label: "Needs you" },

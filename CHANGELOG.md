@@ -122,6 +122,31 @@ A hand-written What's New entry ("A morning scroll that's truly yours") ships wi
 Verification: full suite 495 passing across 63 files; focused ARI-144 suites 34 passing; `npm run lint` passed with three pre-existing warnings; `npm run build` passed.
 
 **Docs touched:** `docs/product/features/daily-ritual.md`, `docs/product/features/goals.md`, `docs/architecture/data-model.md`, `docs/product/features/whats-new.md`, `CHANGELOG.md`.
+## 2026-07-24 · Feedback types: three → four (Bug · Tweak · Feature · Feedback)
+
+Ariel: the feedback widget's type tag should offer four options, not three, and the change has to carry all the way through the backend and the Linear push.
+
+**The four types.** **Bug** (an issue) · **Tweak** (improve something that already exists) · **Feature** (something new to add) · **Feedback** (general commentary). The old `other` is retired; it folds into `feedback`. The composer now lays the four out as a 2×2 grid (each button carries a one-line hint via `title`); last-picked type is still remembered per browser.
+
+**End to end.** Updated the widget (`FeedbackWidget.tsx`), the `/admin` inbox — labels, the type filter (All · Bugs · Tweaks · Features · Feedback), and the default Linear-title prefix — (`FeedbackInbox.tsx`), the `submit` validator (`convex/feedback.ts`), the schema union (`convex/schema.ts`), and the Linear export (`convex/linear.ts`), where the type still seeds the issue title prefix (`[Tweak] …`) and the "Type as tagged" line in the description (no programmatic labels/routing — that stays deferred per ADR 0019).
+
+**Data migration.** The 2 existing `other` rows in the production deployment were migrated to `feedback` via a one-off internal mutation (`migrateLegacyTypes`, since removed) run against `strong-wildebeest-896`; the schema union was widened, migrated, then narrowed to the final four. No `other` rows remain. tsc + eslint clean.
+
+**Docs touched:** `docs/product/features/feedback-widget.md`, `docs/decisions/0019-feedback-to-linear.md` (amendment), `docs/architecture/data-model.md`, `CHANGELOG.md`.
+
+## 2026-07-23 · The Coach Capability Registry — one canonical inventory, mirrored by the MCP
+
+The Coach is the platform's bread and butter, and until now what it can *do* and what it can *see* were scattered across `coach.md`, the schema, and ADRs. Added a dedicated, always-current registry that makes both lists explicit and ties them to the MCP.
+
+**New doc — `docs/product/features/coach-capabilities.md` (the Coach Capability Registry).** The source of truth for the Coach's surface area: an **Actions & Tools** table (every tool it can invoke — BUILT vs PROPOSED, the owner mutation each write lands in, and the tool's external MCP default) and a **Context** table (every source it reads — priority, read path, MCP-readability). Grounded in the actual code: BUILT today is the single-turn `coach.ask` reply, goal create/update (via the `gpt-4o-mini` intent classifier + `claude-sonnet-5` reply), and tone; everything else (add-to-Core incl. *vision*, board edits, image add, scroll edits, capture, curation, drift, tether) is PROPOSED. Also documents area detection, the Core artifacts the Coach adds to, provider wiring, and a maintenance rule.
+
+**The load-bearing principle:** the Coach (internal agent) and the MCP (external face) are two faces of one capability surface and must stay at parity — whatever the Coach can do, the MCP exposes as a tool; whatever the Coach can see, the MCP exposes as context (read+propose by default, ADR 0028). No MCP exists yet (deferred), so the registry is the forward contract. The registry is now the one file to update when a capability is added.
+
+**Wiring.** `CLAUDE.md` gained a prominent "The Coach (the bread and butter)" section pointing at the registry as read-first for any Coach or MCP work. `coach.md` §3 now defers to the registry as canonical. Added a row to the features `README.md` index.
+
+**New standing rule (CLAUDE.md rule 5).** Everything we build — any feature, surface, artifact, file, table, or data source, by Claude or any AI — must ask and answer, in the same work: (1) does the Coach need to be connected to this or given a reference to it (act on it as a tool, and/or see it as context)? and (2) by parity, does the MCP need it too? When yes, record it in the registry in the same change; when no, that's a deliberate stated decision, never an accident. The registry's maintenance section (§7) now carries the same obligation.
+
+**Docs touched:** `docs/product/features/coach-capabilities.md` (new), `docs/product/features/coach.md`, `docs/product/features/README.md`, `CLAUDE.md`.
 
 ## 2026-07-21 · The Blueprint, made spare — and rules are click-to-edit
 

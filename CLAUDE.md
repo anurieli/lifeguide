@@ -49,6 +49,14 @@ A Linear issue meant to be picked up cold — by a subagent, a headless run, or 
 - The issue's own text defers a decision to the human ("pressure-test, not commit," open forks with no lean, "for Ariel to decide"). That's a **decision-memo task** (research output, no code), not an implementation task — say so explicitly when assigning it.
 - "Needs finalization before any code" with open questions and *no* documented lean on any of them. If most questions already carry a lean/default and only one is genuinely load-bearing, it's still pickable — the picker resolves the load-bearing one, records the decision (an ADR, per most Definition-of-done sections), and proceeds. Only route to a decision-memo when the load-bearing call is one only Ariel can make.
 
+### 5. Everything we build must ask: does the Coach need this?
+The Coach is the platform's bread and butter — the one presence that knows the person and can act across the whole space. So it cannot be an afterthought bolted on later. **Any feature, surface, artifact, file, table, or data source we build — Claude or any AI — must, as part of the same work, ask and answer two questions:**
+
+1. **Does the Coach need to be connected to this, or given a reference to it?** — should the Coach be able to *act on* it (a tool: create/edit/place/curate), and/or *see* it (a context source)?
+2. **By parity, does the MCP need it too?** — whatever the Coach can do or see, the external MCP mirrors (read+propose by default). See rule of parity in the registry.
+
+Answer explicitly (even if the answer is "no, and here's why"), and when the answer is yes, **record it in the [Coach Capability Registry](docs/product/features/coach-capabilities.md)** in the same change — add the tool to its Actions table and/or the source to its Context table. A new artifact/file/table that the Coach can't see or touch is a deliberate decision, never an accident. If you're unsure, the default is: the Coach should probably reach it. Ask.
+
 ---
 
 ## Documentation map (rebuilding)
@@ -74,6 +82,12 @@ Everything else (prd, architecture, feature docs, design, decisions, research, p
 The canonical coaching content the Coach draws from — the **mantra pool**, the **Life Blueprint** backbone, and the **daily-conduct doctrine** — is the **Coach Knowledge Base**, kept in [`docs/product/coach-knowledge-base/`](docs/product/coach-knowledge-base/). Its **canonical source is the developer's Brain Vault** (LifeGuide notes at `~/brain-vault/01-Projects/lifeguide/lifeguide-notes/`); the copies in this repo are **pulled from there** to seed the app. When directed to sync, treat the vault as the source of truth and this repo as the copy.
 
 It is distinct from each user's **Personal Knowledge Base** (per-user, client-side, editable) — that is seeded from the Coach KB but diverges per person and never writes back to the canon. The Coach KB is owner-authored and belongs behind owner-gated admin (ADR 0006).
+
+## The Coach (the bread and butter) — read the Capability Registry first
+
+The Coach is the single interface to the whole platform: the one presence that knows the person, chooses context on its own, and reaches into any surface to act. It is the most important feature in LifeGuide. Before touching anything Coach-related — a tool it can invoke, the context it reads, or the **MCP** (which mirrors the Coach's tools and context for external agents) — read the canonical inventory:
+
+**[`docs/product/features/coach-capabilities.md`](docs/product/features/coach-capabilities.md) — the Coach Capability Registry.** It is the source of truth for *everything the Coach can do* (its tools) and *everything the Coach can see* (its context), BUILT-vs-PROPOSED, and the load-bearing rule that **the MCP stays at parity with the Coach** (same tools exposed, same context readable — external agents get read+propose by default). Whenever you add or change a Coach tool or a context source, update that registry in the SAME change (per rule 1). The narrative "why" lives in [`docs/product/features/coach.md`](docs/product/features/coach.md).
 
 ## Feature docs must be COMPLETE (when we rebuild them)
 Every feature doc (one per component, the units) must describe **all** of: purpose, user-facing behavior, every function/action, dynamics and interactions with other components, states, edge cases, AI involvement, data touched, and open questions. "All possible uses, functions, and dynamics" is the bar. If a behavior exists, it is written down.

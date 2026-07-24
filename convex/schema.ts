@@ -800,7 +800,14 @@ export default defineSchema({
   // (support inbox); everyone else is self-scoped — enforced in convex/feedback.ts.
   feedback: defineTable({
     userId: v.id("users"),
-    type: v.union(v.literal("bug"), v.literal("feature"), v.literal("other")),
+    // Bug (an issue) · Tweak (improve something that exists) · Feature (add something new)
+    // · Feedback (general commentary). Legacy `other` was migrated to `feedback` (2026-07-24).
+    type: v.union(
+      v.literal("bug"),
+      v.literal("tweak"),
+      v.literal("feature"),
+      v.literal("feedback"),
+    ),
     text: v.string(),
     route: v.string(), // window.location.pathname at submit
     view: v.string(), // app view: today | core | board | settings

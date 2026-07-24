@@ -28,7 +28,12 @@ const LINEAR_API = "https://api.linear.app/graphql";
 const DEFAULT_TEAM_ID = "4b7ed3d5-b167-44cd-825c-becca23ac5c4";
 const DEFAULT_PROJECT_ID = "e0af6c94-da8e-4ac3-8fd7-415f9c9cd2f8";
 
-const TYPE_LABEL: Record<string, string> = { bug: "Bug", feature: "Feature", other: "Other" };
+const TYPE_LABEL: Record<string, string> = {
+  bug: "Bug",
+  tweak: "Tweak",
+  feature: "Feature",
+  feedback: "Feedback",
+};
 
 // The `agent:cody` label + Todo state used by the auto-forward path (see
 // autoForwardFeedback below and ADR 0031) — fixed per the Cody pipeline's

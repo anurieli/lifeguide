@@ -18,11 +18,12 @@ const DEFAULT_TOP = 0.42; // fraction of viewport height
 const MAX_IMAGES = 4; // attached images per submission (photos + page screenshots)
 const SNAPSHOT_TIMEOUT = 8000; // html2canvas can hang on heavy pages — never block submit on it
 
-type FeedbackType = "bug" | "feature" | "other";
-const TYPES: { key: FeedbackType; label: string }[] = [
-  { key: "bug", label: "Bug" },
-  { key: "feature", label: "Feature" },
-  { key: "other", label: "Other" },
+type FeedbackType = "bug" | "tweak" | "feature" | "feedback";
+const TYPES: { key: FeedbackType; label: string; hint: string }[] = [
+  { key: "bug", label: "Bug", hint: "Something's broken or an issue" },
+  { key: "tweak", label: "Tweak", hint: "Improve something that already exists" },
+  { key: "feature", label: "Feature", hint: "Something new to add" },
+  { key: "feedback", label: "Feedback", hint: "General thoughts or commentary" },
 ];
 
 // An image the user will send. `kind` distinguishes a picked/pasted photo from a
@@ -321,12 +322,13 @@ export function FeedbackWidget({ view, coachOpen = false }: { view: View; coachO
         ) : (
           <div className="p-4 flex flex-col gap-3">
             {/* Type selector */}
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {TYPES.map((t) => (
                 <button
                   key={t.key}
                   onClick={() => pickType(t.key)}
-                  className={`flex-1 rounded-lg px-2 py-1.5 text-[13px] border transition ${
+                  title={t.hint}
+                  className={`rounded-lg px-2 py-1.5 text-[13px] border transition ${
                     type === t.key
                       ? "bg-ink text-white border-ink"
                       : "border-line text-ink-soft hover:bg-paper-2"

@@ -1,7 +1,7 @@
 // ============================================================================
 // FEEDBACK — in-app feedback capture + the /admin ticketing queue.
 // ============================================================================
-// A user drops a quick note (typed or spoken) tagged Bug/Feature/Other, with any
+// A user drops a quick note (typed or spoken) tagged Bug/Tweak/Feature/Feedback, with any
 // photos they pasted/attached. We store it with page context: route, metadata, the
 // page's recent JS/console errors, and an optional html2canvas snapshot (photos and
 // snapshot both uploaded via files.generateUploadUrl). The
@@ -20,7 +20,12 @@ import { Id } from "./_generated/dataModel";
 import { isOwner } from "./owner";
 import { internal } from "./_generated/api";
 
-const TYPE = v.union(v.literal("bug"), v.literal("feature"), v.literal("other"));
+const TYPE = v.union(
+  v.literal("bug"),
+  v.literal("tweak"),
+  v.literal("feature"),
+  v.literal("feedback"),
+);
 
 // Load a feedback row the caller may act on: their own, or — for the owner — any
 // row (triage). Throws otherwise.
